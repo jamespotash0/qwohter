@@ -1,19 +1,32 @@
 /**
  * Presentation Tab
  *
- * Rich text editor for creating proposal presentations.
- * - Builder Mode: Disabled (presentations are created when filling proposals)
- * - Filler Mode: Full WYSIWYG editor with variable insertion
+ * Word-style rich text editor for creating proposal presentations.
+ * Features:
+ * - Word-like page layout with paper appearance
+ * - Expandable variables panel on the right
+ * - Preview with resolved variables
+ * - Export to PDF/DOCX
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { FileText, Plus, Trash, CaretDown, CaretRight, Spinner, FilePdf } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { FileText } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
-import { useFormBuilder, type PresentationSection, type PresentationData } from '../../context/FormBuilderContext';
-import { PresentationEditor, type EditorContent } from '../presentation';
+import { useFormBuilder, type PresentationSection } from '../../context/FormBuilderContext';
+import {
+  PresentationEditor,
+  PresentationToolbar,
+  VariablePanel,
+  EditorHelpButton,
+  PreviewDialog,
+  DEFAULT_PAGE_SETTINGS,
+  type EditorContent,
+  type PresentationEditorRef,
+  type PageSettings,
+} from '../presentation';
+import type { Editor } from '@tiptap/react';
+import { exportToPdf, exportToDocx } from '../../utils/documentExport';
 
 interface PresentationTabProps {
   mode: EditorMode;
@@ -21,153 +34,145 @@ interface PresentationTabProps {
   proposalData?: unknown;
 }
 
-// Helper to create Tiptap-compatible content
-function createTiptapContent(headingLevel: number, headingText: string, paragraphText: string): EditorContent {
-  return {
-    type: 'doc',
-    content: [
-      {
-        type: 'heading',
-        attrs: { level: headingLevel },
-        content: [{ type: 'text', text: headingText }],
-      },
-      {
-        type: 'paragraph',
-        content: [{ type: 'text', text: paragraphText }],
-      },
-    ],
-  };
-}
-
-// Default sections for new presentations
-const DEFAULT_SECTIONS: PresentationSection[] = [
-  {
-    id: 'intro',
-    title: 'Introduction',
-    content: createTiptapContent(1, 'Project Overview', 'Thank you for the opportunity to submit this proposal for ') as unknown as PresentationSection['content'],
-    collapsed: false,
-  },
-  {
-    id: 'scope',
-    title: 'Scope of Work',
-    content: createTiptapContent(2, 'Scope of Work', 'This section outlines the detailed scope of work for this project.') as unknown as PresentationSection['content'],
-    collapsed: false,
-  },
-  {
-    id: 'products',
-    title: 'Products & Materials',
-    content: createTiptapContent(2, 'Products & Materials', 'The following products and materials will be used:') as unknown as PresentationSection['content'],
-    collapsed: false,
-  },
-  {
-    id: 'pricing',
-    title: 'Pricing Summary',
-    content: createTiptapContent(2, 'Pricing Summary', 'Below is the pricing breakdown for this project.') as unknown as PresentationSection['content'],
-    collapsed: false,
-  },
-  {
-    id: 'terms',
-    title: 'Terms & Conditions',
-    content: createTiptapContent(2, 'Terms & Conditions', 'The following terms and conditions apply to this proposal.') as unknown as PresentationSection['content'],
-    collapsed: false,
-  },
-];
+// Empty default content - placeholder will show when editor is empty
+const DEFAULT_PRESENTATION_CONTENT: EditorContent = {
+  type: 'doc',
+  content: [{ type: 'paragraph' }],
+};
 
 export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
   const isBuilderMode = mode === 'builder';
   const { data, setPresentationData } = useFormBuilder();
 
-  // Initialize sections from context or defaults
-  const [sections, setSections] = useState<PresentationSection[]>(() => {
-    if (data.presentation.sections.length > 0) {
-      return data.presentation.sections;
-    }
-    return DEFAULT_SECTIONS;
-  });
+  // Editor ref for programmatic control
+  const editorRef = useRef<PresentationEditorRef>(null);
+  const [editor, setEditor] = useState<Editor | null>(null);
 
-  const [activeSection, setActiveSection] = useState<string | null>(sections[0]?.id || null);
+  // Track if this is the initial load (skip marking dirty on first onChange)
+  const isInitialLoadRef = useRef(true);
+
+  // UI State
+  const [showVariables, setShowVariables] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS as PageSettings);
 
-  // Sync sections with context
-  useEffect(() => {
-    if (data.presentation.sections.length > 0 && sections !== data.presentation.sections) {
-      setSections(data.presentation.sections);
+  // Handle editor ready - called when Tiptap editor is initialized
+  const handleEditorReady = useCallback((ed: Editor) => {
+    setEditor(ed);
+  }, []);
+
+  // Get initial content from context or use default - memoized to prevent re-computation
+  const initialContent = useMemo((): EditorContent => {
+    // If we have presentation data with content, use it
+    const sections = data.presentation?.sections;
+    if (sections && sections.length > 0 && sections[0]?.content) {
+      // Merge all section contents into one document
+      const allContent: EditorContent['content'] = [];
+      sections.forEach((section) => {
+        const content = section.content as unknown as EditorContent;
+        if (content?.content) {
+          allContent.push(...content.content);
+        }
+      });
+      if (allContent.length > 0) {
+        return { type: 'doc', content: allContent };
+      }
     }
-  }, [data.presentation.sections]);
+    return DEFAULT_PRESENTATION_CONTENT;
+  }, [data.presentation?.sections]);
 
-  // Update context when sections change
-  const updateContext = useCallback((newSections: PresentationSection[]) => {
-    setSections(newSections);
-    setPresentationData({ sections: newSections });
+  // Handle content changes
+  const handleContentChange = useCallback((newContent: EditorContent) => {
+    // Skip marking dirty on initial load (editor fires onChange when it first mounts)
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    // Store as a single section for simplicity
+    setPresentationData({
+      sections: [{
+        id: 'main',
+        title: 'Presentation',
+        content: newContent as unknown as PresentationSection['content'],
+        collapsed: false,
+      }],
+    });
     onDirtyChange?.(true);
   }, [setPresentationData, onDirtyChange]);
 
-  // Handle section content change
-  const handleContentChange = useCallback((sectionId: string, newContent: EditorContent) => {
-    const newSections = sections.map(section =>
-      section.id === sectionId
-        ? { ...section, content: newContent as unknown as PresentationSection['content'] }
-        : section
-    );
-    updateContext(newSections);
-  }, [sections, updateContext]);
+  // Handle variable selection from panel
+  const handleVariableSelect = useCallback((variableKey: string, variableLabel: string) => {
+    editorRef.current?.insertVariable(variableKey, variableLabel);
+  }, []);
 
-  // Handle section title change
-  const handleTitleChange = useCallback((sectionId: string, newTitle: string) => {
-    const newSections = sections.map(section =>
-      section.id === sectionId
-        ? { ...section, title: newTitle }
-        : section
-    );
-    updateContext(newSections);
-  }, [sections, updateContext]);
+  // Toggle variables panel
+  const handleToggleVariables = useCallback(() => {
+    setShowVariables(prev => !prev);
+  }, []);
 
-  // Toggle section collapsed
-  const toggleSection = useCallback((sectionId: string) => {
-    const newSections = sections.map(section =>
-      section.id === sectionId
-        ? { ...section, collapsed: !section.collapsed }
-        : section
-    );
-    updateContext(newSections);
-  }, [sections, updateContext]);
+  // Preview with resolved variables
+  const handlePreview = useCallback(() => {
+    setShowPreview(true);
+  }, []);
 
-  // Add new section
-  const addSection = useCallback(() => {
-    const newSection: PresentationSection = {
-      id: `section-${Date.now()}`,
-      title: 'New Section',
-      content: createTiptapContent(2, 'New Section', 'Enter content here...') as unknown as PresentationSection['content'],
-      collapsed: false,
-    };
-    const newSections = [...sections, newSection];
-    updateContext(newSections);
-    setActiveSection(newSection.id);
-  }, [sections, updateContext]);
-
-  // Remove section
-  const removeSection = useCallback((sectionId: string) => {
-    if (sections.length <= 1) return; // Keep at least one section
-    const newSections = sections.filter(s => s.id !== sectionId);
-    updateContext(newSections);
-    if (activeSection === sectionId) {
-      setActiveSection(newSections[0]?.id || null);
-    }
-  }, [sections, activeSection, updateContext]);
-
-  // Get active section
-  const activeSectionData = useMemo(
-    () => sections.find(s => s.id === activeSection),
-    [sections, activeSection]
-  );
-
-  // Handle PDF export (placeholder)
+  // Export to PDF
   const handleExportPdf = useCallback(async () => {
     setIsExporting(true);
-    // TODO: Implement PDF export using jspdf
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsExporting(false);
-  }, []);
+    try {
+      // Find the editor container element
+      const editorElement = document.querySelector('.presentation-editor') as HTMLElement;
+      if (!editorElement) {
+        throw new Error('Editor element not found');
+      }
+
+      const projectName = data.client?.projectName || data.client?.clientName || 'proposal';
+      const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_presentation.pdf`;
+
+      await exportToPdf(editorElement, { filename });
+      toast.success('PDF exported successfully', {
+        description: `Saved as ${filename}`,
+      });
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error('Failed to export PDF', {
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [data.client?.projectName, data.client?.clientName]);
+
+  // Export to DOCX
+  const handleExportDocx = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      // Get current content from editor
+      const currentContent = editor?.getJSON() as EditorContent;
+      if (!currentContent) {
+        throw new Error('No content to export');
+      }
+
+      const projectName = data.client?.projectName || data.client?.clientName || 'proposal';
+      const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_presentation.docx`;
+
+      await exportToDocx(currentContent, {
+        filename,
+        title: projectName,
+      });
+      toast.success('DOCX exported successfully', {
+        description: `Saved as ${filename}`,
+      });
+    } catch (error) {
+      console.error('DOCX export failed:', error);
+      toast.error('Failed to export DOCX', {
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [editor, data.client?.projectName, data.client?.clientName]);
 
   // Builder mode: Show disabled state
   if (isBuilderMode) {
@@ -175,7 +180,7 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
       <div className="flex items-center justify-center h-96">
         <div className="text-center text-gray-500">
           <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-          <p className="text-lg font-medium">Presentation Tab</p>
+          <p className="text-lg font-medium">Presentation Editor</p>
           <p className="text-sm mt-1">
             Presentations are created when filling out proposals
           </p>
@@ -184,122 +189,58 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
     );
   }
 
-  // Filler mode: Full editor interface
   return (
-    <div className="flex gap-6 h-[calc(100vh-280px)] min-h-[500px]">
-      {/* Left sidebar: Section list */}
-      <div className="w-64 flex-shrink-0 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-            Sections
-          </h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={addSection}
-            className="h-8 w-8 p-0"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
+    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[600px] -mx-6 -mt-6">
+      {/* Toolbar - only show when editor is ready */}
+      {editor && (
+        <PresentationToolbar
+          editor={editor}
+          showVariables={showVariables}
+          onToggleVariables={handleToggleVariables}
+          onPreview={handlePreview}
+          onExportPdf={handleExportPdf}
+          onExportDocx={handleExportDocx}
+          isExporting={isExporting}
+          pageSettings={pageSettings}
+          onPageSettingsChange={setPageSettings}
+        />
+      )}
+
+      {/* Main content area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Editor */}
+        <div className="flex-1 overflow-hidden">
+          <PresentationEditor
+            ref={editorRef}
+            value={initialContent}
+            onChange={handleContentChange}
+            onReady={handleEditorReady}
+            pageStyle
+            placeholder="Start writing your presentation..."
+            pageSettings={pageSettings}
+          />
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1">
-          {sections.map((section, index) => (
-            <div
-              key={section.id}
-              className={cn(
-                'group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors',
-                activeSection === section.id
-                  ? 'bg-coral/10 text-coral'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
-              )}
-              onClick={() => setActiveSection(section.id)}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleSection(section.id);
-                }}
-                className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-              >
-                {section.collapsed ? (
-                  <CaretRight className="w-3 h-3" />
-                ) : (
-                  <CaretDown className="w-3 h-3" />
-                )}
-              </button>
-              <span className="flex-1 text-sm font-medium truncate">
-                {index + 1}. {section.title}
-              </span>
-              {sections.length > 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeSection(section.id);
-                  }}
-                  className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-opacity"
-                >
-                  <Trash className="w-3 h-3 text-red-500" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Export button */}
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            onClick={handleExportPdf}
-            disabled={isExporting}
-            className="w-full bg-coral hover:bg-coral-hover text-white"
-          >
-            {isExporting ? (
-              <>
-                <Spinner className="w-4 h-4 mr-2 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <FilePdf className="w-4 h-4 mr-2" />
-                Export PDF
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Variables Panel */}
+        <VariablePanel
+          isOpen={showVariables}
+          onClose={() => setShowVariables(false)}
+          onSelect={handleVariableSelect}
+        />
       </div>
 
-      {/* Right side: Editor */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {activeSectionData ? (
-          <>
-            {/* Section title input */}
-            <div className="mb-4">
-              <Input
-                value={activeSectionData.title}
-                onChange={(e) => handleTitleChange(activeSectionData.id, e.target.value)}
-                placeholder="Section title..."
-                className="text-lg font-semibold border-0 border-b-2 border-transparent hover:border-gray-200 focus:border-coral rounded-none px-0 bg-transparent"
-              />
-            </div>
+      {/* Help Button */}
+      <EditorHelpButton />
 
-            {/* Rich text editor */}
-            <div className="flex-1 overflow-y-auto">
-              <PresentationEditor
-                value={activeSectionData.content as unknown as EditorContent}
-                onChange={(value) => handleContentChange(activeSectionData.id, value)}
-                placeholder="Start writing your presentation content..."
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <div className="text-center">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-              <p className="text-sm">Select a section to start editing</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Preview Dialog */}
+      <PreviewDialog
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        content={editor?.getJSON() as EditorContent | null}
+        formData={data}
+        onExportPdf={handleExportPdf}
+        onExportDocx={handleExportDocx}
+      />
     </div>
   );
 }

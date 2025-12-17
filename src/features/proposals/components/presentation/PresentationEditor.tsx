@@ -1,18 +1,21 @@
 /**
  * Presentation Editor
  *
- * Notion-style rich text editor using Tiptap.
+ * Word-style rich text editor using Tiptap.
  * Features: slash commands, floating toolbar, tables, task lists, and more.
- */
+ *
+ * The editor is designed to look like a Microsoft Word document with
+ * page margins and a paper-like appearance.
+ * */
 
-import { useEffect, useCallback } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { Table }  from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -22,11 +25,21 @@ import TextAlign from '@tiptap/extension-text-align';
 import Typography from '@tiptap/extension-typography';
 import Dropcursor from '@tiptap/extension-dropcursor';
 import Gapcursor from '@tiptap/extension-gapcursor';
+// Font and color extensions (named exports)
+import { FontFamily } from '@tiptap/extension-font-family';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
 import { cn } from '@/lib/utils';
-import { EditorToolbar } from './EditorToolbar';
 import { BubbleMenuComponent } from './BubbleMenu';
 import { SlashCommand } from './SlashCommand';
 import { VariableExtension } from './VariableExtension';
+import { FontSize, LineHeight } from './extensions';
+
+// Ref interface for external access to editor
+export interface PresentationEditorRef {
+  getEditor: () => Editor | null;
+  insertVariable: (key: string, label: string) => void;
+}
 
 // Editor content type (Tiptap JSON format)
 export type EditorContent = {
@@ -37,38 +50,64 @@ export type EditorContent = {
   attrs?: Record<string, unknown>;
 };
 
-// Default content when editor is empty
+// Empty default content - placeholder will show when empty
 const DEFAULT_CONTENT: EditorContent = {
   type: 'doc',
   content: [
     {
-      type: 'heading',
-      attrs: { level: 1 },
-      content: [{ type: 'text', text: 'Project Overview' }],
-    },
-    {
       type: 'paragraph',
-      content: [{ type: 'text', text: 'Start typing or press ' }, { type: 'text', text: '/', marks: [{ type: 'code' }] }, { type: 'text', text: ' for commands...' }],
     },
   ],
 };
 
+// Page settings types
+export interface PageSettings {
+  pageSize: 'letter' | 'a4' | 'legal';
+  orientation: 'portrait' | 'landscape';
+  margins: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
+}
+
+// Page dimensions in pixels at 96dpi (CSS pixels)
+const PAGE_DIMENSIONS = {
+  letter: { width: 816, height: 1056 }, // 8.5" x 11"
+  a4: { width: 794, height: 1123 }, // 8.27" x 11.69"
+  legal: { width: 816, height: 1344 }, // 8.5" x 14"
+} as const;
+
 interface PresentationEditorProps {
   value?: EditorContent;
   onChange?: (value: EditorContent) => void;
+  /** Called when the editor is ready */
+  onReady?: (editor: Editor) => void;
   readOnly?: boolean;
   placeholder?: string;
   className?: string;
+  /** If true, renders with Word-like page styling */
+  pageStyle?: boolean;
+  /** If true, hides the bubble menu */
+  hideBubbleMenu?: boolean;
+  /** Page layout settings */
+  pageSettings?: PageSettings;
 }
 
-export function PresentationEditor({
+export const PresentationEditor = forwardRef<PresentationEditorRef, PresentationEditorProps>(({
   value,
   onChange,
+  onReady,
   readOnly = false,
-  placeholder = 'Press "/" for commands...',
+  placeholder = 'Start creating your document...',
   className,
-}: PresentationEditorProps) {
+  pageStyle = false,
+  hideBubbleMenu = false,
+  pageSettings,
+}, ref) => {
   const editor = useEditor({
+    immediatelyRender: false, // Prevent hydration issues and improve initial render
     extensions: [
       StarterKit.configure({
         heading: {
@@ -115,7 +154,7 @@ export function PresentationEditor({
         },
       }),
       Highlight.configure({
-        multicolor: false,
+        multicolor: true, // Enable multiple highlight colors
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -126,11 +165,21 @@ export function PresentationEditor({
         width: 2,
       }),
       Gapcursor,
+      // Font and color extensions
+      TextStyle,
+      FontFamily,
+      FontSize,
+      Color,
+      LineHeight,
+      // Custom extensions
       SlashCommand,
       VariableExtension,
     ],
     content: value || DEFAULT_CONTENT,
     editable: !readOnly,
+    onCreate: ({ editor }) => {
+      onReady?.(editor);
+    },
     onUpdate: ({ editor }) => {
       onChange?.(editor.getJSON() as EditorContent);
     },
@@ -155,6 +204,23 @@ export function PresentationEditor({
     }
   }, [editor, readOnly]);
 
+  // Expose editor methods via ref
+  useImperativeHandle(ref, () => ({
+    getEditor: () => editor,
+    insertVariable: (key: string, label: string) => {
+      if (editor) {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'variable',
+            attrs: { variableKey: key, variableLabel: label },
+          })
+          .run();
+      }
+    },
+  }), [editor]);
+
   if (!editor) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
@@ -163,57 +229,106 @@ export function PresentationEditor({
     );
   }
 
+  // Base typography styles (used by both page and non-page modes)
+  const typographyStyles = [
+    // Tiptap editor styles
+    '[&_.tiptap]:outline-none [&_.tiptap]:min-h-[350px]',
+    // Typography
+    '[&_.tiptap_h1]:text-3xl [&_.tiptap_h1]:font-bold [&_.tiptap_h1]:text-gray-900 dark:[&_.tiptap_h1]:text-gray-100 [&_.tiptap_h1]:mb-4 [&_.tiptap_h1]:mt-6 [&_.tiptap_h1]:first:mt-0',
+    '[&_.tiptap_h2]:text-2xl [&_.tiptap_h2]:font-semibold [&_.tiptap_h2]:text-gray-800 dark:[&_.tiptap_h2]:text-gray-200 [&_.tiptap_h2]:mb-3 [&_.tiptap_h2]:mt-5',
+    '[&_.tiptap_h3]:text-xl [&_.tiptap_h3]:font-medium [&_.tiptap_h3]:text-gray-700 dark:[&_.tiptap_h3]:text-gray-300 [&_.tiptap_h3]:mb-2 [&_.tiptap_h3]:mt-4',
+    '[&_.tiptap_p]:text-gray-600 dark:[&_.tiptap_p]:text-gray-400 [&_.tiptap_p]:mb-3 [&_.tiptap_p]:leading-relaxed',
+    // Blockquote
+    '[&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-coral [&_.tiptap_blockquote]:pl-4 [&_.tiptap_blockquote]:py-1 [&_.tiptap_blockquote]:italic [&_.tiptap_blockquote]:my-4 [&_.tiptap_blockquote]:text-gray-600 dark:[&_.tiptap_blockquote]:text-gray-400',
+    // Lists
+    '[&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6 [&_.tiptap_ul]:my-3',
+    '[&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_ol]:my-3',
+    '[&_.tiptap_li]:my-1 [&_.tiptap_li]:text-gray-600 dark:[&_.tiptap_li]:text-gray-400',
+    // Task list
+    '[&_.task-list]:list-none [&_.task-list]:pl-0',
+    '[&_.task-item]:flex [&_.task-item]:items-start [&_.task-item]:gap-2 [&_.task-item]:my-1',
+    '[&_.task-item_input]:mt-1 [&_.task-item_input]:w-4 [&_.task-item_input]:h-4 [&_.task-item_input]:rounded [&_.task-item_input]:border-2 [&_.task-item_input]:border-gray-300 dark:[&_.task-item_input]:border-gray-600 [&_.task-item_input]:checked:bg-coral [&_.task-item_input]:checked:border-coral',
+    '[&_.task-item[data-checked=true]_p]:line-through [&_.task-item[data-checked=true]_p]:text-gray-400',
+    // Horizontal rule
+    '[&_.tiptap_hr]:border-gray-200 dark:[&_.tiptap_hr]:border-gray-700 [&_.tiptap_hr]:my-6',
+    // Table - visible borders
+    '[&_.editor-table]:border-collapse [&_.editor-table]:w-full [&_.editor-table]:my-4 [&_.editor-table]:border [&_.editor-table]:border-gray-300 dark:[&_.editor-table]:border-gray-600',
+    '[&_.editor-table_th]:bg-gray-100 dark:[&_.editor-table_th]:bg-gray-800 [&_.editor-table_th]:border [&_.editor-table_th]:border-gray-300 dark:[&_.editor-table_th]:border-gray-600 [&_.editor-table_th]:px-3 [&_.editor-table_th]:py-2 [&_.editor-table_th]:text-left [&_.editor-table_th]:font-semibold [&_.editor-table_th]:text-gray-700 dark:[&_.editor-table_th]:text-gray-300',
+    '[&_.editor-table_td]:border [&_.editor-table_td]:border-gray-300 dark:[&_.editor-table_td]:border-gray-600 [&_.editor-table_td]:px-3 [&_.editor-table_td]:py-2 [&_.editor-table_td]:text-gray-700 dark:[&_.editor-table_td]:text-gray-300',
+    '[&_.editor-table_.selectedCell]:bg-blue-50 dark:[&_.editor-table_.selectedCell]:bg-blue-900/20',
+    // Also style table, th, td directly for Tiptap tables
+    '[&_table]:border-collapse [&_table]:w-full [&_table]:my-4 [&_table]:border [&_table]:border-gray-300 dark:[&_table]:border-gray-600',
+    '[&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_th]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-600 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold',
+    '[&_td]:border [&_td]:border-gray-300 dark:[&_td]:border-gray-600 [&_td]:px-3 [&_td]:py-2',
+    '[&_.selectedCell]:bg-blue-50 dark:[&_.selectedCell]:bg-blue-900/20',
+    // Link - cleaner blue style like Gmail
+    '[&_.editor-link]:text-blue-600 dark:[&_.editor-link]:text-blue-400 [&_.editor-link]:underline [&_.editor-link]:cursor-pointer [&_.editor-link]:hover:text-blue-800 dark:[&_.editor-link]:hover:text-blue-300',
+    '[&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline [&_a]:cursor-pointer',
+    // Code
+    '[&_.tiptap_code]:bg-gray-100 dark:[&_.tiptap_code]:bg-gray-800 [&_.tiptap_code]:px-1.5 [&_.tiptap_code]:py-0.5 [&_.tiptap_code]:rounded [&_.tiptap_code]:text-sm [&_.tiptap_code]:font-mono [&_.tiptap_code]:text-gray-700 dark:[&_.tiptap_code]:text-gray-300',
+    '[&_code]:bg-gray-100 dark:[&_code]:bg-gray-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono',
+    // Highlight
+    '[&_.tiptap_mark]:bg-yellow-200 dark:[&_.tiptap_mark]:bg-yellow-500/30',
+    // Variable - clean, subtle styling
+    '[&_.variable-node]:inline [&_.variable-node]:px-0.5 [&_.variable-node]:rounded [&_.variable-node]:bg-gray-100 dark:[&_.variable-node]:bg-gray-800 [&_.variable-node]:text-gray-700 dark:[&_.variable-node]:text-gray-300 [&_.variable-node]:font-medium [&_.variable-node]:border-b [&_.variable-node]:border-dashed [&_.variable-node]:border-gray-400',
+    // Placeholder
+    '[&_.is-editor-empty:first-child::before]:text-gray-400 [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:h-0',
+    '[&_.is-empty::before]:text-gray-400 [&_.is-empty::before]:content-[attr(data-placeholder)] [&_.is-empty::before]:float-left [&_.is-empty::before]:pointer-events-none [&_.is-empty::before]:h-0'
+  ];
+
   return (
-    <div className={cn('presentation-editor', className)}>
-      {!readOnly && <EditorToolbar editor={editor} />}
-      {!readOnly && <BubbleMenuComponent editor={editor} />}
-      <EditorContent
-        editor={editor}
-        className={cn(
-          'min-h-[400px] p-6 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700',
-          'focus-within:ring-2 focus-within:ring-coral/20 focus-within:border-coral',
-          'transition-all duration-200',
-          // Tiptap editor styles
-          '[&_.tiptap]:outline-none [&_.tiptap]:min-h-[350px]',
-          // Typography
-          '[&_.tiptap_h1]:text-3xl [&_.tiptap_h1]:font-bold [&_.tiptap_h1]:text-gray-900 dark:[&_.tiptap_h1]:text-gray-100 [&_.tiptap_h1]:mb-4 [&_.tiptap_h1]:mt-6 [&_.tiptap_h1]:first:mt-0',
-          '[&_.tiptap_h2]:text-2xl [&_.tiptap_h2]:font-semibold [&_.tiptap_h2]:text-gray-800 dark:[&_.tiptap_h2]:text-gray-200 [&_.tiptap_h2]:mb-3 [&_.tiptap_h2]:mt-5',
-          '[&_.tiptap_h3]:text-xl [&_.tiptap_h3]:font-medium [&_.tiptap_h3]:text-gray-700 dark:[&_.tiptap_h3]:text-gray-300 [&_.tiptap_h3]:mb-2 [&_.tiptap_h3]:mt-4',
-          '[&_.tiptap_p]:text-gray-600 dark:[&_.tiptap_p]:text-gray-400 [&_.tiptap_p]:mb-3 [&_.tiptap_p]:leading-relaxed',
-          // Blockquote
-          '[&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-coral [&_.tiptap_blockquote]:pl-4 [&_.tiptap_blockquote]:py-1 [&_.tiptap_blockquote]:italic [&_.tiptap_blockquote]:my-4 [&_.tiptap_blockquote]:text-gray-600 dark:[&_.tiptap_blockquote]:text-gray-400',
-          // Lists
-          '[&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6 [&_.tiptap_ul]:my-3',
-          '[&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_ol]:my-3',
-          '[&_.tiptap_li]:my-1 [&_.tiptap_li]:text-gray-600 dark:[&_.tiptap_li]:text-gray-400',
-          // Task list
-          '[&_.task-list]:list-none [&_.task-list]:pl-0',
-          '[&_.task-item]:flex [&_.task-item]:items-start [&_.task-item]:gap-2 [&_.task-item]:my-1',
-          '[&_.task-item_input]:mt-1 [&_.task-item_input]:w-4 [&_.task-item_input]:h-4 [&_.task-item_input]:rounded [&_.task-item_input]:border-2 [&_.task-item_input]:border-gray-300 dark:[&_.task-item_input]:border-gray-600 [&_.task-item_input]:checked:bg-coral [&_.task-item_input]:checked:border-coral',
-          '[&_.task-item[data-checked=true]_p]:line-through [&_.task-item[data-checked=true]_p]:text-gray-400',
-          // Horizontal rule
-          '[&_.tiptap_hr]:border-gray-200 dark:[&_.tiptap_hr]:border-gray-700 [&_.tiptap_hr]:my-6',
-          // Table
-          '[&_.editor-table]:border-collapse [&_.editor-table]:w-full [&_.editor-table]:my-4',
-          '[&_.editor-table_th]:bg-gray-50 dark:[&_.editor-table_th]:bg-gray-800 [&_.editor-table_th]:border [&_.editor-table_th]:border-gray-200 dark:[&_.editor-table_th]:border-gray-700 [&_.editor-table_th]:px-3 [&_.editor-table_th]:py-2 [&_.editor-table_th]:text-left [&_.editor-table_th]:font-semibold [&_.editor-table_th]:text-gray-700 dark:[&_.editor-table_th]:text-gray-300',
-          '[&_.editor-table_td]:border [&_.editor-table_td]:border-gray-200 dark:[&_.editor-table_td]:border-gray-700 [&_.editor-table_td]:px-3 [&_.editor-table_td]:py-2 [&_.editor-table_td]:text-gray-600 dark:[&_.editor-table_td]:text-gray-400',
-          '[&_.editor-table_.selectedCell]:bg-coral/10',
-          // Link
-          '[&_.editor-link]:text-coral [&_.editor-link]:underline [&_.editor-link]:cursor-pointer',
-          // Code
-          '[&_.tiptap_code]:bg-gray-100 dark:[&_.tiptap_code]:bg-gray-800 [&_.tiptap_code]:px-1.5 [&_.tiptap_code]:py-0.5 [&_.tiptap_code]:rounded [&_.tiptap_code]:text-sm [&_.tiptap_code]:font-mono [&_.tiptap_code]:text-coral',
-          // Highlight
-          '[&_.tiptap_mark]:bg-yellow-200 dark:[&_.tiptap_mark]:bg-yellow-500/30',
-          // Variable
-          '[&_.variable-node]:inline-flex [&_.variable-node]:items-center [&_.variable-node]:px-2 [&_.variable-node]:py-0.5 [&_.variable-node]:mx-0.5 [&_.variable-node]:rounded-md [&_.variable-node]:bg-coral/10 [&_.variable-node]:text-coral [&_.variable-node]:text-sm [&_.variable-node]:font-medium [&_.variable-node]:border [&_.variable-node]:border-coral/20',
-          // Placeholder
-          '[&_.is-editor-empty:first-child::before]:text-gray-400 [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:pointer-events-none [&_.is-editor-empty:first-child::before]:h-0',
-          '[&_.is-empty::before]:text-gray-400 [&_.is-empty::before]:content-[attr(data-placeholder)] [&_.is-empty::before]:float-left [&_.is-empty::before]:pointer-events-none [&_.is-empty::before]:h-0'
-        )}
-      />
+    <div className={cn('presentation-editor h-full', className)}>
+      {!readOnly && !hideBubbleMenu && <BubbleMenuComponent editor={editor} />}
+
+      {/* Word-like page container */}
+      {pageStyle ? (
+        <div className="h-full overflow-y-auto bg-gray-100 dark:bg-gray-800 p-8">
+          <div
+            className={cn(
+              // Page styling - mimics Word document
+              'mx-auto bg-white dark:bg-gray-900',
+              'shadow-lg rounded-sm',
+              ...typographyStyles
+            )}
+            style={pageSettings ? {
+              // Apply page dimensions based on settings
+              width: `${pageSettings.orientation === 'landscape'
+                ? PAGE_DIMENSIONS[pageSettings.pageSize].height
+                : PAGE_DIMENSIONS[pageSettings.pageSize].width}px`,
+              minHeight: `${pageSettings.orientation === 'landscape'
+                ? PAGE_DIMENSIONS[pageSettings.pageSize].width
+                : PAGE_DIMENSIONS[pageSettings.pageSize].height}px`,
+              // Apply margins (convert inches to pixels at 96dpi)
+              paddingTop: `${pageSettings.margins.top * 96}px`,
+              paddingBottom: `${pageSettings.margins.bottom * 96}px`,
+              paddingLeft: `${pageSettings.margins.left * 96}px`,
+              paddingRight: `${pageSettings.margins.right * 96}px`,
+            } : {
+              // Default dimensions
+              maxWidth: '816px', // ~8.5" at 96dpi
+              minHeight: '1056px', // ~11" at 96dpi
+              padding: '48px 64px', // ~0.5" top/bottom, ~0.67" left/right
+            }}
+          >
+            <EditorContent editor={editor} />
+          </div>
+        </div>
+      ) : (
+        <EditorContent
+          editor={editor}
+          className={cn(
+            'min-h-[400px] p-6 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700',
+            'focus-within:ring-2 focus-within:ring-coral/20 focus-within:border-coral',
+            'transition-all duration-200',
+            ...typographyStyles
+          )}
+        />
+      )}
     </div>
   );
-}
+});
+
+PresentationEditor.displayName = 'PresentationEditor';
 
 export default PresentationEditor;
 export { DEFAULT_CONTENT };

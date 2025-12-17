@@ -4,6 +4,8 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { extractTextFromPDF, isPDF } from './pdfExtractor';
+import { extractTextFromDocx, isDocx } from './docxExtractor';
 
 export interface ExtractedProduct {
   id: string;
@@ -102,7 +104,15 @@ export async function extractProductsFromDocument(
   fileName?: string
 ): Promise<ExtractedProduct[]> {
   try {
-    // Call the dedicated extract-products edge function
+    // DEBUG: Log input data
+    console.log('=== AI Product Extraction Debug ===');
+    console.log('File name:', fileName);
+    console.log('Document text length:', documentText.length);
+    console.log('Document text preview (first 500 chars):', documentText.substring(0, 500));
+    console.log('Document text preview (last 500 chars):', documentText.substring(Math.max(0, documentText.length - 500)));
+
+    // Call the dedicated ai-product-extraction edge function
+    console.log('Calling edge function: ai-product-extraction');
     const { data, error } = await supabase.functions.invoke<ProductExtractionResponse>(
       'ai-product-extraction',
       {
@@ -113,14 +123,22 @@ export async function extractProductsFromDocument(
       }
     );
 
+    // DEBUG: Log response
+    console.log('Edge function response:', { data, error });
+
     if (error) {
       console.error('Edge function error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       throw new Error(`Failed to extract products: ${error.message}`);
     }
 
     if (!data?.success || !data.data?.products) {
+      console.error('Extraction failed - data:', data);
       throw new Error(data?.error || 'Failed to extract product data');
     }
+
+    console.log('Extraction successful - products count:', data.data.products.length);
+    console.log('Extracted products:', JSON.stringify(data.data.products, null, 2));
 
     // Convert the extracted data to our Product format
     const products: ExtractedProduct[] = data.data.products
@@ -272,34 +290,49 @@ export async function extractProductsFromDocument(
  */
 export async function extractProductsFromFile(file: File): Promise<ExtractedProduct[]> {
   try {
+    // DEBUG: Log file info
+    console.log('=== File Extraction Debug ===');
+    console.log('File name:', file.name);
+    console.log('File type:', file.type);
+    console.log('File size:', file.size, 'bytes');
+
+    // Handle PDF files with proper text extraction
+    if (isPDF(file)) {
+      console.log('Detected PDF file, using PDF text extraction');
+      const text = await extractTextFromPDF(file);
+      return extractProductsFromDocument(text, file.name);
+    }
+
+    // Handle DOCX files with mammoth
+    if (isDocx(file)) {
+      console.log('Detected DOCX file, using mammoth text extraction');
+      const text = await extractTextFromDocx(file);
+      return extractProductsFromDocument(text, file.name);
+    }
+
     // For text files, read directly
     if (file.type === 'text/plain') {
+      console.log('Reading as plain text file');
       const text = await file.text();
       return extractProductsFromDocument(text, file.name);
     }
 
-    // For PDFs and images, we'd need to extract text first
-    // For now, just read as text if possible
-    const reader = new FileReader();
+    // For images, we need OCR - not yet supported
+    if (file.type.startsWith('image/')) {
+      throw new Error('Image files require OCR which is not yet supported. Please upload a PDF or text file.');
+    }
 
-    return new Promise((resolve, reject) => {
-      reader.onload = async (e) => {
-        const text = e.target?.result as string;
-        if (text) {
-          try {
-            const products = await extractProductsFromDocument(text, file.name);
-            resolve(products);
-          } catch (error) {
-            reject(error);
-          }
-        } else {
-          reject(new Error('Failed to read file content'));
-        }
-      };
+    // Try to read as text for other file types
+    const text = await file.text();
+    console.log('Read file as text, length:', text.length);
 
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
-    });
+    // Check if it looks like binary data
+    const looksLikeBinary = /[\x00-\x08\x0E-\x1F]/.test(text.substring(0, 100));
+    if (looksLikeBinary) {
+      throw new Error('File appears to be binary. Please upload a PDF or text file.');
+    }
+
+    return extractProductsFromDocument(text, file.name);
   } catch (error) {
     console.error('File extraction error:', error);
     throw error;

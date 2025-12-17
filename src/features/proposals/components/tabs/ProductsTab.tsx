@@ -9,7 +9,7 @@
  * Filler Mode: Full functionality - persisted via FormBuilderContext
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Plus, Trash, UploadSimple, Package, Sparkle } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,8 @@ import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsFromFile } from '@/services/productExtraction';
 import { useFormBuilder, type Product } from '../../context/FormBuilderContext';
+import { ExtractedProductsPreview } from './ExtractedProductsPreview';
+import { generateProductAlias } from '../../utils/productVariables';
 
 interface ProductsTabProps {
   mode: EditorMode;
@@ -53,11 +55,18 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
   const [entryMode, setEntryMode] = useState<EntryMode>('manual');
   const [extracting, setExtracting] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [extractedProducts, setExtractedProducts] = useState<Product[]>([]);
+  const [extractedFileName, setExtractedFileName] = useState<string>();
 
-  // Helper function to determine if a product has rich metadata
-  const isComplexProduct = useCallback((product: Product): boolean => {
+  // Helper function to determine if a product was AI-extracted (has rawData)
+  const isAIExtractedProduct = useCallback((product: Product): boolean => {
     return !!(product.rawData && Object.keys(product.rawData).length > 0);
   }, []);
+
+  // Separate products by source
+  const aiExtractedProducts = products.filter(isAIExtractedProduct);
+  const manualProducts = products.filter(p => !isAIExtractedProduct(p));
 
   // Add new product
   const addProduct = useCallback(() => {
@@ -89,25 +98,29 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
   // Handle file upload for AI extraction
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    handleAIExtract(files[0]);
+    handleAIExtract(file);
   }, []);
 
-  // Handle AI extraction
+  // Handle AI extraction - shows preview modal
   const handleAIExtract = useCallback(async (file: File) => {
     // Validate file type
     const validTypes = [
       'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
       'image/jpeg',
       'image/jpg',
       'image/png',
       'text/plain',
     ];
 
-    if (!validTypes.includes(file.type)) {
-      toast.error('Invalid file type. Please upload PDF, image, or text file.');
+    // Also check by extension for DOCX (some browsers report different MIME types)
+    const isValidExtension = file.name.toLowerCase().endsWith('.docx');
+
+    if (!validTypes.includes(file.type) && !isValidExtension) {
+      toast.error('Invalid file type. Please upload PDF, DOCX, image, or text file.');
       return;
     }
 
@@ -115,14 +128,16 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
     try {
       // Use the real AI extraction service
-      const extractedProducts = await extractProductsFromFile(file);
+      const extracted = await extractProductsFromFile(file);
 
-      if (extractedProducts.length === 0) {
+      if (extracted.length === 0) {
         toast.warning(`No products found in ${file.name}`);
       } else {
-        setProductsData({ items: [...products, ...extractedProducts] });
-        onDirtyChange?.(true);
-        toast.success(`Extracted ${extractedProducts.length} product${extractedProducts.length === 1 ? '' : 's'} from ${file.name}`);
+        // Show preview modal instead of directly adding
+        setExtractedProducts(extracted as Product[]);
+        setExtractedFileName(file.name);
+        setPreviewOpen(true);
+        toast.success(`Found ${extracted.length} product${extracted.length === 1 ? '' : 's'}. Review before adding.`);
       }
 
       // Reset file input
@@ -136,6 +151,35 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     } finally {
       setExtracting(false);
     }
+  }, []);
+
+  // Handle confirming selected products from preview
+  const handleConfirmExtraction = useCallback((selectedProducts: Product[]) => {
+    if (selectedProducts.length > 0) {
+      // Get existing aliases to avoid duplicates
+      const existingAliases = products
+        .filter(p => p.alias)
+        .map(p => p.alias as string);
+
+      // Auto-generate aliases for AI-extracted products using reduce for accumulation
+      const generatedAliases: string[] = [];
+      const productsWithAliases = selectedProducts.map((product, index) => {
+        // Only generate alias for AI-extracted products (those with rawData)
+        if (product.rawData && Object.keys(product.rawData).length > 0 && !product.alias) {
+          const allAliases = [...existingAliases, ...generatedAliases];
+          const alias = generateProductAlias(product, allAliases, index);
+          generatedAliases.push(alias);
+          return { ...product, alias };
+        }
+        return product;
+      });
+
+      setProductsData({ items: [...products, ...productsWithAliases] });
+      onDirtyChange?.(true);
+      toast.success(`Added ${selectedProducts.length} product${selectedProducts.length === 1 ? '' : 's'} with variable aliases`);
+    }
+    setExtractedProducts([]);
+    setExtractedFileName(undefined);
   }, [products, setProductsData, onDirtyChange]);
 
   // Input styling
@@ -165,10 +209,18 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     <div className="space-y-4">
       {/* Header with Mode Toggle */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {products.length} {products.length === 1 ? 'product' : 'products'}
+            {entryMode === 'manual'
+              ? `${manualProducts.length} manual product${manualProducts.length !== 1 ? 's' : ''}`
+              : `${aiExtractedProducts.length} AI-extracted product${aiExtractedProducts.length !== 1 ? 's' : ''}`
+            }
           </span>
+          {products.length > 0 && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              ({products.length} total)
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <button
@@ -210,14 +262,14 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                   AI-Powered Product Extraction
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Upload a document (PDF, image, or text) and our AI will automatically extract product information including names, quantities, and descriptions.
+                  Upload a document (PDF, Word, or text) and our AI will automatically extract product information including names, quantities, and descriptions.
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   onChange={handleFileSelect}
                   className="hidden"
-                  accept=".pdf,.png,.jpg,.jpeg,.txt"
+                  accept=".pdf,.docx,.png,.jpg,.jpeg,.txt"
                   disabled={extracting}
                 />
                 <Button
@@ -232,21 +284,14 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
             </div>
           </div>
 
-          {/* Extracted Products - Smart Display */}
-          {products.length > 0 && (() => {
-            const complexProducts = products.filter(isComplexProduct);
-            const simpleProducts = products.filter(p => !isComplexProduct(p));
-
-            return (
-              <div className="space-y-6">
-                {/* Complex Products - Card View */}
-                {complexProducts.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Detailed Products ({complexProducts.length})
-                    </h4>
+          {/* AI Extracted Products Display */}
+          {aiExtractedProducts.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  AI-Extracted Products ({aiExtractedProducts.length})
+                </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {complexProducts.map((product) => (
+                      {aiExtractedProducts.map((product) => (
                         <div
                           key={product.id}
                           className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
@@ -276,6 +321,29 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                             >
                               <Trash className="w-4 h-4" />
                             </button>
+                          </div>
+
+                          {/* Variable Alias */}
+                          <div className="mb-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                                Variable Alias:
+                              </span>
+                              <Input
+                                value={product.alias || ''}
+                                onChange={(e) => updateProduct(product.id, { alias: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
+                                placeholder="e.g., wallA"
+                                className="h-7 text-xs font-mono flex-1 bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700"
+                              />
+                            </div>
+                            {product.alias && (
+                              <div className="mt-1.5 text-xs text-purple-600 dark:text-purple-400">
+                                Use in templates: <code className="px-1 py-0.5 bg-purple-100 dark:bg-purple-800 rounded font-mono">{'{' + product.alias + '.stc}'}</code>
+                                {', '}
+                                <code className="px-1 py-0.5 bg-purple-100 dark:bg-purple-800 rounded font-mono">{'{' + product.alias + '.manufacturer}'}</code>
+                                {' etc.'}
+                              </div>
+                            )}
                           </div>
 
                           {/* Product Details */}
@@ -374,70 +442,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Simple Products - Table View */}
-                {simpleProducts.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Simple Products ({simpleProducts.length})
-                    </h4>
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
-                      {/* Table Header */}
-                      <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        <div className="col-span-5">Product Name</div>
-                        <div className="col-span-2">Quantity</div>
-                        <div className="col-span-2">Unit</div>
-                        <div className="col-span-2">Description</div>
-                        <div className="col-span-1"></div>
-                      </div>
-
-                      {/* Product Rows */}
-                      <div>
-                        {simpleProducts.map((product) => (
-                          <div
-                            key={product.id}
-                            className="grid grid-cols-12 gap-3 px-4 py-3 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
-                          >
-                            {/* Product Name */}
-                            <div className="col-span-5 font-medium text-gray-900 dark:text-gray-100">
-                              {product.name}
-                            </div>
-
-                            {/* Quantity */}
-                            <div className="col-span-2 text-gray-700 dark:text-gray-300">
-                              {product.quantity}
-                            </div>
-
-                            {/* Unit */}
-                            <div className="col-span-2 text-gray-700 dark:text-gray-300">
-                              {product.unit}
-                            </div>
-
-                            {/* Description */}
-                            <div className="col-span-2 text-sm text-gray-600 dark:text-gray-400 truncate">
-                              {product.description || '-'}
-                            </div>
-
-                            {/* Delete */}
-                            <div className="col-span-1 flex justify-center">
-                              <button
-                                onClick={() => removeProduct(product.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                <Trash className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
-            );
-          })()}
+          )}
         </div>
       )}
 
@@ -470,8 +476,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
               </div>
             </div>
 
-            {/* Product Rows */}
-            {products.map((product) => (
+            {/* Product Rows - Only manual products (no rawData) */}
+            {manualProducts.map((product) => (
               <div
                 key={product.id}
                 className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
@@ -554,6 +560,15 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           </div>
         </div>
       )}
+
+      {/* Extracted Products Preview Modal */}
+      <ExtractedProductsPreview
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        products={extractedProducts}
+        onConfirm={handleConfirmExtraction}
+        fileName={extractedFileName}
+      />
     </div>
   );
 }

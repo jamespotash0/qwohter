@@ -134,6 +134,8 @@ export interface Product {
   unit: string;
   description?: string;
   rawData?: ProductRawData;
+  /** User-editable alias for variable reference (e.g., "wallA", "ceilingB") */
+  alias?: string;
 }
 
 export interface ProductsData {

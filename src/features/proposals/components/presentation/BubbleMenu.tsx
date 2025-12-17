@@ -56,6 +56,18 @@ export function BubbleMenuComponent({ editor }: BubbleMenuProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
 
+  // Safely get coordinates for a position, returns null if position is out of range
+  const safeGetCoords = useCallback((pos: number) => {
+    try {
+      const docSize = editor.state.doc.content.size;
+      // Clamp position to valid range (0 to docSize)
+      const safePos = Math.max(0, Math.min(pos, docSize));
+      return editor.view.coordsAtPos(safePos);
+    } catch {
+      return null;
+    }
+  }, [editor]);
+
   const setLink = useCallback(() => {
     if (linkUrl) {
       editor
@@ -95,8 +107,17 @@ export function BubbleMenuComponent({ editor }: BubbleMenuProps) {
       hideOnClick: false,
       getReferenceClientRect: () => {
         const { from, to } = editor.state.selection;
-        const start = editor.view.coordsAtPos(from);
-        const end = editor.view.coordsAtPos(to);
+        const start = safeGetCoords(from);
+        const end = safeGetCoords(to);
+
+        // Return a fallback rect if coords couldn't be resolved
+        if (!start || !end) {
+          return {
+            top: 0, bottom: 0, left: 0, right: 0,
+            width: 0, height: 0, x: 0, y: 0,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
 
         return {
           top: start.top,
@@ -118,7 +139,7 @@ export function BubbleMenuComponent({ editor }: BubbleMenuProps) {
       instance.destroy();
       virtualReference.remove();
     };
-  }, [editor]);
+  }, [editor, safeGetCoords]);
 
   // Show/hide based on selection
   useEffect(() => {
@@ -144,11 +165,25 @@ export function BubbleMenuComponent({ editor }: BubbleMenuProps) {
         return;
       }
 
+      // Validate positions are within document bounds
+      const docSize = editor.state.doc.content.size;
+      if (from > docSize || to > docSize) {
+        tippyRef.current?.hide();
+        return;
+      }
+
+      // Get coordinates safely
+      const start = safeGetCoords(from);
+      const end = safeGetCoords(to);
+
+      if (!start || !end) {
+        tippyRef.current?.hide();
+        return;
+      }
+
       // Update position and show
       tippyRef.current?.setProps({
         getReferenceClientRect: () => {
-          const start = editor.view.coordsAtPos(from);
-          const end = editor.view.coordsAtPos(to);
           return {
             top: start.top,
             bottom: end.bottom,
@@ -172,7 +207,7 @@ export function BubbleMenuComponent({ editor }: BubbleMenuProps) {
       editor.off('selectionUpdate', updateMenu);
       editor.off('transaction', updateMenu);
     };
-  }, [editor]);
+  }, [editor, safeGetCoords]);
 
   return (
     <div
