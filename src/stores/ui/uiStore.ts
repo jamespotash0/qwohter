@@ -108,6 +108,39 @@ const getSystemTheme = (): 'light' | 'dark' => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
+// ============================================================================
+// LocalStorage Migration: wall-quote-wizard-ui → qwohter-ui
+// ============================================================================
+// Migrates user preferences from old localStorage key to new one.
+// This ensures existing users keep their settings after the rename.
+// Can be safely removed after a few months when all users have migrated.
+const OLD_STORAGE_KEY = 'wall-quote-wizard-ui';
+const NEW_STORAGE_KEY = 'qwohter-ui';
+
+const migrateLocalStorage = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const oldData = localStorage.getItem(OLD_STORAGE_KEY);
+    const newData = localStorage.getItem(NEW_STORAGE_KEY);
+
+    // Only migrate if old key exists and new key doesn't
+    if (oldData && !newData) {
+      localStorage.setItem(NEW_STORAGE_KEY, oldData);
+      localStorage.removeItem(OLD_STORAGE_KEY);
+      console.log('[UI Store] Migrated preferences from wall-quote-wizard-ui to qwohter-ui');
+    } else if (oldData && newData) {
+      // Both exist - remove old key (new key takes precedence)
+      localStorage.removeItem(OLD_STORAGE_KEY);
+    }
+  } catch (error) {
+    console.warn('[UI Store] Failed to migrate localStorage:', error);
+  }
+};
+
+// Run migration immediately (before store initialization)
+migrateLocalStorage();
+
 const initialState: UIState = {
   theme: 'light', // TEMP: Force light mode until dark mode is fully implemented
   effectiveTheme: 'light', // TEMP: Force light mode until dark mode is fully implemented
@@ -393,7 +426,7 @@ export const useUIStore = create<UIState>()(
         },
       })),
       {
-        name: 'wall-quote-wizard-ui',
+        name: NEW_STORAGE_KEY,
         partialize: (state) => ({
           theme: state.theme,
           sidebarState: state.sidebarState,

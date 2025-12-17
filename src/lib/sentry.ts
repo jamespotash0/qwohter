@@ -38,7 +38,7 @@ export const initializeSentry = () => {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: ENVIRONMENT,
-    release: `wall-quote-wizard@${APP_VERSION}`,
+    release: `qwohter@${APP_VERSION}`,
 
     // Performance Monitoring
     integrations: [

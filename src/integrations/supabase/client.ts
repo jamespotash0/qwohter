@@ -29,7 +29,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     headers: {
-      'x-client-info': 'wall-quote-wizard@1.0.0',
+      'x-client-info': 'qwohter@1.0.0',
     },
   },
   realtime: {
