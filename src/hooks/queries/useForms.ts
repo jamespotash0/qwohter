@@ -28,6 +28,10 @@ import {
   getDefaultForm,
   setDefaultForm,
   unsetDefaultForm,
+  fetchArchivedForms,
+  archiveForm,
+  unarchiveForm,
+  isFormInUse,
 } from '@/services/formsService';
 
 // Re-export types for convenience
@@ -41,6 +45,7 @@ export const formsQueryKeys = {
   all: ['forms'] as const,
   lists: () => [...formsQueryKeys.all, 'list'] as const,
   list: (organizationId: string) => [...formsQueryKeys.lists(), organizationId] as const,
+  archived: (organizationId: string) => [...formsQueryKeys.all, 'archived', organizationId] as const,
   details: () => [...formsQueryKeys.all, 'detail'] as const,
   detail: (formId: string) => [...formsQueryKeys.details(), formId] as const,
   default: (organizationId: string) => [...formsQueryKeys.all, 'default', organizationId] as const,
@@ -205,8 +210,6 @@ export function useUpdateForm() {
     },
 
     onSuccess: (updatedForm) => {
-      toast.success('Form updated successfully');
-
       // Update the form in cache
       queryClient.setQueryData(formsQueryKeys.detail(updatedForm.id), updatedForm);
 
@@ -350,8 +353,6 @@ export function useCopyForm() {
     },
 
     onSuccess: (newForm) => {
-      toast.success('Form duplicated successfully');
-
       // Invalidate forms list
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(newForm.organization_id) });
 
@@ -379,8 +380,6 @@ export function useSetDefaultForm() {
     },
 
     onSuccess: (updatedForm) => {
-      toast.success('Default form updated');
-
       // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(updatedForm.organization_id) });
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.default(updatedForm.organization_id) });
@@ -407,8 +406,6 @@ export function useUnsetDefaultForm() {
     },
 
     onSuccess: (updatedForm, variables) => {
-      toast.success('Default form removed');
-
       // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(variables.organizationId) });
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.default(variables.organizationId) });
@@ -417,6 +414,97 @@ export function useUnsetDefaultForm() {
 
     onError: (error) => {
       toast.error('Failed to remove default form: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    },
+  });
+}
+
+/**
+ * Hook: Check if Form is In Use
+ *
+ * Returns true if the form is used by any proposals
+ */
+export function useIsFormInUse(formId: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['forms', 'inUse', formId],
+    queryFn: () => isFormInUse(formId),
+    enabled: !!formId && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook: Use Archived Forms List
+ *
+ * Fetches archived forms for an organization
+ */
+export function useArchivedForms(organizationId?: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: formsQueryKeys.archived(organizationId || '__pending__'),
+    queryFn: async () => {
+      if (!organizationId) {
+        throw new Error('Organization ID is required');
+      }
+      return fetchArchivedForms(organizationId);
+    },
+    enabled: !!organizationId && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook: Archive Form Mutation
+ *
+ * Archives a form (soft delete)
+ */
+export function useArchiveForm() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formId: string) => {
+      return archiveForm(formId);
+    },
+
+    onSuccess: (archivedForm) => {
+      // Invalidate both active and archived lists
+      if (archivedForm.organization_id) {
+        queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(archivedForm.organization_id) });
+        queryClient.invalidateQueries({ queryKey: formsQueryKeys.archived(archivedForm.organization_id) });
+      }
+      queryClient.setQueryData(formsQueryKeys.detail(archivedForm.id), archivedForm);
+    },
+
+    onError: (error) => {
+      toast.error('Failed to archive form: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    },
+  });
+}
+
+/**
+ * Hook: Unarchive Form Mutation
+ *
+ * Restores an archived form
+ */
+export function useUnarchiveForm() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formId: string) => {
+      return unarchiveForm(formId);
+    },
+
+    onSuccess: (restoredForm) => {
+      // Invalidate both active and archived lists
+      if (restoredForm.organization_id) {
+        queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(restoredForm.organization_id) });
+        queryClient.invalidateQueries({ queryKey: formsQueryKeys.archived(restoredForm.organization_id) });
+      }
+      queryClient.setQueryData(formsQueryKeys.detail(restoredForm.id), restoredForm);
+    },
+
+    onError: (error) => {
+      toast.error('Failed to restore form: ' + (error instanceof Error ? error.message : 'Unknown error'));
     },
   });
 }

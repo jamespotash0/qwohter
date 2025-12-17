@@ -5,8 +5,6 @@
  * import { useOrganization, useSubscriptionStatus } from '@/hooks/queries';
  */
 
-// Quotes - DEPRECATED: Use useProposals instead
-// Legacy hooks available at '@/_deprecated/hooks/queries/useQuotes' or via '@/stores'
 
 // Organization
 export {
@@ -74,6 +72,10 @@ export {
   useCopyForm,
   useSetDefaultForm,
   useUnsetDefaultForm,
+  useArchivedForms,
+  useArchiveForm,
+  useUnarchiveForm,
+  useIsFormInUse,
 } from './useForms';
 
 // Types

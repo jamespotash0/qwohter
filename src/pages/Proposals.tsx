@@ -132,7 +132,6 @@ export default function Proposals() {
 
   const handleStatusChange = (id: string, status: string) => {
     updateStatusMutation.mutate({ proposalId: id, status }, {
-      onSuccess: () => toast.success(`Status updated to ${status}`),
       onError: () => toast.error('Failed to update status'),
     });
   };
@@ -146,10 +145,8 @@ export default function Proposals() {
       const group = groups.find(g => g.versions.some(v => v.id === id));
       if (group && group.hasMultipleVersions && group.mainVersion.id === id) {
         await Promise.all(group.versions.map(v => archiveMutation.mutateAsync(v.id)));
-        toast.success('Proposal and all versions archived');
       } else {
         await archiveMutation.mutateAsync(id);
-        toast.success('Proposal archived');
       }
     } catch {
       toast.error('Failed to archive proposal');
@@ -159,7 +156,6 @@ export default function Proposals() {
   const handleUnarchiveProposal = async (id: string) => {
     try {
       await unarchiveMutation.mutateAsync(id);
-      toast.success('Proposal restored');
     } catch {
       toast.error('Failed to restore proposal');
     }
@@ -168,7 +164,6 @@ export default function Proposals() {
   const handleCreateVersion = async (id: string) => {
     try {
       const newVersion = await createVersionMutation.mutateAsync(id);
-      toast.success(`Version ${newVersion.proposal_number} created`);
       navigate(`/proposals/${newVersion.id}/edit`);
     } catch {
       toast.error('Failed to create version');
@@ -177,7 +172,6 @@ export default function Proposals() {
 
   const handleSetMainVersion = (proposalId: string, baseNumber: string) => {
     setMainVersionMutation.mutate({ proposalId, baseProposalNumber: baseNumber }, {
-      onSuccess: () => toast.success('Main version updated'),
       onError: () => toast.error('Failed to set main version'),
     });
   };
@@ -193,7 +187,6 @@ export default function Proposals() {
 
   const handleBulkStatusChange = (ids: string[], status: string) => {
     Promise.all(ids.map(id => updateStatusMutation.mutateAsync({ proposalId: id, status })))
-      .then(() => toast.success(`${ids.length} proposal(s) updated to ${status}`))
       .catch(() => toast.error('Failed to update some proposals'));
   };
 
@@ -240,7 +233,6 @@ export default function Proposals() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success('CSV exported successfully');
   };
 
   const handleExportPDF = async (data: Proposal[]) => {
@@ -300,7 +292,6 @@ export default function Proposals() {
       });
 
       doc.save(`proposals-export-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success('PDF exported successfully');
     } catch (error) {
       console.error('PDF export failed:', error);
       toast.error('Failed to export PDF');
@@ -324,7 +315,6 @@ export default function Proposals() {
       };
 
       const proposal = await createProposal(proposalData);
-      toast.success('Proposal created successfully');
       // Navigate to the form filler to complete the proposal
       navigate(`/proposals/${proposal.id}/edit`);
     } catch (error) {

@@ -205,6 +205,28 @@ export async function getDefaultForm(organizationId: string): Promise<Form | nul
 }
 
 /**
+ * Check if a form is being used by any proposals
+ * Returns true if at least one proposal uses this form
+ */
+export async function isFormInUse(formId: string): Promise<boolean> {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+
+  const { count, error } = await supabase
+    .from('proposals')
+    .select('id', { count: 'exact', head: true })
+    .eq('form_id', formId);
+
+  if (error) {
+    console.error('Error checking if form is in use:', error);
+    throw new Error(`Failed to check if form is in use: ${error.message}`);
+  }
+
+  return (count ?? 0) > 0;
+}
+
+/**
  * Set a form as the default for an organization
  * This will unset any existing default form
  */
@@ -245,4 +267,49 @@ export async function unsetDefaultForm(formId: string): Promise<Form> {
   }
 
   return updateForm(formId, { is_default: false });
+}
+
+/**
+ * Fetch all archived forms for an organization
+ */
+export async function fetchArchivedForms(organizationId: string): Promise<Form[]> {
+  if (!organizationId) {
+    throw new Error('Organization ID is required');
+  }
+
+  const { data, error } = await supabase
+    .from('forms')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_archived', true)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching archived forms:', error);
+    throw new Error(`Failed to fetch archived forms: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Archive a form
+ */
+export async function archiveForm(formId: string): Promise<Form> {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+
+  return updateForm(formId, { is_archived: true, is_default: false });
+}
+
+/**
+ * Unarchive a form
+ */
+export async function unarchiveForm(formId: string): Promise<Form> {
+  if (!formId) {
+    throw new Error('Form ID is required');
+  }
+
+  return updateForm(formId, { is_archived: false });
 }

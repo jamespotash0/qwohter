@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
-import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, useOrganizationMembers, type Form } from '@/hooks/queries';
+import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, useOrganizationMembers, useArchivedForms, useArchiveForm, useUnarchiveForm, useIsFormInUse, type Form } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import { useTemplates, useSearchTemplates, useCopyTemplate, usePrefetchTemplate } from '@/hooks/queries/useTemplates';
 import { Template } from '@/services/templateService';
@@ -18,7 +18,9 @@ import {
   SquaresFour,
   Star,
   Stack,
-  MagnifyingGlass
+  MagnifyingGlass,
+  Archive,
+  ArrowCounterClockwise
 } from '@phosphor-icons/react';
 import { Clock } from 'lucide-react';
 import {
@@ -37,11 +39,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { CreateFormDialog } from '@/components/features/forms/CreateFormDialog';
 
@@ -83,16 +89,55 @@ export default function Forms() {
   const createFormMutation = useCreateForm();
   const copyTemplateMutation = useCopyTemplate();
   const prefetchTemplate = usePrefetchTemplate();
+  const archiveFormMutation = useArchiveForm();
+  const unarchiveFormMutation = useUnarchiveForm();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Confirmation dialog state
+  const [formToDelete, setFormToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [formToArchive, setFormToArchive] = useState<{ id: string; name: string } | null>(null);
+
+  // Archived forms data
+  const { data: archivedForms = [] } = useArchivedForms(
+    currentOrganization?.id,
+    !!currentOrganization?.id && showArchived
+  );
 
   const displayedTemplates = shouldSearchLibrary ? searchResults : templates;
   const isLoadingLibrary = isLoadingTemplates || isSearchingTemplates;
 
-  const handleDelete = async (id: string, name: string) => {
-    deleteFormMutation.mutate(id);
+  // Show confirmation dialog for delete
+  const handleDeleteClick = (id: string, name: string) => {
+    setFormToDelete({ id, name });
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = () => {
+    if (formToDelete) {
+      deleteFormMutation.mutate(formToDelete.id);
+      setFormToDelete(null);
+    }
+  };
+
+  // Show confirmation dialog for archive
+  const handleArchiveClick = (id: string, name: string) => {
+    setFormToArchive({ id, name });
+  };
+
+  // Confirm archive
+  const handleConfirmArchive = () => {
+    if (formToArchive) {
+      archiveFormMutation.mutate(formToArchive.id);
+      setFormToArchive(null);
+    }
+  };
+
+  const handleUnarchive = async (id: string) => {
+    unarchiveFormMutation.mutate(id);
   };
 
   const handleDuplicate = async (id: string, name: string, event?: React.MouseEvent) => {
@@ -149,8 +194,9 @@ export default function Forms() {
     }
   };
 
-  // Filter forms by search query
-  const filteredForms = forms.filter(form =>
+  // Filter forms by search query (use archived forms if showArchived is true)
+  const displayForms = showArchived ? archivedForms : forms;
+  const filteredForms = displayForms.filter(form =>
     form.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -249,17 +295,34 @@ export default function Forms() {
 
       {!isLibraryView ? (
         <>
-          {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
+          {/* Search Bar with Archive Toggle */}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="relative max-w-md flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <Input
-                placeholder="Search forms by name..."
+                placeholder={showArchived ? "Search archived forms..." : "Search forms by name..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showArchived ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={showArchived ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}
+                  >
+                    <Archive className="w-4 h-4" weight={showArchived ? "fill" : "regular"} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{showArchived ? "Viewing archived forms" : "View archived forms"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {isLoading ? (
@@ -268,33 +331,49 @@ export default function Forms() {
             </div>
           ) : filteredForms.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" weight="regular" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchQuery ? 'No forms match your search' : 'No forms yet'}
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {searchQuery
-                  ? `No forms found matching "${searchQuery}"`
-                  : 'Get started by creating a custom form or browse the library for pre-built templates'}
-              </p>
-              {!searchQuery && (
-                <div className="flex items-center gap-3 justify-center">
-                  <Button
-                    onClick={() => setShowCreateDialog(true)}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Plus className="w-4 h-4" weight="bold" />
-                    Create New Form
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/forms/library')}
-                    className="flex items-center gap-2"
-                  >
-                    <Stack className="w-4 h-4" />
-                    Browse Library
-                  </Button>
-                </div>
+              {showArchived ? (
+                <>
+                  <Archive className="w-16 h-16 text-gray-300 mx-auto mb-4" weight="regular" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {searchQuery ? 'No archived forms match your search' : 'No archived forms'}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchQuery
+                      ? `No archived forms found matching "${searchQuery}"`
+                      : 'Archived forms will appear here'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" weight="regular" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {searchQuery ? 'No forms match your search' : 'No forms yet'}
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    {searchQuery
+                      ? `No forms found matching "${searchQuery}"`
+                      : 'Get started by creating a custom form or browse the library for pre-built templates'}
+                  </p>
+                  {!searchQuery && (
+                    <div className="flex items-center gap-3 justify-center">
+                      <Button
+                        onClick={() => setShowCreateDialog(true)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Plus className="w-4 h-4" weight="bold" />
+                        Create New Form
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate('/forms/library')}
+                        className="flex items-center gap-2"
+                      >
+                        <Stack className="w-4 h-4" />
+                        Browse Library
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (
@@ -304,9 +383,12 @@ export default function Forms() {
                   key={form.id}
                   form={form}
                   members={members}
+                  isArchived={showArchived}
                   onEdit={() => navigate(`/proposals/builder/${form.id}`)}
                   onDuplicate={(e) => handleDuplicate(form.id, form.name, e)}
-                  onDelete={() => handleDelete(form.id, form.name)}
+                  onDelete={() => handleDeleteClick(form.id, form.name)}
+                  onArchive={() => handleArchiveClick(form.id, form.name)}
+                  onUnarchive={() => handleUnarchive(form.id)}
                   onSetDefault={() => handleSetDefault(form.id, !!(form as any).is_default)}
                   onUpdateName={(name) => handleUpdateName(form.id, name)}
                 />
@@ -375,6 +457,50 @@ export default function Forms() {
           />
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!formToDelete} onOpenChange={(open) => !open && setFormToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Form</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{formToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={!!formToArchive} onOpenChange={(open) => !open && setFormToArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Form</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive "{formToArchive?.name}"?
+              This form is being used by proposals and cannot be deleted.
+              Archived forms can be restored later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmArchive}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContent>
   );
 }
@@ -382,20 +508,26 @@ export default function Forms() {
 interface FormCardProps {
   form: Form;
   members: any[];
+  isArchived?: boolean;
   onEdit: () => void;
   onDuplicate: (e?: React.MouseEvent) => void;
   onDelete: () => void;
+  onArchive: () => void;
+  onUnarchive: () => void;
   onSetDefault: () => void;
   onUpdateName: (name: string) => void;
 }
 
-function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
+function FormCard({ form, members, isArchived, onEdit, onDuplicate, onDelete, onArchive, onUnarchive, onSetDefault, onUpdateName }: FormCardProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(form.name);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState(form.description || '');
   const isDefault = (form as any).is_default;
   const updateFormMutation = useUpdateForm();
+
+  // Check if form is in use by any proposals (only for non-archived forms)
+  const { data: isFormInUse = false } = useIsFormInUse(form.id, !isArchived);
 
   // Get creator name from members
   const creator = members.find(m => m.user_id === form.created_by);
@@ -480,33 +612,58 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={onEdit} className="flex items-center gap-2">
-                <PencilSimple className="w-4 h-4" weight="regular" />
-                Edit Form
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                onDuplicate(e);
-              }} className="flex items-center gap-2">
-                <CopySimple className="w-4 h-4" weight="regular" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onSetDefault}
-                className="flex items-center gap-2"
-              >
-                <Star className={`w-4 h-4`} weight={isDefault ? 'fill' : 'regular'} />
-                {isDefault ? 'Remove as Default' : 'Make Default'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onDelete}
-                className="flex items-center gap-2 text-red-600 focus:text-red-600"
-              >
-                <Trash className="w-4 h-4" weight="regular" />
-                Delete
-              </DropdownMenuItem>
+              {isArchived ? (
+                <>
+                  <DropdownMenuItem onClick={onUnarchive} className="flex items-center gap-2">
+                    <ArrowCounterClockwise className="w-4 h-4" weight="regular" />
+                    Restore
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                  >
+                    <Trash className="w-4 h-4" weight="regular" />
+                    Delete Permanently
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem onClick={onEdit} className="flex items-center gap-2">
+                    <PencilSimple className="w-4 h-4" weight="regular" />
+                    Edit Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(e);
+                  }} className="flex items-center gap-2">
+                    <CopySimple className="w-4 h-4" weight="regular" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onSetDefault}
+                    className="flex items-center gap-2"
+                  >
+                    <Star className={`w-4 h-4`} weight={isDefault ? 'fill' : 'regular'} />
+                    {isDefault ? 'Remove as Default' : 'Make Default'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={isFormInUse ? onArchive : onDelete}
+                    className={`flex items-center gap-2 ${
+                      isFormInUse ? "text-amber-600 focus:text-amber-600" : "text-red-600 focus:text-red-600"
+                    }`}
+                  >
+                    {isFormInUse ? (
+                      <Archive className="w-4 h-4" weight="regular" />
+                    ) : (
+                      <Trash className="w-4 h-4" weight="regular" />
+                    )}
+                    {isFormInUse ? "Archive" : "Delete"}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
