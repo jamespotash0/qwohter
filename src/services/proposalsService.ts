@@ -687,6 +687,7 @@ export async function createProposalVersion(
   );
 
   // Create the new version (inherits organization_name from parent)
+  // IMPORTANT: New versions should NOT be the main version - explicitly set to false
   const insertData = {
     organization_id: parentProposal.organization_id,
     created_by: session.user.id,
@@ -696,6 +697,8 @@ export async function createProposalVersion(
     status: proposalData?.status || 'Draft',
     // Inherit organization_name from parent proposal
     organization_name: parentProposal.organization_name,
+    // New versions are NOT the main version - the original remains main
+    is_main_version: false,
   };
 
   const { data, error } = await supabase

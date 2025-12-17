@@ -226,49 +226,53 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
     columnHelper.display({
       id: 'select',
       header: ({ table }) => (
-        <input
-          type="checkbox"
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-          checked={table.getIsAllPageRowsSelected()}
-          onChange={(e) => {
-            table.toggleAllPageRowsSelected(e.target.checked);
-            if (e.target.checked) {
-              const newVersionSelection: Record<string, boolean> = {};
-              proposalGroups.forEach(group => {
-                if (group.hasMultipleVersions) {
-                  group.versions.forEach(version => {
-                    newVersionSelection[version.id] = true;
-                  });
-                }
-              });
-              setVersionSelection(newVersionSelection);
-            } else {
-              setVersionSelection({});
-            }
-          }}
-        />
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={(e) => {
+              table.toggleAllPageRowsSelected(e.target.checked);
+              if (e.target.checked) {
+                const newVersionSelection: Record<string, boolean> = {};
+                proposalGroups.forEach(group => {
+                  if (group.hasMultipleVersions) {
+                    group.versions.forEach(version => {
+                      newVersionSelection[version.id] = true;
+                    });
+                  }
+                });
+                setVersionSelection(newVersionSelection);
+              } else {
+                setVersionSelection({});
+              }
+            }}
+          />
+        </div>
       ),
       cell: ({ row }) => {
         const proposal = row.original;
         const versionGroup = proposalToGroupMap.get(proposal.id);
         return (
-          <input
-            type="checkbox"
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            checked={row.getIsSelected()}
-            onChange={(e) => {
-              e.stopPropagation();
-              row.toggleSelected(e.target.checked);
-              if (versionGroup && versionGroup.hasMultipleVersions) {
-                const newVersionSelection = { ...versionSelection };
-                versionGroup.versions.forEach(version => {
-                  newVersionSelection[version.id] = e.target.checked;
-                });
-                setVersionSelection(newVersionSelection);
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              checked={row.getIsSelected()}
+              onChange={(e) => {
+                e.stopPropagation();
+                row.toggleSelected(e.target.checked);
+                if (versionGroup && versionGroup.hasMultipleVersions) {
+                  const newVersionSelection = { ...versionSelection };
+                  versionGroup.versions.forEach(version => {
+                    newVersionSelection[version.id] = e.target.checked;
+                  });
+                  setVersionSelection(newVersionSelection);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         );
       },
       size: 32,
@@ -289,7 +293,8 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
 
         return (
           <div className="flex items-center gap-1.5 group/versions">
-            {!isComplete && (
+            {/* Only show unfinished icon for single proposals, not version groups */}
+            {!hasMultipleVersions && !isComplete && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -328,6 +333,13 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       header: () => <span>Project</span>,
       cell: ({ row }) => {
         const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        // For version groups, show "Various" like other columns
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm text-gray-500 italic">Various</div>;
+        }
+
         const projectName = proposal.project_name || '—';
         const jobLocation = proposal.job_location || '';
         return (
@@ -593,6 +605,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                 fontFamily: 'var(--font-table)',
                 width: table.getCenterTotalSize(),
                 minWidth: '100%',
+                tableLayout: 'fixed',
               }}
             >
               <thead className="bg-[#EE6C4D]/10 border-b border-[#EE6C4D]/20 sticky top-0 z-10">
@@ -600,10 +613,9 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header, headerIndex) => {
                       const isSelectColumn = header.id === 'select';
-                      const isProposalColumn = header.id === 'proposal_number';
                       const isActionsColumn = header.id === 'actions';
                       const isLastColumn = headerIndex === headerGroup.headers.length - 1;
-                      const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
+                      const columnPadding = isSelectColumn ? 'px-1' : 'px-3';
                       const canResize = header.column.getCanResize() && !isSelectColumn && !isActionsColumn;
                       const columnBorder = !isLastColumn ? 'border-r border-gray-200 dark:border-gray-700' : '';
 
@@ -615,7 +627,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                         >
                           {header.isPlaceholder ? null : (
                             <div
-                              className={`flex items-center space-x-1 ${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 -m-1' : ''}`}
+                              className={`flex items-center ${isSelectColumn ? 'justify-center' : 'space-x-1'} ${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 -m-1' : ''}`}
                               onClick={header.column.getToggleSortingHandler()}
                             >
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -721,9 +733,8 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                       <tr className={`group transition-colors ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}>
                         {row.getVisibleCells().map((cell, cellIndex) => {
                           const isSelectColumn = cell.column.id === 'select';
-                          const isProposalColumn = cell.column.id === 'proposal_number';
                           const isLastColumn = cellIndex === row.getVisibleCells().length - 1;
-                          const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
+                          const columnPadding = isSelectColumn ? 'px-1' : 'px-3';
                           const columnBorder = !isLastColumn ? 'border-r border-gray-100 dark:border-gray-700' : '';
                           return (
                             <td key={cell.id} className={`${columnPadding} ${paddingY} text-xs ${columnBorder}`} style={{ width: cell.column.getSize() }}>
@@ -733,41 +744,23 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                         })}
                       </tr>
 
-                      {/* Expanded Version Rows */}
+                      {/* Expanded Version Rows - use same column widths as main table */}
                       {isExpanded && versionGroup && versionGroup.hasMultipleVersions && (
                         versionGroup.versions.map((version) => (
                           <tr key={`${row.id}-version-${version.id}`} className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
-                            <td className="pl-3 pr-1 py-1 border-r border-gray-100 dark:border-gray-700">
-                              <input
-                                type="checkbox"
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                checked={versionSelection[version.id] || false}
-                                onChange={(e) => setVersionSelection(prev => ({ ...prev, [version.id]: e.target.checked }))}
-                              />
-                            </td>
-                            <td className="pl-1 pr-3 py-1 border-r border-gray-100 dark:border-gray-700">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-gray-300 text-xs">└</span>
-                                <span className="font-mono text-xs text-gray-500">{version.proposal_number}</span>
-                                {version.is_main_version === true ? (
-                                  <Star className="w-3 h-3 fill-amber-400 stroke-amber-500" />
-                                ) : (
-                                  <button
-                                    className="text-gray-400 hover:text-amber-600 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onSetMainVersion) onSetMainVersion(version.id, versionGroup.baseNumber);
-                                      setMainVersions(prev => ({ ...prev, [versionGroup.baseNumber]: version.id }));
-                                    }}
-                                    title="Set as main version"
-                                  >
-                                    <Star className="w-3 h-3" />
-                                  </button>
-                                )}
+                            <td className="px-1 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('select')?.getSize() }}>
+                              <div className="flex items-center justify-center">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                  checked={versionSelection[version.id] || false}
+                                  onChange={(e) => setVersionSelection(prev => ({ ...prev, [version.id]: e.target.checked }))}
+                                />
                               </div>
                             </td>
-                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700">
+                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('proposal_number')?.getSize() }}>
                               <div className="flex items-center gap-1.5">
+                                <span className="text-gray-300 text-xs">└</span>
                                 {!(version.is_complete ?? false) && (
                                   <TooltipProvider>
                                     <Tooltip>
@@ -780,16 +773,39 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
-                                <span className="text-[13px] text-gray-700 dark:text-gray-300 truncate">{version.project_name || '—'}</span>
+                                <span className="font-mono text-xs text-gray-500">{version.proposal_number}</span>
+                                <button
+                                  className={`transition-colors cursor-pointer ${
+                                    version.is_main_version === true
+                                      ? 'text-amber-500 hover:text-amber-600'
+                                      : 'text-gray-400 hover:text-amber-600'
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onSetMainVersion) onSetMainVersion(version.id, versionGroup.baseNumber);
+                                    setMainVersions(prev => ({ ...prev, [versionGroup.baseNumber]: version.id }));
+                                  }}
+                                  title={version.is_main_version === true ? 'Current main version (click to keep)' : 'Set as main version'}
+                                >
+                                  <Star className={`w-3 h-3 ${version.is_main_version === true ? 'fill-amber-400 stroke-amber-500' : ''}`} />
+                                </button>
                               </div>
                             </td>
-                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 truncate border-r border-gray-100 dark:border-gray-700">
+                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('project_name')?.getSize() }}>
+                              <div className="space-y-0 min-w-0">
+                                <span className="text-[13px] text-gray-700 dark:text-gray-300 truncate block">{version.project_name || '—'}</span>
+                                {version.job_location && (
+                                  <div className="text-xs text-gray-500 truncate">{version.job_location}</div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 truncate border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('client_name')?.getSize() }}>
                               {version.client_name || version.client_company || '—'}
                             </td>
-                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700">
+                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('total_value')?.getSize() }}>
                               {version.total_value != null ? formatCurrency(version.total_value) : '—'}
                             </td>
-                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700">
+                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('status')?.getSize() }}>
                               <Select value={version.status || 'Draft'} onValueChange={(value) => onStatusChange(version.id, value)}>
                                 <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[version.status || 'Draft']}`}>
                                   <SelectValue />
@@ -801,10 +817,10 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700">
+                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('created_at')?.getSize() }}>
                               {version.created_at ? formatDateEST(version.created_at) : '—'}
                             </td>
-                            <td className="px-3 py-1">
+                            <td className="px-3 py-1" style={{ width: table.getColumn('actions')?.getSize() }}>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button className="h-6 w-6 p-0 flex items-center justify-center text-gray-400 hover:text-gray-600">
