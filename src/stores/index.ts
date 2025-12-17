@@ -14,7 +14,11 @@ export {
   useBreadcrumbs,
   useUnsavedChanges,
   useFormErrors,
-  useUIActions
+  useUIActions,
+  usePagePreferences,
+  useSidebarSections,
+  type PagePreferences,
+  type DataDensity,
 } from './ui/uiStore';
 // ====================================================================
 export {

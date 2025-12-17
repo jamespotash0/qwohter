@@ -189,6 +189,7 @@ export interface InfoTabData {
 // Ref handle exposed to parent
 export interface InfoTabRef {
   getData: () => InfoTabData;
+  markClean: () => void;
 }
 
 interface InfoTabProps {
@@ -463,7 +464,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     initialValues,
   ]);
 
-  // Expose getData() to parent via ref for saving
+  // Expose getData() and markClean() to parent via ref for saving
   useImperativeHandle(ref, () => ({
     getData: (): InfoTabData => ({
       projectName,
@@ -486,6 +487,30 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       estimatedDueDate,
       jobNotes,
     }),
+    markClean: () => {
+      // Reset initial values to current values after save
+      setInitialValues({
+        projectName,
+        proposalDate,
+        contactName,
+        contactEmail,
+        proposalSource,
+        categoryOfWork,
+        laborType,
+        projectType,
+        clientName,
+        clientCompany,
+        clientEmail,
+        clientPhone,
+        clientAddress,
+        clientContactType,
+        jobLocation,
+        jobFloor,
+        locationType,
+        estimatedDueDate,
+        jobNotes,
+      });
+    },
   }), [
     projectName,
     proposalDate,

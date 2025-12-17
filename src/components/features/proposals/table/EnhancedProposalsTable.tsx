@@ -40,6 +40,7 @@ import { ProposalsTableToolbar } from './components/ProposalsTableToolbar';
 import { groupProposalsByVersion, getBaseProposalNumber, type ProposalVersionGroup } from '@/utils/proposalVersionGrouping';
 import { formatDateEST } from '@/utils/dateUtils';
 import useEnhancedProposalSearch from '@/hooks/useEnhancedProposalSearch';
+import { usePagePreferences } from '@/stores';
 
 // ============================================================================
 // Types & Constants
@@ -123,17 +124,28 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   onExportPDF,
   onSetMainVersion,
 }) => {
+  // Centralized page preferences from UI store (persisted to localStorage)
+  const {
+    expandedRows: expanded = {},
+    columnVisibility: storedColumnVisibility = {},
+    dataDensity = 'comfortable',
+    pageSize: storedPageSize = 10,
+    setExpandedRows,
+    toggleExpandedRow,
+    setColumnVisibility: setStoredColumnVisibility,
+    setDataDensity,
+    setPageSize: setStoredPageSize,
+  } = usePagePreferences('proposals');
+
   // State
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Local input state for immediate feedback
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(storedColumnVisibility);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: storedPageSize });
   const [versionSelection, setVersionSelection] = useState<Record<string, boolean>>({});
-  const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState<DeleteInfo | null>(null);
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
@@ -174,6 +186,30 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       }
     };
   }, []);
+
+  // Handle column visibility changes - sync to store
+  const handleColumnVisibilityChange = useCallback((updater: VisibilityState | ((old: VisibilityState) => VisibilityState)) => {
+    setColumnVisibility((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Sync to store (avoid calling if empty initial state)
+      if (Object.keys(next).length > 0) {
+        setStoredColumnVisibility(next);
+      }
+      return next;
+    });
+  }, [setStoredColumnVisibility]);
+
+  // Handle pagination changes - sync page size to store
+  const handlePaginationChange = useCallback((updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
+    setPagination((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Sync page size to store if changed
+      if (next.pageSize !== prev.pageSize) {
+        setStoredPageSize(next.pageSize);
+      }
+      return next;
+    });
+  }, [setStoredPageSize]);
 
   // Enhanced search with Fuse.js
   const { search, getSearchSuggestions } = useEnhancedProposalSearch(proposals);
@@ -313,7 +349,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setExpanded(prev => ({ ...prev, [baseNumber]: !prev[baseNumber] }));
+                  toggleExpandedRow(baseNumber);
                 }}
                 className="flex items-center gap-0.5 text-[11px] text-gray-400 hover:text-blue-600 transition-colors"
                 title={isExpanded ? 'Collapse versions' : `Show ${versionGroup.versions.length} versions`}
@@ -507,10 +543,10 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
     state: { sorting, globalFilter, columnVisibility, columnSizing, rowSelection, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: handleColumnVisibilityChange,
     onColumnSizingChange: setColumnSizing,
     onRowSelectionChange: setRowSelection,
-    onPaginationChange: setPagination,
+    onPaginationChange: handlePaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -831,6 +867,19 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                   <DropdownMenuItem onClick={() => onEditProposal(version)}>
                                     <Edit3 className="mr-2 h-4 w-4" /> Edit
                                   </DropdownMenuItem>
+                                  {version.archived ? (
+                                    onUnarchiveProposal && (
+                                      <DropdownMenuItem onClick={() => onUnarchiveProposal(version.id)}>
+                                        <ArchiveRestore className="mr-2 h-4 w-4" /> Unarchive
+                                      </DropdownMenuItem>
+                                    )
+                                  ) : (
+                                    onArchiveProposal && (
+                                      <DropdownMenuItem onClick={() => onArchiveProposal(version.id)}>
+                                        <Archive className="mr-2 h-4 w-4" /> Archive
+                                      </DropdownMenuItem>
+                                    )
+                                  )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     onClick={() => {

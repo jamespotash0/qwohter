@@ -285,6 +285,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         markClean();
         setNameIsDirty(false);
         setTabDirtyStates({});
+        // Reset InfoTab's initial values if applicable
+        infoTabRef.current?.markClean();
       } else {
         // Filler mode: save proposal values
         if (!proposalId || !proposalData) {
@@ -321,6 +323,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         markClean();
         setNameIsDirty(false);
         setTabDirtyStates({});
+        // Reset InfoTab's initial values to current values
+        infoTabRef.current?.markClean();
       }
     } catch (error) {
       console.error('Save failed:', error);
