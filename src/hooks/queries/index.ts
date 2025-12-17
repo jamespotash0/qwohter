@@ -76,9 +76,28 @@ export {
   useArchiveForm,
   useUnarchiveForm,
   useIsFormInUse,
+  // Factory functions
+  createDefaultFieldConfig,
+  createDefaultFormConfiguration,
+  createDefaultFormMetadata,
 } from './useForms';
 
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats } from './useDashboard';
 export type { Form } from './useForms';
+
+// Form Configuration Types
+export type {
+  FieldConfig,
+  InfoTabConfig,
+  ProductsTabConfig,
+  PricingTabConfig,
+  TermsTabConfig,
+  LeadTimesTabConfig,
+  MiscTabConfig,
+  DocumentsTabConfig,
+  PresentationTabConfig,
+  FormConfiguration,
+  FormMetadata,
+} from './useForms';

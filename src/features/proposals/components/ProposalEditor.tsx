@@ -38,6 +38,7 @@ import { useUser } from '@/auth';
 import {
   FormBuilderProvider,
   useFormBuilder,
+  serializeFormMetadata,
   serializeFormBuilderData,
   parseFormBuilderData,
   type FormBuilderData,
@@ -116,7 +117,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const updateProposalMutation = useUpdateProposal();
 
   // Get form builder context
-  const { data: builderData, isDirty, loadData, markClean } = useFormBuilder();
+  const { config, data: builderData, isDirty, loadData, loadMetadata, markClean } = useFormBuilder();
 
   // Ref for InfoTab to get data on save
   const infoTabRef = useRef<InfoTabRef>(null);
@@ -141,13 +142,12 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         setFormName(formData.name);
         setInitialFormName(formData.name); // Track initial value
       }
-      // Load the builder data from the form's metadata field
-      if (formData.metadata && isBuilderMode) {
-        const parsedData = parseFormBuilderData(formData.metadata);
-        loadData(parsedData);
+      // Load the form metadata (config + defaults) from the form's metadata field
+      if (isBuilderMode) {
+        loadMetadata(formData.metadata);
       }
     }
-  }, [formData, loadData, isBuilderMode]);
+  }, [formData, loadMetadata, isBuilderMode]);
 
   // Update proposal name and load proposal data when proposal data is loaded
   useEffect(() => {
@@ -256,8 +256,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
     try {
       if (isBuilderMode) {
-        // Serialize the form builder data for saving
-        const serializedData = serializeFormBuilderData(builderData);
+        // Serialize the form metadata (config + defaults) for saving
+        const serializedMetadata = serializeFormMetadata(config, builderData);
 
         if (formId && formData) {
           // Update existing form
@@ -265,7 +265,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             id: formId,
             updates: {
               name: trimmedName,
-              metadata: serializedData,
+              metadata: serializedMetadata,
             },
           });
           toast.success('Form template saved');
@@ -276,7 +276,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             created_by: user.id,
             name: trimmedName,
             description: '',
-            metadata: serializedData,
+            metadata: serializedMetadata,
             is_archived: false,
             is_default: false,
           });
@@ -338,6 +338,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     formData,
     proposalId,
     proposalData,
+    config,
     builderData,
     updateFormMutation,
     createFormMutation,

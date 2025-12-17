@@ -35,7 +35,29 @@ import {
 } from '@/services/formsService';
 
 // Re-export types for convenience
-export type { Form, FormTab, FormField } from '@/services/formsService';
+export type { Form } from '@/services/formsService';
+
+// Re-export form configuration types
+export type {
+  FieldConfig,
+  InfoTabConfig,
+  ProductsTabConfig,
+  PricingTabConfig,
+  TermsTabConfig,
+  LeadTimesTabConfig,
+  MiscTabConfig,
+  DocumentsTabConfig,
+  PresentationTabConfig,
+  FormConfiguration,
+  FormMetadata,
+} from '@/services/formsService';
+
+// Re-export factory functions
+export {
+  createDefaultFieldConfig,
+  createDefaultFormConfiguration,
+  createDefaultFormMetadata,
+} from '@/services/formsService';
 
 /**
  * Query Keys Factory for Forms

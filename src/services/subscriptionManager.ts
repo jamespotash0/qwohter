@@ -22,6 +22,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient, queryKeys, invalidateQueries } from '@/lib/queryClient';
+import { proposalQueryKeys } from '@/hooks/queries/useProposals';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
@@ -92,13 +93,13 @@ class SubscriptionManager {
    * }, [organizationId]);
    * ```
    *
-   * Usage (with built-in handlers for quotes/members/subscriptions):
+   * Usage (with built-in handlers for proposals/members/subscriptions):
    * ```tsx
    * useEffect(() => {
    *   const unsubscribe = subscriptionManager.subscribe(
-   *     'quotes',
+   *     'proposals',
    *     organizationId,
-   *     'quotes',
+   *     'proposals',
    *     { filter: `organization_id=eq.${organizationId}` }
    *   );
    *
@@ -227,10 +228,10 @@ class SubscriptionManager {
       return;
     }
 
-    // Otherwise, fall back to hardcoded handlers for backward compatibility
+    // Otherwise, fall back to hardcoded handlers
     switch (type) {
-      case 'quotes':
-        this.handleQuotesEvent(resourceId, eventType, newRecord, oldRecord);
+      case 'proposals':
+        this.handleProposalsEvent(resourceId, eventType, newRecord, oldRecord);
         break;
 
       case 'members':
@@ -247,48 +248,48 @@ class SubscriptionManager {
   }
 
   /**
-   * Handle quotes realtime events
+   * Handle proposals realtime events
    */
-  private handleQuotesEvent(
+  private handleProposalsEvent(
     organizationId: string,
     eventType: string,
     newRecord: any,
     oldRecord: any
   ) {
-    const queryKey = queryKeys.quotes.list(organizationId);
+    const queryKey = proposalQueryKeys.list(organizationId);
 
     switch (eventType) {
       case 'INSERT':
-        // Add new quote to cache
+        // Add new proposal to cache
         queryClient.setQueryData(queryKey, (old: any[] = []) => {
-          const exists = old.some((q) => q.id === newRecord.id);
+          const exists = old.some((p) => p.id === newRecord.id);
           if (exists) return old;
           return [newRecord, ...old];
         });
         break;
 
       case 'UPDATE':
-        // Update quote in cache
+        // Update proposal in cache
         queryClient.setQueryData(queryKey, (old: any[] = []) =>
-          old.map((q) => (q.id === newRecord.id ? newRecord : q))
+          old.map((p) => (p.id === newRecord.id ? newRecord : p))
         );
 
         // Also update detail cache if exists
         queryClient.setQueryData(
-          queryKeys.quotes.detail(newRecord.id),
+          proposalQueryKeys.detail(newRecord.id),
           newRecord
         );
         break;
 
       case 'DELETE':
-        // Remove quote from cache
+        // Remove proposal from cache
         queryClient.setQueryData(queryKey, (old: any[] = []) =>
-          old.filter((q) => q.id !== oldRecord.id)
+          old.filter((p) => p.id !== oldRecord.id)
         );
         break;
     }
 
-    // Also invalidate dashboard stats (quotes affect analytics)
+    // Also invalidate dashboard stats (proposals affect analytics)
     invalidateQueries.dashboard(organizationId);
   }
 

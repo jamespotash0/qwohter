@@ -858,5 +858,4 @@ export const stripeService = {
   // Note: 14-day free trial auto-enrollment on signup (LOCAL-ONLY until upgrade)
   getDaysRemaining,
   createTrialSubscription,
-  enrollInFreeTrial: createTrialSubscription, // Alias for backward compatibility
 };

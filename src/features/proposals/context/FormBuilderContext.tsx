@@ -3,9 +3,18 @@
  *
  * Shared state for all tabs in the ProposalEditor (builder mode).
  * This allows tab data to be collected and saved/loaded properly.
+ *
+ * Supports both:
+ * - config: Form structure (which tabs/sections/fields are enabled)
+ * - defaults: Default values for tabs (terms, pricing, etc.)
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import {
+  type FormConfiguration,
+  type FormMetadata,
+  createDefaultFormConfiguration,
+} from '@/lib/types/forms';
 
 // ============ Terms Tab Data ============
 export interface PaymentMilestone {
@@ -201,6 +210,12 @@ const DEFAULT_BUILDER_DATA: FormBuilderData = {
 
 // ============ Context Definition ============
 interface FormBuilderContextType {
+  // Form configuration (structure - which tabs/fields are enabled)
+  config: FormConfiguration;
+  setConfig: (config: FormConfiguration) => void;
+  updateConfig: (updates: Partial<FormConfiguration>) => void;
+
+  // Form defaults (values for tabs)
   data: FormBuilderData;
   isDirty: boolean;
 
@@ -222,8 +237,9 @@ interface FormBuilderContextType {
   // Presentation
   setPresentationData: (data: PresentationData) => void;
 
-  // Load/reset
+  // Load/reset - now accepts FormMetadata (new format) or FormBuilderData (legacy)
   loadData: (data: FormBuilderData) => void;
+  loadMetadata: (metadata: FormMetadata | Record<string, unknown> | null) => void;
   resetData: () => void;
   markClean: () => void;
 }
@@ -234,12 +250,31 @@ const FormBuilderContext = createContext<FormBuilderContextType | null>(null);
 interface FormBuilderProviderProps {
   children: ReactNode;
   initialData?: FormBuilderData;
+  initialConfig?: FormConfiguration;
 }
 
-export function FormBuilderProvider({ children, initialData }: FormBuilderProviderProps) {
+export function FormBuilderProvider({ children, initialData, initialConfig }: FormBuilderProviderProps) {
+  // Form configuration (structure)
+  const [config, setConfigState] = useState<FormConfiguration>(
+    initialConfig || createDefaultFormConfiguration()
+  );
+
+  // Form data (values/defaults)
   const [data, setData] = useState<FormBuilderData>(initialData || DEFAULT_BUILDER_DATA);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Config setters
+  const setConfig = useCallback((newConfig: FormConfiguration) => {
+    setConfigState(newConfig);
+    setIsDirty(true);
+  }, []);
+
+  const updateConfig = useCallback((updates: Partial<FormConfiguration>) => {
+    setConfigState(prev => ({ ...prev, ...updates }));
+    setIsDirty(true);
+  }, []);
+
+  // Data setters
   const setTermsData = useCallback((termsData: TermsData) => {
     setData(prev => ({ ...prev, terms: termsData }));
     setIsDirty(true);
@@ -270,12 +305,56 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
     setIsDirty(true);
   }, []);
 
+  // Legacy: load just the data portion
   const loadData = useCallback((newData: FormBuilderData) => {
     setData(newData);
     setIsDirty(false);
   }, []);
 
+  // New: load full metadata (config + defaults) with backward compatibility
+  const loadMetadata = useCallback((metadata: FormMetadata | Record<string, unknown> | null) => {
+    if (!metadata) {
+      setConfigState(createDefaultFormConfiguration());
+      setData(DEFAULT_BUILDER_DATA);
+      setIsDirty(false);
+      return;
+    }
+
+    // Check if it's the new FormMetadata format (has 'config' key)
+    if ('config' in metadata && metadata.config) {
+      // New format
+      setConfigState(metadata.config as FormConfiguration);
+      if ('defaults' in metadata && metadata.defaults) {
+        const defaults = metadata.defaults as Record<string, unknown>;
+        setData({
+          terms: (defaults.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
+          pricing: (defaults.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
+          leadTimes: (defaults.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
+          miscellaneous: (defaults.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
+          products: (defaults.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
+          presentation: (defaults.presentation as PresentationData) || DEFAULT_BUILDER_DATA.presentation,
+        });
+      } else {
+        setData(DEFAULT_BUILDER_DATA);
+      }
+    } else {
+      // Legacy format - treat entire metadata as data, use default config
+      setConfigState(createDefaultFormConfiguration());
+      const legacyData = metadata as Record<string, unknown>;
+      setData({
+        terms: (legacyData.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
+        pricing: (legacyData.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
+        leadTimes: (legacyData.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
+        miscellaneous: (legacyData.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
+        products: (legacyData.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
+        presentation: (legacyData.presentation as PresentationData) || DEFAULT_BUILDER_DATA.presentation,
+      });
+    }
+    setIsDirty(false);
+  }, []);
+
   const resetData = useCallback(() => {
+    setConfigState(createDefaultFormConfiguration());
     setData(DEFAULT_BUILDER_DATA);
     setIsDirty(false);
   }, []);
@@ -287,6 +366,9 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
   return (
     <FormBuilderContext.Provider
       value={{
+        config,
+        setConfig,
+        updateConfig,
         data,
         isDirty,
         setTermsData,
@@ -296,6 +378,7 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
         setProductsData,
         setPresentationData,
         loadData,
+        loadMetadata,
         resetData,
         markClean,
       }}
@@ -315,8 +398,32 @@ export function useFormBuilder() {
 }
 
 // ============ Serialization Helpers ============
+
 /**
- * Convert FormBuilderData to the tabs JSONB structure for saving
+ * Serialize form metadata to the new FormMetadata format for saving
+ * This is the primary serialization function for builder mode
+ */
+export function serializeFormMetadata(
+  config: FormConfiguration,
+  data: FormBuilderData
+): FormMetadata {
+  return {
+    config,
+    defaults: {
+      terms: data.terms,
+      pricing: data.pricing,
+      leadTimes: data.leadTimes,
+      miscellaneous: data.miscellaneous,
+      products: data.products,
+      presentation: data.presentation,
+    },
+  };
+}
+
+/**
+ * @deprecated Use serializeFormMetadata instead
+ * Legacy: Convert FormBuilderData to the old tabs JSONB structure
+ * Kept for backward compatibility with proposal form_data
  */
 export function serializeFormBuilderData(data: FormBuilderData): Record<string, unknown> {
   return {
@@ -330,7 +437,54 @@ export function serializeFormBuilderData(data: FormBuilderData): Record<string, 
 }
 
 /**
- * Parse tabs JSONB data into FormBuilderData
+ * Parse metadata from database - handles both new and legacy formats
+ */
+export function parseFormMetadata(metadata: unknown): {
+  config: FormConfiguration;
+  data: FormBuilderData;
+} {
+  if (!metadata || typeof metadata !== 'object') {
+    return {
+      config: createDefaultFormConfiguration(),
+      data: DEFAULT_BUILDER_DATA,
+    };
+  }
+
+  const parsed = metadata as Record<string, unknown>;
+
+  // Check if it's the new FormMetadata format (has 'config' key)
+  if ('config' in parsed && parsed.config) {
+    const defaults = (parsed.defaults as Record<string, unknown>) || {};
+    return {
+      config: parsed.config as FormConfiguration,
+      data: {
+        terms: (defaults.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
+        pricing: (defaults.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
+        leadTimes: (defaults.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
+        miscellaneous: (defaults.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
+        products: (defaults.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
+        presentation: (defaults.presentation as PresentationData) || DEFAULT_BUILDER_DATA.presentation,
+      },
+    };
+  }
+
+  // Legacy format - treat entire metadata as data
+  return {
+    config: createDefaultFormConfiguration(),
+    data: {
+      terms: (parsed.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
+      pricing: (parsed.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
+      leadTimes: (parsed.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
+      miscellaneous: (parsed.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
+      products: (parsed.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
+      presentation: (parsed.presentation as PresentationData) || DEFAULT_BUILDER_DATA.presentation,
+    },
+  };
+}
+
+/**
+ * @deprecated Use parseFormMetadata instead
+ * Legacy: Parse tabs JSONB data into FormBuilderData
  */
 export function parseFormBuilderData(tabsData: unknown): FormBuilderData {
   if (!tabsData || typeof tabsData !== 'object') {
@@ -339,6 +493,20 @@ export function parseFormBuilderData(tabsData: unknown): FormBuilderData {
 
   const parsed = tabsData as Record<string, unknown>;
 
+  // Handle new format - extract defaults
+  if ('defaults' in parsed && parsed.defaults) {
+    const defaults = parsed.defaults as Record<string, unknown>;
+    return {
+      terms: (defaults.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
+      pricing: (defaults.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
+      leadTimes: (defaults.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
+      miscellaneous: (defaults.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
+      products: (defaults.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
+      presentation: (defaults.presentation as PresentationData) || DEFAULT_BUILDER_DATA.presentation,
+    };
+  }
+
+  // Legacy format
   return {
     terms: (parsed.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
     pricing: (parsed.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,

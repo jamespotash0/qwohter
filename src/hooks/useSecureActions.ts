@@ -130,16 +130,6 @@ export const useSecureActions = () => {
   }, [user, currentOrganization]);
 
   /**
-   * @deprecated Use createProposalSecurely instead
-   */
-  const createQuoteSecurely = createProposalSecurely;
-
-  /**
-   * @deprecated Use updateProposalSecurely instead
-   */
-  const updateQuoteSecurely = updateProposalSecurely;
-
-  /**
    * Secure admin action with privilege validation
    */
   const performAdminAction = useCallback(async (
@@ -217,13 +207,8 @@ export const useSecureActions = () => {
   }, []);
 
   return {
-    // New proposal-based methods
     createProposalSecurely,
     updateProposalSecurely,
-    // Deprecated aliases for backward compatibility
-    createQuoteSecurely,
-    updateQuoteSecurely,
-    // Other secure actions
     performAdminAction,
     validateFileUpload,
   };

@@ -7,10 +7,32 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Form, FormTab, FormField } from '@/lib/types/forms';
+import type { Form } from '@/lib/types/forms';
 
 // Export types for use in other files
-export type { Form, FormTab, FormField } from '@/lib/types/forms';
+export type { Form } from '@/lib/types/forms';
+
+// Export form configuration types
+export type {
+  FieldConfig,
+  InfoTabConfig,
+  ProductsTabConfig,
+  PricingTabConfig,
+  TermsTabConfig,
+  LeadTimesTabConfig,
+  MiscTabConfig,
+  DocumentsTabConfig,
+  PresentationTabConfig,
+  FormConfiguration,
+  FormMetadata,
+} from '@/lib/types/forms';
+
+// Export factory functions
+export {
+  createDefaultFieldConfig,
+  createDefaultFormConfiguration,
+  createDefaultFormMetadata,
+} from '@/lib/types/forms';
 
 /**
  * Fetch all forms for an organization

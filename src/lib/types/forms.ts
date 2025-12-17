@@ -2,58 +2,11 @@
  * Forms Type Definitions
  *
  * Canonical type definitions for the forms system used throughout the codebase.
+ *
+ * Note: The form structure is FIXED (8 tabs with predefined sections).
+ * Customization happens through DEFAULT VALUES stored in FormMetadata.defaults.
+ * See FormBuilderContext.tsx for the data types (TermsData, PricingData, etc.)
  */
-
-// Field definition for form builder
-export interface FormField {
-  id: string;
-  name?: string; // Variable name for template (optional for backward compatibility)
-  label: string;
-  type?: string; // Legacy field type
-  field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'date' | 'product_selector' | 'math';
-  input_type?: 'text' | 'number' | 'email' | 'tel' | 'url' | 'address' | 'password';
-  number_format?: 'decimal' | 'currency' | 'percent' | 'integer'; // Format for number inputs
-  required: boolean;
-  placeholder?: string;
-  default_value?: any;
-  options?: any[]; // For dropdown/multi-select
-  calculation?: string; // For calculated fields (formula)
-  depends_on?: { field_id: string; value: any }[] | null;
-  order: number;
-  description?: string;
-  helpText?: string;
-  errorMessage?: string; // Custom error message to display when validation fails
-  size?: 'normal' | 'half' | 'full';
-  minLength?: number; // For text: min chars, for number: min value
-  maxLength?: number; // For text: max chars, for number: max value
-  contains?: string; // Text that must be contained in the value (for text validation)
-  pattern?: string; // Custom regex pattern for validation
-  cssClass?: string;
-  // UI variant for rendering (e.g., toggle switch vs standard checkbox)
-  uiVariant?: 'default' | 'toggle';
-  // Data source mapping for auto-population from organization/user data
-  dataSource?: {
-    type: 'organization' | 'user' | 'organization_members';
-    field: string; // e.g., 'phone_number', 'full_name', 'email'
-    allowOverride?: boolean; // Whether users can change the auto-populated value
-  };
-  // System field protection - cannot be deleted or edited
-  isSystemField?: boolean; // Marks this as a protected system field that cannot be removed
-  // Template variables support for database value interpolation
-  supportsTemplateVariables?: boolean; // Whether this field supports {{templateVar}} syntax
-  // Skip validation when default value is present
-  skipValidationForDefault?: boolean; // If true, validation is skipped when default_value is set
-}
-
-// Tab definition
-export interface FormTab {
-  id: string;
-  name: string;
-  description?: string;
-  order: number;
-  fields: FormField[];
-  is_default?: boolean; // For Company Info and Project Details tabs
-}
 
 // Document type is now a string to support custom document types per organization
 export type DocumentType = string;
@@ -73,13 +26,233 @@ export interface PresentationSection {
   settings?: Record<string, any>;
 }
 
+// ============ Form Configuration Types (Simplified) ============
+// The form has a FIXED structure (8 tabs with predefined sections).
+// Customization is primarily through DEFAULT VALUES (what sections/items are pre-populated).
+// Config is kept minimal for future extensibility.
+
+/**
+ * @deprecated Field-level config is not currently used - structure is fixed
+ * Kept for potential future use
+ */
+export interface FieldConfig {
+  enabled: boolean;
+  required: boolean;
+  label?: string;
+  placeholder?: string;
+  tooltip?: string;
+}
+
+/**
+ * Info Tab Configuration - Structure is fixed, no config needed
+ */
+export interface InfoTabConfig {
+  enabled: boolean;
+}
+
+/**
+ * Products Tab Configuration
+ */
+export interface ProductsTabConfig {
+  enabled: boolean;
+  allowCustomProducts: boolean;  // Can users add products not in catalog?
+}
+
+/**
+ * Pricing Tab Configuration
+ */
+export interface PricingTabConfig {
+  enabled: boolean;
+  showMarkup: boolean;          // Show markup percentage column
+  showUnitCost: boolean;        // Show unit cost column
+}
+
+/**
+ * Terms Tab Configuration
+ */
+export interface TermsTabConfig {
+  enabled: boolean;
+  sections: {
+    paymentMilestones: { enabled: boolean };
+    warranties: { enabled: boolean };
+    exclusions: { enabled: boolean };
+  };
+}
+
+/**
+ * Lead Times Tab Configuration
+ */
+export interface LeadTimesTabConfig {
+  enabled: boolean;
+}
+
+/**
+ * Miscellaneous Tab Configuration
+ */
+export interface MiscTabConfig {
+  enabled: boolean;
+  showNotes: boolean;
+}
+
+/**
+ * Documents Tab Configuration
+ */
+export interface DocumentsTabConfig {
+  enabled: boolean;
+  allowedFileTypes: string[];   // e.g., ['pdf', 'jpg', 'png', 'docx']
+  maxFileSizeMb: number;
+}
+
+/**
+ * Presentation Tab Configuration
+ */
+export interface PresentationTabConfig {
+  enabled: boolean;
+}
+
+/**
+ * Form Configuration (Simplified)
+ *
+ * The form structure is FIXED - all tabs exist with predefined sections.
+ * Config controls tab-level options only.
+ *
+ * CUSTOMIZATION happens through DEFAULTS (FormBuilderData):
+ * - Which payment milestones are pre-populated
+ * - Which warranties are pre-set
+ * - Which exclusions are checked by default
+ * - Which pricing sections exist
+ * - Which lead time phases are pre-created
+ * - etc.
+ */
+export interface FormConfiguration {
+  version: number;  // Schema version for migrations
+  tabs: {
+    info: InfoTabConfig;
+    products: ProductsTabConfig;
+    pricing: PricingTabConfig;
+    terms: TermsTabConfig;
+    leadTimes: LeadTimesTabConfig;
+    miscellaneous: MiscTabConfig;
+    documents: DocumentsTabConfig;
+    presentation: PresentationTabConfig;
+  };
+}
+
+/**
+ * Form Metadata Structure
+ * Contains both configuration (structure) and default data (values)
+ */
+export interface FormMetadata {
+  config: FormConfiguration;  // What the form looks like
+  defaults: {                 // Default values for tabs that have them
+    terms?: {
+      paymentMilestones?: Array<{ percentage: number; trigger: string }>;
+      warranties?: Array<{ name: string; quantity: number; unit: string }>;
+      exclusions?: Array<{ label: string; checked: boolean }>;
+    };
+    pricing?: {
+      sections?: Array<{ name: string; type: string }>;
+    };
+    leadTimes?: {
+      sections?: Array<{ name: string }>;
+    };
+    miscellaneous?: {
+      fields?: Array<{ label: string }>;
+      notes?: string;
+    };
+    products?: {
+      items?: Array<{ name: string; quantity: number; unit: string; description?: string }>;
+    };
+    presentation?: {
+      sections?: Array<{ title: string; content: unknown[] }>;
+    };
+  };
+}
+
+// ============ Default Configuration Factory ============
+
+/**
+ * @deprecated Field-level config is not currently used
+ * Kept for potential future use
+ */
+export function createDefaultFieldConfig(overrides?: Partial<FieldConfig>): FieldConfig {
+  return {
+    enabled: true,
+    required: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a default form configuration with all tabs enabled
+ * Use this as a starting point when creating new forms
+ *
+ * Note: The form STRUCTURE is fixed. Customization happens through
+ * the defaults (FormBuilderData) which define what sections/items
+ * are pre-populated when creating new proposals.
+ */
+export function createDefaultFormConfiguration(): FormConfiguration {
+  return {
+    version: 1,
+    tabs: {
+      info: {
+        enabled: true,
+      },
+      products: {
+        enabled: true,
+        allowCustomProducts: true,
+      },
+      pricing: {
+        enabled: true,
+        showMarkup: true,
+        showUnitCost: true,
+      },
+      terms: {
+        enabled: true,
+        sections: {
+          paymentMilestones: { enabled: true },
+          warranties: { enabled: true },
+          exclusions: { enabled: true },
+        },
+      },
+      leadTimes: {
+        enabled: true,
+      },
+      miscellaneous: {
+        enabled: true,
+        showNotes: true,
+      },
+      documents: {
+        enabled: true,
+        allowedFileTypes: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx'],
+        maxFileSizeMb: 10,
+      },
+      presentation: {
+        enabled: true,
+      },
+    },
+  };
+}
+
+/**
+ * Creates empty form metadata with default configuration
+ */
+export function createDefaultFormMetadata(): FormMetadata {
+  return {
+    config: createDefaultFormConfiguration(),
+    defaults: {},
+  };
+}
+
+// ============ Form Definition ============
+
 // Form definition
 export interface Form {
   id: string;
   organization_id: string | null; // Null for system templates
   name: string;
   description?: string;
-  metadata?: Record<string, unknown> | null; // Form builder data (terms, pricing, lead times, etc.)
+  metadata?: FormMetadata | Record<string, unknown> | null; // Form configuration and defaults
   created_by: string | null;
   created_at: string;
   updated_at: string;
