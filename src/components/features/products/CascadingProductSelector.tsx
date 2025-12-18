@@ -1,27 +1,22 @@
 /**
  * Cascading Product Selector
- * Beautiful multi-level product selection with stunning design
+ * Simple dropdown-based product selection with dynamic configuration fields
  */
 
-import { useEffect, useState } from 'react';
-import { useProductStore } from '@/stores/products/productStore';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useProductStore, type FieldDefinition } from '@/stores/products/productStore';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
-  Package,
-  Building2,
-  Grid3x3,
-  Layers3,
-  Box,
-  ChevronRight,
-  Check,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Check, Loader2 } from 'lucide-react';
 import type { ProductSelection } from '@/stores/products/productStore';
 
 interface CascadingProductSelectorProps {
@@ -54,23 +49,41 @@ export function CascadingProductSelector({
     selectCategory,
     selectSeries,
     selectModel,
+    fetchModelsByCategory,
   } = useProductStore();
 
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  // Configuration values for the selected model
+  const [configValues, setConfigValues] = useState<Record<string, any>>({});
 
   // Load types on mount
   useEffect(() => {
     fetchTypes();
   }, [fetchTypes]);
 
-  // Update current step based on selections
+  // Initialize config values when model is selected
   useEffect(() => {
-    if (selectedModel) setCurrentStep(5);
-    else if (selectedSeries) setCurrentStep(4);
-    else if (selectedCategory) setCurrentStep(3);
-    else if (selectedManufacturer) setCurrentStep(2);
-    else if (selectedType) setCurrentStep(1);
-  }, [selectedType, selectedManufacturer, selectedCategory, selectedSeries, selectedModel]);
+    if (selectedModel?.default_configurations) {
+      const defaults: Record<string, any> = {};
+      Object.entries(selectedModel.default_configurations).forEach(([key, field]) => {
+        if (field.default_value !== undefined) {
+          defaults[key] = field.default_value;
+        }
+      });
+      setConfigValues(defaults);
+    } else {
+      setConfigValues({});
+    }
+  }, [selectedModel]);
+
+  // Check if category has series or should go directly to models
+  const categoryHasSeries = selectedCategory?.has_series !== false;
+
+  // Fetch models by category when category doesn't have series
+  useEffect(() => {
+    if (selectedCategory && !categoryHasSeries) {
+      fetchModelsByCategory(selectedCategory.id);
+    }
+  }, [selectedCategory, categoryHasSeries, fetchModelsByCategory]);
 
   const getManufacturersForType = () => {
     if (!selectedType) return [];
@@ -92,478 +105,464 @@ export function CascadingProductSelector({
     return models.get(selectedSeries.id) || [];
   };
 
-  const steps = [
-    { number: 1, title: 'Product Type', icon: Package, completed: !!selectedType },
-    { number: 2, title: 'Manufacturer', icon: Building2, completed: !!selectedManufacturer },
-    { number: 3, title: 'Category', icon: Grid3x3, completed: !!selectedCategory },
-    { number: 4, title: 'Series', icon: Layers3, completed: !!selectedSeries },
-    { number: 5, title: 'Model', icon: Box, completed: !!selectedModel },
-  ];
+  const getModelsForCategory = () => {
+    if (!selectedCategory) return [];
+    return models.get(`cat_${selectedCategory.id}`) || [];
+  };
+
+  // Get models based on whether category has series or not
+  const modelsList = categoryHasSeries ? getModelsForSeries() : getModelsForCategory();
+
+  const handleConfigChange = (key: string, value: any) => {
+    setConfigValues(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleAddProduct = () => {
+    if (!selectedModel) return;
+
+    const selection: ProductSelection = {
+      product_model_id: selectedModel.id,
+      product_hierarchy: {
+        type: selectedType?.name || '',
+        type_id: selectedType?.id || '',
+        manufacturer: selectedManufacturer?.name || '',
+        manufacturer_id: selectedManufacturer?.id || '',
+        category: selectedCategory?.name || '',
+        category_id: selectedCategory?.id || '',
+        series: selectedSeries?.name || '',
+        series_id: selectedSeries?.id || '',
+        model: selectedModel.name || '',
+        model_number: selectedModel.name || '',
+      },
+      specifications: configValues,
+      pricing: {
+        unit_price: 0,
+        quantity: 1,
+        subtotal: 0,
+      },
+    };
+    onProductSelect(selection);
+  };
+
+  const manufacturersList = getManufacturersForType();
+  const categoriesList = getCategoriesForManufacturer();
+  const seriesList = getSeriesForCategory();
+
+  // Render a configuration field based on its definition
+  const renderConfigField = (key: string, field: FieldDefinition) => {
+    const value = configValues[key];
+
+    switch (field.field_type) {
+      case 'dropdown':
+        return (
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={(v) => handleConfigChange(key, v)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={field.placeholder || `Select ${key}...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {(field.options || []).map((opt, idx) => (
+                <SelectItem key={idx} value={String(opt)}>
+                  {String(opt)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'multi-select':
+        return (
+          <Select
+            value={Array.isArray(value) ? value[0]?.toString() : value?.toString() || ''}
+            onValueChange={(v) => handleConfigChange(key, [v])}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={field.placeholder || `Select ${key}...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {(field.options || []).map((opt, idx) => (
+                <SelectItem key={idx} value={String(opt)}>
+                  {String(opt)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'checkbox':
+        return (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={!!value}
+              onCheckedChange={(checked) => handleConfigChange(key, checked)}
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {field.placeholder || key}
+            </span>
+          </div>
+        );
+
+      case 'textarea':
+        return (
+          <Textarea
+            value={value || ''}
+            onChange={(e) => handleConfigChange(key, e.target.value)}
+            placeholder={field.placeholder}
+            className="min-h-[80px]"
+          />
+        );
+
+      case 'radio':
+        return (
+          <div className="space-y-2">
+            {(field.options || []).map((opt, idx) => (
+              <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name={key}
+                  checked={value === opt}
+                  onChange={() => handleConfigChange(key, opt)}
+                  className="text-emerald-600"
+                />
+                <span className="text-sm">{String(opt)}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case 'input':
+      default:
+        return (
+          <Input
+            type={field.input_type || 'text'}
+            value={value || ''}
+            onChange={(e) => handleConfigChange(key, e.target.value)}
+            placeholder={field.placeholder}
+          />
+        );
+    }
+  };
+
+  // Check if a field's dependencies are satisfied
+  const isDependencySatisfied = useCallback((field: FieldDefinition): boolean => {
+    if (!field.depends_on || field.depends_on.length === 0) {
+      return true; // No dependencies, always show
+    }
+
+    // All dependencies must be satisfied
+    return field.depends_on.every((dep) => {
+      const currentValue = configValues[dep.field_id];
+      // Check if the current value matches the required dependency value
+      if (Array.isArray(dep.value)) {
+        return dep.value.includes(currentValue);
+      }
+      return currentValue === dep.value;
+    });
+  }, [configValues]);
+
+  // Sort and group configuration fields based on DB display metadata
+  const { primaryFields, secondaryFields, advancedFields } = useMemo(() => {
+    if (!selectedModel?.default_configurations) {
+      return { primaryFields: [], secondaryFields: [], advancedFields: [] };
+    }
+
+    const entries = Object.entries(selectedModel.default_configurations);
+
+    // Sort by display_order (lower first), then alphabetically for unordered fields
+    const sorted = [...entries].sort(([keyA, fieldA], [keyB, fieldB]) => {
+      const orderA = fieldA.display_order ?? 999;
+      const orderB = fieldB.display_order ?? 999;
+
+      if (orderA !== orderB) return orderA - orderB;
+      return keyA.localeCompare(keyB);
+    });
+
+    // Filter out fields whose dependencies aren't satisfied
+    const filtered = sorted.filter(([_, field]) => isDependencySatisfied(field));
+
+    // Group by display_group from DB metadata
+    const primary = filtered.filter(([_, field]) => field.display_group === 'primary');
+    const secondary = filtered.filter(([_, field]) =>
+      field.display_group === 'secondary' || !field.display_group
+    );
+    const advanced = filtered.filter(([_, field]) => field.display_group === 'advanced');
+
+    return { primaryFields: primary, secondaryFields: secondary, advancedFields: advanced };
+  }, [selectedModel?.default_configurations, isDependencySatisfied]);
+
+  // Helper to get grid column class from grid_span
+  const getGridColClass = (gridSpan?: number): string => {
+    switch (gridSpan) {
+      case 1: return 'col-span-1';
+      case 2: return 'col-span-2';
+      case 3: return 'col-span-3';
+      case 4: return 'col-span-4';
+      default: return 'col-span-1';
+    }
+  };
 
   return (
-    <div className={cn('w-full space-y-6', className)}>
-      {/* Progress Steps */}
-      <Card className="border-border/50 shadow-sm bg-gradient-to-br from-card via-card to-muted/20">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold">Select Product</CardTitle>
-            <Badge variant="outline" className="font-mono">
-              Step {currentStep} of 5
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = step.number === currentStep;
-              const isCompleted = step.completed;
-
-              return (
-                <div key={step.number} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center flex-1">
-                    <motion.div
-                      className={cn(
-                        'w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300',
-                        isCompleted
-                          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
-                          : isActive
-                          ? 'bg-primary/20 text-primary border-2 border-primary'
-                          : 'bg-muted text-muted-foreground'
-                      )}
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      {isCompleted ? (
-                        <Check className="w-6 h-6" />
-                      ) : (
-                        <Icon className="w-6 h-6" />
-                      )}
-                    </motion.div>
-                    <span
-                      className={cn(
-                        'mt-2 text-xs font-medium text-center',
-                        isActive ? 'text-foreground' : 'text-muted-foreground'
-                      )}
-                    >
-                      {step.title}
-                    </span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2 mb-8">
-                      <div
-                        className={cn(
-                          'h-full transition-all duration-500',
-                          isCompleted ? 'bg-primary' : 'bg-muted'
-                        )}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
+    <div className={className}>
       {/* Error Display */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 p-4 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive"
+      {error && (
+        <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Dropdown Selects */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Product Type */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Product Type
+          </label>
+          <Select
+            value={selectedType?.id || ''}
+            onValueChange={(id) => {
+              const type = types.find((t) => t.id === id);
+              selectType(type || null);
+            }}
+            disabled={loading.types}
           >
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <p className="text-sm font-medium">{error}</p>
-          </motion.div>
+            <SelectTrigger className="w-full">
+              {loading.types ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Select type..." />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {types.map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Manufacturer */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Manufacturer
+          </label>
+          <Select
+            value={selectedManufacturer?.id || ''}
+            onValueChange={(id) => {
+              const mfr = manufacturersList.find((m) => m.id === id);
+              selectManufacturer(mfr || null);
+            }}
+            disabled={!selectedType || loading.manufacturers}
+          >
+            <SelectTrigger className="w-full">
+              {loading.manufacturers ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder={selectedType ? "Select manufacturer..." : "Select type first"} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {manufacturersList.map((mfr) => (
+                <SelectItem key={mfr.id} value={mfr.id}>
+                  {mfr.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Category */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Category
+          </label>
+          <Select
+            value={selectedCategory?.id || ''}
+            onValueChange={(id) => {
+              const cat = categoriesList.find((c) => c.id === id);
+              selectCategory(cat || null);
+            }}
+            disabled={!selectedManufacturer || loading.categories}
+          >
+            <SelectTrigger className="w-full">
+              {loading.categories ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder={selectedManufacturer ? "Select category..." : "Select manufacturer first"} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {categoriesList.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Series - Only show if category has series */}
+        {categoryHasSeries && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Series
+            </label>
+            <Select
+              value={selectedSeries?.id || ''}
+              onValueChange={(id) => {
+                const ser = seriesList.find((s) => s.id === id);
+                selectSeries(ser || null);
+              }}
+              disabled={!selectedCategory || loading.series}
+            >
+              <SelectTrigger className="w-full">
+                {loading.series ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder={selectedCategory ? "Select series..." : "Select category first"} />
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                {seriesList.map((ser) => (
+                  <SelectItem key={ser.id} value={ser.id}>
+                    {ser.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* Selection Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Step 1: Product Types */}
-        <AnimatePresence mode="wait">
-          {currentStep === 1 && (
-            <motion.div
-              key="types"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="col-span-full"
-            >
-              <SelectionGrid
-                title="Select Product Type"
-                icon={Package}
-                items={types}
-                loading={loading.types}
-                onSelect={(type) => {
-                  selectType(type);
-                  setCurrentStep(2);
-                }}
-                selectedId={selectedType?.id}
-                getLabel={(item) => item.name}
-                getDescription={(item) => item.description}
-                getIcon={(item) => item.icon}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Step 2: Manufacturers */}
-        <AnimatePresence mode="wait">
-          {currentStep >= 2 && selectedType && (
-            <motion.div
-              key="manufacturers"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="col-span-full"
-            >
-              <SelectionGrid
-                title={`${selectedType.name} - Select Manufacturer`}
-                icon={Building2}
-                items={getManufacturersForType()}
-                loading={loading.manufacturers}
-                onSelect={(mfr) => {
-                  selectManufacturer(mfr);
-                  setCurrentStep(3);
-                }}
-                onBack={() => {
-                  selectType(null);
-                  setCurrentStep(1);
-                }}
-                selectedId={selectedManufacturer?.id}
-                getLabel={(item) => item.name}
-                getDescription={(item) => item.description}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Step 3: Categories */}
-        <AnimatePresence mode="wait">
-          {currentStep >= 3 && selectedManufacturer && (
-            <motion.div
-              key="categories"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="col-span-full"
-            >
-              <SelectionGrid
-                title={`${selectedManufacturer.name} - Select Category`}
-                icon={Grid3x3}
-                items={getCategoriesForManufacturer()}
-                loading={loading.categories}
-                onSelect={(cat) => {
-                  selectCategory(cat);
-                  setCurrentStep(4);
-                }}
-                onBack={() => {
-                  selectManufacturer(null);
-                  setCurrentStep(2);
-                }}
-                selectedId={selectedCategory?.id}
-                getLabel={(item) => item.name}
-                getDescription={(item) => item.description}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Step 4: Series */}
-        <AnimatePresence mode="wait">
-          {currentStep >= 4 && selectedCategory && (
-            <motion.div
-              key="series"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="col-span-full"
-            >
-              <SelectionGrid
-                title={`${selectedCategory.name} - Select Series`}
-                icon={Layers3}
-                items={getSeriesForCategory()}
-                loading={loading.series}
-                onSelect={(ser) => {
-                  selectSeries(ser);
-                  setCurrentStep(5);
-                }}
-                onBack={() => {
-                  selectCategory(null);
-                  setCurrentStep(3);
-                }}
-                selectedId={selectedSeries?.id}
-                getLabel={(item) => item.name}
-                getDescription={(item) => item.description}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Step 5: Models */}
-        <AnimatePresence mode="wait">
-          {currentStep >= 5 && selectedSeries && (
-            <motion.div
-              key="models"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="col-span-full"
-            >
-              <ModelSelection
-                title={`${selectedSeries.name} - Select Model`}
-                models={getModelsForSeries()}
-                loading={loading.models}
-                onBack={() => {
-                  selectSeries(null);
-                  setCurrentStep(4);
-                }}
-                onSelect={(model) => {
-                  selectModel(model);
-                  // Will trigger specifications form in parent
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Model */}
+        <div className={`space-y-1.5 ${!categoryHasSeries ? '' : ''}`}>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Model
+          </label>
+          <Select
+            value={selectedModel?.id || ''}
+            onValueChange={(id) => {
+              const model = modelsList.find((m) => m.id === id);
+              selectModel(model || null);
+            }}
+            disabled={categoryHasSeries ? !selectedSeries : !selectedCategory || loading.models}
+          >
+            <SelectTrigger className="w-full">
+              {loading.models ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue
+                  placeholder={
+                    categoryHasSeries
+                      ? (selectedSeries ? "Select model..." : "Select series first")
+                      : (selectedCategory ? "Select model..." : "Select category first")
+                  }
+                />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {modelsList.map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  {model.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
+      {/* Configuration Fields - Show when model is selected */}
+      {selectedModel && (primaryFields.length > 0 || secondaryFields.length > 0 || advancedFields.length > 0) && (
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+            Configuration Options
+          </h4>
+
+          {/* Primary Fields - 4-column grid with dynamic span */}
+          {primaryFields.length > 0 && (
+            <div className="grid grid-cols-4 gap-3 mb-4">
+              {primaryFields.map(([key, field]) => (
+                <div key={key} className={`space-y-1.5 ${getGridColClass(field.grid_span)}`}>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {key}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderConfigField(key, field)}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Secondary Fields - 4-column grid with dynamic span (default 2) */}
+          {secondaryFields.length > 0 && (
+            <div className="grid grid-cols-4 gap-4">
+              {secondaryFields.map(([key, field]) => (
+                <div key={key} className={`space-y-1.5 ${getGridColClass(field.grid_span ?? 2)}`}>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {key}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderConfigField(key, field)}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Advanced Fields - Collapsible section (optional) */}
+          {advancedFields.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <h5 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
+                Advanced Options
+              </h5>
+              <div className="grid grid-cols-4 gap-4">
+                {advancedFields.map(([key, field]) => (
+                  <div key={key} className={`space-y-1.5 ${getGridColClass(field.grid_span ?? 2)}`}>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {key}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {renderConfigField(key, field)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Action Buttons */}
-      {onCancel && (
-        <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+        {onCancel && (
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-        </div>
-      )}
+        )}
+        <Button
+          onClick={handleAddProduct}
+          disabled={!selectedModel}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          <Check className="w-4 h-4 mr-2" />
+          Add Product
+        </Button>
+      </div>
     </div>
-  );
-}
-
-// ============================================================================
-// SELECTION GRID COMPONENT
-// ============================================================================
-
-interface SelectionGridProps<T> {
-  title: string;
-  icon: React.ElementType;
-  items: T[];
-  loading: boolean;
-  onSelect: (item: T) => void;
-  onBack?: () => void;
-  selectedId?: string;
-  getLabel: (item: T) => string;
-  getDescription?: (item: T) => string | undefined;
-  getIcon?: (item: T) => string | undefined;
-}
-
-function SelectionGrid<T extends { id: string }>({
-  title,
-  icon: Icon,
-  items,
-  loading,
-  onSelect,
-  onBack,
-  selectedId,
-  getLabel,
-  getDescription,
-  getIcon,
-}: SelectionGridProps<T>) {
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Icon className="w-5 h-5" />
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="shadow-sm">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Icon className="w-5 h-5 text-primary" />
-            {title}
-          </CardTitle>
-          {onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              ← Back
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {items.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No items available</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {items.map((item) => {
-              const isSelected = item.id === selectedId;
-              const label = getLabel(item);
-              const description = getDescription?.(item);
-
-              return (
-                <motion.button
-                  key={item.id}
-                  onClick={() => onSelect(item)}
-                  className={cn(
-                    'group relative p-4 rounded-lg border-2 text-left transition-all duration-200',
-                    'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
-                    isSelected
-                      ? 'border-primary bg-primary/5 shadow-sm'
-                      : 'border-border bg-card hover:border-primary/50'
-                  )}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {isSelected && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                      <Check className="w-4 h-4 text-primary-foreground" />
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-2">
-                    <p className="font-semibold text-sm">{label}</p>
-                    {description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {description}
-                      </p>
-                    )}
-                  </div>
-
-                  <ChevronRight
-                    className={cn(
-                      'absolute bottom-4 right-4 w-4 h-4 transition-all',
-                      isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                    )}
-                  />
-                </motion.button>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================================================
-// MODEL SELECTION COMPONENT
-// ============================================================================
-
-interface ModelSelectionProps {
-  title: string;
-  models: any[];
-  loading: boolean;
-  onBack: () => void;
-  onSelect: (model: any) => void;
-}
-
-function ModelSelection({ title, models, loading, onBack, onSelect }: ModelSelectionProps) {
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Box className="w-5 h-5" />
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="shadow-sm">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Box className="w-5 h-5 text-primary" />
-            {title}
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            ← Back
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {models.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Box className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No models available</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {models.map((model) => (
-              <motion.button
-                key={model.id}
-                onClick={() => onSelect(model)}
-                className="w-full p-4 rounded-lg border-2 border-border bg-card hover:border-primary/50 hover:shadow-md text-left transition-all group"
-                whileHover={{ scale: 1.01, y: -2 }}
-                whileTap={{ scale: 0.99 }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {model.model_number}
-                      </Badge>
-                      {model.base_price && (
-                        <Badge className="bg-primary/10 text-primary border-primary/20">
-                          ${model.base_price.toLocaleString()}
-                        </Badge>
-                      )}
-                    </div>
-                    <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">
-                      {model.model_name}
-                    </h4>
-                    {model.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {model.description}
-                      </p>
-                    )}
-                    {model.specifications && Object.keys(model.specifications).length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {Object.entries(model.specifications)
-                          .slice(0, 3)
-                          .map(([key, value]) => (
-                            <Badge key={key} variant="secondary" className="text-xs">
-                              {key}: {String(value)}
-                            </Badge>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

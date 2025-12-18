@@ -80,6 +80,11 @@ export interface FieldDefinition {
   placeholder?: string;
   multi_select?: boolean; // true if multiple selections allowed
   manual_select?: boolean; // true if user can manually pick (vs auto-calculated)
+
+  // Display metadata for UI rendering
+  display_order?: number; // sort order (lower = first)
+  display_group?: 'primary' | 'secondary' | 'advanced'; // grouping for layout
+  grid_span?: number; // number of columns to span (1-4)
 }
 
 
@@ -141,6 +146,7 @@ interface ProductState {
   fetchCategories: (manufacturerId: string) => Promise<void>;
   fetchSeries: (categoryId: string) => Promise<void>;
   fetchModels: (seriesId: string) => Promise<void>;
+  fetchModelsByCategory: (categoryId: string) => Promise<void>;
   getModelDetails: (modelId: string) => Promise<ProductModel | null>;
 
   // Selection actions
@@ -346,6 +352,41 @@ export const useProductStore = create<ProductState>()(
       } catch (error: any) {
         set({ error: error.message });
         console.error('Error fetching models:', error);
+      } finally {
+        set((state) => ({
+          loading: { ...state.loading, models: false },
+        }));
+      }
+    },
+
+    // Fetch models directly by category (for categories without series)
+    fetchModelsByCategory: async (categoryId: string) => {
+      const cacheKey = `cat_${categoryId}`;
+      const cached = get().models.get(cacheKey);
+      if (cached && cached.length > 0) {
+        return;
+      }
+
+      set((state) => ({
+        loading: { ...state.loading, models: true },
+        error: null,
+      }));
+
+      try {
+        const { data, error } = await supabase
+          .from('product_models')
+          .select('*')
+          .eq('product_category_id', categoryId)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        const newMap = new Map(get().models);
+        newMap.set(cacheKey, data || []);
+        set({ models: newMap });
+      } catch (error: any) {
+        set({ error: error.message });
+        console.error('Error fetching models by category:', error);
       } finally {
         set((state) => ({
           loading: { ...state.loading, models: false },

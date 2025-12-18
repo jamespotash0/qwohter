@@ -62,6 +62,48 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
     return count.toString();
   }
 
+  // Tax variables
+  if (parts[0] === 'salesTaxPercent') {
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    if (taxPercent === 0) return null;
+    return `${taxPercent}%`;
+  }
+
+  if (parts[0] === 'taxAmount') {
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    if (taxPercent === 0) return null;
+    let taxableTotal = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        if (item.isTaxable) {
+          taxableTotal += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        }
+      });
+    });
+    if (taxableTotal === 0) return null;
+    return formatCurrency(taxableTotal * (taxPercent / 100));
+  }
+
+  if (parts[0] === 'grandTotalWithTax') {
+    let total = 0;
+    let taxableTotal = 0;
+    let hasItems = false;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        const itemTotal = item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        total += itemTotal;
+        if (item.isTaxable) {
+          taxableTotal += itemTotal;
+        }
+        hasItems = true;
+      });
+    });
+    if (!hasItems) return null;
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    const taxAmount = taxableTotal * (taxPercent / 100);
+    return formatCurrency(total + taxAmount);
+  }
+
   // Section-level variables
   const section = pricing.sections.find(
     s => s.name.toLowerCase().replace(/\s+/g, '_') === parts[0]
@@ -148,15 +190,45 @@ function resolveProductsVariable(parts: string[], data: FormBuilderData): string
   return null;
 }
 
-function resolveProductFieldVariable(parts: string[], product: { rawData?: Record<string, unknown> }): string | null {
-  if (!product.rawData) return null;
-
+function resolveProductFieldVariable(
+  parts: string[],
+  product: {
+    name?: string;
+    quantity?: number;
+    unit?: string;
+    description?: string;
+    rawData?: Record<string, unknown>;
+  }
+): string | null {
   const fieldKey = parts[0];
+
+  // Direct fields on the Product object itself
+  switch (fieldKey) {
+    case 'name':
+      return product.name || null;
+    case 'quantity':
+      return product.quantity != null ? String(product.quantity) : null;
+    case 'unit':
+      return product.unit || null;
+    case 'description':
+      return product.description || null;
+  }
+
+  // Fields in rawData
+  if (!product.rawData) return null;
   const rawData = product.rawData as Record<string, unknown>;
 
-  // Direct fields
-  if (fieldKey in rawData) {
-    const value = rawData[fieldKey];
+  // Map common field names to rawData property names
+  const fieldMappings: Record<string, string> = {
+    category: 'productCategory',
+    type: 'productType',
+  };
+
+  const mappedKey = fieldMappings[fieldKey] || fieldKey;
+
+  // Direct fields in rawData
+  if (mappedKey in rawData) {
+    const value = rawData[mappedKey];
     if (value != null) return String(value);
   }
 
@@ -203,7 +275,7 @@ function formatCurrency(amount: number): string {
 /**
  * Variable Node View Component
  */
-export function VariableNodeView({ node }: NodeViewProps) {
+export function VariableNodeView({ node, editor, getPos }: NodeViewProps) {
   const { variableKey, variableLabel } = node.attrs;
   const { data } = useFormBuilder();
 
@@ -211,6 +283,46 @@ export function VariableNodeView({ node }: NodeViewProps) {
   const resolvedValue = useMemo(() => {
     return resolveVariableValue(variableKey, data);
   }, [variableKey, data]);
+
+  // Get marks at this position to apply font styling
+  const markStyles = useMemo(() => {
+    const styles: React.CSSProperties = {};
+
+    try {
+      const pos = typeof getPos === 'function' ? getPos() : null;
+      if (pos !== null && pos !== undefined && editor?.state?.doc) {
+        const $pos = editor.state.doc.resolve(pos);
+        const marks = $pos.marks();
+
+        marks.forEach(mark => {
+          if (mark.type.name === 'textStyle') {
+            if (mark.attrs.fontFamily) {
+              styles.fontFamily = mark.attrs.fontFamily;
+            }
+            if (mark.attrs.fontSize) {
+              styles.fontSize = mark.attrs.fontSize;
+            }
+            if (mark.attrs.color) {
+              styles.color = mark.attrs.color;
+            }
+            if (mark.attrs.lineHeight) {
+              styles.lineHeight = mark.attrs.lineHeight;
+            }
+          }
+          if (mark.type.name === 'bold') {
+            styles.fontWeight = 'bold';
+          }
+          if (mark.type.name === 'italic') {
+            styles.fontStyle = 'italic';
+          }
+        });
+      }
+    } catch {
+      // If getPos fails (node being deleted, etc.), use defaults
+    }
+
+    return styles;
+  }, [editor?.state?.doc, getPos]);
 
   // Determine what to display
   const displayValue = resolvedValue || variableLabel;
@@ -220,12 +332,27 @@ export function VariableNodeView({ node }: NodeViewProps) {
     <NodeViewWrapper
       as="span"
       className={cn(
-        'variable-node inline px-1 py-0.5 rounded text-sm',
+        // Inherit text styling from surrounding content
+        'variable-node inline-block align-baseline',
+        // Minimal padding, no fixed font size - inherits from parent
+        'px-0.5 rounded-sm',
         'select-none cursor-pointer transition-colors',
         isResolved
-          ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40 hover:border-green-300 dark:hover:border-green-700'
-          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-dashed border-gray-400 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 hover:border-gray-500 dark:hover:border-gray-400'
+          ? 'bg-green-50/50 dark:bg-green-900/10 border-b border-green-300 dark:border-green-700'
+          : 'bg-amber-50/50 dark:bg-amber-900/10 border-b border-dashed border-amber-400 dark:border-amber-600'
       )}
+      style={{
+        // Apply marks-based styles first, then inherit for anything not explicitly set
+        ...markStyles,
+        // Fallback to inherit for properties not set by marks
+        fontFamily: markStyles.fontFamily || 'inherit',
+        fontSize: markStyles.fontSize || 'inherit',
+        fontWeight: markStyles.fontWeight || 'inherit',
+        fontStyle: markStyles.fontStyle || 'inherit',
+        lineHeight: markStyles.lineHeight || 'inherit',
+        letterSpacing: 'inherit',
+        color: markStyles.color || 'inherit',
+      }}
       contentEditable={false}
       data-variable={variableKey}
       title={isResolved ? `${variableLabel}: ${resolvedValue}` : `${variableLabel} (will resolve in preview)`}

@@ -9,8 +9,8 @@
  * Filler Mode: Full functionality - persisted via FormBuilderContext
  */
 
-import { useState, useCallback, useRef } from 'react';
-import { Plus, Trash, UploadSimple, Package, Sparkle, CurrencyDollar, CaretDown, Check } from '@phosphor-icons/react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Plus, Trash, UploadSimple, Package, CurrencyDollar, CaretDown, Check, Database } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,6 +25,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
@@ -32,6 +38,8 @@ import { extractProductsFromFile } from '@/services/productExtraction';
 import { useFormBuilder, type Product, type PricingSection } from '../../context/FormBuilderContext';
 import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { generateProductAlias } from '../../utils/productVariables';
+import { CascadingProductSelector } from '@/components/features/products/CascadingProductSelector';
+import { useProductStore, type ProductSelection } from '@/stores/products/productStore';
 
 interface ProductsTabProps {
   mode: EditorMode;
@@ -66,7 +74,7 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-type EntryMode = 'manual' | 'ai-extract';
+type EntryMode = 'manual' | 'selector';
 
 export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const isBuilderMode = mode === 'builder';
@@ -82,6 +90,17 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [extractedProducts, setExtractedProducts] = useState<Product[]>([]);
   const [extractedFileName, setExtractedFileName] = useState<string>();
+
+  // Catalog selection state
+  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
+  const { reset: resetProductStore, fetchTypes } = useProductStore();
+
+  // Pre-fetch product types when selector mode is selected
+  useEffect(() => {
+    if (entryMode === 'selector') {
+      fetchTypes();
+    }
+  }, [entryMode, fetchTypes]);
 
   // Helper function to determine if a product was AI-extracted (has rawData)
   const isAIExtractedProduct = useCallback((product: Product): boolean => {
@@ -292,6 +311,57 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     setExtractedFileName(undefined);
   }, [products, setProductsData, onDirtyChange]);
 
+  // Handle product selected from catalog
+  const handleCatalogProductSelect = useCallback((selection: ProductSelection) => {
+    const { product_hierarchy, specifications } = selection;
+
+    // Get existing aliases to avoid duplicates
+    const existingAliases = products
+      .filter(p => p.alias)
+      .map(p => p.alias as string);
+
+    // Create product from catalog selection
+    const newProduct: Product = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: `${product_hierarchy.manufacturer} ${product_hierarchy.series} ${product_hierarchy.model}`.trim(),
+      quantity: 1,
+      unit: 'ea',
+      description: '',
+      rawData: {
+        // Catalog hierarchy
+        productType: product_hierarchy.type,
+        manufacturer: product_hierarchy.manufacturer,
+        productCategory: product_hierarchy.category,
+        series: product_hierarchy.series,
+        model: product_hierarchy.model,
+        modelNumber: product_hierarchy.model_number,
+        // Specifications from model
+        ...specifications,
+        // Mark as catalog product
+        source: 'catalog',
+      },
+    };
+
+    // Generate alias for the product
+    const alias = generateProductAlias(newProduct, existingAliases, products.length);
+    newProduct.alias = alias;
+
+    setProductsData({ items: [...products, newProduct] });
+    onDirtyChange?.(true);
+
+    // Reset the store and close dialog
+    resetProductStore();
+    setCatalogDialogOpen(false);
+
+    toast.success(`Added "${newProduct.name}" from catalog`);
+  }, [products, setProductsData, onDirtyChange, resetProductStore]);
+
+  // Handle closing catalog dialog
+  const handleCatalogCancel = useCallback(() => {
+    resetProductStore();
+    setCatalogDialogOpen(false);
+  }, [resetProductStore]);
+
   // Input styling - compact design matching PricingTab
   const inputClassName = cn(
     'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
@@ -331,214 +401,176 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
             Manual Entry
           </button>
           <button
-            onClick={() => setEntryMode('ai-extract')}
+            onClick={() => setEntryMode('selector')}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-              entryMode === 'ai-extract'
+              entryMode === 'selector'
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
             )}
           >
-            Upload (AI)
+            Product Selector
           </button>
         </div>
       </div>
 
-      {/* AI Extract Mode */}
-      {entryMode === 'ai-extract' && (
+      {/* Product Selector Mode */}
+      {entryMode === 'selector' && (
         <div className="space-y-4">
-          {/* Upload Section */}
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-purple-200 dark:border-purple-800">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-purple-500/10">
-                <Sparkle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  AI-Powered Product Extraction
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Upload a document (PDF, Word, or text) and our AI will automatically extract product information including names, quantities, and descriptions.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept=".pdf,.docx,.png,.jpg,.jpeg,.txt"
-                  disabled={extracting}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={extracting}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  <UploadSimple className="w-4 h-4 mr-2" />
-                  {extracting ? 'Extracting...' : 'Upload Document'}
-                </Button>
-              </div>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setCatalogDialogOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Database className="w-4 h-4 mr-2" />
+              Browse Catalog
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+              accept=".pdf,.docx,.png,.jpg,.jpeg,.txt"
+              disabled={extracting}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={extracting}
+              variant="outline"
+              className="border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-900/20"
+            >
+              <UploadSimple className="w-4 h-4 mr-2" />
+              {extracting ? 'Extracting...' : 'Upload Document (AI)'}
+            </Button>
           </div>
 
-          {/* AI Extracted Products Display */}
+          {/* Selected Products Display */}
           {aiExtractedProducts.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  AI-Extracted Products ({aiExtractedProducts.length})
-                </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {aiExtractedProducts.map((product) => (
-                        <div
-                          key={product.id}
-                          className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
-                        >
-                          {/* Product Header */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                <h5 className="font-semibold text-gray-900 dark:text-gray-100">
-                                  {product.name}
-                                </h5>
-                              </div>
-                              {/* Product Hierarchy */}
-                              {(product.rawData?.manufacturer || product.rawData?.series) && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
-                                  {[product.rawData.manufacturer, product.rawData.series].filter(Boolean).join(' • ')}
-                                  {product.rawData.model && (
-                                    <span className="ml-1">({product.rawData.model})</span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => removeProduct(product.id)}
-                              className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"
-                            >
-                              <Trash className="w-4 h-4" />
-                            </button>
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Selected Products ({aiExtractedProducts.length})
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {aiExtractedProducts.map((product) => {
+                  const isCatalogProduct = product.rawData?.source === 'catalog';
+
+                  return (
+                    <div
+                      key={product.id}
+                      className={cn(
+                        'bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 transition-colors',
+                        isCatalogProduct
+                          ? 'hover:border-emerald-300 dark:hover:border-emerald-600'
+                          : 'hover:border-purple-300 dark:hover:border-purple-600'
+                      )}
+                    >
+                      {/* Product Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            {isCatalogProduct ? (
+                              <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            ) : (
+                              <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            )}
+                            <h5 className="font-semibold text-gray-900 dark:text-gray-100">
+                              {product.name}
+                            </h5>
                           </div>
-
-                          {/* Variable Alias */}
-                          <div className="mb-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
-                                Variable Alias:
-                              </span>
-                              <Input
-                                value={product.alias || ''}
-                                onChange={(e) => updateProduct(product.id, { alias: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
-                                placeholder="e.g., wallA"
-                                className="h-7 text-xs font-mono flex-1 bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-700"
-                              />
+                          {/* Product Hierarchy */}
+                          {(product.rawData?.manufacturer || product.rawData?.series) && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {isCatalogProduct
+                                ? [product.rawData.productType, product.rawData.manufacturer, product.rawData.productCategory].filter(Boolean).join(' → ')
+                                : [product.rawData.manufacturer, product.rawData.series].filter(Boolean).join(' • ')
+                              }
                             </div>
-                            {product.alias && (
-                              <div className="mt-1.5 text-xs text-purple-600 dark:text-purple-400">
-                                Use in templates: <code className="px-1 py-0.5 bg-purple-100 dark:bg-purple-800 rounded font-mono">{'{' + product.alias + '.stc}'}</code>
-                                {', '}
-                                <code className="px-1 py-0.5 bg-purple-100 dark:bg-purple-800 rounded font-mono">{'{' + product.alias + '.manufacturer}'}</code>
-                                {' etc.'}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Product Details */}
-                          <div className="space-y-2 text-xs">
-                            {/* Quantity */}
-                            <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
-                              <span className="text-gray-600 dark:text-gray-400">Quantity:</span>
-                              <span className="font-medium text-gray-900 dark:text-gray-100">
-                                {product.quantity} {product.unit}
-                              </span>
-                            </div>
-
-                            {/* Category */}
-                            {(product.rawData?.productType || product.rawData?.productCategory) && (
-                              <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-600 dark:text-gray-400">Category:</span>
-                                <span className="text-gray-900 dark:text-gray-100">
-                                  {[product.rawData.productType, product.rawData.productCategory].filter(Boolean).join(' / ')}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Dimensions */}
-                            {product.rawData?.dimensions && Object.values(product.rawData.dimensions).some(v => v) && (
-                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-600 dark:text-gray-400">Dimensions:</span>
-                                <div className="text-gray-900 dark:text-gray-100 mt-1">
-                                  {Object.entries(product.rawData.dimensions)
-                                    .filter(([_, v]) => v)
-                                    .map(([k, v]) => `${k.charAt(0).toUpperCase()}: ${v}`)
-                                    .join(', ')}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Performance Ratings */}
-                            {product.rawData?.performanceRatings && Object.values(product.rawData.performanceRatings).some(v => v) && (
-                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-600 dark:text-gray-400">Performance:</span>
-                                <div className="text-gray-900 dark:text-gray-100 mt-1">
-                                  {product.rawData.performanceRatings.stc && `STC ${product.rawData.performanceRatings.stc}`}
-                                  {product.rawData.performanceRatings.fireRating && ` • Fire: ${product.rawData.performanceRatings.fireRating}`}
-                                  {product.rawData.performanceRatings.acousticRating && ` • ${product.rawData.performanceRatings.acousticRating}`}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Appearance */}
-                            {product.rawData?.appearance && Object.values(product.rawData.appearance).some(v => v) && (
-                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-600 dark:text-gray-400">Appearance:</span>
-                                <div className="text-gray-900 dark:text-gray-100 mt-1">
-                                  {Object.entries(product.rawData.appearance)
-                                    .filter(([_, v]) => v)
-                                    .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
-                                    .join(', ')}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Materials */}
-                            {product.rawData?.materials && Object.values(product.rawData.materials).some(v => v) && (
-                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-600 dark:text-gray-400">Materials:</span>
-                                <div className="text-gray-900 dark:text-gray-100 mt-1">
-                                  {Object.entries(product.rawData.materials)
-                                    .filter(([_, v]) => v)
-                                    .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
-                                    .join(', ')}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Certifications */}
-                            {product.rawData?.certifications && product.rawData.certifications.length > 0 && (
-                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
-                                <span className="text-gray-600 dark:text-gray-400">Certifications:</span>
-                                <div className="text-gray-900 dark:text-gray-100 mt-1">
-                                  {product.rawData.certifications.join(', ')}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Specifications */}
-                            {product.rawData?.specifications && Object.keys(product.rawData.specifications).length > 0 && (
-                              <div className="py-1">
-                                <span className="text-gray-600 dark:text-gray-400">Specifications:</span>
-                                <div className="text-gray-900 dark:text-gray-100 mt-1 space-y-0.5">
-                                  {Object.entries(product.rawData.specifications).map(([k, v]) => (
-                                    <div key={k}>{k}: {String(v)}</div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      ))}
+                        <button
+                          onClick={() => removeProduct(product.id)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Variable Alias */}
+                      <div className={cn(
+                        'mb-3 p-2 rounded-lg border',
+                        isCatalogProduct
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
+                      )}>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            'text-xs font-medium',
+                            isCatalogProduct
+                              ? 'text-emerald-700 dark:text-emerald-300'
+                              : 'text-purple-700 dark:text-purple-300'
+                          )}>
+                            Variable Alias:
+                          </span>
+                          <Input
+                            value={product.alias || ''}
+                            onChange={(e) => updateProduct(product.id, { alias: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
+                            placeholder="e.g., wallA"
+                            className={cn(
+                              'h-7 text-xs font-mono flex-1 bg-white dark:bg-gray-800',
+                              isCatalogProduct
+                                ? 'border-emerald-200 dark:border-emerald-700'
+                                : 'border-purple-200 dark:border-purple-700'
+                            )}
+                          />
+                        </div>
+                        {product.alias && (
+                          <div className={cn(
+                            'mt-1.5 text-xs',
+                            isCatalogProduct
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-purple-600 dark:text-purple-400'
+                          )}>
+                            Use in templates: <code className={cn(
+                              'px-1 py-0.5 rounded font-mono',
+                              isCatalogProduct
+                                ? 'bg-emerald-100 dark:bg-emerald-800'
+                                : 'bg-purple-100 dark:bg-purple-800'
+                            )}>{'{' + product.alias + '.manufacturer}'}</code>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Product Details */}
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                          <span className="text-gray-600 dark:text-gray-400">Quantity:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {product.quantity} {product.unit}
+                          </span>
+                        </div>
+                        {product.rawData?.modelNumber && (
+                          <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                            <span className="text-gray-600 dark:text-gray-400">Model #:</span>
+                            <span className="text-gray-900 dark:text-gray-100 font-mono">
+                              {String(product.rawData.modelNumber)}
+                            </span>
+                          </div>
+                        )}
+                        {(product.rawData?.productType || product.rawData?.productCategory) && (
+                          <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                            <span className="text-gray-600 dark:text-gray-400">Category:</span>
+                            <span className="text-gray-900 dark:text-gray-100">
+                              {[product.rawData.productType, product.rawData.productCategory].filter(Boolean).join(' / ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
               </div>
+            </div>
           )}
         </div>
       )}
@@ -761,6 +793,22 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         onConfirm={handleConfirmExtraction}
         fileName={extractedFileName}
       />
+
+      {/* Catalog Selection Dialog */}
+      <Dialog open={catalogDialogOpen} onOpenChange={setCatalogDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-emerald-600" />
+              Select Product from Catalog
+            </DialogTitle>
+          </DialogHeader>
+          <CascadingProductSelector
+            onProductSelect={handleCatalogProductSelect}
+            onCancel={handleCatalogCancel}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

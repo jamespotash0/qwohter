@@ -8,8 +8,9 @@
  * page margins and a paper-like appearance.
  * */
 
-import { useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import type { Selection } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
@@ -108,6 +109,11 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
   hideBubbleMenu = false,
   pageSettings,
 }, ref) => {
+  // Store last selection so we can restore it when inserting from external panels
+  const lastSelectionRef = useRef<Selection | null>(null);
+  // Store current marks at cursor position for variable styling
+  const lastMarksRef = useRef<{ type: string; attrs?: Record<string, unknown> }[]>([]);
+
   const editor = useEditor({
     immediatelyRender: false, // Prevent hydration issues and improve initial render
     extensions: [
@@ -194,9 +200,64 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
     onUpdate: ({ editor }) => {
       onChange?.(editor.getJSON() as EditorContent);
     },
+    onSelectionUpdate: ({ editor }) => {
+      // Save selection whenever it changes (for restoring after external panel clicks)
+      lastSelectionRef.current = editor.state.selection;
+      // Save current marks at cursor for applying to inserted variables
+      const marks = editor.state.storedMarks || editor.state.selection.$from.marks();
+      lastMarksRef.current = marks.map(mark => ({
+        type: mark.type.name,
+        attrs: mark.attrs,
+      }));
+    },
+    onBlur: ({ editor }) => {
+      // Save selection when editor loses focus (clicking variable panel, etc.)
+      lastSelectionRef.current = editor.state.selection;
+      const marks = editor.state.storedMarks || editor.state.selection.$from.marks();
+      lastMarksRef.current = marks.map(mark => ({
+        type: mark.type.name,
+        attrs: mark.attrs,
+      }));
+    },
     editorProps: {
       attributes: {
         class: 'prose-editor focus:outline-none',
+      },
+      // Handle Tab key for indentation
+      handleKeyDown: (view, event) => {
+        if (event.key === 'Tab') {
+          event.preventDefault();
+
+          const { state, dispatch } = view;
+          const { selection } = state;
+
+          // Check if we're in a list
+          const isInList = state.doc.resolve(selection.from).parent.type.name === 'listItem' ||
+                          state.doc.resolve(selection.from).parent.type.name === 'taskItem';
+
+          if (isInList) {
+            // Use native list indent/outdent
+            if (event.shiftKey) {
+              // Outdent - lift list item
+              return false; // Let default handler try
+            } else {
+              // Indent - sink list item
+              return false; // Let default handler try
+            }
+          } else {
+            // Insert tab character (4 spaces) in regular text
+            if (event.shiftKey) {
+              // Shift+Tab: do nothing in regular text
+              return true;
+            } else {
+              // Tab: insert 4 spaces
+              const tr = state.tr.insertText('    ');
+              dispatch(tr);
+              return true;
+            }
+          }
+        }
+        return false;
       },
     },
   });
@@ -223,13 +284,29 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
     getEditor: () => editor,
     insertVariable: (key: string, label: string) => {
       if (editor) {
+        // Restore saved selection if we have one (handles clicking from external panel)
+        if (lastSelectionRef.current) {
+          editor.commands.setTextSelection({
+            from: lastSelectionRef.current.from,
+            to: lastSelectionRef.current.to,
+          });
+        }
+
+        // Build variable node content with marks applied
+        const variableContent: { type: string; attrs: Record<string, unknown>; marks?: { type: string; attrs?: Record<string, unknown> }[] } = {
+          type: 'variable',
+          attrs: { variableKey: key, variableLabel: label },
+        };
+
+        // Apply saved marks (font family, size, color, etc.) to the variable
+        if (lastMarksRef.current.length > 0) {
+          variableContent.marks = lastMarksRef.current;
+        }
+
         editor
           .chain()
           .focus()
-          .insertContent({
-            type: 'variable',
-            attrs: { variableKey: key, variableLabel: label },
-          })
+          .insertContent(variableContent)
           .run();
       }
     },

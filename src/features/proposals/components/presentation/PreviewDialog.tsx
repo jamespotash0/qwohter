@@ -341,15 +341,45 @@ function resolveProductsVariable(parts: string[], data: FormBuilderData): string
   return `{products.${parts.join('.')}}`;
 }
 
-function resolveProductFieldVariable(parts: string[], product: { rawData?: Record<string, unknown> }): string {
-  if (!product.rawData) return '';
-
+function resolveProductFieldVariable(
+  parts: string[],
+  product: {
+    name?: string;
+    quantity?: number;
+    unit?: string;
+    description?: string;
+    rawData?: Record<string, unknown>;
+  }
+): string {
   const fieldKey = parts[0];
+
+  // Direct fields on the Product object itself
+  switch (fieldKey) {
+    case 'name':
+      return product.name || '';
+    case 'quantity':
+      return product.quantity != null ? String(product.quantity) : '';
+    case 'unit':
+      return product.unit || '';
+    case 'description':
+      return product.description || '';
+  }
+
+  // Fields in rawData
+  if (!product.rawData) return '';
   const rawData = product.rawData as Record<string, unknown>;
 
-  // Direct fields
-  if (fieldKey in rawData) {
-    const value = rawData[fieldKey];
+  // Map common field names to rawData property names
+  const fieldMappings: Record<string, string> = {
+    category: 'productCategory',
+    type: 'productType',
+  };
+
+  const mappedKey = fieldMappings[fieldKey] || fieldKey;
+
+  // Direct fields in rawData
+  if (mappedKey in rawData) {
+    const value = rawData[mappedKey];
     if (value != null) return String(value);
   }
 
