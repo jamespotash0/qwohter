@@ -1,35 +1,25 @@
 /**
- * Preview Dialog
+ * Content Renderer Utilities
  *
- * Modal dialog that shows the document with all variables resolved.
- * Provides a preview of what the exported PDF/DOCX will look like.
+ * Shared functions for resolving variables and rendering Tiptap content to HTML.
+ * Used by PreviewDialog and PDF/DOCX exports.
  */
 
-import { useMemo } from 'react';
-import { X, FilePdf, FileDoc, Printer } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import type { EditorContent } from './PresentationEditor';
-import type { FormBuilderData } from '../../context/FormBuilderContext';
+import type { FormBuilderData } from '../context/FormBuilderContext';
+import type { EditorContent } from '../components/presentation/PresentationEditor';
 
-/**
- * Proposal direct fields for resolving proposal variables
- */
-interface ProposalData {
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ProposalData {
   proposalNumber?: string;
   status?: string;
   documentType?: string;
   createdAt?: string;
 }
 
-/**
- * Info tab data for resolving project/client variables (from form_data.info)
- */
-interface InfoData {
+export interface InfoData {
   // Project Details
   projectName?: string;
   proposalDate?: string;
@@ -56,10 +46,7 @@ interface InfoData {
   jobNotes?: string;
 }
 
-/**
- * Organization data for resolving org variables (from organizations table)
- */
-interface OrgData {
+export interface OrgData {
   name?: string;
   phone?: string;
   fax?: string;
@@ -68,62 +55,9 @@ interface OrgData {
   industry?: string;
 }
 
-interface PreviewDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  content: EditorContent | null;
-  formData: FormBuilderData;
-  proposalData?: ProposalData;
-  infoData?: InfoData;
-  orgData?: OrgData;
-  onExportPdf?: () => void;
-  onExportDocx?: () => void;
-}
-
-/**
- * Resolve variables in text content
- */
-function resolveVariable(
-  key: string,
-  data: FormBuilderData,
-  proposalData?: ProposalData,
-  infoData?: InfoData,
-  orgData?: OrgData
-): string {
-  // Split key into parts (e.g., "client.name" -> ["client", "name"])
-  const parts = key.split('.');
-
-  // Handle static variables
-  switch (parts[0]) {
-    case 'proposal':
-      return resolveProposalVariable(parts.slice(1), proposalData);
-    case 'project':
-      return resolveProjectVariable(parts.slice(1), infoData);
-    case 'contact':
-      return resolveContactVariable(parts.slice(1), infoData);
-    case 'client':
-      return resolveClientVariable(parts.slice(1), infoData);
-    case 'org':
-      return resolveOrgVariable(parts.slice(1), orgData);
-    case 'terms':
-      return resolveTermsVariable(parts.slice(1), data);
-    case 'pricing':
-      return resolvePricingVariable(parts.slice(1), data);
-    case 'leadtimes':
-      return resolveLeadTimesVariable(parts.slice(1), data);
-    case 'misc':
-      return resolveMiscVariable(parts.slice(1), data);
-    case 'products':
-      return resolveProductsVariable(parts.slice(1), data);
-    default:
-      // Check if it's a product alias variable (e.g., "wallA.stc")
-      const product = data.products.items.find(p => p.alias === parts[0]);
-      if (product && product.rawData) {
-        return resolveProductFieldVariable(parts.slice(1), product);
-      }
-      return `{${key}}`;
-  }
-}
+// ============================================================================
+// Variable Resolution
+// ============================================================================
 
 function resolveProposalVariable(parts: string[], proposalData?: ProposalData): string {
   if (!proposalData) return `{proposal.${parts.join('.')}}`;
@@ -131,15 +65,6 @@ function resolveProposalVariable(parts: string[], proposalData?: ProposalData): 
   switch (parts[0]) {
     case 'number':
       return proposalData.proposalNumber || `{proposal.number}`;
-    case 'status':
-      return proposalData.status || `{proposal.status}`;
-    case 'documentType':
-      return proposalData.documentType || `{proposal.documentType}`;
-    case 'createdAt':
-      if (proposalData.createdAt) {
-        return new Date(proposalData.createdAt).toLocaleDateString();
-      }
-      return `{proposal.createdAt}`;
     default:
       return `{proposal.${parts.join('.')}}`;
   }
@@ -205,8 +130,6 @@ function resolveClientVariable(parts: string[], infoData?: InfoData): string {
       return infoData.clientPhone || `{client.phone}`;
     case 'address':
       return infoData.clientAddress || `{client.address}`;
-    case 'type':
-      return infoData.clientContactType || `{client.type}`;
     default:
       return `{client.${parts.join('.')}}`;
   }
@@ -226,8 +149,6 @@ function resolveOrgVariable(parts: string[], orgData?: OrgData): string {
       return orgData.address || `{org.address}`;
     case 'website':
       return orgData.website || `{org.website}`;
-    case 'industry':
-      return orgData.industry || `{org.industry}`;
     default:
       return `{org.${parts.join('.')}}`;
   }
@@ -299,11 +220,12 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
     return count.toString();
   }
 
-  // Section-level variables
+  // Find matching section by key
   const section = pricing.sections.find(
     s => s.name.toLowerCase().replace(/\s+/g, '_') === parts[0]
   );
   if (section) {
+    // Section total
     if (parts[1] === 'total') {
       let total = 0;
       section.lineItems.forEach(item => {
@@ -314,8 +236,38 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
         currency: 'USD',
       }).format(total);
     }
+    // Section items list
     if (parts[1] === 'items') {
       return section.lineItems.map(item => item.name).join(', ');
+    }
+    // Section item count
+    if (parts[1] === 'itemCount') {
+      return section.lineItems.length.toString();
+    }
+    // Individual line item: pricing.{section}.item{N}.{field}
+    const itemMatch = parts[1]?.match(/^item(\d+)$/);
+    if (itemMatch) {
+      const itemIdx = parseInt(itemMatch[1], 10) - 1;
+      const lineItem = section.lineItems[itemIdx];
+      if (lineItem && parts[2]) {
+        switch (parts[2]) {
+          case 'name':
+            return lineItem.name || '';
+          case 'quantity':
+            return lineItem.quantity.toString();
+          case 'unitCost':
+            return new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+            }).format(lineItem.unitCost);
+          case 'total':
+            const total = lineItem.quantity * lineItem.unitCost * (1 + lineItem.markupPercent / 100);
+            return new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+            }).format(total);
+        }
+      }
     }
   }
 
@@ -325,7 +277,6 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
 function resolveLeadTimesVariable(parts: string[], data: FormBuilderData): string {
   const leadTimes = data.leadTimes;
 
-  // Find the section and phase from the key
   for (const section of leadTimes.sections) {
     const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_');
 
@@ -336,7 +287,6 @@ function resolveLeadTimesVariable(parts: string[], data: FormBuilderData): strin
           .join('\n');
       }
 
-      // Individual phase variables
       const phaseMatch = parts[0].match(/_phase(\d+)$/);
       if (phaseMatch) {
         const phaseIdx = parseInt(phaseMatch[1], 10) - 1;
@@ -360,7 +310,6 @@ function resolveMiscVariable(parts: string[], data: FormBuilderData): string {
     return misc.notes || '';
   }
 
-  // Find field by key
   const field = misc.fields.find(
     f => f.label.toLowerCase().replace(/\s+/g, '_') === parts[0]
   );
@@ -385,19 +334,20 @@ function resolveProductsVariable(parts: string[], data: FormBuilderData): string
   return `{products.${parts.join('.')}}`;
 }
 
-function resolveProductFieldVariable(parts: string[], product: { rawData?: Record<string, unknown> }): string {
+function resolveProductFieldVariable(
+  parts: string[],
+  product: { rawData?: Record<string, unknown> }
+): string {
   if (!product.rawData) return '';
 
   const fieldKey = parts[0];
   const rawData = product.rawData as Record<string, unknown>;
 
-  // Direct fields
   if (fieldKey in rawData) {
     const value = rawData[fieldKey];
     if (value != null) return String(value);
   }
 
-  // Nested fields
   const nestedPaths: Record<string, string[]> = {
     stc: ['performanceRatings', 'stc'],
     fireRating: ['performanceRatings', 'fireRating'],
@@ -431,9 +381,51 @@ function resolveProductFieldVariable(parts: string[], product: { rawData?: Recor
 }
 
 /**
- * Recursively process content and resolve variables
+ * Resolve a single variable key to its value
  */
-function resolveContentVariables(
+export function resolveVariable(
+  key: string,
+  data: FormBuilderData,
+  proposalData?: ProposalData,
+  infoData?: InfoData,
+  orgData?: OrgData
+): string {
+  const parts = key.split('.');
+
+  switch (parts[0]) {
+    case 'proposal':
+      return resolveProposalVariable(parts.slice(1), proposalData);
+    case 'project':
+      return resolveProjectVariable(parts.slice(1), infoData);
+    case 'contact':
+      return resolveContactVariable(parts.slice(1), infoData);
+    case 'client':
+      return resolveClientVariable(parts.slice(1), infoData);
+    case 'org':
+      return resolveOrgVariable(parts.slice(1), orgData);
+    case 'terms':
+      return resolveTermsVariable(parts.slice(1), data);
+    case 'pricing':
+      return resolvePricingVariable(parts.slice(1), data);
+    case 'leadtimes':
+      return resolveLeadTimesVariable(parts.slice(1), data);
+    case 'misc':
+      return resolveMiscVariable(parts.slice(1), data);
+    case 'products':
+      return resolveProductsVariable(parts.slice(1), data);
+    default:
+      const product = data.products.items.find(p => p.alias === parts[0]);
+      if (product && product.rawData) {
+        return resolveProductFieldVariable(parts.slice(1), product);
+      }
+      return `{${key}}`;
+  }
+}
+
+/**
+ * Recursively process content and resolve all variables
+ */
+export function resolveContentVariables(
   content: EditorContent,
   data: FormBuilderData,
   proposalData?: ProposalData,
@@ -442,17 +434,20 @@ function resolveContentVariables(
 ): EditorContent {
   const resolved = { ...content };
 
-  // Resolve variable nodes
   if (resolved.type === 'variable' && resolved.attrs?.variableKey) {
-    const value = resolveVariable(resolved.attrs.variableKey as string, data, proposalData, infoData, orgData);
-    // Convert variable to text
+    const value = resolveVariable(
+      resolved.attrs.variableKey as string,
+      data,
+      proposalData,
+      infoData,
+      orgData
+    );
     return {
       type: 'text',
       text: value,
     };
   }
 
-  // Process children recursively
   if (resolved.content) {
     resolved.content = resolved.content.map(child =>
       resolveContentVariables(child, data, proposalData, infoData, orgData)
@@ -462,14 +457,17 @@ function resolveContentVariables(
   return resolved;
 }
 
+// ============================================================================
+// HTML Rendering
+// ============================================================================
+
 /**
- * Render content to HTML string
+ * Render Tiptap content to HTML string
  */
-function renderContentToHtml(content: EditorContent): string {
+export function renderContentToHtml(content: EditorContent): string {
   const renderNode = (node: EditorContent): string => {
     if (node.type === 'text') {
-      let text = node.text || '';
-      // Apply marks
+      let text = escapeHtml(node.text || '');
       if (node.marks) {
         node.marks.forEach(mark => {
           switch (mark.type) {
@@ -487,7 +485,7 @@ function renderContentToHtml(content: EditorContent): string {
               break;
             case 'link':
               const href = mark.attrs?.href || '#';
-              text = `<a href="${href}" class="text-blue-600 underline">${text}</a>`;
+              text = `<a href="${escapeHtml(String(href))}">${text}</a>`;
               break;
           }
         });
@@ -502,30 +500,28 @@ function renderContentToHtml(content: EditorContent): string {
       case 'doc':
         return children;
       case 'paragraph':
-        return `<p style="${align}" class="mb-3 leading-relaxed">${children || '&nbsp;'}</p>`;
+        return `<p style="${align}">${children || '&nbsp;'}</p>`;
       case 'heading':
         const level = node.attrs?.level || 1;
-        const sizes = { 1: 'text-3xl', 2: 'text-2xl', 3: 'text-xl' };
-        const size = sizes[level as keyof typeof sizes] || 'text-xl';
-        return `<h${level} style="${align}" class="${size} font-bold mb-4">${children}</h${level}>`;
+        return `<h${level} style="${align}">${children}</h${level}>`;
       case 'bulletList':
-        return `<ul class="list-disc pl-6 my-3">${children}</ul>`;
+        return `<ul>${children}</ul>`;
       case 'orderedList':
-        return `<ol class="list-decimal pl-6 my-3">${children}</ol>`;
+        return `<ol>${children}</ol>`;
       case 'listItem':
-        return `<li class="my-1">${children}</li>`;
+        return `<li>${children}</li>`;
       case 'blockquote':
-        return `<blockquote class="border-l-4 border-gray-300 pl-4 py-1 italic my-4">${children}</blockquote>`;
+        return `<blockquote>${children}</blockquote>`;
       case 'table':
-        return `<table class="border-collapse w-full my-4 border border-gray-300">${children}</table>`;
+        return `<table>${children}</table>`;
       case 'tableRow':
         return `<tr>${children}</tr>`;
       case 'tableHeader':
-        return `<th class="bg-gray-100 border border-gray-300 px-3 py-2 text-left font-semibold">${children}</th>`;
+        return `<th>${children}</th>`;
       case 'tableCell':
-        return `<td class="border border-gray-300 px-3 py-2">${children}</td>`;
+        return `<td>${children}</td>`;
       case 'horizontalRule':
-        return '<hr class="border-gray-200 my-6" />';
+        return '<hr />';
       default:
         return children;
     }
@@ -534,139 +530,14 @@ function renderContentToHtml(content: EditorContent): string {
   return renderNode(content);
 }
 
-export function PreviewDialog({
-  isOpen,
-  onClose,
-  content,
-  formData,
-  proposalData,
-  infoData,
-  orgData,
-  onExportPdf,
-  onExportDocx,
-}: PreviewDialogProps) {
-  // Resolve all variables in content
-  const resolvedContent = useMemo(() => {
-    if (!content) return null;
-    return resolveContentVariables(content, formData, proposalData, infoData, orgData);
-  }, [content, formData, proposalData, infoData, orgData]);
-
-  // Render to HTML
-  const htmlContent = useMemo(() => {
-    if (!resolvedContent) return '';
-    return renderContentToHtml(resolvedContent);
-  }, [resolvedContent]);
-
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Document Preview</title>
-          <style>
-            body {
-              font-family: system-ui, -apple-system, sans-serif;
-              max-width: 816px;
-              margin: 0 auto;
-              padding: 48px;
-              color: #333;
-            }
-            h1 { font-size: 1.875rem; font-weight: bold; margin-bottom: 1rem; }
-            h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.75rem; }
-            h3 { font-size: 1.25rem; font-weight: 500; margin-bottom: 0.5rem; }
-            p { margin-bottom: 0.75rem; line-height: 1.625; }
-            ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
-            ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
-            li { margin: 0.25rem 0; }
-            table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-            th, td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; }
-            th { background: #f3f4f6; font-weight: 600; text-align: left; }
-            blockquote { border-left: 4px solid #d1d5db; padding-left: 1rem; margin: 1rem 0; font-style: italic; }
-            a { color: #2563eb; text-decoration: underline; }
-          </style>
-        </head>
-        <body>${htmlContent}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Document Preview
-          </h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrint}
-              className="gap-1.5"
-            >
-              <Printer className="w-4 h-4" />
-              Print
-            </Button>
-            {onExportPdf && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  onClose();
-                  onExportPdf();
-                }}
-                className="gap-1.5"
-              >
-                <FilePdf className="w-4 h-4 text-red-500" />
-                PDF
-              </Button>
-            )}
-            {onExportDocx && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  onClose();
-                  onExportDocx();
-                }}
-                className="gap-1.5"
-              >
-                <FileDoc className="w-4 h-4 text-blue-500" />
-                DOCX
-              </Button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-        </div>
-
-        {/* Preview Content */}
-        <div className="overflow-y-auto bg-gray-100 dark:bg-gray-800 p-8">
-          <div
-            className={cn(
-              'mx-auto bg-white dark:bg-gray-900',
-              'shadow-lg rounded-sm',
-              'max-w-[816px]', // ~8.5" at 96dpi
-              'min-h-[1056px]', // ~11" at 96dpi
-              'px-16 py-12', // ~1" margins
-              'prose prose-gray dark:prose-invert max-w-none'
-            )}
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+/**
+ * Escape HTML special characters
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
-
-export default PreviewDialog;

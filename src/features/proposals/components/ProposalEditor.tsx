@@ -533,12 +533,12 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continue Editing</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={forceClose}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              Discard Changes
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

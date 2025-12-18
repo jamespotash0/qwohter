@@ -7,6 +7,7 @@
  */
 
 import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
 import type {
   Product,
   FormBuilderData,
@@ -21,6 +22,7 @@ import {
   getAvailableFieldsForProduct,
   buildVariableKey,
 } from '../../utils/productVariables';
+import { VariableNodeView } from './VariableNodeView';
 
 // Variable node attributes
 export interface VariableAttributes {
@@ -58,16 +60,20 @@ export const VariableExtension = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    // Clean, subtle styling for variables - looks like regular text with subtle highlight
+    // Fallback HTML rendering for when React NodeView isn't available (e.g., getHTML())
     return [
       'span',
       mergeAttributes(HTMLAttributes, {
         'data-variable': HTMLAttributes.variableKey,
-        'class': 'variable-node inline px-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium select-none border-b border-dashed border-gray-400 dark:border-gray-500',
+        'class': 'variable-node',
         'contenteditable': 'false',
       }),
       HTMLAttributes.variableLabel,
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(VariableNodeView);
   },
 });
 
@@ -80,41 +86,59 @@ export interface VariableDefinition {
 }
 
 export const AVAILABLE_VARIABLES: VariableDefinition[] = [
-  // Project Info
-  { key: 'project.name', label: 'Project Name', category: 'Project' },
-  { key: 'project.location', label: 'Job Location', category: 'Project' },
-  { key: 'project.date', label: 'Date Created', category: 'Project' },
+  // ============================================================================
+  // Proposal Fields (direct columns from proposals table)
+  // ============================================================================
+  { key: 'proposal.number', label: 'Proposal Number', category: 'Proposal', description: 'Auto-generated proposal number (e.g., P-1001)' },
+  { key: 'proposal.createdAt', label: 'Created Date', category: 'Proposal', description: 'When the proposal was created' },
 
-  // Client Info
-  { key: 'client.name', label: 'Client Name', category: 'Client' },
-  { key: 'client.company', label: 'Client Company', category: 'Client' },
-  { key: 'client.email', label: 'Client Email', category: 'Client' },
-  { key: 'client.phone', label: 'Client Phone', category: 'Client' },
+  // ============================================================================
+  // Project Info (from form_data.info - InfoTabData)
+  // ============================================================================
+  { key: 'project.name', label: 'Project Name', category: 'Project', description: 'Name of the project' },
+  { key: 'project.date', label: 'Proposal Date', category: 'Project', description: 'Date on the proposal' },
+  { key: 'project.locationName', label: 'Job Location Name', category: 'Project', description: 'POI or landmark name' },
+  { key: 'project.location', label: 'Job Address', category: 'Project', description: 'Physical job site address' },
+  { key: 'project.floor', label: 'Floor', category: 'Project', description: 'Floor number at job location' },
+  { key: 'project.locationType', label: 'Location Type', category: 'Project', description: 'Type of facility (Office, Warehouse, etc.)' },
+  { key: 'project.dueDate', label: 'Est. Due Date', category: 'Project', description: 'Estimated completion date' },
+  { key: 'project.notes', label: 'Job Notes', category: 'Project', description: 'Additional notes about the job' },
 
-  // Pricing
-  { key: 'pricing.total', label: 'Total Price', category: 'Pricing' },
-  { key: 'pricing.subtotal', label: 'Subtotal', category: 'Pricing' },
-  { key: 'pricing.tax', label: 'Tax Amount', category: 'Pricing' },
-  { key: 'pricing.discount', label: 'Discount', category: 'Pricing' },
+  // Work Details (from form_data.info)
+  { key: 'project.source', label: 'Proposal Source', category: 'Project', description: 'Where the lead came from' },
+  { key: 'project.workType', label: 'Type of Work', category: 'Project', description: 'Category of work being done' },
+  { key: 'project.laborType', label: 'Labor Type', category: 'Project', description: 'Union or non-union' },
+  { key: 'project.projectType', label: 'Project Type', category: 'Project', description: 'Type of project/facility' },
 
-  // Products
-  { key: 'products.list', label: 'Product List', category: 'Products' },
-  { key: 'products.count', label: 'Product Count', category: 'Products' },
+  // Contact Person (from form_data.info - internal contact)
+  { key: 'contact.name', label: 'Contact Name', category: 'Contact', description: 'Internal contact person' },
+  { key: 'contact.email', label: 'Contact Email', category: 'Contact', description: 'Internal contact email' },
 
-  // Terms
-  { key: 'terms.payment', label: 'Payment Terms', category: 'Terms' },
-  { key: 'terms.warranty', label: 'Warranty Info', category: 'Terms' },
+  // ============================================================================
+  // Client Info (from form_data.info - InfoTabData)
+  // ============================================================================
+  { key: 'client.name', label: 'Client Name', category: 'Client', description: 'Name of the client' },
+  { key: 'client.company', label: 'Client Company', category: 'Client', description: 'Client\'s company name' },
+  { key: 'client.email', label: 'Client Email', category: 'Client', description: 'Client\'s email address' },
+  { key: 'client.phone', label: 'Client Phone', category: 'Client', description: 'Client\'s phone number' },
+  { key: 'client.address', label: 'Client Address', category: 'Client', description: 'Client\'s mailing address' },
+  { key: 'client.type', label: 'Client Type', category: 'Client', description: 'Type of client relationship' },
 
-  // Lead Times
-  { key: 'leadtimes.total', label: 'Total Duration', category: 'Lead Times' },
-  { key: 'leadtimes.start', label: 'Start Date', category: 'Lead Times' },
-  { key: 'leadtimes.end', label: 'End Date', category: 'Lead Times' },
+  // ============================================================================
+  // Organization (from organizations table)
+  // ============================================================================
+  { key: 'org.name', label: 'Company Name', category: 'Organization', description: 'Your company name' },
+  { key: 'org.phone', label: 'Company Phone', category: 'Organization', description: 'Your company phone number' },
+  { key: 'org.fax', label: 'Company Fax', category: 'Organization', description: 'Your company fax number' },
+  { key: 'org.address', label: 'Company Address', category: 'Organization', description: 'Your company address' },
+  { key: 'org.website', label: 'Company Website', category: 'Organization', description: 'Your company website URL' },
+  { key: 'org.industry', label: 'Industry', category: 'Organization', description: 'Your company industry' },
 
-  // Organization
-  { key: 'org.name', label: 'Company Name', category: 'Organization' },
-  { key: 'org.address', label: 'Company Address', category: 'Organization' },
-  { key: 'org.phone', label: 'Company Phone', category: 'Organization' },
-  { key: 'org.email', label: 'Company Email', category: 'Organization' },
+  // ============================================================================
+  // Products (static - dynamic ones generated from form data)
+  // ============================================================================
+  { key: 'products.list', label: 'Product List', category: 'Products', description: 'Comma-separated list of products' },
+  { key: 'products.count', label: 'Product Count', category: 'Products', description: 'Number of products' },
 ];
 
 // Group variables by category
@@ -123,7 +147,7 @@ export function getVariablesByCategory(): Record<string, VariableDefinition[]> {
     if (!acc[variable.category]) {
       acc[variable.category] = [];
     }
-    acc[variable.category].push(variable);
+    (acc[variable.category] ??= []).push(variable);
     return acc;
   }, {} as Record<string, VariableDefinition[]>);
 }
@@ -253,16 +277,44 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
 
   pricing.sections.forEach((section, sectionIdx) => {
     let sectionTotal = 0;
-    section.lineItems.forEach(item => {
+    const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_') || `section${sectionIdx + 1}`;
+
+    section.lineItems.forEach((item, itemIdx) => {
       const total = item.quantity * item.unitCost * (1 + item.markupPercent / 100);
       sectionTotal += total;
       itemCount++;
+
+      // Individual line item variables
+      const itemKey = `pricing.${sectionKey}.item${itemIdx + 1}`;
+      vars.push({
+        key: `${itemKey}.name`,
+        label: `${item.name || `Item ${itemIdx + 1}`}`,
+        category: 'Pricing',
+        description: `Line item name in ${section.name}`,
+      });
+      vars.push({
+        key: `${itemKey}.quantity`,
+        label: `${item.name || `Item ${itemIdx + 1}`} Qty`,
+        category: 'Pricing',
+        description: `Quantity: ${item.quantity}`,
+      });
+      vars.push({
+        key: `${itemKey}.unitCost`,
+        label: `${item.name || `Item ${itemIdx + 1}`} Unit Cost`,
+        category: 'Pricing',
+        description: `Unit cost: $${item.unitCost}`,
+      });
+      vars.push({
+        key: `${itemKey}.total`,
+        label: `${item.name || `Item ${itemIdx + 1}`} Total`,
+        category: 'Pricing',
+        description: `Total: $${total.toFixed(2)}`,
+      });
     });
     grandTotal += sectionTotal;
 
     // Section-level variables
     if (section.lineItems.length > 0) {
-      const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_') || `section${sectionIdx + 1}`;
       vars.push({
         key: `pricing.${sectionKey}.total`,
         label: `${section.name} Total`,
@@ -274,6 +326,12 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
         label: `${section.name} Items`,
         category: 'Pricing',
         description: `Line items in ${section.name}`,
+      });
+      vars.push({
+        key: `pricing.${sectionKey}.itemCount`,
+        label: `${section.name} Count`,
+        category: 'Pricing',
+        description: `Number of items in ${section.name}`,
       });
     }
   });

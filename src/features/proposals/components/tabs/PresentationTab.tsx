@@ -9,7 +9,7 @@
  * - Export to PDF/DOCX
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { FileText } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
@@ -21,17 +21,43 @@ import {
   EditorHelpButton,
   PreviewDialog,
   DEFAULT_PAGE_SETTINGS,
+  setVariablesGetter,
+  getAllFormVariables,
   type EditorContent,
   type PresentationEditorRef,
   type PageSettings,
 } from '../presentation';
 import type { Editor } from '@tiptap/react';
 import { exportToPdf, exportToDocx } from '../../utils/documentExport';
+import { resolveContentVariables, renderContentToHtml } from '../../utils/contentRenderer';
+
+interface ProposalData {
+  form_data?: {
+    info?: {
+      projectName?: string;
+      proposalDate?: string;
+      clientName?: string;
+      clientCompany?: string;
+      clientEmail?: string;
+      clientPhone?: string;
+      clientAddress?: string;
+      jobLocation?: string;
+    };
+  };
+  organization?: {
+    name?: string;
+    organization_info?: {
+      address?: string;
+      phone?: string;
+      email?: string;
+    };
+  };
+}
 
 interface PresentationTabProps {
   mode: EditorMode;
   onDirtyChange?: (isDirty: boolean) => void;
-  proposalData?: unknown;
+  proposalData?: ProposalData;
 }
 
 // Empty default content - placeholder will show when editor is empty
@@ -40,9 +66,22 @@ const DEFAULT_PRESENTATION_CONTENT: EditorContent = {
   content: [{ type: 'paragraph' }],
 };
 
-export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
+export function PresentationTab({ mode, onDirtyChange, proposalData }: PresentationTabProps) {
   const isBuilderMode = mode === 'builder';
   const { data, setPresentationData } = useFormBuilder();
+
+  // Extract info and org data for variable resolution
+  const infoData = useMemo(() => proposalData?.form_data?.info, [proposalData?.form_data?.info]);
+  const orgData = useMemo(() => {
+    const org = proposalData?.organization;
+    if (!org) return undefined;
+    return {
+      name: org.name,
+      address: org.organization_info?.address,
+      phone: org.organization_info?.phone,
+      email: org.organization_info?.email,
+    };
+  }, [proposalData?.organization]);
 
   // Editor ref for programmatic control
   const editorRef = useRef<PresentationEditorRef>(null);
@@ -51,11 +90,50 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
   // Track if this is the initial load (skip marking dirty on first onChange)
   const isInitialLoadRef = useRef(true);
 
+  // Update the variables getter when form data changes (for { autocomplete)
+  useEffect(() => {
+    // Flatten the categorized variables into a single array for the suggestion system
+    setVariablesGetter(() => {
+      const categorizedVars = getAllFormVariables(data);
+      return Object.values(categorizedVars).flat();
+    });
+  }, [data]);
+
   // UI State
   const [showVariables, setShowVariables] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS as PageSettings);
+
+  // Load pageSettings from context, fallback to default
+  const pageSettings = useMemo((): PageSettings => {
+    const contextSettings = data.presentation?.pageSettings;
+    if (contextSettings) {
+      return contextSettings as PageSettings;
+    }
+    return DEFAULT_PAGE_SETTINGS as PageSettings;
+  }, [data.presentation?.pageSettings]);
+
+  // Handle page settings change - persist to context
+  const handlePageSettingsChange = useCallback((newSettings: PageSettings) => {
+    setPresentationData({
+      ...data.presentation,
+      sections: data.presentation?.sections || [],
+      pageSettings: newSettings,
+    });
+    onDirtyChange?.(true);
+  }, [data.presentation, setPresentationData, onDirtyChange]);
+
+  // Listen for slash command 'Variable' selection to open the panel
+  useEffect(() => {
+    const handleOpenVariableInserter = () => {
+      setShowVariables(true);
+    };
+
+    window.addEventListener('open-variable-inserter', handleOpenVariableInserter);
+    return () => {
+      window.removeEventListener('open-variable-inserter', handleOpenVariableInserter);
+    };
+  }, []);
 
   // Handle editor ready - called when Tiptap editor is initialized
   const handleEditorReady = useCallback((ed: Editor) => {
@@ -117,20 +195,36 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
     setShowPreview(true);
   }, []);
 
-  // Export to PDF
+  // Export to PDF with resolved variables
   const handleExportPdf = useCallback(async () => {
     setIsExporting(true);
     try {
-      // Find the editor container element
+      // Get current content from editor
+      const currentContent = editor?.getJSON() as EditorContent;
+      if (!currentContent) {
+        throw new Error('No content to export');
+      }
+
+      // Resolve all variables (undefined for proposalData - direct proposal fields not yet available here)
+      const resolvedContent = resolveContentVariables(currentContent, data, undefined, infoData, orgData);
+
+      // Render to HTML
+      const resolvedHtml = renderContentToHtml(resolvedContent);
+
+      // Find the editor container element (used as fallback)
       const editorElement = document.querySelector('.presentation-editor') as HTMLElement;
       if (!editorElement) {
         throw new Error('Editor element not found');
       }
 
-      const projectName = data.client?.projectName || data.client?.clientName || 'proposal';
+      const projectName = infoData?.projectName || infoData?.clientName || 'proposal';
       const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_presentation.pdf`;
 
-      await exportToPdf(editorElement, { filename });
+      await exportToPdf(editorElement, {
+        filename,
+        resolvedHtml,
+        pageFormat: 'letter',
+      });
       toast.success('PDF exported successfully', {
         description: `Saved as ${filename}`,
       });
@@ -142,9 +236,9 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [data.client?.projectName, data.client?.clientName]);
+  }, [editor, data, infoData, orgData]);
 
-  // Export to DOCX
+  // Export to DOCX with resolved variables
   const handleExportDocx = useCallback(async () => {
     setIsExporting(true);
     try {
@@ -154,10 +248,13 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
         throw new Error('No content to export');
       }
 
-      const projectName = data.client?.projectName || data.client?.clientName || 'proposal';
+      // Resolve all variables before export (undefined for proposalData - direct proposal fields not yet available here)
+      const resolvedContent = resolveContentVariables(currentContent, data, undefined, infoData, orgData);
+
+      const projectName = infoData?.projectName || infoData?.clientName || 'proposal';
       const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_presentation.docx`;
 
-      await exportToDocx(currentContent, {
+      await exportToDocx(resolvedContent, {
         filename,
         title: projectName,
       });
@@ -172,7 +269,7 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [editor, data.client?.projectName, data.client?.clientName]);
+  }, [editor, data, infoData, orgData]);
 
   // Builder mode: Show disabled state
   if (isBuilderMode) {
@@ -202,7 +299,7 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
           onExportDocx={handleExportDocx}
           isExporting={isExporting}
           pageSettings={pageSettings}
-          onPageSettingsChange={setPageSettings}
+          onPageSettingsChange={handlePageSettingsChange}
         />
       )}
 
@@ -238,6 +335,8 @@ export function PresentationTab({ mode, onDirtyChange }: PresentationTabProps) {
         onClose={() => setShowPreview(false)}
         content={editor?.getJSON() as EditorContent | null}
         formData={data}
+        infoData={infoData}
+        orgData={orgData}
         onExportPdf={handleExportPdf}
         onExportDocx={handleExportDocx}
       />

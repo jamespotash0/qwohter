@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { BubbleMenuComponent } from './BubbleMenu';
 import { SlashCommand } from './SlashCommand';
 import { VariableExtension } from './VariableExtension';
+import { VariableSuggestion } from './VariableSuggestion';
 import { FontSize, LineHeight } from './extensions';
 
 // Ref interface for external access to editor
@@ -118,14 +119,22 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
       }),
       Underline,
       Placeholder.configure({
-        placeholder: ({ node }) => {
+        placeholder: ({ node, editor }) => {
+          // Only show placeholder when the entire document is empty
+          const isEmpty = editor.state.doc.childCount === 1 &&
+            editor.state.doc.firstChild?.isTextblock &&
+            editor.state.doc.firstChild?.content.size === 0;
+
+          if (!isEmpty) return '';
+
           if (node.type.name === 'heading') {
             return 'Heading...';
           }
           return placeholder;
         },
         showOnlyWhenEditable: true,
-        showOnlyCurrent: true,
+        showOnlyCurrent: false, // Don't show on current node, only on empty doc
+        includeChildren: true,
       }),
       TaskList.configure({
         HTMLAttributes: {
@@ -174,6 +183,7 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
       // Custom extensions
       SlashCommand,
       VariableExtension,
+      VariableSuggestion,
     ],
     content: value || DEFAULT_CONTENT,
     editable: !readOnly,
@@ -191,9 +201,12 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
   });
 
   // Update content when value prop changes
+  // Use queueMicrotask to avoid flushSync warning during React lifecycle
   useEffect(() => {
     if (editor && value && JSON.stringify(editor.getJSON()) !== JSON.stringify(value)) {
-      editor.commands.setContent(value);
+      queueMicrotask(() => {
+        editor.commands.setContent(value);
+      });
     }
   }, [editor, value]);
 
@@ -251,15 +264,15 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
     '[&_.task-item[data-checked=true]_p]:line-through [&_.task-item[data-checked=true]_p]:text-gray-400',
     // Horizontal rule
     '[&_.tiptap_hr]:border-gray-200 dark:[&_.tiptap_hr]:border-gray-700 [&_.tiptap_hr]:my-6',
-    // Table - visible borders
-    '[&_.editor-table]:border-collapse [&_.editor-table]:w-full [&_.editor-table]:my-4 [&_.editor-table]:border [&_.editor-table]:border-gray-300 dark:[&_.editor-table]:border-gray-600',
-    '[&_.editor-table_th]:bg-gray-100 dark:[&_.editor-table_th]:bg-gray-800 [&_.editor-table_th]:border [&_.editor-table_th]:border-gray-300 dark:[&_.editor-table_th]:border-gray-600 [&_.editor-table_th]:px-3 [&_.editor-table_th]:py-2 [&_.editor-table_th]:text-left [&_.editor-table_th]:font-semibold [&_.editor-table_th]:text-gray-700 dark:[&_.editor-table_th]:text-gray-300',
-    '[&_.editor-table_td]:border [&_.editor-table_td]:border-gray-300 dark:[&_.editor-table_td]:border-gray-600 [&_.editor-table_td]:px-3 [&_.editor-table_td]:py-2 [&_.editor-table_td]:text-gray-700 dark:[&_.editor-table_td]:text-gray-300',
+    // Table - visible borders with fixed layout to prevent column shifting
+    '[&_.editor-table]:border-collapse [&_.editor-table]:table-fixed [&_.editor-table]:w-full [&_.editor-table]:my-4 [&_.editor-table]:border [&_.editor-table]:border-gray-300 dark:[&_.editor-table]:border-gray-600',
+    '[&_.editor-table_th]:bg-gray-100 dark:[&_.editor-table_th]:bg-gray-800 [&_.editor-table_th]:border [&_.editor-table_th]:border-gray-300 dark:[&_.editor-table_th]:border-gray-600 [&_.editor-table_th]:px-3 [&_.editor-table_th]:py-2 [&_.editor-table_th]:text-left [&_.editor-table_th]:font-semibold [&_.editor-table_th]:text-gray-700 dark:[&_.editor-table_th]:text-gray-300 [&_.editor-table_th]:overflow-hidden [&_.editor-table_th]:break-words',
+    '[&_.editor-table_td]:border [&_.editor-table_td]:border-gray-300 dark:[&_.editor-table_td]:border-gray-600 [&_.editor-table_td]:px-3 [&_.editor-table_td]:py-2 [&_.editor-table_td]:text-gray-700 dark:[&_.editor-table_td]:text-gray-300 [&_.editor-table_td]:overflow-hidden [&_.editor-table_td]:break-words',
     '[&_.editor-table_.selectedCell]:bg-blue-50 dark:[&_.editor-table_.selectedCell]:bg-blue-900/20',
     // Also style table, th, td directly for Tiptap tables
-    '[&_table]:border-collapse [&_table]:w-full [&_table]:my-4 [&_table]:border [&_table]:border-gray-300 dark:[&_table]:border-gray-600',
-    '[&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_th]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-600 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold',
-    '[&_td]:border [&_td]:border-gray-300 dark:[&_td]:border-gray-600 [&_td]:px-3 [&_td]:py-2',
+    '[&_table]:border-collapse [&_table]:table-fixed [&_table]:w-full [&_table]:my-4 [&_table]:border [&_table]:border-gray-300 dark:[&_table]:border-gray-600',
+    '[&_th]:bg-gray-100 dark:[&_th]:bg-gray-800 [&_th]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-600 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:overflow-hidden [&_th]:text-ellipsis',
+    '[&_td]:border [&_td]:border-gray-300 dark:[&_td]:border-gray-600 [&_td]:px-3 [&_td]:py-2 [&_td]:overflow-hidden [&_td]:break-words',
     '[&_.selectedCell]:bg-blue-50 dark:[&_.selectedCell]:bg-blue-900/20',
     // Link - cleaner blue style like Gmail
     '[&_.editor-link]:text-blue-600 dark:[&_.editor-link]:text-blue-400 [&_.editor-link]:underline [&_.editor-link]:cursor-pointer [&_.editor-link]:hover:text-blue-800 dark:[&_.editor-link]:hover:text-blue-300',

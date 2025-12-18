@@ -50,6 +50,7 @@ export interface PricingLineItem {
   sellRule: string;
   unitCost: number;
   markupPercent: number;
+  isTaxable?: boolean;
 }
 
 export interface PricingSection {
@@ -62,6 +63,8 @@ export interface PricingSection {
 
 export interface PricingData {
   sections: PricingSection[];
+  salesTaxPercent?: number;
+  taxState?: string; // US state code for auto tax rate lookup
 }
 
 // ============ Lead Times Tab Data ============
@@ -143,6 +146,18 @@ export interface ProductsData {
 }
 
 // ============ Presentation Tab Data ============
+// Page settings for presentation layout
+export interface PresentationPageSettings {
+  pageSize: 'letter' | 'a4' | 'legal';
+  orientation: 'portrait' | 'landscape';
+  margins: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
+}
+
 // Slate/Plate.js node structure for rich text content
 export interface PresentationTextNode {
   text: string;
@@ -173,6 +188,7 @@ export interface PresentationSection {
 
 export interface PresentationData {
   sections: PresentationSection[];
+  pageSettings?: PresentationPageSettings;
 }
 
 // ============ Complete Form Structure ============
@@ -207,6 +223,11 @@ const DEFAULT_BUILDER_DATA: FormBuilderData = {
   },
   presentation: {
     sections: [],
+    pageSettings: {
+      pageSize: 'letter',
+      orientation: 'portrait',
+      margins: { top: 1, bottom: 1, left: 1, right: 1 },
+    },
   },
 };
 

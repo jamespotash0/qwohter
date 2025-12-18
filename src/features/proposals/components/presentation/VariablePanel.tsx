@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { X, MagnifyingGlass, CaretRight, Package, ListBullets, CurrencyDollar, Clock, TextAa } from '@phosphor-icons/react';
+import { X, MagnifyingGlass, CaretRight, Package, ListBullets, CurrencyDollar, Clock, TextAa, FileText, Buildings, User, AddressBook, Briefcase } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getAllFormVariables, type VariableDefinition } from './VariableExtension';
 import { useFormBuilder } from '../../context/FormBuilderContext';
@@ -22,6 +22,18 @@ interface VariablePanelProps {
 function getCategoryIcon(category: string) {
   if (category.startsWith('Product:')) return <Package className="w-3 h-3" />;
   switch (category) {
+    case 'Proposal':
+      return <FileText className="w-3 h-3" />;
+    case 'Project':
+      return <Briefcase className="w-3 h-3" />;
+    case 'Contact':
+      return <User className="w-3 h-3" />;
+    case 'Client':
+      return <AddressBook className="w-3 h-3" />;
+    case 'Organization':
+      return <Buildings className="w-3 h-3" />;
+    case 'Products':
+      return <Package className="w-3 h-3" />;
     case 'Terms':
       return <ListBullets className="w-3 h-3" />;
     case 'Pricing':
@@ -46,6 +58,48 @@ function getCategoryColors(category: string) {
     };
   }
   switch (category) {
+    case 'Proposal':
+      return {
+        header: 'text-indigo-600 dark:text-indigo-400',
+        count: 'text-indigo-400',
+        item: 'text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+        code: 'text-indigo-400',
+      };
+    case 'Project':
+      return {
+        header: 'text-cyan-600 dark:text-cyan-400',
+        count: 'text-cyan-400',
+        item: 'text-cyan-700 dark:text-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-900/20',
+        code: 'text-cyan-400',
+      };
+    case 'Contact':
+      return {
+        header: 'text-teal-600 dark:text-teal-400',
+        count: 'text-teal-400',
+        item: 'text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/20',
+        code: 'text-teal-400',
+      };
+    case 'Client':
+      return {
+        header: 'text-amber-600 dark:text-amber-400',
+        count: 'text-amber-400',
+        item: 'text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20',
+        code: 'text-amber-400',
+      };
+    case 'Organization':
+      return {
+        header: 'text-slate-600 dark:text-slate-400',
+        count: 'text-slate-400',
+        item: 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900/20',
+        code: 'text-slate-400',
+      };
+    case 'Products':
+      return {
+        header: 'text-violet-600 dark:text-violet-400',
+        count: 'text-violet-400',
+        item: 'text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20',
+        code: 'text-violet-400',
+      };
     case 'Terms':
       return {
         header: 'text-green-600 dark:text-green-400',

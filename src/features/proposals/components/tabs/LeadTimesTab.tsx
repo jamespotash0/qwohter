@@ -177,9 +177,10 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
     })
   );
 
+  // Input styling - compact design matching PricingTab
   const inputClassName = cn(
-    'h-9 rounded-lg border-gray-200 dark:border-gray-600',
-    'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
+    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
   );
 
   const disabledInputClassName = isBuilderMode
@@ -427,7 +428,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           <div className="col-span-5">Phase Name</div>
           <div className="col-span-3">Duration</div>
           <div className="col-span-3">Est. Completion</div>
@@ -439,9 +440,9 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
           {sections.map((section) => (
             <div key={section.id}>
               {/* Section Divider Row */}
-              <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-100/50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-600 items-center">
+              <div className="grid grid-cols-12 gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-600 items-center">
                 <div className="col-span-12">
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                     {section.name}
                   </span>
                 </div>
@@ -451,7 +452,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
               {section.phases.map((phase) => (
                 <div
                   key={phase.id}
-                  className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                  className="grid grid-cols-12 gap-2 px-3 py-1 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                 >
                   {/* Phase Name */}
                   <div className="col-span-5">
@@ -496,24 +497,24 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                   <div className="col-span-1 flex justify-center">
                     <button
                       onClick={() => removePhase(section.id, phase.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      <Trash className="w-4 h-4" />
+                      <Trash className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
               ))}
 
               {/* Add Phase Row */}
-              <div className="grid grid-cols-12 gap-3 px-4 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+              <div className="grid grid-cols-12 gap-2 px-3 py-0.5 items-center border-t border-gray-100 dark:border-gray-700/50">
                 <div className="col-span-12">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => addPhase(section.id)}
-                    className="text-coral hover:text-coral-hover hover:bg-coral/5 h-8"
+                    className="text-gray-400 hover:text-coral hover:bg-coral/5 h-6 text-[10px]"
                   >
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus className="w-3 h-3 mr-1" />
                     Add Phase
                   </Button>
                 </div>

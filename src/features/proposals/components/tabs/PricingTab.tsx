@@ -16,7 +16,7 @@
  * Each line item: Name | Qty | Sell Rule | Unit Cost | Markup % | Sell Price
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical } from '@phosphor-icons/react';
 import {
   DndContext,
@@ -44,8 +44,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { EditorMode } from '../ProposalEditor';
+import { useFormBuilder } from '../../context/FormBuilderContext';
+import { getStateOptions, getStateTaxRate, formatTaxRate } from '../../utils/salesTaxRates';
 
 // Sell rule options
 const SELL_RULES = [
@@ -234,9 +241,104 @@ function SortableSectionRow({
 }
 
 export function PricingTab({ mode }: PricingTabProps) {
-  const [sections, setSections] = useState<PricingSection[]>(DEFAULT_SECTIONS);
-  const [salesTaxPercent, setSalesTaxPercent] = useState<number>(0);
   const isBuilderMode = mode === 'builder';
+
+  // Get context data and setter
+  const { data: formData, setPricingData } = useFormBuilder();
+
+  // Initialize local state from context or defaults
+  const [sections, setSections] = useState<PricingSection[]>(() => {
+    const contextSections = formData.pricing?.sections;
+    if (contextSections && contextSections.length > 0) {
+      // Convert context sections to local format (add isTaxable if missing)
+      return contextSections.map(s => ({
+        ...s,
+        lineItems: s.lineItems.map(item => ({
+          ...item,
+          isTaxable: item.isTaxable ?? false,
+        })),
+      }));
+    }
+    return DEFAULT_SECTIONS;
+  });
+
+  const [salesTaxPercent, setSalesTaxPercent] = useState<number>(
+    formData.pricing?.salesTaxPercent ?? 0
+  );
+
+  const [selectedTaxState, setSelectedTaxState] = useState<string>(
+    formData.pricing?.taxState ?? ''
+  );
+
+  // Memoize state options for dropdown
+  const stateOptions = useMemo(() => getStateOptions(), []);
+
+  // Get selected option label for display
+  const selectedTaxLabel = useMemo(() => {
+    if (!selectedTaxState) return null;
+    const option = stateOptions.find(opt => opt.value === selectedTaxState);
+    if (!option) return selectedTaxState;
+    // For cities: "NYC, NY" -> "NYC"
+    // For states: "New York (4%)" -> "NY"
+    return option.isCity
+      ? option.label.split(',')[0] // Just the city name
+      : selectedTaxState; // State code
+  }, [selectedTaxState, stateOptions]);
+
+  // Handle state selection - auto-populate tax rate
+  const handleStateSelect = (stateCode: string) => {
+    setSelectedTaxState(stateCode);
+    if (stateCode) {
+      const rate = getStateTaxRate(stateCode);
+      setSalesTaxPercent(rate);
+    }
+  };
+
+  // Track if initial data has been loaded from context
+  const hasLoadedInitialData = useRef(false);
+
+  // Load data from context when proposal data changes (e.g., proposal loaded async)
+  useEffect(() => {
+    // Skip if we've already loaded OR if context has no data
+    if (hasLoadedInitialData.current) return;
+
+    const contextSections = formData.pricing?.sections;
+    if (contextSections && contextSections.length > 0) {
+      setSections(contextSections.map(s => ({
+        ...s,
+        lineItems: s.lineItems.map(item => ({
+          ...item,
+          isTaxable: item.isTaxable ?? false,
+        })),
+      })));
+      hasLoadedInitialData.current = true;
+    }
+    if (formData.pricing?.salesTaxPercent !== undefined) {
+      setSalesTaxPercent(formData.pricing.salesTaxPercent);
+    }
+    if (formData.pricing?.taxState) {
+      setSelectedTaxState(formData.pricing.taxState);
+    }
+  }, [formData.pricing]);
+
+  // Sync local state changes back to context
+  // Use a ref to track if we're updating from context to avoid loops
+  const isUpdatingFromContext = useRef(false);
+
+  useEffect(() => {
+    // Skip syncing back if we're currently loading from context
+    if (isUpdatingFromContext.current) {
+      isUpdatingFromContext.current = false;
+      return;
+    }
+
+    // Sync to context whenever local state changes
+    setPricingData({
+      sections: sections,
+      salesTaxPercent: salesTaxPercent,
+      taxState: selectedTaxState,
+    });
+  }, [sections, salesTaxPercent, selectedTaxState, setPricingData]);
 
   // Drag-and-drop sensors for section reordering
   const sensors = useSensors(
@@ -258,8 +360,8 @@ export function PricingTab({ mode }: PricingTabProps) {
   };
 
   const inputClassName = cn(
-    'h-9 rounded-lg border-gray-200 dark:border-gray-600',
-    'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
+    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
   );
 
   // Hide number input spinners
@@ -269,8 +371,8 @@ export function PricingTab({ mode }: PricingTabProps) {
   );
 
   const selectTriggerClassName = cn(
-    'h-9 rounded-lg border-gray-200 dark:border-gray-600 text-sm',
-    'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+    'h-7 rounded border-gray-200 dark:border-gray-600 text-xs',
+    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
   );
 
   // Calculate subtotal (before tax)
@@ -296,17 +398,46 @@ export function PricingTab({ mode }: PricingTabProps) {
     return subtotal + taxAmount;
   }, [subtotal, taxAmount]);
 
-  // Calculate total cost, gross profit, and margin percentage
-  const { totalCost, grossProfit, grossProfitPercent } = useMemo(() => {
+  // Calculate total cost, gross profit, margin percentage, and cost markup
+  const { totalCost, grossProfit, grossProfitPercent, costMarkupPercent } = useMemo(() => {
     const cost = sections.reduce((total, section) => total + calculateTotalCost(section.lineItems), 0);
     const profit = subtotal - cost; // Profit is before tax
-    const percent = subtotal > 0 ? (profit / subtotal) * 100 : 0;
+    const marginPercent = subtotal > 0 ? (profit / subtotal) * 100 : 0;
+    const markupPercent = cost > 0 ? (profit / cost) * 100 : 0;
     return {
       totalCost: cost,
       grossProfit: profit,
-      grossProfitPercent: percent,
+      grossProfitPercent: marginPercent,
+      costMarkupPercent: markupPercent,
     };
   }, [sections, subtotal]);
+
+  // Calculate section breakdown for subtotal popover
+  const sectionBreakdown = useMemo(() => {
+    return sections
+      .map(section => ({
+        name: section.name,
+        total: calculateSubtotal(section.lineItems),
+      }))
+      .filter(s => s.total > 0);
+  }, [sections]);
+
+  // Calculate taxable items breakdown for tax popover
+  const taxableBreakdown = useMemo(() => {
+    const items: { name: string; sectionName: string; amount: number }[] = [];
+    sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        if (item.isTaxable) {
+          items.push({
+            name: item.name || 'Unnamed item',
+            sectionName: section.name,
+            amount: calculateSellPrice(item),
+          });
+        }
+      });
+    });
+    return items;
+  }, [sections]);
 
   // Toggle section collapse
   const toggleSection = (sectionId: string) => {
@@ -530,7 +661,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                     {/* Unit Cost - DISABLED */}
                     <div className="col-span-2">
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
                           $
                         </span>
                         <Input
@@ -538,7 +669,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                           value=""
                           placeholder="—"
                           disabled
-                          className={cn(disabledInputClassName, 'pl-7 text-right')}
+                          className={cn(disabledInputClassName, 'pl-5 text-right')}
                         />
                       </div>
                     </div>
@@ -553,7 +684,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                           disabled
                           className={cn(disabledInputClassName, 'text-center pr-5')}
                         />
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
                           %
                         </span>
                       </div>
@@ -561,32 +692,32 @@ export function PricingTab({ mode }: PricingTabProps) {
 
                     {/* Sell Price - DISABLED */}
                     <div className="col-span-1 text-right">
-                      <span className="font-mono text-gray-400 text-sm">—</span>
+                      <span className="font-mono text-gray-400 text-xs">—</span>
                     </div>
 
                     {/* Delete */}
                     <div className="col-span-1 flex justify-center">
                       <button
                         onClick={() => removeLineItem(section.id, item.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
-                        <Trash className="w-4 h-4" />
+                        <Trash className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                 ))}
 
                 {/* Add Field Row */}
-                <div className="grid grid-cols-12 gap-3 px-4 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+                <div className="grid grid-cols-12 gap-3 px-4 py-1 items-center border-t border-gray-100 dark:border-gray-700/50">
                   <div className="col-span-1"></div>
                   <div className="col-span-11">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => addLineItem(section.id)}
-                      className="text-coral hover:text-coral-hover hover:bg-coral/5 h-8"
+                      className="text-coral hover:text-coral-hover hover:bg-coral/5 h-7 text-xs"
                     >
-                      <Plus className="w-4 h-4 mr-1" />
+                      <Plus className="w-3.5 h-3.5 mr-1" />
                       Add Field
                     </Button>
                   </div>
@@ -615,7 +746,7 @@ export function PricingTab({ mode }: PricingTabProps) {
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           <div className="col-span-3">Name</div>
           <div className="col-span-1 text-center">Qty</div>
           <div className="col-span-2">Sell Rule</div>
@@ -634,14 +765,14 @@ export function PricingTab({ mode }: PricingTabProps) {
             return (
               <div key={section.id}>
                 {/* Section Divider Row */}
-                <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-100/50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-600 items-center">
+                <div className="grid grid-cols-12 gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-600 items-center">
                   <div className="col-span-11">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                       {section.name}
                     </span>
                   </div>
                   <div className="col-span-1 text-right">
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400">
                       {formatCurrency(subtotal)}
                     </span>
                   </div>
@@ -654,7 +785,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                   return (
                     <div
                       key={item.id}
-                      className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                      className="grid grid-cols-12 gap-2 px-3 py-1 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                     >
                       {/* Name */}
                       <div className="col-span-3">
@@ -708,7 +839,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                       {/* Unit Cost */}
                       <div className="col-span-2">
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
                             $
                           </span>
                           <Input
@@ -722,7 +853,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                               })
                             }
                             placeholder="0.00"
-                            className={cn(numberInputClassName, 'pl-7 text-right')}
+                            className={cn(numberInputClassName, 'pl-5 text-right')}
                           />
                         </div>
                       </div>
@@ -741,9 +872,9 @@ export function PricingTab({ mode }: PricingTabProps) {
                               })
                             }
                             placeholder="0"
-                            className={cn(numberInputClassName, 'text-center pr-6')}
+                            className={cn(numberInputClassName, 'text-center pr-5')}
                           />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
                             %
                           </span>
                         </div>
@@ -759,13 +890,13 @@ export function PricingTab({ mode }: PricingTabProps) {
                               isTaxable: e.target.checked,
                             })
                           }
-                          className="w-4 h-4 rounded border-gray-300 text-coral focus:ring-coral focus:ring-offset-0 cursor-pointer"
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-coral focus:ring-coral focus:ring-offset-0 cursor-pointer"
                         />
                       </div>
 
                       {/* Sell Price (calculated) */}
                       <div className="col-span-1 text-right">
-                        <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                        <span className="font-mono text-xs text-gray-700 dark:text-gray-300">
                           {formatCurrency(sellPrice)}
                         </span>
                       </div>
@@ -774,9 +905,9 @@ export function PricingTab({ mode }: PricingTabProps) {
                       <div className="col-span-1 flex justify-center">
                         <button
                           onClick={() => removeLineItem(section.id, item.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
-                          <Trash className="w-4 h-4" />
+                          <Trash className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -784,16 +915,16 @@ export function PricingTab({ mode }: PricingTabProps) {
                 })}
 
                 {/* Add Line Item Row */}
-                <div className="grid grid-cols-12 gap-3 px-4 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+                <div className="grid grid-cols-12 gap-2 px-3 py-0.5 items-center border-t border-gray-100 dark:border-gray-700/50">
                   <div className="col-span-12">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => addLineItem(section.id)}
-                      className="text-coral hover:text-coral-hover hover:bg-coral/5 h-8"
+                      className="text-gray-400 hover:text-coral hover:bg-coral/5 h-6 text-[10px]"
                     >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Line Item
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Item
                     </Button>
                   </div>
                 </div>
@@ -802,116 +933,142 @@ export function PricingTab({ mode }: PricingTabProps) {
           })}
         </div>
 
-        {/* Tax Summary Section */}
-        <div className="border-t-2 border-gray-300 dark:border-gray-600">
-          {/* Sales Tax Input Row */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/30 items-center">
-            <div className="col-span-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Sales Tax %
-              </label>
+        {/* Summary Section */}
+        <div className="border-t border-gray-200 dark:border-gray-600 pl-3 pr-4 py-3">
+          <div className="flex justify-between items-start">
+            {/* Left: Profit info */}
+            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+              <div>Cost: {formatCurrency(totalCost)}</div>
+              <div>Markup: {formatCurrency(grossProfit)} ({costMarkupPercent.toFixed(1)}%)</div>
+              <div>Margin: {formatCurrency(grossProfit)} ({grossProfitPercent.toFixed(1)}%)</div>
             </div>
-            <div className="col-span-2">
-              <div className="relative">
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.01}
-                  value={salesTaxPercent === 0 ? '' : salesTaxPercent}
-                  onChange={(e) => setSalesTaxPercent(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className={cn(numberInputClassName, 'text-center pr-6')}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                  %
+
+            {/* Right: Clean calculation */}
+            <div className="text-xs space-y-1">
+              {/* Subtotal - Clickable with breakdown */}
+              <div className="flex items-center">
+                <span className="text-gray-500 dark:text-gray-400 w-[180px]">Subtotal</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="font-mono text-gray-700 dark:text-gray-300 w-24 text-right hover:text-coral hover:underline underline-offset-2 cursor-pointer transition-colors"
+                    >
+                      {formatCurrency(subtotal)}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-56 p-3">
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Breakdown
+                      </p>
+                      {sectionBreakdown.length === 0 ? (
+                        <p className="text-xs text-gray-400">No items yet</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {sectionBreakdown.map((section, idx) => (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span className="text-gray-600 dark:text-gray-300 truncate mr-2">
+                                {section.name}
+                              </span>
+                              <span className="font-mono text-gray-700 dark:text-gray-200">
+                                {formatCurrency(section.total)}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between text-xs pt-1 border-t border-gray-200 dark:border-gray-600">
+                            <span className="font-medium text-gray-700 dark:text-gray-200">Total</span>
+                            <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
+                              {formatCurrency(subtotal)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Tax Row - State/City dropdown merged with Tax label */}
+              <div className="flex items-center">
+                <Select value={selectedTaxState} onValueChange={handleStateSelect}>
+                  <SelectTrigger className="h-6 w-42 text-xs px-0 border-0 bg-transparent shadow-none gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 [&>svg]:w-3 [&>svg]:h-3 [&>span]:ml-0 whitespace-nowrap">
+                    <SelectValue placeholder="Select Tax">
+                      {selectedTaxLabel
+                        ? `${selectedTaxLabel} Tax (${formatTaxRate(salesTaxPercent)}%)`
+                        : 'Select Tax'
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80 w-64">
+                    {/* States section */}
+                    <div className="px-2 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">States</div>
+                    {stateOptions.filter(opt => !opt.isCity).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                    {/* Cities section */}
+                    <div className="px-2 py-1 mt-1 border-t text-[10px] font-medium text-gray-400 uppercase tracking-wider">Cities</div>
+                    {stateOptions.filter(opt => opt.isCity).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="font-mono text-gray-700 dark:text-gray-300 w-24 text-right hover:text-coral hover:underline underline-offset-2 cursor-pointer transition-colors"
+                    >
+                      {formatCurrency(taxAmount)}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 p-3">
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Taxable Items ({formatTaxRate(salesTaxPercent)}%)
+                      </p>
+                      {taxableBreakdown.length === 0 ? (
+                        <p className="text-xs text-gray-400">No taxable items</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {taxableBreakdown.map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span className="text-gray-600 dark:text-gray-300 truncate mr-2">
+                                {item.name}
+                              </span>
+                              <span className="font-mono text-gray-700 dark:text-gray-200">
+                                {formatCurrency(item.amount)}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between text-xs pt-1 border-t border-gray-200 dark:border-gray-600">
+                            <span className="font-medium text-gray-700 dark:text-gray-200">Taxable Total</span>
+                            <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
+                              {formatCurrency(taxableAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">Tax ({formatTaxRate(salesTaxPercent)}%)</span>
+                            <span className="font-mono text-coral font-medium">
+                              {formatCurrency(taxAmount)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center pt-1 border-t border-gray-200 dark:border-gray-600">
+                <span className="text-gray-700 dark:text-gray-300 font-medium w-[180px]">Total</span>
+                <span className="font-mono text-gray-900 dark:text-gray-100 w-24 text-right font-medium">
+                  {formatCurrency(grandTotal)}
                 </span>
               </div>
-            </div>
-            <div className="col-span-7 flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleAllTaxable}
-                className="text-coral hover:text-coral-hover hover:bg-coral/5"
-              >
-                Select All Taxable
-              </Button>
-            </div>
-          </div>
-
-          {/* Subtotal Row */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
-            <div className="col-span-9"></div>
-            <div className="col-span-2 text-right">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Subtotal (incl. margin):
-              </span>
-            </div>
-            <div className="col-span-1 text-right">
-              <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-                {formatCurrency(subtotal)}
-              </span>
-            </div>
-          </div>
-
-          {/* Gross Profit Row */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
-            <div className="col-span-9"></div>
-            <div className="col-span-2 text-right">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Gross Profit:
-              </span>
-            </div>
-            <div className="col-span-1 text-right">
-              <span className={`font-mono text-sm ${grossProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                {formatCurrency(grossProfit)} ({grossProfitPercent.toFixed(1)}%)
-              </span>
-            </div>
-          </div>
-
-          {/* Taxable Amount Row */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
-            <div className="col-span-9"></div>
-            <div className="col-span-2 text-right">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Taxable Amount:
-              </span>
-            </div>
-            <div className="col-span-1 text-right">
-              <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                {formatCurrency(taxableAmount)}
-              </span>
-            </div>
-          </div>
-
-          {/* Tax Amount Row */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
-            <div className="col-span-9"></div>
-            <div className="col-span-2 text-right">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Tax ({salesTaxPercent}%):
-              </span>
-            </div>
-            <div className="col-span-1 text-right">
-              <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                {formatCurrency(taxAmount)}
-              </span>
-            </div>
-          </div>
-
-          {/* Grand Total Row */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-coral/5 dark:bg-coral/10 items-center">
-            <div className="col-span-9"></div>
-            <div className="col-span-2 text-right">
-              <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                Grand Total:
-              </span>
-            </div>
-            <div className="col-span-1 text-right">
-              <span className="font-mono text-lg font-bold text-coral">
-                {formatCurrency(grandTotal)}
-              </span>
             </div>
           </div>
         </div>

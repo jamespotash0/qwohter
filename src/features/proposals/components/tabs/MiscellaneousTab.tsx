@@ -68,12 +68,6 @@ function CollapsibleSection({ title, icon, badge, defaultOpen = true, children }
   );
 }
 
-// Default reference numbers
-const DEFAULT_REFERENCES: ReferenceNumber[] = [
-  { id: '1', label: 'PO Number', value: '' },
-  { id: '2', label: 'Job Number', value: '' },
-  { id: '3', label: 'Contract Number', value: '' },
-];
 
 interface MiscellaneousTabProps {
   mode: EditorMode;
@@ -82,7 +76,7 @@ interface MiscellaneousTabProps {
 export function MiscellaneousTab({ mode }: MiscellaneousTabProps) {
   // For now, both modes show the same UI - builder mode will be enhanced later
   const _isBuilderMode = mode === 'builder';
-  const [references, setReferences] = useState<ReferenceNumber[]>(DEFAULT_REFERENCES);
+  const [references, setReferences] = useState<ReferenceNumber[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [internalNotes, setInternalNotes] = useState('');
 

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHand
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
+import { PluginKey } from '@tiptap/pm/state';
 import tippy, { type Instance as TippyInstance } from 'tippy.js';
 import {
   TextHOne,
@@ -20,7 +21,6 @@ import {
   Quotes,
   Minus,
   Table,
-  BracketsCurly,
   TextT,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -113,17 +113,6 @@ const getSuggestionItems = (): CommandItem[] => [
     icon: <Table className="w-5 h-5" />,
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-    },
-  },
-  {
-    title: 'Variable',
-    description: 'Insert a dynamic variable',
-    icon: <BracketsCurly className="w-5 h-5" />,
-    command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).run();
-      // Trigger variable inserter - this will be handled by toolbar
-      const event = new CustomEvent('open-variable-inserter');
-      window.dispatchEvent(event);
     },
   },
 ];
@@ -240,6 +229,7 @@ export const SlashCommand = Extension.create({
     return [
       Suggestion({
         editor: this.editor,
+        pluginKey: new PluginKey('slashCommandSuggestion'),
         ...this.options.suggestion,
         items: ({ query }: { query: string }) => {
           return getSuggestionItems().filter((item) =>

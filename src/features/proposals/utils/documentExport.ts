@@ -17,7 +17,6 @@ import {
   TableRow,
   TableCell,
   WidthType,
-  BorderStyle,
   UnderlineType,
 } from 'docx';
 import type { EditorContent } from '../components/presentation/PresentationEditor';
@@ -31,66 +30,166 @@ interface ExportOptions {
   title?: string;
 }
 
+interface PdfExportOptions extends ExportOptions {
+  /** Pre-resolved HTML content (bypasses editor capture) */
+  resolvedHtml?: string;
+  /** Page format: 'letter' (US) or 'a4' (default) */
+  pageFormat?: 'letter' | 'a4';
+  /** Margin in mm (default: 25.4 = 1 inch) */
+  margin?: number;
+}
+
 // ============================================================================
 // PDF Export
 // ============================================================================
 
+/** Page dimensions in mm */
+const PAGE_DIMENSIONS = {
+  a4: { width: 210, height: 297 },
+  letter: { width: 215.9, height: 279.4 },
+};
+
 /**
- * Export the editor content to PDF by capturing the rendered HTML.
- * Uses html2canvas to capture the visual representation.
+ * Create print-ready styles for PDF export
+ */
+function createPrintStyles(contentWidth: number): string {
+  return `
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      width: ${contentWidth}px;
+      margin: 0;
+      padding: 0;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+      background: white;
+    }
+    h1 { font-size: 24px; font-weight: bold; margin: 0 0 16px 0; }
+    h2 { font-size: 20px; font-weight: 600; margin: 0 0 12px 0; }
+    h3 { font-size: 16px; font-weight: 500; margin: 0 0 8px 0; }
+    p { margin: 0 0 12px 0; }
+    ul { list-style-type: disc; padding-left: 24px; margin: 12px 0; }
+    ol { list-style-type: decimal; padding-left: 24px; margin: 12px 0; }
+    li { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+    th { background: #f3f4f6; font-weight: 600; }
+    blockquote { border-left: 4px solid #d1d5db; padding-left: 16px; margin: 16px 0; font-style: italic; }
+    a { color: #2563eb; text-decoration: underline; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+    .page-break { page-break-before: always; height: 0; }
+  `;
+}
+
+/**
+ * Export resolved HTML content to PDF.
+ * Creates a temporary container, renders the HTML, and captures it.
  */
 export async function exportToPdf(
   editorElement: HTMLElement,
-  options: ExportOptions = {}
+  options: PdfExportOptions = {}
 ): Promise<void> {
-  const { filename = 'document.pdf' } = options;
+  const {
+    filename = 'document.pdf',
+    resolvedHtml,
+    pageFormat = 'letter',
+    margin = 25.4, // 1 inch default margin
+  } = options;
 
-  // Find the actual content container (the paper-like div)
-  const contentElement = editorElement.querySelector('.tiptap') as HTMLElement;
-  if (!contentElement) {
-    throw new Error('Editor content not found');
+  const pageDims = PAGE_DIMENSIONS[pageFormat];
+  const contentWidthMm = pageDims.width - (margin * 2);
+  const contentHeightMm = pageDims.height - (margin * 2);
+
+  // Convert mm to px (at 96 DPI: 1mm ≈ 3.78px, but we use scale 2 for quality)
+  const mmToPx = 3.78;
+  const contentWidthPx = contentWidthMm * mmToPx;
+
+  let contentElement: HTMLElement;
+  let tempContainer: HTMLElement | null = null;
+
+  if (resolvedHtml) {
+    // Create temporary container for resolved HTML
+    tempContainer = document.createElement('div');
+    tempContainer.style.cssText = `
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      width: ${contentWidthPx}px;
+      background: white;
+      padding: 0;
+      margin: 0;
+    `;
+
+    // Add styles and content
+    const styleElement = document.createElement('style');
+    styleElement.textContent = createPrintStyles(contentWidthPx);
+    tempContainer.appendChild(styleElement);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.innerHTML = resolvedHtml;
+    tempContainer.appendChild(contentDiv);
+
+    document.body.appendChild(tempContainer);
+
+    // Force layout calculation
+    tempContainer.offsetHeight;
+
+    contentElement = contentDiv;
+  } else {
+    // Fallback: capture from editor element directly
+    const tiptapElement = editorElement.querySelector('.tiptap') as HTMLElement;
+    if (!tiptapElement) {
+      throw new Error('Editor content not found');
+    }
+    contentElement = tiptapElement;
   }
 
-  // Capture the content as a canvas
-  const canvas = await html2canvas(contentElement, {
-    scale: 2, // Higher resolution
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff',
-    windowWidth: contentElement.scrollWidth,
-    windowHeight: contentElement.scrollHeight,
-  });
+  try {
+    // Capture the content as a canvas with high resolution
+    const canvas = await html2canvas(contentElement, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: contentWidthPx,
+      windowWidth: contentWidthPx,
+    });
 
-  // Calculate dimensions for the PDF (US Letter size)
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 297; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: pageFormat,
+    });
 
-  // Create PDF
-  const pdf = new jsPDF({
-    orientation: imgHeight > imgWidth ? 'portrait' : 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+    // Calculate image dimensions to fit content width
+    const imgWidth = contentWidthMm;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL('image/png', 1.0);
 
-  let heightLeft = imgHeight;
-  let position = 0;
-  const imgData = canvas.toDataURL('image/png');
+    let heightLeft = imgHeight;
+    let position = 0;
 
-  // Add first page
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+    // Add first page
+    pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+    heightLeft -= contentHeightMm;
 
-  // Add additional pages if content is longer than one page
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Add additional pages if content is longer than one page
+    while (heightLeft > 0) {
+      position -= contentHeightMm;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, position + margin, imgWidth, imgHeight);
+      heightLeft -= contentHeightMm;
+    }
+
+    // Download the PDF
+    pdf.save(filename);
+  } finally {
+    // Clean up temporary container
+    if (tempContainer && document.body.contains(tempContainer)) {
+      document.body.removeChild(tempContainer);
+    }
   }
-
-  // Download the PDF
-  pdf.save(filename);
 }
 
 // ============================================================================

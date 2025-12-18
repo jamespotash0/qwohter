@@ -28,3 +28,4 @@ export {
 } from './VariableExtension';
 export { EditorHelpButton } from './EditorHelpButton';
 export { PreviewDialog } from './PreviewDialog';
+export { VariableSuggestion, setVariablesGetter } from './VariableSuggestion';

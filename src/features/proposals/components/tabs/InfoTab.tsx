@@ -167,19 +167,22 @@ function formatStoredPhone(value: string): string {
 export interface InfoTabData {
   projectName: string;
   proposalDate: string;
-  contactName: string;
+  contactName: string;        // Display name (resolved from contact/member)
+  contactNameId?: string;     // Reference ID for maintaining relationship
   contactEmail: string;
   proposalSource: string;
   categoryOfWork: string;
   laborType: string;
   projectType: string;
-  clientName: string;
+  clientName: string;         // Display name (resolved from contact)
+  clientNameId?: string;      // Reference ID for maintaining relationship
   clientCompany: string;
   clientEmail: string;
   clientPhone: string;
   clientAddress: string;
   clientContactType: string;
-  jobLocation: string;
+  jobLocationName: string;    // Friendly name for job site (e.g., "Main Office")
+  jobLocation: string;        // Physical address
   jobFloor: string;
   locationType: string;
   estimatedDueDate: string;
@@ -218,7 +221,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   // Project Details
   const [projectName, setProjectName] = useState('');
   const [proposalDate, setProposalDate] = useState('');
-  const [contactName, setContactName] = useState('');
+  const [contactName, setContactName] = useState('');      // Display name
+  const [contactNameId, setContactNameId] = useState('');  // Reference ID
   const [contactEmail, setContactEmail] = useState('');
 
   // Work Details
@@ -228,7 +232,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   const [projectType, setProjectType] = useState('');
 
   // Client Information
-  const [clientName, setClientName] = useState('');
+  const [clientName, setClientName] = useState('');        // Display name
+  const [clientNameId, setClientNameId] = useState('');    // Reference ID
   const [clientCompany, setClientCompany] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -236,6 +241,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   const [clientContactType, setClientContactType] = useState('');
 
   // Job Details
+  const [jobLocationName, setJobLocationName] = useState('');
   const [jobLocation, setJobLocation] = useState('');
   const [jobFloor, setJobFloor] = useState('');
   const [locationType, setLocationType] = useState('');
@@ -261,6 +267,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     clientPhone: '',
     clientAddress: '',
     clientContactType: '',
+    jobLocationName: '',
     jobLocation: '',
     jobFloor: '',
     locationType: '',
@@ -307,6 +314,15 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     }
   }, [isBuilderMode, proposalDate]);
 
+  // Helper to check if a string looks like a UUID
+  const isUuidLike = (str: string): boolean => {
+    if (!str) return false;
+    // UUID pattern or prefixed ID like "contact:uuid"
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const cleanStr = str.startsWith('contact:') ? str.replace('contact:', '') : str;
+    return uuidPattern.test(cleanStr);
+  };
+
   // Load data from proposalData.form_data.info on initial mount
   useEffect(() => {
     if (!isBuilderMode && !hasLoadedInitialData.current && proposalData) {
@@ -316,27 +332,61 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       if (info) {
         setProjectName(info.projectName || proposalData.project_name || '');
         setProposalDate(info.proposalDate || '');
-        setContactName(info.contactName || '');
+
+        // Handle contact name - check if it's a UUID that needs resolution
+        const savedContactName = info.contactName || '';
+        const savedContactNameId = info.contactNameId || '';
+        if (savedContactNameId) {
+          // New format: both ID and name saved
+          setContactNameId(savedContactNameId);
+          setContactName(savedContactName);
+        } else if (isUuidLike(savedContactName)) {
+          // Old format: contactName contains UUID - use as ID, will resolve name below
+          setContactNameId(savedContactName);
+          setContactName(''); // Will be resolved
+        } else {
+          // Plain name without ID reference
+          setContactName(savedContactName);
+          setContactNameId('');
+        }
+
         setContactEmail(info.contactEmail || '');
         setProposalSource(info.proposalSource || '');
         setCategoryOfWork(info.categoryOfWork || '');
         setLaborType(info.laborType || '');
         setProjectType(info.projectType || '');
-        setClientName(info.clientName || '');
+
+        // Handle client name - check if it's a UUID that needs resolution
+        const savedClientName = info.clientName || '';
+        const savedClientNameId = info.clientNameId || '';
+        if (savedClientNameId) {
+          // New format: both ID and name saved
+          setClientNameId(savedClientNameId);
+          setClientName(savedClientName);
+        } else if (isUuidLike(savedClientName)) {
+          // Old format: clientName contains UUID - use as ID, will resolve name below
+          setClientNameId(savedClientName);
+          setClientName(''); // Will be resolved
+        } else {
+          // Plain name without ID reference
+          setClientName(savedClientName);
+          setClientNameId('');
+          if (savedClientName) {
+            setIsCustomClientName(true);
+          }
+        }
+
         setClientCompany(info.clientCompany || '');
         setClientEmail(info.clientEmail || '');
         setClientPhone(info.clientPhone || '');
         setClientAddress(info.clientAddress || '');
         setClientContactType(info.clientContactType || '');
+        setJobLocationName(info.jobLocationName || '');
         setJobLocation(info.jobLocation || '');
         setJobFloor(info.jobFloor || '');
         setLocationType(info.locationType || '');
         setEstimatedDueDate(info.estimatedDueDate || '');
         setJobNotes(info.jobNotes || '');
-        // If client name exists, assume manually entered
-        if (info.clientName) {
-          setIsCustomClientName(true);
-        }
         hasLoadedInitialData.current = true;
       } else if (proposalData.project_name) {
         // Fallback: load from direct columns if no form_data.info
@@ -352,6 +402,41 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       }
     }
   }, [isBuilderMode, proposalData]);
+
+  // Resolve contact/client names from IDs when members/contacts are loaded
+  useEffect(() => {
+    // Resolve contact name from ID if needed
+    if (contactNameId && !contactName && (members.length > 0 || contacts.length > 0)) {
+      if (contactNameId.startsWith('contact:')) {
+        const contactId = contactNameId.replace('contact:', '');
+        const contact = contacts.find((c: Contact) => c.id === contactId);
+        if (contact) {
+          setContactName(contact.full_name);
+        }
+      } else {
+        const member = members.find(m => m.user_id === contactNameId);
+        if (member?.full_name) {
+          setContactName(member.full_name);
+        }
+      }
+    }
+
+    // Resolve client name from ID if needed
+    if (clientNameId && !clientName && contacts.length > 0) {
+      const contact = contacts.find((c: Contact) => c.id === clientNameId);
+      if (contact) {
+        setClientName(contact.full_name || '');
+        // Also populate other fields if they're empty
+        if (!clientCompany && contact.company_name) setClientCompany(contact.company_name);
+        if (!clientEmail && contact.emails?.[0]) setClientEmail(contact.emails[0]);
+        if (!clientPhone && contact.phones?.[0]?.number) {
+          setClientPhone(formatStoredPhone(contact.phones[0].number));
+        }
+        if (!clientAddress && contact.addresses?.[0]) setClientAddress(contact.addresses[0]);
+        if (!clientContactType && contact.contact_type) setClientContactType(contact.contact_type);
+      }
+    }
+  }, [contactNameId, contactName, clientNameId, clientName, members, contacts, clientCompany, clientEmail, clientPhone, clientAddress, clientContactType]);
 
   // Notify parent when project name changes
   useEffect(() => {
@@ -379,6 +464,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           clientPhone,
           clientAddress,
           clientContactType,
+          jobLocationName,
           jobLocation,
           jobFloor,
           locationType,
@@ -406,6 +492,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     clientPhone,
     clientAddress,
     clientContactType,
+    jobLocationName,
     jobLocation,
     jobFloor,
     locationType,
@@ -432,6 +519,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       clientPhone !== initialValues.clientPhone ||
       clientAddress !== initialValues.clientAddress ||
       clientContactType !== initialValues.clientContactType ||
+      jobLocationName !== initialValues.jobLocationName ||
       jobLocation !== initialValues.jobLocation ||
       jobFloor !== initialValues.jobFloor ||
       locationType !== initialValues.locationType ||
@@ -456,6 +544,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     clientPhone,
     clientAddress,
     clientContactType,
+    jobLocationName,
     jobLocation,
     jobFloor,
     locationType,
@@ -470,17 +559,20 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       projectName,
       proposalDate,
       contactName,
+      contactNameId: contactNameId || undefined,
       contactEmail,
       proposalSource,
       categoryOfWork,
       laborType,
       projectType,
       clientName,
+      clientNameId: clientNameId || undefined,
       clientCompany,
       clientEmail,
       clientPhone,
       clientAddress,
       clientContactType,
+      jobLocationName,
       jobLocation,
       jobFloor,
       locationType,
@@ -504,6 +596,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         clientPhone,
         clientAddress,
         clientContactType,
+        jobLocationName,
         jobLocation,
         jobFloor,
         locationType,
@@ -515,17 +608,20 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     projectName,
     proposalDate,
     contactName,
+    contactNameId,
     contactEmail,
     proposalSource,
     categoryOfWork,
     laborType,
     projectType,
     clientName,
+    clientNameId,
     clientCompany,
     clientEmail,
     clientPhone,
     clientAddress,
     clientContactType,
+    jobLocationName,
     jobLocation,
     jobFloor,
     locationType,
@@ -533,22 +629,28 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     jobNotes,
   ]);
 
-  // Handle contact name change - auto-select corresponding email
+  // Handle contact name change - auto-select corresponding email and store resolved name
   const handleContactNameChange = (value: string) => {
-    setContactName(value);
+    setContactNameId(value); // Store the reference ID
 
     // Check if it's an employee contact (prefixed with "contact:")
     if (value.startsWith('contact:')) {
       const contactId = value.replace('contact:', '');
       const contact = contacts.find((c: Contact) => c.id === contactId);
-      if (contact?.emails?.[0]) {
-        setContactEmail(contact.emails![0]);
+      if (contact) {
+        setContactName(contact.full_name); // Store resolved name
+        if (contact.emails?.[0]) {
+          setContactEmail(contact.emails[0]);
+        }
       }
     } else {
       // It's a member
       const member = members.find(m => m.user_id === value);
-      if (member?.email) {
-        setContactEmail(member.email);
+      if (member) {
+        setContactName(member.full_name || ''); // Store resolved name
+        if (member.email) {
+          setContactEmail(member.email);
+        }
       }
     }
   };
@@ -560,7 +662,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     // First check if it's a member's email
     const member = members.find(m => m.email === email);
     if (member?.user_id) {
-      setContactName(member.user_id);
+      setContactNameId(member.user_id);
+      setContactName(member.full_name || '');
       return;
     }
 
@@ -569,7 +672,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       c.contact_type === 'Employee' && c.emails?.includes(email)
     );
     if (contact) {
-      setContactName(`contact:${contact.id}`);
+      setContactNameId(`contact:${contact.id}`);
+      setContactName(contact.full_name);
     }
   };
 
@@ -578,6 +682,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     if (value === '__custom__') {
       // Switch to custom input mode
       setIsCustomClientName(true);
+      setClientNameId('');
       setClientName('');
       setClientCompany('');
       setClientEmail('');
@@ -591,7 +696,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     const contact = contacts.find((c: Contact) => c.id === value);
     if (contact) {
       setIsCustomClientName(false);
-      setClientName(contact.full_name || '');
+      setClientNameId(contact.id);           // Store reference ID
+      setClientName(contact.full_name || ''); // Store resolved name
       setClientCompany(contact.company_name || '');
       setClientEmail(contact.emails?.[0] || '');
       // Format phone number when loading from contact
@@ -608,10 +714,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     setClientPhone(formatted);
   };
 
-  // Get selected contact ID based on client name match (exclude employees)
-  const selectedContactId = contacts
-    .filter((c: Contact) => c.contact_type !== 'Employee')
-    .find((c: Contact) => c.full_name === clientName)?.id || '';
+  // Get selected contact ID (use stored ID if available, fallback to name match)
+  const selectedContactId = clientNameId || '';
 
   // Save current client info as a new contact
   const handleSaveAsContact = async () => {
@@ -676,9 +780,9 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           {/* Contact Name + Contact Email (Dropdowns) */}
           <div className="grid grid-cols-2 gap-4">
             <Field label="Contact Name" tooltip="Primary contact person for this proposal">
-              <Select value={contactName} onValueChange={handleContactNameChange} disabled={isBuilderMode}>
+              <Select value={contactNameId} onValueChange={handleContactNameChange} disabled={isBuilderMode}>
                 <SelectTrigger className={disabledSelectClassName}>
-                  <SelectValue placeholder="Select contact" />
+                  <SelectValue placeholder="Select contact">{contactName || 'Select contact'}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {/* Organization Members */}
@@ -871,6 +975,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                             onClick={() => {
                               setIsCustomClientName(false);
                               // Clear fields so dropdown shows placeholder
+                              setClientNameId('');
                               setClientName('');
                               setClientCompany('');
                               setClientEmail('');
@@ -980,32 +1085,18 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           title="Job Details"
           icon={<MapPin className="w-5 h-5" />}
         >
-          {/* Job Location + FL */}
+          {/* Job Location Name (POI search) + Floor */}
           <div className="grid grid-cols-4 gap-3">
             <div className="col-span-3">
-              {isBuilderMode ? (
-                <Field label="Job Location" tooltip="Physical address where work will be performed">
-                  <Input
-                    value={jobLocation}
-                    onChange={(e) => setJobLocation(e.target.value)}
-                    placeholder="Enter job site address"
-                    className={disabledInputClassName}
-                    disabled={isBuilderMode}
-                  />
-                </Field>
-              ) : (
-                <MapboxInput
-                  id="job-location"
-                  label="Job Location"
-                  value={jobLocation}
-                  onChange={setJobLocation}
-                  placeholder="Enter job site address"
-                  className={cn(
-                    'h-10 rounded-lg border-gray-200 dark:border-gray-600',
-                    'focus:ring-2 focus:ring-coral/20 focus:border-coral'
-                  )}
+              <Field label="Job Location Name" tooltip="Input a place or landmark (e.g., Empire State Building)">
+                <Input
+                  value={jobLocationName}
+                  onChange={(e) => setJobLocationName(e.target.value)}
+                  placeholder="Input a place or landmark..."
+                  className={disabledInputClassName}
+                  disabled={isBuilderMode}
                 />
-              )}
+              </Field>
             </div>
             <div className="col-span-1">
               <Field label="FL" tooltip="Floor number at job location">
@@ -1020,9 +1111,36 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
             </div>
           </div>
 
+          {/* Job Location Address (full width) */}
+          <div>
+            {isBuilderMode ? (
+              <Field label="Job Address" tooltip="Physical address where work will be performed">
+                <Input
+                  value={jobLocation}
+                  onChange={(e) => setJobLocation(e.target.value)}
+                  placeholder="Enter job site address"
+                  className={disabledInputClassName}
+                  disabled={isBuilderMode}
+                />
+              </Field>
+            ) : (
+              <MapboxInput
+                id="job-location"
+                label="Job Address"
+                value={jobLocation}
+                onChange={setJobLocation}
+                placeholder="Enter job site address"
+                className={cn(
+                  'h-10 rounded-lg border-gray-200 dark:border-gray-600',
+                  'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+                )}
+              />
+            )}
+          </div>
+
           {/* Location Type + Est. Due Date */}
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Location Type" tooltip="Type of location or facility">
+            <Field label="Location Type" tooltip="Type of location, building, or facility">
               <Input
                 value={locationType}
                 onChange={(e) => setLocationType(e.target.value)}
