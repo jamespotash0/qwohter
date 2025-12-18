@@ -3,9 +3,9 @@
  *
  * Canonical type definitions for the forms system used throughout the codebase.
  *
- * Note: The form structure is FIXED (8 tabs with predefined sections).
+ * Note: The form structure is FIXED (7 tabs with predefined sections).
  * Customization happens through DEFAULT VALUES stored in FormMetadata.defaults.
- * See FormBuilderContext.tsx for the data types (TermsData, PricingData, etc.)
+ * See FormBuilderContext.tsx for the data types (PricingData, LeadTimesData, etc.)
  */
 
 // Document type is now a string to support custom document types per organization
@@ -68,18 +68,6 @@ export interface PricingTabConfig {
 }
 
 /**
- * Terms Tab Configuration
- */
-export interface TermsTabConfig {
-  enabled: boolean;
-  sections: {
-    paymentMilestones: { enabled: boolean };
-    warranties: { enabled: boolean };
-    exclusions: { enabled: boolean };
-  };
-}
-
-/**
  * Lead Times Tab Configuration
  */
 export interface LeadTimesTabConfig {
@@ -117,11 +105,9 @@ export interface PresentationTabConfig {
  * Config controls tab-level options only.
  *
  * CUSTOMIZATION happens through DEFAULTS (FormBuilderData):
- * - Which payment milestones are pre-populated
- * - Which warranties are pre-set
- * - Which exclusions are checked by default
  * - Which pricing sections exist
  * - Which lead time phases are pre-created
+ * - Which misc fields are pre-populated
  * - etc.
  */
 export interface FormConfiguration {
@@ -130,7 +116,6 @@ export interface FormConfiguration {
     info: InfoTabConfig;
     products: ProductsTabConfig;
     pricing: PricingTabConfig;
-    terms: TermsTabConfig;
     leadTimes: LeadTimesTabConfig;
     miscellaneous: MiscTabConfig;
     documents: DocumentsTabConfig;
@@ -145,11 +130,6 @@ export interface FormConfiguration {
 export interface FormMetadata {
   config: FormConfiguration;  // What the form looks like
   defaults: {                 // Default values for tabs that have them
-    terms?: {
-      paymentMilestones?: Array<{ percentage: number; trigger: string }>;
-      warranties?: Array<{ name: string; quantity: number; unit: string }>;
-      exclusions?: Array<{ label: string; checked: boolean }>;
-    };
     pricing?: {
       sections?: Array<{ name: string; type: string }>;
     };
@@ -206,14 +186,6 @@ export function createDefaultFormConfiguration(): FormConfiguration {
         enabled: true,
         showMarkup: true,
         showUnitCost: true,
-      },
-      terms: {
-        enabled: true,
-        sections: {
-          paymentMilestones: { enabled: true },
-          warranties: { enabled: true },
-          exclusions: { enabled: true },
-        },
       },
       leadTimes: {
         enabled: true,

@@ -34,8 +34,6 @@ function getCategoryIcon(category: string) {
       return <Buildings className="w-3 h-3" />;
     case 'Products':
       return <Package className="w-3 h-3" />;
-    case 'Terms':
-      return <ListBullets className="w-3 h-3" />;
     case 'Pricing':
       return <CurrencyDollar className="w-3 h-3" />;
     case 'Lead Times':
@@ -99,13 +97,6 @@ function getCategoryColors(category: string) {
         count: 'text-violet-400',
         item: 'text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20',
         code: 'text-violet-400',
-      };
-    case 'Terms':
-      return {
-        header: 'text-green-600 dark:text-green-400',
-        count: 'text-green-400',
-        item: 'text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20',
-        code: 'text-green-400',
       };
     case 'Pricing':
       return {

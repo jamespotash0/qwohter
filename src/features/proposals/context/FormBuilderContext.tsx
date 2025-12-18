@@ -6,7 +6,7 @@
  *
  * Supports both:
  * - config: Form structure (which tabs/sections/fields are enabled)
- * - defaults: Default values for tabs (terms, pricing, etc.)
+ * - defaults: Default values for tabs (pricing, lead times, etc.)
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
@@ -16,32 +16,6 @@ import {
   createDefaultFormConfiguration,
 } from '@/lib/types/forms';
 
-// ============ Terms Tab Data ============
-export interface PaymentMilestone {
-  id: string;
-  percentage: number;
-  trigger: string;
-}
-
-export interface WarrantyItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-}
-
-export interface Exclusion {
-  id: string;
-  label: string;
-  checked: boolean;
-}
-
-export interface TermsData {
-  paymentMilestones: PaymentMilestone[];
-  warranties: WarrantyItem[];
-  exclusions: Exclusion[];
-}
-
 // ============ Pricing Tab Data ============
 export interface PricingLineItem {
   id: string;
@@ -50,7 +24,15 @@ export interface PricingLineItem {
   sellRule: string;
   unitCost: number;
   markupPercent: number;
+  /** Markup type: 'percent' or 'dollar' (default: percent) */
+  markupType?: 'percent' | 'dollar';
   isTaxable?: boolean;
+  /** Source product ID - links to Product.id for cascade delete */
+  sourceProductId?: string;
+  /** Discount value (applied after markup, before tax) */
+  discountValue?: number;
+  /** Discount type: 'percent' or 'dollar' */
+  discountType?: 'percent' | 'dollar';
 }
 
 export interface PricingSection {
@@ -72,6 +54,7 @@ export interface LeadTimePhase {
   id: string;
   phaseName: string;
   duration: string;
+  durationUnit?: string;
   estCompletionDate: string;
 }
 
@@ -139,6 +122,10 @@ export interface Product {
   rawData?: ProductRawData;
   /** User-editable alias for variable reference (e.g., "wallA", "ceilingB") */
   alias?: string;
+  /** Unit cost for pricing */
+  unitCost?: number;
+  /** Discount percentage (0-100) */
+  discountPercent?: number;
 }
 
 export interface ProductsData {
@@ -193,7 +180,6 @@ export interface PresentationData {
 
 // ============ Complete Form Structure ============
 export interface FormBuilderData {
-  terms: TermsData;
   pricing: PricingData;
   leadTimes: LeadTimesData;
   miscellaneous: MiscellaneousData;
@@ -203,11 +189,6 @@ export interface FormBuilderData {
 
 // Default empty state for builder mode
 const DEFAULT_BUILDER_DATA: FormBuilderData = {
-  terms: {
-    paymentMilestones: [],
-    warranties: [],
-    exclusions: [],
-  },
   pricing: {
     sections: [],
   },
@@ -241,9 +222,6 @@ interface FormBuilderContextType {
   // Form defaults (values for tabs)
   data: FormBuilderData;
   isDirty: boolean;
-
-  // Terms
-  setTermsData: (data: TermsData) => void;
 
   // Pricing
   setPricingData: (data: PricingData) => void;
@@ -298,11 +276,6 @@ export function FormBuilderProvider({ children, initialData, initialConfig }: Fo
   }, []);
 
   // Data setters
-  const setTermsData = useCallback((termsData: TermsData) => {
-    setData(prev => ({ ...prev, terms: termsData }));
-    setIsDirty(true);
-  }, []);
-
   const setPricingData = useCallback((pricingData: PricingData) => {
     setData(prev => ({ ...prev, pricing: pricingData }));
     setIsDirty(true);
@@ -350,7 +323,6 @@ export function FormBuilderProvider({ children, initialData, initialConfig }: Fo
       if ('defaults' in metadata && metadata.defaults) {
         const defaults = metadata.defaults as Record<string, unknown>;
         setData({
-          terms: (defaults.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
           pricing: (defaults.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
           leadTimes: (defaults.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
           miscellaneous: (defaults.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
@@ -365,7 +337,6 @@ export function FormBuilderProvider({ children, initialData, initialConfig }: Fo
       setConfigState(createDefaultFormConfiguration());
       const legacyData = metadata as Record<string, unknown>;
       setData({
-        terms: (legacyData.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
         pricing: (legacyData.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
         leadTimes: (legacyData.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
         miscellaneous: (legacyData.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
@@ -394,7 +365,6 @@ export function FormBuilderProvider({ children, initialData, initialConfig }: Fo
         updateConfig,
         data,
         isDirty,
-        setTermsData,
         setPricingData,
         setLeadTimesData,
         setMiscellaneousData,
@@ -433,7 +403,6 @@ export function serializeFormMetadata(
   return {
     config,
     defaults: {
-      terms: data.terms,
       pricing: data.pricing,
       leadTimes: data.leadTimes,
       miscellaneous: data.miscellaneous,
@@ -450,7 +419,6 @@ export function serializeFormMetadata(
  */
 export function serializeFormBuilderData(data: FormBuilderData): Record<string, unknown> {
   return {
-    terms: data.terms,
     pricing: data.pricing,
     leadTimes: data.leadTimes,
     miscellaneous: data.miscellaneous,
@@ -481,7 +449,6 @@ export function parseFormMetadata(metadata: unknown): {
     return {
       config: parsed.config as FormConfiguration,
       data: {
-        terms: (defaults.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
         pricing: (defaults.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
         leadTimes: (defaults.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
         miscellaneous: (defaults.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
@@ -495,7 +462,6 @@ export function parseFormMetadata(metadata: unknown): {
   return {
     config: createDefaultFormConfiguration(),
     data: {
-      terms: (parsed.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
       pricing: (parsed.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
       leadTimes: (parsed.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
       miscellaneous: (parsed.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
@@ -520,7 +486,6 @@ export function parseFormBuilderData(tabsData: unknown): FormBuilderData {
   if ('defaults' in parsed && parsed.defaults) {
     const defaults = parsed.defaults as Record<string, unknown>;
     return {
-      terms: (defaults.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
       pricing: (defaults.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
       leadTimes: (defaults.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
       miscellaneous: (defaults.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
@@ -531,7 +496,6 @@ export function parseFormBuilderData(tabsData: unknown): FormBuilderData {
 
   // Legacy format
   return {
-    terms: (parsed.terms as TermsData) || DEFAULT_BUILDER_DATA.terms,
     pricing: (parsed.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
     leadTimes: (parsed.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
     miscellaneous: (parsed.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,

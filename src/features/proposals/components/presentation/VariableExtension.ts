@@ -11,9 +11,6 @@ import { ReactNodeViewRenderer } from '@tiptap/react';
 import type {
   Product,
   FormBuilderData,
-  PaymentMilestone,
-  WarrantyItem,
-  Exclusion,
   PricingSection,
   LeadTimeSection,
   MiscField,
@@ -197,72 +194,7 @@ export function getAllVariablesByCategory(products: Product[]): Record<string, V
 // Dynamic Form Variables
 // ============================================================================
 
-/**
- * Generate variables from Terms tab data (payment milestones, warranties, exclusions)
- */
-export function getTermsVariables(data: FormBuilderData): VariableDefinition[] {
-  const vars: VariableDefinition[] = [];
-  const terms = data.terms;
 
-  // Payment milestones summary
-  if (terms.paymentMilestones.length > 0) {
-    vars.push({
-      key: 'terms.paymentSchedule',
-      label: 'Payment Schedule',
-      category: 'Terms',
-      description: 'Full payment milestone schedule',
-    });
-
-    // Individual milestones
-    terms.paymentMilestones.forEach((milestone, idx) => {
-      const num = idx + 1;
-      vars.push({
-        key: `terms.milestone${num}.percentage`,
-        label: `Milestone ${num} %`,
-        category: 'Terms',
-        description: `Payment ${num}: ${milestone.percentage}%`,
-      });
-      vars.push({
-        key: `terms.milestone${num}.trigger`,
-        label: `Milestone ${num} Trigger`,
-        category: 'Terms',
-        description: `When payment ${num} is due`,
-      });
-    });
-  }
-
-  // Warranties summary
-  if (terms.warranties.length > 0) {
-    vars.push({
-      key: 'terms.warranties',
-      label: 'Warranties List',
-      category: 'Terms',
-      description: 'All warranty items',
-    });
-
-    // Individual warranties
-    terms.warranties.forEach((warranty, idx) => {
-      vars.push({
-        key: `terms.warranty${idx + 1}`,
-        label: warranty.name,
-        category: 'Terms',
-        description: `${warranty.quantity} ${warranty.unit}`,
-      });
-    });
-  }
-
-  // Exclusions
-  if (terms.exclusions.some(e => e.checked)) {
-    vars.push({
-      key: 'terms.exclusions',
-      label: 'Exclusions List',
-      category: 'Terms',
-      description: 'All checked exclusions',
-    });
-  }
-
-  return vars;
-}
 
 /**
  * Generate variables from Pricing tab data
@@ -449,10 +381,6 @@ export function getAllFormVariables(data: FormBuilderData): Record<string, Varia
   Object.assign(result, productVars);
 
   // Add terms variables
-  const termsVars = getTermsVariables(data);
-  if (termsVars.length > 0) {
-    result['Terms'] = [...(result['Terms'] || []), ...termsVars];
-  }
 
   // Add pricing variables
   const pricingVars = getPricingVariables(data);

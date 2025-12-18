@@ -13,7 +13,7 @@
  * - Filler mode: Enter actual durations and dates
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Trash, DotsSixVertical, Clock, CaretDown, CaretRight } from '@phosphor-icons/react';
 import {
   DndContext,
@@ -34,13 +34,29 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { EditorMode } from '../ProposalEditor';
+import { useFormBuilder } from '../../context/FormBuilderContext';
+
+// Duration unit options
+const DURATION_UNITS = [
+  { value: 'days', label: 'Days' },
+  { value: 'weeks', label: 'Weeks' },
+  { value: 'months', label: 'Months' },
+];
 
 interface LeadTimePhase {
   id: string;
   phaseName: string;
   duration: string;
+  durationUnit: string;
   estCompletionDate: string;
 }
 
@@ -100,7 +116,7 @@ function SortablePhaseRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20',
+        'grid grid-cols-12 gap-3 px-4 py-3.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20',
         isDragging && 'bg-gray-100 dark:bg-gray-700/50 shadow-lg z-50'
       )}
     >
@@ -167,7 +183,62 @@ interface LeadTimesTabProps {
 
 export function LeadTimesTab({ mode }: LeadTimesTabProps) {
   const isBuilderMode = mode === 'builder';
-  const [sections, setSections] = useState<LeadTimeSection[]>(DEFAULT_SECTIONS);
+
+  // Get context data and setter
+  const { data: formData, setLeadTimesData } = useFormBuilder();
+
+  // Initialize local state from context or defaults
+  const [sections, setSections] = useState<LeadTimeSection[]>(() => {
+    const contextSections = formData.leadTimes?.sections;
+    if (contextSections && contextSections.length > 0) {
+      // Convert context sections to local format (add durationUnit if missing)
+      return contextSections.map(s => ({
+        ...s,
+        phases: s.phases.map(phase => ({
+          ...phase,
+          durationUnit: phase.durationUnit ?? 'weeks',
+        })),
+      }));
+    }
+    return DEFAULT_SECTIONS;
+  });
+
+  // Track if initial data has been loaded from context
+  const hasLoadedInitialData = useRef(false);
+
+  // Load data from context when proposal data changes (e.g., proposal loaded async)
+  useEffect(() => {
+    // Skip if we've already loaded OR if context has no data
+    if (hasLoadedInitialData.current) return;
+
+    const contextSections = formData.leadTimes?.sections;
+    if (contextSections && contextSections.length > 0) {
+      setSections(contextSections.map(s => ({
+        ...s,
+        phases: s.phases.map(phase => ({
+          ...phase,
+          durationUnit: phase.durationUnit ?? 'weeks',
+        })),
+      })));
+      hasLoadedInitialData.current = true;
+    }
+  }, [formData.leadTimes]);
+
+  // Sync local state changes back to context
+  const isUpdatingFromContext = useRef(false);
+
+  useEffect(() => {
+    // Skip syncing back if we're currently loading from context
+    if (isUpdatingFromContext.current) {
+      isUpdatingFromContext.current = false;
+      return;
+    }
+
+    // Sync to context whenever local state changes
+    setLeadTimesData({
+      sections: sections,
+    });
+  }, [sections, setLeadTimesData]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -233,6 +304,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                   id: `${Date.now()}`,
                   phaseName: '',
                   duration: '',
+                  durationUnit: 'weeks',
                   estCompletionDate: '',
                 },
               ],
@@ -300,7 +372,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
         {/* Unified Table */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="grid grid-cols-12 gap-3 px-4 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-1"></div>
             <div className="col-span-5">Phase Name</div>
             <div className="col-span-3">Duration</div>
@@ -392,7 +464,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                 </DndContext>
 
                 {/* Add Field Row */}
-                <div className="grid grid-cols-12 gap-3 px-4 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+                <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center border-t border-gray-100 dark:border-gray-700/50">
                   <div className="col-span-1"></div>
                   <div className="col-span-11">
                     <Button
@@ -428,7 +500,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           <div className="col-span-5">Phase Name</div>
           <div className="col-span-3">Duration</div>
           <div className="col-span-3">Est. Completion</div>
@@ -440,9 +512,9 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
           {sections.map((section) => (
             <div key={section.id}>
               {/* Section Divider Row */}
-              <div className="grid grid-cols-12 gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-600 items-center">
+              <div className="grid grid-cols-12 gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-600 items-center">
                 <div className="col-span-12">
-                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                     {section.name}
                   </span>
                 </div>
@@ -452,7 +524,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
               {section.phases.map((phase) => (
                 <div
                   key={phase.id}
-                  className="grid grid-cols-12 gap-2 px-3 py-1 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                  className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                 >
                   {/* Phase Name */}
                   <div className="col-span-5">
@@ -466,17 +538,34 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                     />
                   </div>
 
-                  {/* Duration */}
-                  <div className="col-span-3">
+                  {/* Duration - Value + Unit */}
+                  <div className="col-span-3 flex gap-1">
                     <Input
                       type="text"
                       value={phase.duration}
                       onChange={(e) =>
                         updatePhase(section.id, phase.id, { duration: e.target.value })
                       }
-                      placeholder="e.g., 2-3 weeks"
-                      className={inputClassName}
+                      placeholder="1-2"
+                      className={cn(inputClassName, 'w-16 text-center')}
                     />
+                    <Select
+                      value={phase.durationUnit || 'weeks'}
+                      onValueChange={(v) =>
+                        updatePhase(section.id, phase.id, { durationUnit: v })
+                      }
+                    >
+                      <SelectTrigger className={cn(inputClassName, 'flex-1')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_UNITS.map((unit) => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Est. Completion Date */}
@@ -506,7 +595,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
               ))}
 
               {/* Add Phase Row */}
-              <div className="grid grid-cols-12 gap-2 px-3 py-0.5 items-center border-t border-gray-100 dark:border-gray-700/50">
+              <div className="grid grid-cols-12 gap-2 px-3 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
                 <div className="col-span-12">
                   <Button
                     variant="ghost"

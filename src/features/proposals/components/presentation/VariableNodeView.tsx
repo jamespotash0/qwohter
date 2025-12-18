@@ -18,8 +18,6 @@ function resolveVariableValue(key: string, data: FormBuilderData): string | null
   const parts = key.split('.');
 
   switch (parts[0]) {
-    case 'terms':
-      return resolveTermsVariable(parts.slice(1), data);
     case 'pricing':
       return resolvePricingVariable(parts.slice(1), data);
     case 'leadtimes':
@@ -37,51 +35,6 @@ function resolveVariableValue(key: string, data: FormBuilderData): string | null
       // project, client, org variables need InfoTab data - return null
       return null;
   }
-}
-
-function resolveTermsVariable(parts: string[], data: FormBuilderData): string | null {
-  const terms = data.terms;
-
-  if (parts[0] === 'paymentSchedule') {
-    if (terms.paymentMilestones.length === 0) return null;
-    return terms.paymentMilestones
-      .map(m => `${m.percentage}% - ${m.trigger}`)
-      .join(', ');
-  }
-
-  if (parts[0]?.startsWith('milestone')) {
-    const idx = parseInt(parts[0].replace('milestone', ''), 10) - 1;
-    const milestone = terms.paymentMilestones[idx];
-    if (milestone) {
-      if (parts[1] === 'percentage') return `${milestone.percentage}%`;
-      if (parts[1] === 'trigger') return milestone.trigger;
-    }
-    return null;
-  }
-
-  if (parts[0] === 'warranties') {
-    if (terms.warranties.length === 0) return null;
-    return terms.warranties
-      .map(w => `${w.name}: ${w.quantity} ${w.unit}`)
-      .join(', ');
-  }
-
-  if (parts[0]?.startsWith('warranty')) {
-    const idx = parseInt(parts[0].replace('warranty', ''), 10) - 1;
-    const warranty = terms.warranties[idx];
-    if (warranty) {
-      return `${warranty.name}: ${warranty.quantity} ${warranty.unit}`;
-    }
-    return null;
-  }
-
-  if (parts[0] === 'exclusions') {
-    const checked = terms.exclusions.filter(e => e.checked);
-    if (checked.length === 0) return null;
-    return checked.map(e => e.label).join(', ');
-  }
-
-  return null;
 }
 
 function resolvePricingVariable(parts: string[], data: FormBuilderData): string | null {

@@ -154,48 +154,6 @@ function resolveOrgVariable(parts: string[], orgData?: OrgData): string {
   }
 }
 
-function resolveTermsVariable(parts: string[], data: FormBuilderData): string {
-  const terms = data.terms;
-
-  if (parts[0] === 'paymentSchedule') {
-    return terms.paymentMilestones
-      .map(m => `${m.percentage}% - ${m.trigger}`)
-      .join('\n');
-  }
-
-  if (parts[0]?.startsWith('milestone')) {
-    const idx = parseInt(parts[0].replace('milestone', ''), 10) - 1;
-    const milestone = terms.paymentMilestones[idx];
-    if (milestone) {
-      if (parts[1] === 'percentage') return `${milestone.percentage}%`;
-      if (parts[1] === 'trigger') return milestone.trigger;
-    }
-  }
-
-  if (parts[0] === 'warranties') {
-    return terms.warranties
-      .map(w => `${w.name}: ${w.quantity} ${w.unit}`)
-      .join('\n');
-  }
-
-  if (parts[0]?.startsWith('warranty')) {
-    const idx = parseInt(parts[0].replace('warranty', ''), 10) - 1;
-    const warranty = terms.warranties[idx];
-    if (warranty) {
-      return `${warranty.name}: ${warranty.quantity} ${warranty.unit}`;
-    }
-  }
-
-  if (parts[0] === 'exclusions') {
-    return terms.exclusions
-      .filter(e => e.checked)
-      .map(e => e.label)
-      .join('\n');
-  }
-
-  return `{terms.${parts.join('.')}}`;
-}
-
 function resolvePricingVariable(parts: string[], data: FormBuilderData): string {
   const pricing = data.pricing;
 
@@ -403,8 +361,6 @@ export function resolveVariable(
       return resolveClientVariable(parts.slice(1), infoData);
     case 'org':
       return resolveOrgVariable(parts.slice(1), orgData);
-    case 'terms':
-      return resolveTermsVariable(parts.slice(1), data);
     case 'pricing':
       return resolvePricingVariable(parts.slice(1), data);
     case 'leadtimes':

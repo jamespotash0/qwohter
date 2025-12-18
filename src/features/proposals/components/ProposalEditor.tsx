@@ -1,8 +1,8 @@
 /**
  * Proposal Editor (FormBuilder V4)
  *
- * Premium SaaS design with 8-tab structure:
- * Info | Products | Pricing | Terms | Lead Times | Misc | Documents | Presentation
+ * Premium SaaS design with 7-tab structure:
+ * Info | Products | Pricing | Lead Times | Misc | Documents | Presentation
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -49,7 +49,6 @@ import { InfoTab, type InfoTabRef, type InfoTabData } from './tabs/InfoTab';
 import { LeadTimesTab } from './tabs/LeadTimesTab';
 import { MiscellaneousTab } from './tabs/MiscellaneousTab';
 import { PricingTab } from './tabs/PricingTab';
-import { TermsTab } from './tabs/TermsTab';
 import { DocumentsTab } from './tabs/DocumentsTab';
 import { ProductsTab } from './tabs/ProductsTab';
 import { PresentationTab } from './tabs/PresentationTab';
@@ -72,7 +71,6 @@ const TABS: { id: string; label: string; component: TabComponent }[] = [
   { id: 'info', label: 'Info', component: InfoTab },
   { id: 'products', label: 'Products', component: ProductsTab },
   { id: 'pricing', label: 'Pricing', component: PricingTab },
-  { id: 'terms', label: 'Terms', component: TermsTab },
   { id: 'lead_times', label: 'Lead Times', component: LeadTimesTab },
   { id: 'miscellaneous', label: 'Misc', component: MiscellaneousTab },
   { id: 'documents', label: 'Documents', component: DocumentsTab },
@@ -457,15 +455,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-4">
-            {combinedIsDirty && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/20">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                  Unsaved
-                </span>
-              </div>
-            )}
+          <div className="flex items-center gap-3">
             <Button
               onClick={handleSave}
               disabled={isSaving || !combinedIsDirty}
@@ -488,15 +478,15 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           </div>
         </div>
 
-        {/* Tab Navigation - Pill Style */}
-        <nav className="px-8 pb-4">
-          <div className="flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-800/50 rounded-2xl w-fit">
+        {/* Tab Navigation - Compact Pill Style */}
+        <nav className="px-8 pb-3">
+          <div className="flex items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-800/50 rounded-xl w-fit">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'px-6 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-xl',
+                  'px-4 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-200 rounded-lg',
                   activeTab === tab.id
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'

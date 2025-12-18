@@ -38,12 +38,6 @@ export interface VariableContext {
   // Products data
   products?: Product[];
 
-  // Terms data
-  terms?: {
-    payment?: string;
-    warranty?: string;
-  };
-
   // Lead times
   leadtimes?: {
     total?: string;
@@ -113,9 +107,6 @@ function resolveStaticVariable(key: string, context: VariableContext): string | 
       }
       return null;
 
-    case 'terms':
-      return context.terms?.[field as keyof typeof context.terms] ?? null;
-
     case 'leadtimes':
       return context.leadtimes?.[field as keyof typeof context.leadtimes] ?? null;
 
@@ -181,14 +172,6 @@ export function buildContextFromFormData(
 ): VariableContext {
   return {
     products: formData.products.items,
-    terms: {
-      payment: formData.terms.paymentMilestones
-        .map(m => `${m.percentage}% - ${m.trigger}`)
-        .join('; ') || undefined,
-      warranty: formData.terms.warranties
-        .map(w => `${w.name}: ${w.quantity} ${w.unit}`)
-        .join(', ') || undefined,
-    },
     leadtimes: {
       total: formData.leadTimes.sections
         .flatMap(s => s.phases)

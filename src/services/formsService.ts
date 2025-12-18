@@ -18,7 +18,6 @@ export type {
   InfoTabConfig,
   ProductsTabConfig,
   PricingTabConfig,
-  TermsTabConfig,
   LeadTimesTabConfig,
   MiscTabConfig,
   DocumentsTabConfig,

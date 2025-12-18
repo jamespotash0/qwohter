@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Plus, Trash, UploadSimple, Package, Sparkle } from '@phosphor-icons/react';
+import { Plus, Trash, UploadSimple, Package, Sparkle, CurrencyDollar, CaretDown, Check } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,11 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsFromFile } from '@/services/productExtraction';
-import { useFormBuilder, type Product } from '../../context/FormBuilderContext';
+import { useFormBuilder, type Product, type PricingSection } from '../../context/FormBuilderContext';
 import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { generateProductAlias } from '../../utils/productVariables';
 
@@ -43,15 +48,34 @@ const UNITS = [
   { value: 'gal', label: 'Gallon' },
 ];
 
+// Calculate product amount (qty * unitCost - discount)
+const calculateProductAmount = (product: Product): number => {
+  const baseAmount = (product.quantity || 0) * (product.unitCost || 0);
+  if (product.discountPercent && product.discountPercent > 0) {
+    return baseAmount * (1 - product.discountPercent / 100);
+  }
+  return baseAmount;
+};
+
+// Format currency
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(amount);
+};
+
 type EntryMode = 'manual' | 'ai-extract';
 
 export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const isBuilderMode = mode === 'builder';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use context for products data persistence
-  const { data, setProductsData } = useFormBuilder();
+  // Use context for products and pricing data persistence
+  const { data, setProductsData, setPricingData } = useFormBuilder();
   const products = data.products.items;
+  const pricingSections = data.pricing.sections;
 
   const [entryMode, setEntryMode] = useState<EntryMode>('manual');
   const [extracting, setExtracting] = useState(false);
@@ -90,11 +114,97 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     onDirtyChange?.(true);
   }, [products, setProductsData, onDirtyChange]);
 
-  // Remove product
+  // Remove product and cascade delete from pricing
   const removeProduct = useCallback((id: string) => {
+    // Remove from products
     setProductsData({ items: products.filter(product => product.id !== id) });
+
+    // Cascade delete: remove any pricing line items linked to this product
+    const updatedPricingSections = pricingSections.map(section => ({
+      ...section,
+      lineItems: section.lineItems.filter(item => item.sourceProductId !== id),
+    }));
+
+    // Only update pricing if something changed
+    const hasChanges = pricingSections.some((section, i) =>
+      section.lineItems.length !== updatedPricingSections[i].lineItems.length
+    );
+
+    if (hasChanges) {
+      setPricingData({
+        ...data.pricing,
+        sections: updatedPricingSections,
+      });
+      toast.info('Also removed linked pricing item(s)');
+    }
+
     onDirtyChange?.(true);
-  }, [products, setProductsData, onDirtyChange]);
+  }, [products, setProductsData, pricingSections, data.pricing, setPricingData, onDirtyChange]);
+
+  // Add product to pricing tab as a line item in specified section
+  const addToPricing = useCallback((product: Product, targetSectionId?: string) => {
+    let updatedSections = [...pricingSections];
+    let targetSection: PricingSection | undefined;
+
+    if (targetSectionId) {
+      // Use specified section
+      targetSection = updatedSections.find(s => s.id === targetSectionId);
+    }
+
+    if (!targetSection) {
+      // Fall back to or create "Merchandise" section
+      targetSection = updatedSections.find(s => s.type === 'merchandise');
+      if (!targetSection) {
+        targetSection = {
+          id: 'merchandise',
+          name: 'Merchandise',
+          type: 'merchandise',
+          collapsed: false,
+          lineItems: [],
+        };
+        updatedSections = [targetSection, ...updatedSections];
+      }
+    }
+
+    // Check if product is already in this section
+    const alreadyExists = targetSection.lineItems.some(
+      item => item.sourceProductId === product.id
+    );
+
+    if (alreadyExists) {
+      toast.warning(`"${product.name || 'Product'}" is already in ${targetSection.name}`);
+      return;
+    }
+
+    // Add product as line item with link back to source product
+    const newLineItem = {
+      id: `${Date.now()}`,
+      name: product.name || 'Unnamed Product',
+      quantity: product.quantity || 1,
+      sellRule: 'per_unit',
+      unitCost: product.unitCost || 0,
+      markupPercent: 0,
+      markupType: 'percent' as const,
+      isTaxable: false,
+      sourceProductId: product.id, // Link to source product for cascade delete
+      discountValue: product.discountPercent || 0,
+      discountType: 'percent' as const,
+    };
+
+    updatedSections = updatedSections.map(s =>
+      s.id === targetSection!.id
+        ? { ...s, lineItems: [...s.lineItems, newLineItem] }
+        : s
+    );
+
+    setPricingData({
+      ...data.pricing,
+      sections: updatedSections,
+    });
+
+    toast.success(`Added "${product.name || 'Product'}" to ${targetSection.name}`);
+    onDirtyChange?.(true);
+  }, [pricingSections, data.pricing, setPricingData, onDirtyChange]);
 
   // Handle file upload for AI extraction
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,20 +317,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   return (
     <div className="space-y-4">
       {/* Header with Mode Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {entryMode === 'manual'
-              ? `${manualProducts.length} manual product${manualProducts.length !== 1 ? 's' : ''}`
-              : `${aiExtractedProducts.length} AI-extracted product${aiExtractedProducts.length !== 1 ? 's' : ''}`
-            }
-          </span>
-          {products.length > 0 && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              ({products.length} total)
-            </span>
-          )}
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <button
             onClick={() => setEntryMode('manual')}
@@ -450,39 +547,28 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       {entryMode === 'manual' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <div className="col-span-4">Product Name</div>
-            <div className="col-span-2 text-center">Quantity</div>
-            <div className="col-span-2">Unit</div>
-            <div className="col-span-3">Description</div>
-            <div className="col-span-1"></div>
+          <div className="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="col-span-3">Product Name</div>
+            <div className="col-span-1 text-center">Qty</div>
+            <div className="col-span-1">Unit</div>
+            <div className="col-span-2 text-right">Unit Cost</div>
+            <div className="col-span-1 text-center">Disc %</div>
+            <div className="col-span-2 text-right">Amount</div>
+            <div className="col-span-2"></div>
           </div>
 
           {/* Product Rows */}
           <div>
-            {/* Add Product Row - First Row */}
-            <div className="grid grid-cols-12 gap-2 px-3 py-0.5 items-center border-t border-gray-100 dark:border-gray-700/50">
-              <div className="col-span-12">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={addProduct}
-                  className="text-gray-400 hover:text-coral hover:bg-coral/5 h-6 text-[10px]"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Product
-                </Button>
-              </div>
-            </div>
-
             {/* Product Rows - Only manual products (no rawData) */}
-            {manualProducts.map((product) => (
+            {manualProducts.map((product) => {
+              const amount = calculateProductAmount(product);
+              return (
               <div
                 key={product.id}
-                className="grid grid-cols-12 gap-2 px-3 py-1 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
               >
                 {/* Product Name */}
-                <div className="col-span-4">
+                <div className="col-span-3">
                   <Input
                     value={product.name}
                     onChange={(e) =>
@@ -494,7 +580,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                 </div>
 
                 {/* Quantity */}
-                <div className="col-span-2">
+                <div className="col-span-1">
                   <Input
                     type="number"
                     min={0}
@@ -513,14 +599,14 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                 </div>
 
                 {/* Unit */}
-                <div className="col-span-2">
+                <div className="col-span-1">
                   <Select
                     value={product.unit}
                     onValueChange={(v) =>
                       updateProduct(product.id, { unit: v })
                     }
                   >
-                    <SelectTrigger className={inputClassName}>
+                    <SelectTrigger className={cn(inputClassName, 'px-1')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -533,29 +619,136 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                   </Select>
                 </div>
 
-                {/* Description */}
-                <div className="col-span-3">
-                  <Input
-                    value={product.description || ''}
-                    onChange={(e) =>
-                      updateProduct(product.id, { description: e.target.value })
-                    }
-                    placeholder="Optional description"
-                    className={inputClassName}
-                  />
+                {/* Unit Cost */}
+                <div className="col-span-2">
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={product.unitCost || ''}
+                      onChange={(e) =>
+                        updateProduct(product.id, {
+                          unitCost: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                      className={cn(
+                        inputClassName,
+                        'pl-5 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+                      )}
+                    />
+                  </div>
                 </div>
 
-                {/* Delete */}
-                <div className="col-span-1 flex justify-center">
+                {/* Discount Percent */}
+                <div className="col-span-1">
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={product.discountPercent || ''}
+                      onChange={(e) =>
+                        updateProduct(product.id, {
+                          discountPercent: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0"
+                      className={cn(
+                        inputClassName,
+                        'pr-5 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+                      )}
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
+                  </div>
+                </div>
+
+                {/* Amount (calculated) */}
+                <div className="col-span-2 text-right">
+                  <span className="font-mono text-xs text-gray-700 dark:text-gray-300">
+                    {amount > 0 ? formatCurrency(amount) : '—'}
+                  </span>
+                </div>
+
+                {/* Actions - Section Selector + Delete */}
+                <div className="col-span-2 flex justify-end gap-1">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        className="p-1 text-gray-400 hover:text-green-600 transition-colors rounded hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-0.5"
+                        title="Add to Pricing Section"
+                      >
+                        <CurrencyDollar className="w-3.5 h-3.5" />
+                        <CaretDown className="w-2.5 h-2.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-48 p-1">
+                      <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wider px-2 py-1">
+                        Add to Section
+                      </div>
+                      {pricingSections.length === 0 ? (
+                        <button
+                          onClick={() => addToPricing(product)}
+                          className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        >
+                          <Package className="w-3 h-3 text-gray-400" />
+                          <span>Create Merchandise</span>
+                        </button>
+                      ) : (
+                        <>
+                          {pricingSections.map((section) => {
+                            const isLinked = section.lineItems.some(
+                              item => item.sourceProductId === product.id
+                            );
+                            return (
+                              <button
+                                key={section.id}
+                                onClick={() => addToPricing(product, section.id)}
+                                disabled={isLinked}
+                                className={cn(
+                                  'w-full text-left px-2 py-1.5 text-xs rounded flex items-center justify-between gap-2',
+                                  isLinked
+                                    ? 'text-gray-400 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                )}
+                              >
+                                <span className="truncate">{section.name}</span>
+                                {isLinked && <Check className="w-3 h-3 text-green-500" />}
+                              </button>
+                            );
+                          })}
+                        </>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                   <button
                     onClick={() => removeProduct(product.id)}
                     className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Delete"
                   >
                     <Trash className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
+
+            {/* Add Product Row - Bottom */}
+            <div className="grid grid-cols-12 gap-2 px-3 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+              <div className="col-span-12">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={addProduct}
+                  className="text-gray-400 hover:text-coral hover:bg-coral/5 h-6 text-[10px]"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Product
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

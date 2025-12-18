@@ -53,7 +53,7 @@ function InfoCard({ title, icon, children, className, headerAction }: InfoCardPr
     <div
       className={cn(
         'bg-white dark:bg-gray-800 rounded-xl shadow-sm',
-        'p-6 space-y-5',
+        'p-5 space-y-4',
         'border border-gray-100 dark:border-gray-700/50',
         className
       )}
@@ -61,11 +61,11 @@ function InfoCard({ title, icon, children, className, headerAction }: InfoCardPr
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           {icon}
-          <h3 className="font-medium">{title}</h3>
+          <h3 className="text-sm font-medium">{title}</h3>
         </div>
         {headerAction}
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {children}
       </div>
     </div>
@@ -82,9 +82,9 @@ interface FieldProps {
 
 function Field({ label, required, tooltip, children }: FieldProps) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5">
-        <Label className="text-sm text-gray-600 dark:text-gray-400">
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
           {label}
           {required && <span className="text-coral ml-0.5">*</span>}
         </Label>
@@ -93,7 +93,7 @@ function Field({ label, required, tooltip, children }: FieldProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                  <Info className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                  <Info className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700">
@@ -276,16 +276,15 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   });
   const [initialValuesCaptured, setInitialValuesCaptured] = useState(false);
 
-  // Input styling
+  // Input styling - compact design matching PricingTab
   const inputClassName = cn(
-    'h-10 rounded-lg border-gray-200 dark:border-gray-600',
-    'focus:ring-2 focus:ring-coral/20 focus:border-coral',
-    'transition-colors'
+    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
+    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
   );
 
   const selectTriggerClassName = cn(
-    'h-10 rounded-lg border-gray-200 dark:border-gray-600',
-    'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+    'h-7 text-xs rounded border-gray-200 dark:border-gray-600',
+    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
   );
 
   // Disabled style for builder mode
@@ -744,15 +743,15 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   const canSaveAsContact = !isBuilderMode && isCustomClientName && clientName && clientEmail;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Left: Project Details */}
         <InfoCard
           title="Project Details"
-          icon={<CalendarBlank className="w-5 h-5" />}
+          icon={<CalendarBlank className="w-4 h-4" />}
         >
           {/* Project Name (60%) + Proposal Date (40%) */}
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-3">
             <div className="col-span-3">
               <Field label="Project Name" tooltip="Name of the project or job">
                 <Input
@@ -778,7 +777,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           </div>
 
           {/* Contact Name + Contact Email (Dropdowns) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Contact Name" tooltip="Primary contact person for this proposal">
               <Select value={contactNameId} onValueChange={handleContactNameChange} disabled={isBuilderMode}>
                 <SelectTrigger className={disabledSelectClassName}>
@@ -844,10 +843,10 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         {/* Top Right: Work Details */}
         <InfoCard
           title="Work Details"
-          icon={<Tag className="w-5 h-5" />}
+          icon={<Tag className="w-4 h-4" />}
         >
           {/* Row 1: Proposal Source + Type of Work */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Proposal Source" tooltip="Where did this lead come from?">
               <Input
                 value={proposalSource}
@@ -869,7 +868,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           </div>
 
           {/* Row 2: Labor Type + Project Type */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Labor Type" tooltip="Union or non-union labor requirements">
               <Select value={laborType} onValueChange={setLaborType} disabled={isBuilderMode}>
                 <SelectTrigger className={disabledSelectClassName}>
@@ -899,7 +898,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         {/* Bottom Left: Client Information */}
         <InfoCard
           title="Client Information"
-          icon={<Buildings className="w-5 h-5" />}
+          icon={<Buildings className="w-4 h-4" />}
           headerAction={
             !isBuilderMode && (
               <TooltipProvider delayDuration={0}>
@@ -911,10 +910,10 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                       size="sm"
                       onClick={handleSaveAsContact}
                       disabled={!canSaveAsContact || createContactMutation.isPending}
-                      className="h-8 px-3 gap-1.5"
+                      className="h-6 px-2 gap-1"
                     >
-                      <UserPlus className="w-4 h-4" />
-                      <span className="text-xs">Save Contact</span>
+                      <UserPlus className="w-3 h-3" />
+                      <span className="text-[10px]">Save Contact</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">
@@ -930,7 +929,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           }
         >
           {/* Client Name (dropdown or input) + Client Company */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Client Name" tooltip="Select from contacts or enter manually">
               {!isBuilderMode && !isCustomClientName ? (
                 <Select
@@ -983,9 +982,9 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                               setClientAddress('');
                               setClientContactType('');
                             }}
-                            className="h-10 px-2"
+                            className="h-7 px-1.5"
                           >
-                            <UserCircle className="w-4 h-4" />
+                            <UserCircle className="w-3.5 h-3.5" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top">
@@ -1009,7 +1008,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           </div>
 
           {/* Email Address + Phone Number */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Email Address" tooltip="Client's email address for communication">
               <Input
                 type="email"
@@ -1033,7 +1032,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           </div>
 
           {/* Address (70%) + Contact Type (30%) */}
-          <div className="grid grid-cols-10 gap-4">
+          <div className="grid grid-cols-10 gap-3">
             <div className="col-span-7">
               {isClientFieldsDisabled ? (
                 <Field label="Address" tooltip="Client's mailing or business address">
@@ -1054,8 +1053,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                     onChange={setClientAddress}
                     placeholder="Enter address"
                     className={cn(
-                      'h-10 rounded-lg border-gray-200 dark:border-gray-600',
-                      'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+                      'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
+                      'focus:ring-1 focus:ring-coral/20 focus:border-coral'
                     )}
                   />
                 </Field>
@@ -1083,7 +1082,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         {/* Bottom Right: Job Details */}
         <InfoCard
           title="Job Details"
-          icon={<MapPin className="w-5 h-5" />}
+          icon={<MapPin className="w-4 h-4" />}
         >
           {/* Job Location Name (POI search) + Floor */}
           <div className="grid grid-cols-4 gap-3">
@@ -1131,15 +1130,15 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                 onChange={setJobLocation}
                 placeholder="Enter job site address"
                 className={cn(
-                  'h-10 rounded-lg border-gray-200 dark:border-gray-600',
-                  'focus:ring-2 focus:ring-coral/20 focus:border-coral'
+                  'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
+                  'focus:ring-1 focus:ring-coral/20 focus:border-coral'
                 )}
               />
             )}
           </div>
 
           {/* Location Type + Est. Due Date */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Location Type" tooltip="Type of location, building, or facility">
               <Input
                 value={locationType}
@@ -1168,8 +1167,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
               placeholder="Additional notes about the job..."
               disabled={isBuilderMode}
               className={cn(
-                'min-h-[80px] rounded-lg border-gray-200 dark:border-gray-600',
-                'focus:ring-2 focus:ring-coral/20 focus:border-coral',
+                'min-h-[60px] text-xs rounded border-gray-200 dark:border-gray-600 px-2 py-1.5',
+                'focus:ring-1 focus:ring-coral/20 focus:border-coral',
                 'resize-none',
                 isBuilderMode && 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
               )}

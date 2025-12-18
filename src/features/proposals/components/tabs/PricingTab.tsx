@@ -16,8 +16,8 @@
  * Each line item: Name | Qty | Sell Rule | Unit Cost | Markup % | Sell Price
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical } from '@phosphor-icons/react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical, Calculator, X } from '@phosphor-icons/react';
 import {
   DndContext,
   closestCenter,
@@ -72,7 +72,10 @@ interface PricingLineItem {
   sellRule: string;
   unitCost: number;
   markupPercent: number;
+  markupType?: 'percent' | 'dollar'; // Markup type (default: percent)
   isTaxable: boolean; // Whether this item has sales tax applied
+  discountValue?: number; // Discount value (applied after markup, before tax)
+  discountType?: 'percent' | 'dollar'; // Discount type
 }
 
 // Pricing section interface
@@ -84,11 +87,32 @@ interface PricingSection {
   lineItems: PricingLineItem[];
 }
 
-// Calculate sell price
+// Calculate sell price (after markup and discount, before tax)
 const calculateSellPrice = (item: PricingLineItem): number => {
   const baseCost = item.quantity * item.unitCost;
-  const markup = baseCost * (item.markupPercent / 100);
-  return baseCost + markup;
+
+  // Apply markup (percent or flat dollar amount)
+  let priceAfterMarkup: number;
+  if (item.markupType === 'dollar') {
+    // Flat dollar markup
+    priceAfterMarkup = baseCost + (item.markupPercent || 0);
+  } else {
+    // Percentage markup (default)
+    const markup = baseCost * (item.markupPercent / 100);
+    priceAfterMarkup = baseCost + markup;
+  }
+
+  // Apply discount if present
+  if (item.discountValue && item.discountValue > 0) {
+    if (item.discountType === 'percent') {
+      return priceAfterMarkup * (1 - item.discountValue / 100);
+    } else {
+      // Dollar discount
+      return Math.max(0, priceAfterMarkup - item.discountValue);
+    }
+  }
+
+  return priceAfterMarkup;
 };
 
 // Calculate section subtotal (sell price with markup)
@@ -109,6 +133,238 @@ const formatCurrency = (amount: number): string => {
     minimumFractionDigits: 2,
   }).format(amount);
 };
+
+// Scientific Calculator Floating Component
+function ScientificCalculator() {
+  const [expression, setExpression] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const calculate = useCallback(() => {
+    if (!expression.trim()) {
+      setResult(null);
+      return;
+    }
+    try {
+      // Safe eval with scientific functions
+      let processed = expression
+        .replace(/π/g, 'Math.PI')
+        .replace(/sqrt\(/g, 'Math.sqrt(')
+        .replace(/pow\(/g, 'Math.pow(')
+        .replace(/sin\(/g, 'Math.sin(')
+        .replace(/cos\(/g, 'Math.cos(')
+        .replace(/tan\(/g, 'Math.tan(')
+        .replace(/log\(/g, 'Math.log10(')
+        .replace(/ln\(/g, 'Math.log(')
+        .replace(/abs\(/g, 'Math.abs(')
+        .replace(/round\(/g, 'Math.round(')
+        .replace(/floor\(/g, 'Math.floor(')
+        .replace(/ceil\(/g, 'Math.ceil(')
+        .replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)') // Handle percentage
+        .replace(/\^/g, '**'); // Power operator
+
+      // Sanitize - only allow safe characters
+      const sanitized = processed.replace(/[^0-9+\-*/().Math\s,PIpowsqrtsincostalogabsroundflorceil]/g, '');
+
+      const evalResult = Function(`"use strict"; return (${sanitized})`)();
+      if (typeof evalResult === 'number' && !isNaN(evalResult) && isFinite(evalResult)) {
+        const formatted = evalResult.toLocaleString('en-US', { maximumFractionDigits: 8 });
+        setResult(formatted);
+        setHistory(prev => [`${expression} = ${formatted}`, ...prev.slice(0, 4)]);
+      } else {
+        setResult('Error');
+      }
+    } catch {
+      setResult('Error');
+    }
+  }, [expression]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      calculate();
+    }
+  };
+
+  const insert = (value: string) => {
+    setExpression(prev => prev + value);
+    inputRef.current?.focus();
+  };
+
+  const clear = () => {
+    setExpression('');
+    setResult(null);
+    inputRef.current?.focus();
+  };
+
+  const backspace = () => {
+    setExpression(prev => prev.slice(0, -1));
+    inputRef.current?.focus();
+  };
+
+  const useResult = () => {
+    if (result && result !== 'Error') {
+      setExpression(result.replace(/,/g, ''));
+      setResult(null);
+      inputRef.current?.focus();
+    }
+  };
+
+  const btnClass = "h-8 text-xs font-medium rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors";
+  const fnBtnClass = "h-8 text-[10px] font-medium rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors";
+  const opBtnClass = "h-8 text-xs font-medium rounded bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors";
+
+  return (
+    <>
+      {/* Floating Button */}
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'fixed bottom-6 right-6 z-50 p-3 rounded-full shadow-lg transition-all',
+              'bg-coral text-white hover:bg-coral-hover hover:scale-105',
+              'focus:outline-none focus:ring-2 focus:ring-coral focus:ring-offset-2'
+            )}
+            title="Scientific Calculator"
+          >
+            <Calculator className="w-5 h-5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="end"
+          sideOffset={12}
+          className="w-80 p-4 shadow-xl"
+        >
+          <div className="space-y-3">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Calculator</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={clear}
+                  className="text-[10px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* Display */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 space-y-1">
+              <Input
+                ref={inputRef}
+                value={expression}
+                onChange={(e) => setExpression(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter expression..."
+                className="h-9 text-base font-mono border-0 bg-transparent shadow-none focus-visible:ring-0 px-1"
+                autoFocus
+              />
+              {result !== null && (
+                <div
+                  onClick={useResult}
+                  className={cn(
+                    'text-right font-mono text-lg font-semibold px-1 cursor-pointer',
+                    result === 'Error' ? 'text-red-500' : 'text-coral hover:text-coral-hover'
+                  )}
+                  title="Click to use result"
+                >
+                  = {result}
+                </div>
+              )}
+            </div>
+
+            {/* Scientific Functions Row */}
+            <div className="grid grid-cols-6 gap-1">
+              <button type="button" onClick={() => insert('sqrt(')} className={fnBtnClass}>√</button>
+              <button type="button" onClick={() => insert('^')} className={fnBtnClass}>x^y</button>
+              <button type="button" onClick={() => insert('π')} className={fnBtnClass}>π</button>
+              <button type="button" onClick={() => insert('sin(')} className={fnBtnClass}>sin</button>
+              <button type="button" onClick={() => insert('cos(')} className={fnBtnClass}>cos</button>
+              <button type="button" onClick={() => insert('tan(')} className={fnBtnClass}>tan</button>
+            </div>
+            <div className="grid grid-cols-6 gap-1">
+              <button type="button" onClick={() => insert('log(')} className={fnBtnClass}>log</button>
+              <button type="button" onClick={() => insert('ln(')} className={fnBtnClass}>ln</button>
+              <button type="button" onClick={() => insert('abs(')} className={fnBtnClass}>|x|</button>
+              <button type="button" onClick={() => insert('round(')} className={fnBtnClass}>rnd</button>
+              <button type="button" onClick={() => insert('floor(')} className={fnBtnClass}>flr</button>
+              <button type="button" onClick={() => insert('ceil(')} className={fnBtnClass}>ceil</button>
+            </div>
+
+            {/* Main Keypad */}
+            <div className="grid grid-cols-5 gap-1">
+              <button type="button" onClick={() => insert('(')} className={btnClass}>(</button>
+              <button type="button" onClick={() => insert(')')} className={btnClass}>)</button>
+              <button type="button" onClick={() => insert('%')} className={opBtnClass}>%</button>
+              <button type="button" onClick={backspace} className={opBtnClass}>←</button>
+              <button type="button" onClick={() => insert('/')} className={opBtnClass}>÷</button>
+
+              <button type="button" onClick={() => insert('7')} className={btnClass}>7</button>
+              <button type="button" onClick={() => insert('8')} className={btnClass}>8</button>
+              <button type="button" onClick={() => insert('9')} className={btnClass}>9</button>
+              <button type="button" onClick={() => insert('*')} className={opBtnClass}>×</button>
+              <button type="button" onClick={() => insert('-')} className={opBtnClass}>−</button>
+
+              <button type="button" onClick={() => insert('4')} className={btnClass}>4</button>
+              <button type="button" onClick={() => insert('5')} className={btnClass}>5</button>
+              <button type="button" onClick={() => insert('6')} className={btnClass}>6</button>
+              <button type="button" onClick={() => insert('+')} className={opBtnClass}>+</button>
+              <button
+                type="button"
+                onClick={calculate}
+                className="row-span-2 h-full text-lg font-bold rounded bg-coral text-white hover:bg-coral-hover transition-colors flex items-center justify-center"
+              >
+                =
+              </button>
+
+              <button type="button" onClick={() => insert('1')} className={btnClass}>1</button>
+              <button type="button" onClick={() => insert('2')} className={btnClass}>2</button>
+              <button type="button" onClick={() => insert('3')} className={btnClass}>3</button>
+              <button type="button" onClick={() => insert('.')} className={btnClass}>.</button>
+
+              <button type="button" onClick={() => insert('0')} className={cn(btnClass, 'col-span-2')}>0</button>
+              <button type="button" onClick={() => insert('00')} className={btnClass}>00</button>
+              <button type="button" onClick={() => insert(',')} className={btnClass}>,</button>
+            </div>
+
+            {/* History */}
+            {history.length > 0 && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">History</p>
+                <div className="space-y-0.5 max-h-16 overflow-y-auto">
+                  {history.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const parts = item.split(' = ');
+                        if (parts[0]) setExpression(parts[0]);
+                      }}
+                      className="block w-full text-left text-[10px] font-mono text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 truncate"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </>
+  );
+}
 
 // Default sections - all start empty with no pre-filled line items
 const DEFAULT_SECTIONS: PricingSection[] = [
@@ -340,6 +596,41 @@ export function PricingTab({ mode }: PricingTabProps) {
     });
   }, [sections, salesTaxPercent, selectedTaxState, setPricingData]);
 
+  // Listen for cascade deletes from ProductsTab
+  // When a product is deleted, ProductsTab updates context - we need to sync those deletions
+  useEffect(() => {
+    const contextSections = formData.pricing?.sections;
+    if (!contextSections) return;
+
+    // Build a set of all sourceProductIds that exist in context
+    const contextSourceIds = new Set<string>();
+    contextSections.forEach(section => {
+      section.lineItems.forEach(item => {
+        if (item.sourceProductId) {
+          contextSourceIds.add(`${section.id}:${item.sourceProductId}`);
+        }
+      });
+    });
+
+    // Check if any local items with sourceProductId are missing from context
+    let hasRemovals = false;
+    const updatedSections = sections.map(section => {
+      const filteredItems = section.lineItems.filter(item => {
+        if (!item.sourceProductId) return true; // Keep non-linked items
+        const key = `${section.id}:${item.sourceProductId}`;
+        const existsInContext = contextSourceIds.has(key);
+        if (!existsInContext) hasRemovals = true;
+        return existsInContext;
+      });
+      return { ...section, lineItems: filteredItems };
+    });
+
+    if (hasRemovals) {
+      isUpdatingFromContext.current = true;
+      setSections(updatedSections);
+    }
+  }, [formData.pricing?.sections, sections]);
+
   // Drag-and-drop sensors for section reordering
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -462,7 +753,10 @@ export function PricingTab({ mode }: PricingTabProps) {
                   sellRule: 'flat_rate',
                   unitCost: 0,
                   markupPercent: 0,
+                  markupType: 'percent' as const,
                   isTaxable: false,
+                  discountValue: 0,
+                  discountType: 'percent' as const,
                 },
               ],
             }
@@ -571,7 +865,7 @@ export function PricingTab({ mode }: PricingTabProps) {
         {/* Unified Table */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="grid grid-cols-12 gap-3 px-4 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-1"></div>
             <div className="col-span-3">Name</div>
             <div className="col-span-1 text-center">Qty</div>
@@ -614,7 +908,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                 {section.lineItems.map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                    className="grid grid-cols-12 gap-3 px-4 py-3.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                   >
                     {/* Indent spacer */}
                     <div className="col-span-1"></div>
@@ -708,7 +1002,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                 ))}
 
                 {/* Add Field Row */}
-                <div className="grid grid-cols-12 gap-3 px-4 py-1 items-center border-t border-gray-100 dark:border-gray-700/50">
+                <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50">
                   <div className="col-span-1"></div>
                   <div className="col-span-11">
                     <Button
@@ -746,14 +1040,15 @@ export function PricingTab({ mode }: PricingTabProps) {
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
           <div className="col-span-3">Name</div>
           <div className="col-span-1 text-center">Qty</div>
-          <div className="col-span-2">Sell Rule</div>
+          <div className="col-span-1">Rule</div>
           <div className="col-span-2 text-right">Unit Cost</div>
           <div className="col-span-1 text-center">Markup</div>
+          <div className="col-span-1 text-center">Disc</div>
           <div className="col-span-1 text-center">Tax</div>
-          <div className="col-span-1 text-right">Sell Price</div>
+          <div className="col-span-1 text-right">Sell</div>
           <div className="col-span-1"></div>
         </div>
 
@@ -765,14 +1060,14 @@ export function PricingTab({ mode }: PricingTabProps) {
             return (
               <div key={section.id}>
                 {/* Section Divider Row */}
-                <div className="grid grid-cols-12 gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-600 items-center">
+                <div className="grid grid-cols-12 gap-1 px-3 py-2.5 bg-gray-50 dark:bg-gray-700/40 border-t border-gray-200 dark:border-gray-600 items-center">
                   <div className="col-span-11">
-                    <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                       {section.name}
                     </span>
                   </div>
                   <div className="col-span-1 text-right">
-                    <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400">
+                    <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
                       {formatCurrency(subtotal)}
                     </span>
                   </div>
@@ -781,11 +1076,27 @@ export function PricingTab({ mode }: PricingTabProps) {
                 {/* Line Items for this section */}
                 {section.lineItems.map((item) => {
                   const sellPrice = calculateSellPrice(item);
+                  const markupType = item.markupType || 'percent';
+                  const discountType = item.discountType || 'percent';
+
+                  // Calculate breakdown for popover
+                  const baseCost = item.quantity * item.unitCost;
+                  const markupAmount = markupType === 'dollar'
+                    ? (item.markupPercent || 0)
+                    : baseCost * (item.markupPercent / 100);
+                  const priceAfterMarkup = baseCost + markupAmount;
+                  const discountAmount = item.discountValue && item.discountValue > 0
+                    ? (discountType === 'percent'
+                      ? priceAfterMarkup * (item.discountValue / 100)
+                      : item.discountValue)
+                    : 0;
+                  const itemTax = item.isTaxable ? sellPrice * (salesTaxPercent / 100) : 0;
+                  const taxAdjustedPrice = sellPrice + itemTax;
 
                   return (
                     <div
                       key={item.id}
-                      className="grid grid-cols-12 gap-2 px-3 py-1 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                      className="grid grid-cols-12 gap-1 px-3 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                     >
                       {/* Name */}
                       <div className="col-span-3">
@@ -811,19 +1122,19 @@ export function PricingTab({ mode }: PricingTabProps) {
                             })
                           }
                           placeholder="0"
-                          className={cn(numberInputClassName, 'text-center')}
+                          className={cn(numberInputClassName, 'text-center px-1')}
                         />
                       </div>
 
                       {/* Sell Rule */}
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <Select
                           value={item.sellRule}
                           onValueChange={(v) =>
                             updateLineItem(section.id, item.id, { sellRule: v })
                           }
                         >
-                          <SelectTrigger className={selectTriggerClassName}>
+                          <SelectTrigger className={cn(selectTriggerClassName, 'px-0.5 text-[10px]')}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -839,11 +1150,10 @@ export function PricingTab({ mode }: PricingTabProps) {
                       {/* Unit Cost */}
                       <div className="col-span-2">
                         <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
-                            $
-                          </span>
+                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">$</span>
                           <Input
                             type="number"
+                            inputMode="decimal"
                             min={0}
                             step={0.01}
                             value={item.unitCost === 0 ? '' : item.unitCost}
@@ -853,18 +1163,19 @@ export function PricingTab({ mode }: PricingTabProps) {
                               })
                             }
                             placeholder="0.00"
-                            className={cn(numberInputClassName, 'pl-5 text-right')}
+                            className={cn(numberInputClassName, 'text-right pl-4 pr-1')}
                           />
                         </div>
                       </div>
 
-                      {/* Markup % */}
+                      {/* Markup (clickable to toggle type) */}
                       <div className="col-span-1">
                         <div className="relative">
                           <Input
                             type="number"
                             min={0}
-                            max={999}
+                            max={markupType === 'percent' ? 999 : undefined}
+                            step={markupType === 'dollar' ? 0.01 : 1}
                             value={item.markupPercent === 0 ? '' : item.markupPercent}
                             onChange={(e) =>
                               updateLineItem(section.id, item.id, {
@@ -872,11 +1183,52 @@ export function PricingTab({ mode }: PricingTabProps) {
                               })
                             }
                             placeholder="0"
-                            className={cn(numberInputClassName, 'text-center pr-5')}
+                            className={cn(numberInputClassName, 'text-center pl-1 pr-4')}
                           />
-                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
-                            %
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateLineItem(section.id, item.id, {
+                                markupType: markupType === 'percent' ? 'dollar' : 'percent',
+                              })
+                            }
+                            className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-coral text-[9px] font-medium"
+                            title={`Click to switch to ${markupType === 'percent' ? 'dollar' : 'percent'}`}
+                          >
+                            {markupType === 'percent' ? '%' : '$'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Discount (clickable to toggle type) */}
+                      <div className="col-span-1">
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={discountType === 'percent' ? 100 : undefined}
+                            step={discountType === 'dollar' ? 0.01 : 1}
+                            value={item.discountValue === 0 ? '' : item.discountValue}
+                            onChange={(e) =>
+                              updateLineItem(section.id, item.id, {
+                                discountValue: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            placeholder="0"
+                            className={cn(numberInputClassName, 'text-center pl-1 pr-4')}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateLineItem(section.id, item.id, {
+                                discountType: discountType === 'percent' ? 'dollar' : 'percent',
+                              })
+                            }
+                            className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-coral text-[9px] font-medium"
+                            title={`Click to switch to ${discountType === 'percent' ? 'dollar' : 'percent'}`}
+                          >
+                            {discountType === 'percent' ? '%' : '$'}
+                          </button>
                         </div>
                       </div>
 
@@ -894,11 +1246,64 @@ export function PricingTab({ mode }: PricingTabProps) {
                         />
                       </div>
 
-                      {/* Sell Price (calculated) */}
+                      {/* Sell Price (calculated) - Clickable with breakdown */}
                       <div className="col-span-1 text-right">
-                        <span className="font-mono text-xs text-gray-700 dark:text-gray-300">
-                          {formatCurrency(sellPrice)}
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="font-mono text-sm text-gray-700 dark:text-gray-300 hover:text-coral hover:underline underline-offset-2 cursor-pointer transition-colors text-right"
+                            >
+                              {formatCurrency(sellPrice)}
+                              {item.isTaxable && salesTaxPercent > 0 && (
+                                <span className="text-[10px] text-gray-400 ml-0.5">
+                                  ({formatCurrency(taxAdjustedPrice)})
+                                </span>
+                              )}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-56 p-3">
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                Price Breakdown
+                              </p>
+                              <div className="space-y-1 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">{item.quantity} × {formatCurrency(item.unitCost)}</span>
+                                  <span className="font-mono">{formatCurrency(baseCost)}</span>
+                                </div>
+                                {markupAmount !== 0 && (
+                                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                                    <span>+ Markup ({markupType === 'percent' ? `${item.markupPercent}%` : 'flat'})</span>
+                                    <span className="font-mono">+{formatCurrency(markupAmount)}</span>
+                                  </div>
+                                )}
+                                {discountAmount > 0 && (
+                                  <div className="flex justify-between text-red-500">
+                                    <span>− Discount ({discountType === 'percent' ? `${item.discountValue}%` : 'flat'})</span>
+                                    <span className="font-mono">−{formatCurrency(discountAmount)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-600 font-medium">
+                                  <span className="text-gray-700 dark:text-gray-200">Sell Price</span>
+                                  <span className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(sellPrice)}</span>
+                                </div>
+                                {item.isTaxable && salesTaxPercent > 0 && (
+                                  <>
+                                    <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                                      <span>+ Tax ({formatTaxRate(salesTaxPercent)}%)</span>
+                                      <span className="font-mono">+{formatCurrency(itemTax)}</span>
+                                    </div>
+                                    <div className="flex justify-between font-semibold text-coral">
+                                      <span>Total w/ Tax</span>
+                                      <span className="font-mono">{formatCurrency(taxAdjustedPrice)}</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       {/* Delete */}
@@ -915,7 +1320,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                 })}
 
                 {/* Add Line Item Row */}
-                <div className="grid grid-cols-12 gap-2 px-3 py-0.5 items-center border-t border-gray-100 dark:border-gray-700/50">
+                <div className="grid grid-cols-12 gap-1 px-3 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
                   <div className="col-span-12">
                     <Button
                       variant="ghost"
@@ -1073,6 +1478,9 @@ export function PricingTab({ mode }: PricingTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Floating Scientific Calculator */}
+      <ScientificCalculator />
     </div>
   );
 }
