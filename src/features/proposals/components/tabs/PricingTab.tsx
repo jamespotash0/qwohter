@@ -17,7 +17,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical, Calculator, X } from '@phosphor-icons/react';
+import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical, Calculator } from '@phosphor-icons/react';
 import {
   DndContext,
   closestCenter,
@@ -134,12 +134,11 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// Scientific Calculator Floating Component
-function ScientificCalculator() {
+// Scientific Calculator Component (inline in table header)
+function CalculatorPopover() {
   const [expression, setExpression] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const calculate = useCallback(() => {
@@ -217,152 +216,136 @@ function ScientificCalculator() {
   const opBtnClass = "h-8 text-xs font-medium rounded bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors";
 
   return (
-    <>
-      {/* Floating Button */}
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              'fixed bottom-6 right-6 z-50 p-3 rounded-full shadow-lg transition-all',
-              'bg-coral text-white hover:bg-coral-hover hover:scale-105',
-              'focus:outline-none focus:ring-2 focus:ring-coral focus:ring-offset-2'
-            )}
-            title="Scientific Calculator"
-          >
-            <Calculator className="w-5 h-5" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="end"
-          sideOffset={12}
-          className="w-80 p-4 shadow-xl"
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-coral transition-colors"
+          title="Calculator"
         >
-          <div className="space-y-3">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Calculator</span>
-              <div className="flex gap-1">
-                <button
-                  onClick={clear}
-                  className="text-[10px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Clear
-                </button>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
+          <Calculator className="w-4 h-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={8}
+        className="w-80 p-4 shadow-xl"
+      >
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Calculator</span>
+            <button
+              onClick={clear}
+              className="text-[10px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Clear
+            </button>
+          </div>
 
-            {/* Display */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 space-y-1">
-              <Input
-                ref={inputRef}
-                value={expression}
-                onChange={(e) => setExpression(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter expression..."
-                className="h-9 text-base font-mono border-0 bg-transparent shadow-none focus-visible:ring-0 px-1"
-                autoFocus
-              />
-              {result !== null && (
-                <div
-                  onClick={useResult}
-                  className={cn(
-                    'text-right font-mono text-lg font-semibold px-1 cursor-pointer',
-                    result === 'Error' ? 'text-red-500' : 'text-coral hover:text-coral-hover'
-                  )}
-                  title="Click to use result"
-                >
-                  = {result}
-                </div>
-              )}
-            </div>
-
-            {/* Scientific Functions Row */}
-            <div className="grid grid-cols-6 gap-1">
-              <button type="button" onClick={() => insert('sqrt(')} className={fnBtnClass}>√</button>
-              <button type="button" onClick={() => insert('^')} className={fnBtnClass}>x^y</button>
-              <button type="button" onClick={() => insert('π')} className={fnBtnClass}>π</button>
-              <button type="button" onClick={() => insert('sin(')} className={fnBtnClass}>sin</button>
-              <button type="button" onClick={() => insert('cos(')} className={fnBtnClass}>cos</button>
-              <button type="button" onClick={() => insert('tan(')} className={fnBtnClass}>tan</button>
-            </div>
-            <div className="grid grid-cols-6 gap-1">
-              <button type="button" onClick={() => insert('log(')} className={fnBtnClass}>log</button>
-              <button type="button" onClick={() => insert('ln(')} className={fnBtnClass}>ln</button>
-              <button type="button" onClick={() => insert('abs(')} className={fnBtnClass}>|x|</button>
-              <button type="button" onClick={() => insert('round(')} className={fnBtnClass}>rnd</button>
-              <button type="button" onClick={() => insert('floor(')} className={fnBtnClass}>flr</button>
-              <button type="button" onClick={() => insert('ceil(')} className={fnBtnClass}>ceil</button>
-            </div>
-
-            {/* Main Keypad */}
-            <div className="grid grid-cols-5 gap-1">
-              <button type="button" onClick={() => insert('(')} className={btnClass}>(</button>
-              <button type="button" onClick={() => insert(')')} className={btnClass}>)</button>
-              <button type="button" onClick={() => insert('%')} className={opBtnClass}>%</button>
-              <button type="button" onClick={backspace} className={opBtnClass}>←</button>
-              <button type="button" onClick={() => insert('/')} className={opBtnClass}>÷</button>
-
-              <button type="button" onClick={() => insert('7')} className={btnClass}>7</button>
-              <button type="button" onClick={() => insert('8')} className={btnClass}>8</button>
-              <button type="button" onClick={() => insert('9')} className={btnClass}>9</button>
-              <button type="button" onClick={() => insert('*')} className={opBtnClass}>×</button>
-              <button type="button" onClick={() => insert('-')} className={opBtnClass}>−</button>
-
-              <button type="button" onClick={() => insert('4')} className={btnClass}>4</button>
-              <button type="button" onClick={() => insert('5')} className={btnClass}>5</button>
-              <button type="button" onClick={() => insert('6')} className={btnClass}>6</button>
-              <button type="button" onClick={() => insert('+')} className={opBtnClass}>+</button>
-              <button
-                type="button"
-                onClick={calculate}
-                className="row-span-2 h-full text-lg font-bold rounded bg-coral text-white hover:bg-coral-hover transition-colors flex items-center justify-center"
+          {/* Display */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 space-y-1">
+            <Input
+              ref={inputRef}
+              value={expression}
+              onChange={(e) => setExpression(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter expression..."
+              className="h-9 text-base font-mono border-0 bg-transparent shadow-none focus-visible:ring-0 px-1"
+            />
+            {result !== null && (
+              <div
+                onClick={useResult}
+                className={cn(
+                  'text-right font-mono text-lg font-semibold px-1 cursor-pointer',
+                  result === 'Error' ? 'text-red-500' : 'text-coral hover:text-coral-hover'
+                )}
+                title="Click to use result"
               >
-                =
-              </button>
-
-              <button type="button" onClick={() => insert('1')} className={btnClass}>1</button>
-              <button type="button" onClick={() => insert('2')} className={btnClass}>2</button>
-              <button type="button" onClick={() => insert('3')} className={btnClass}>3</button>
-              <button type="button" onClick={() => insert('.')} className={btnClass}>.</button>
-
-              <button type="button" onClick={() => insert('0')} className={cn(btnClass, 'col-span-2')}>0</button>
-              <button type="button" onClick={() => insert('00')} className={btnClass}>00</button>
-              <button type="button" onClick={() => insert(',')} className={btnClass}>,</button>
-            </div>
-
-            {/* History */}
-            {history.length > 0 && (
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">History</p>
-                <div className="space-y-0.5 max-h-16 overflow-y-auto">
-                  {history.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        const parts = item.split(' = ');
-                        if (parts[0]) setExpression(parts[0]);
-                      }}
-                      className="block w-full text-left text-[10px] font-mono text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 truncate"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
+                = {result}
               </div>
             )}
           </div>
-        </PopoverContent>
-      </Popover>
-    </>
+
+          {/* Scientific Functions Row */}
+          <div className="grid grid-cols-6 gap-1">
+            <button type="button" onClick={() => insert('sqrt(')} className={fnBtnClass}>√</button>
+            <button type="button" onClick={() => insert('^')} className={fnBtnClass}>x^y</button>
+            <button type="button" onClick={() => insert('π')} className={fnBtnClass}>π</button>
+            <button type="button" onClick={() => insert('sin(')} className={fnBtnClass}>sin</button>
+            <button type="button" onClick={() => insert('cos(')} className={fnBtnClass}>cos</button>
+            <button type="button" onClick={() => insert('tan(')} className={fnBtnClass}>tan</button>
+          </div>
+          <div className="grid grid-cols-6 gap-1">
+            <button type="button" onClick={() => insert('log(')} className={fnBtnClass}>log</button>
+            <button type="button" onClick={() => insert('ln(')} className={fnBtnClass}>ln</button>
+            <button type="button" onClick={() => insert('abs(')} className={fnBtnClass}>|x|</button>
+            <button type="button" onClick={() => insert('round(')} className={fnBtnClass}>rnd</button>
+            <button type="button" onClick={() => insert('floor(')} className={fnBtnClass}>flr</button>
+            <button type="button" onClick={() => insert('ceil(')} className={fnBtnClass}>ceil</button>
+          </div>
+
+          {/* Main Keypad */}
+          <div className="grid grid-cols-5 gap-1">
+            <button type="button" onClick={() => insert('(')} className={btnClass}>(</button>
+            <button type="button" onClick={() => insert(')')} className={btnClass}>)</button>
+            <button type="button" onClick={() => insert('%')} className={opBtnClass}>%</button>
+            <button type="button" onClick={backspace} className={opBtnClass}>←</button>
+            <button type="button" onClick={() => insert('/')} className={opBtnClass}>÷</button>
+
+            <button type="button" onClick={() => insert('7')} className={btnClass}>7</button>
+            <button type="button" onClick={() => insert('8')} className={btnClass}>8</button>
+            <button type="button" onClick={() => insert('9')} className={btnClass}>9</button>
+            <button type="button" onClick={() => insert('*')} className={opBtnClass}>×</button>
+            <button type="button" onClick={() => insert('-')} className={opBtnClass}>−</button>
+
+            <button type="button" onClick={() => insert('4')} className={btnClass}>4</button>
+            <button type="button" onClick={() => insert('5')} className={btnClass}>5</button>
+            <button type="button" onClick={() => insert('6')} className={btnClass}>6</button>
+            <button type="button" onClick={() => insert('+')} className={opBtnClass}>+</button>
+            <button
+              type="button"
+              onClick={calculate}
+              className="row-span-2 h-full text-lg font-bold rounded bg-coral text-white hover:bg-coral-hover transition-colors flex items-center justify-center"
+            >
+              =
+            </button>
+
+            <button type="button" onClick={() => insert('1')} className={btnClass}>1</button>
+            <button type="button" onClick={() => insert('2')} className={btnClass}>2</button>
+            <button type="button" onClick={() => insert('3')} className={btnClass}>3</button>
+            <button type="button" onClick={() => insert('.')} className={btnClass}>.</button>
+
+            <button type="button" onClick={() => insert('0')} className={cn(btnClass, 'col-span-2')}>0</button>
+            <button type="button" onClick={() => insert('00')} className={btnClass}>00</button>
+            <button type="button" onClick={() => insert(',')} className={btnClass}>,</button>
+          </div>
+
+          {/* History */}
+          {history.length > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">History</p>
+              <div className="space-y-0.5 max-h-16 overflow-y-auto">
+                {history.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      const parts = item.split(' = ');
+                      if (parts[0]) setExpression(parts[0]);
+                    }}
+                    className="block w-full text-left text-[10px] font-mono text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 truncate"
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -1040,16 +1023,18 @@ export function PricingTab({ mode }: PricingTabProps) {
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-          <div className="col-span-3">Name</div>
-          <div className="col-span-1 text-center">Qty</div>
-          <div className="col-span-1">Rule</div>
-          <div className="col-span-2 text-right">Unit Cost</div>
-          <div className="col-span-1 text-center">Markup</div>
-          <div className="col-span-1 text-center">Disc</div>
-          <div className="col-span-1 text-center">Tax</div>
-          <div className="col-span-1 text-right">Sell</div>
-          <div className="col-span-1"></div>
+        <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider items-center">
+          <div className="col-span-3 flex items-center">Name</div>
+          <div className="col-span-1 flex items-center justify-center">Qty</div>
+          <div className="col-span-1 flex items-center">Rule</div>
+          <div className="col-span-2 flex items-center justify-end">Unit Cost</div>
+          <div className="col-span-1 flex items-center justify-center">Markup</div>
+          <div className="col-span-1 flex items-center justify-center">Disc</div>
+          <div className="col-span-1 flex items-center justify-center">Tax</div>
+          <div className="col-span-1 flex items-center justify-end">Sell</div>
+          <div className="col-span-1 flex items-center justify-center">
+            <CalculatorPopover />
+          </div>
         </div>
 
         {/* Sections with Line Items */}
@@ -1252,12 +1237,12 @@ export function PricingTab({ mode }: PricingTabProps) {
                           <PopoverTrigger asChild>
                             <button
                               type="button"
-                              className="font-mono text-sm text-gray-700 dark:text-gray-300 hover:text-coral hover:underline underline-offset-2 cursor-pointer transition-colors text-right"
+                              className="font-mono text-xs text-gray-700 dark:text-gray-300 hover:text-coral hover:underline underline-offset-2 cursor-pointer transition-colors text-right"
                             >
                               {formatCurrency(sellPrice)}
                               {item.isTaxable && salesTaxPercent > 0 && (
-                                <span className="text-[10px] text-gray-400 ml-0.5">
-                                  ({formatCurrency(taxAdjustedPrice)})
+                                <span className="text-[10px] text-blue-500 ml-1">
+                                  +{formatCurrency(itemTax)}
                                 </span>
                               )}
                             </button>
@@ -1268,8 +1253,8 @@ export function PricingTab({ mode }: PricingTabProps) {
                                 Price Breakdown
                               </p>
                               <div className="space-y-1 text-xs">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-500">{item.quantity} × {formatCurrency(item.unitCost)}</span>
+                                <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                                  <span>{item.quantity} × {formatCurrency(item.unitCost)}</span>
                                   <span className="font-mono">{formatCurrency(baseCost)}</span>
                                 </div>
                                 {markupAmount !== 0 && (
@@ -1279,7 +1264,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                                   </div>
                                 )}
                                 {discountAmount > 0 && (
-                                  <div className="flex justify-between text-red-500">
+                                  <div className="flex justify-between text-gray-700 dark:text-gray-300">
                                     <span>− Discount ({discountType === 'percent' ? `${item.discountValue}%` : 'flat'})</span>
                                     <span className="font-mono">−{formatCurrency(discountAmount)}</span>
                                   </div>
@@ -1290,11 +1275,11 @@ export function PricingTab({ mode }: PricingTabProps) {
                                 </div>
                                 {item.isTaxable && salesTaxPercent > 0 && (
                                   <>
-                                    <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                                    <div className="flex justify-between text-blue-500 dark:text-blue-400">
                                       <span>+ Tax ({formatTaxRate(salesTaxPercent)}%)</span>
                                       <span className="font-mono">+{formatCurrency(itemTax)}</span>
                                     </div>
-                                    <div className="flex justify-between font-semibold text-coral">
+                                    <div className="flex justify-between font-medium text-gray-900 dark:text-gray-100">
                                       <span>Total w/ Tax</span>
                                       <span className="font-mono">{formatCurrency(taxAdjustedPrice)}</span>
                                     </div>
@@ -1478,9 +1463,6 @@ export function PricingTab({ mode }: PricingTabProps) {
           </div>
         </div>
       </div>
-
-      {/* Floating Scientific Calculator */}
-      <ScientificCalculator />
     </div>
   );
 }

@@ -559,7 +559,7 @@ export function PreviewDialog({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Document Preview
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-8">
             <Button
               variant="outline"
               size="sm"
@@ -597,12 +597,6 @@ export function PreviewDialog({
                 DOCX
               </Button>
             )}
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
           </div>
         </div>
 

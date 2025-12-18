@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FloppyDisk, Check, Info } from '@phosphor-icons/react';
+import { ArrowLeft, FloppyDisk, Check, Info, CloudCheck, CloudArrowUp, Warning } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   const isBuilderMode = mode === 'builder';
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedDataRef = useRef<string | null>(null);
 
   // Get current user and organization
   const user = useUser();
@@ -232,25 +235,26 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     }
   }, [navigate, onClose]);
 
-  // Handle save
-  const handleSave = useCallback(async () => {
+  // Handle save (can be called manually or by auto-save)
+  const handleSave = useCallback(async (isAutoSave = false) => {
     if (!currentOrganization?.id) {
-      toast.error('No organization selected');
+      if (!isAutoSave) toast.error('No organization selected');
       return;
     }
 
     if (!user?.id) {
-      toast.error('Not authenticated');
+      if (!isAutoSave) toast.error('Not authenticated');
       return;
     }
 
     const trimmedName = (isBuilderMode ? formName : proposalName).trim();
     if (!trimmedName) {
-      toast.error('Name is required');
+      if (!isAutoSave) toast.error('Name is required');
       return;
     }
 
     setIsSaving(true);
+    setSaveStatus('saving');
 
     try {
       if (isBuilderMode) {
@@ -266,7 +270,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
               metadata: serializedMetadata,
             },
           });
-          toast.success('Form template saved');
+          if (!isAutoSave) toast.success('Form template saved');
         } else {
           // Create new form
           await createFormMutation.mutateAsync({
@@ -278,7 +282,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             is_archived: false,
             is_default: false,
           });
-          toast.success('Form template created');
+          if (!isAutoSave) toast.success('Form template created');
         }
         markClean();
         setNameIsDirty(false);
@@ -288,7 +292,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       } else {
         // Filler mode: save proposal values
         if (!proposalId || !proposalData) {
-          toast.error('No proposal to update');
+          if (!isAutoSave) toast.error('No proposal to update');
+          setSaveStatus('idle');
           return;
         }
 
@@ -304,6 +309,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           info: infoData, // Add info tab data
         };
 
+        // Track what we saved for comparison
+        lastSavedDataRef.current = JSON.stringify(formDataPayload);
+
         await updateProposalMutation.mutateAsync({
           proposalId: proposalId,
           updates: {
@@ -317,16 +325,24 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             proposal_source: infoData?.proposalSource || undefined,
           },
         });
-        toast.success('Proposal saved');
+        if (!isAutoSave) toast.success('Proposal saved');
         markClean();
         setNameIsDirty(false);
         setTabDirtyStates({});
         // Reset InfoTab's initial values to current values
         infoTabRef.current?.markClean();
       }
+      setSaveStatus('saved');
+      // Reset to idle after 3 seconds
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Save failed:', error);
-      toast.error('Failed to save: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setSaveStatus('error');
+      if (!isAutoSave) {
+        toast.error('Failed to save: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      }
+      // Reset error status after 5 seconds
+      setTimeout(() => setSaveStatus('idle'), 5000);
     } finally {
       setIsSaving(false);
     }
@@ -347,6 +363,35 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     updateProposalMutation,
     markClean,
   ]);
+
+  // Auto-save effect - debounced save when data changes
+  useEffect(() => {
+    // Only auto-save in filler mode with an existing proposal
+    if (isBuilderMode || !proposalId || !proposalData) return;
+
+    // Don't auto-save if nothing is dirty
+    if (!combinedIsDirty) return;
+
+    // Don't auto-save if already saving
+    if (isSaving) return;
+
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set a new timeout for auto-save (1.5 seconds after last change)
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      handleSave(true); // Pass true for isAutoSave
+    }, 1500);
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [combinedIsDirty, isBuilderMode, proposalId, proposalData, isSaving, handleSave]);
 
   // Render a single tab's content
   const renderTabContent = (tab: typeof TABS[number]) => {
@@ -391,7 +436,13 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       );
     }
 
-    return <TabComponent mode={mode} proposalData={proposalData} onDirtyChange={onDirtyChange} />;
+    // Merge organization into proposalData for tabs that need it (e.g., PresentationTab)
+    const proposalWithOrg = {
+      ...proposalData,
+      organization: currentOrganization,
+    };
+
+    return <TabComponent mode={mode} proposalData={proposalWithOrg} onDirtyChange={onDirtyChange} />;
   };
 
   return (
@@ -456,25 +507,75 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
           {/* Right: Actions */}
           <div className="flex items-center gap-3">
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || !combinedIsDirty}
-              className="rounded-xl px-4 h-11 bg-[#ee6c4d] hover:bg-[#e05a3a] text-white shadow-sm transition-all duration-200"
-            >
-              {isSaving ? (
-                <div className="flex items-center gap-2">
+            {/* Auto-save status indicator (filler mode) */}
+            {!isBuilderMode && (
+              <div className="flex items-center gap-2 text-sm">
+                {saveStatus === 'saving' && (
                   <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                   >
-                    <FloppyDisk className="w-4 h-4" />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <CloudArrowUp className="w-4 h-4" />
+                    </motion.div>
+                    <span>Saving...</span>
                   </motion.div>
-                  <span>Saving...</span>
-                </div>
-              ) : (
-                <span>Save</span>
-              )}
-            </Button>
+                )}
+                {saveStatus === 'saved' && (
+                  <motion.div
+                    className="flex items-center gap-1.5 text-green-600 dark:text-green-400"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <CloudCheck className="w-4 h-4" />
+                    <span>Saved</span>
+                  </motion.div>
+                )}
+                {saveStatus === 'error' && (
+                  <motion.div
+                    className="flex items-center gap-1.5 text-red-500"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <Warning className="w-4 h-4" />
+                    <span>Save failed</span>
+                  </motion.div>
+                )}
+                {saveStatus === 'idle' && combinedIsDirty && (
+                  <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                    <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Unsaved</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Manual save button (builder mode only, or as fallback) */}
+            {isBuilderMode && (
+              <Button
+                onClick={() => handleSave(false)}
+                disabled={isSaving || !combinedIsDirty}
+                className="rounded-xl px-4 h-11 bg-[#ee6c4d] hover:bg-[#e05a3a] text-white shadow-sm transition-all duration-200"
+              >
+                {isSaving ? (
+                  <div className="flex items-center gap-2">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <FloppyDisk className="w-4 h-4" />
+                    </motion.div>
+                    <span>Saving...</span>
+                  </div>
+                ) : (
+                  <span>Save</span>
+                )}
+              </Button>
+            )}
           </div>
         </div>
 

@@ -84,14 +84,9 @@ export interface VariableDefinition {
 
 export const AVAILABLE_VARIABLES: VariableDefinition[] = [
   // ============================================================================
-  // Proposal Fields (direct columns from proposals table)
-  // ============================================================================
-  { key: 'proposal.number', label: 'Proposal Number', category: 'Proposal', description: 'Auto-generated proposal number (e.g., P-1001)' },
-  { key: 'proposal.createdAt', label: 'Created Date', category: 'Proposal', description: 'When the proposal was created' },
-
-  // ============================================================================
   // Project Info (from form_data.info - InfoTabData)
   // ============================================================================
+  { key: 'proposal.number', label: 'Proposal Number', category: 'Project', description: 'Auto-generated proposal number (e.g., P-1001)' },
   { key: 'project.name', label: 'Project Name', category: 'Project', description: 'Name of the project' },
   { key: 'project.date', label: 'Proposal Date', category: 'Project', description: 'Date on the proposal' },
   { key: 'project.locationName', label: 'Job Location Name', category: 'Project', description: 'POI or landmark name' },
@@ -119,7 +114,6 @@ export const AVAILABLE_VARIABLES: VariableDefinition[] = [
   { key: 'client.email', label: 'Client Email', category: 'Client', description: 'Client\'s email address' },
   { key: 'client.phone', label: 'Client Phone', category: 'Client', description: 'Client\'s phone number' },
   { key: 'client.address', label: 'Client Address', category: 'Client', description: 'Client\'s mailing address' },
-  { key: 'client.type', label: 'Client Type', category: 'Client', description: 'Type of client relationship' },
 
   // ============================================================================
   // Organization (from organizations table)
@@ -135,7 +129,6 @@ export const AVAILABLE_VARIABLES: VariableDefinition[] = [
   // Products (static - dynamic ones generated from form data)
   // ============================================================================
   { key: 'products.list', label: 'Product List', category: 'Products', description: 'Comma-separated list of products' },
-  { key: 'products.count', label: 'Product Count', category: 'Products', description: 'Number of products' },
 ];
 
 // Group variables by category
@@ -218,27 +211,30 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
 
       // Individual line item variables
       const itemKey = `pricing.${sectionKey}.item${itemIdx + 1}`;
+      const itemName = item.name || `Item ${itemIdx + 1}`;
+      const sectionPrefix = section.name ? `[${section.name}] ` : '';
+
       vars.push({
         key: `${itemKey}.name`,
-        label: `${item.name || `Item ${itemIdx + 1}`}`,
+        label: `${sectionPrefix}${itemName} - Name`,
         category: 'Pricing',
         description: `Line item name in ${section.name}`,
       });
       vars.push({
         key: `${itemKey}.quantity`,
-        label: `${item.name || `Item ${itemIdx + 1}`} Qty`,
+        label: `${sectionPrefix}${itemName} - Quantity`,
         category: 'Pricing',
         description: `Quantity: ${item.quantity}`,
       });
       vars.push({
         key: `${itemKey}.unitCost`,
-        label: `${item.name || `Item ${itemIdx + 1}`} Unit Cost`,
+        label: `${sectionPrefix}${itemName} - Unit Cost`,
         category: 'Pricing',
         description: `Unit cost: $${item.unitCost}`,
       });
       vars.push({
         key: `${itemKey}.total`,
-        label: `${item.name || `Item ${itemIdx + 1}`} Total`,
+        label: `${sectionPrefix}${itemName} - Total`,
         category: 'Pricing',
         description: `Total: $${total.toFixed(2)}`,
       });
@@ -249,21 +245,9 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
     if (section.lineItems.length > 0) {
       vars.push({
         key: `pricing.${sectionKey}.total`,
-        label: `${section.name} Total`,
+        label: `[${section.name}] Section Total`,
         category: 'Pricing',
-        description: `Total for ${section.name} section`,
-      });
-      vars.push({
-        key: `pricing.${sectionKey}.items`,
-        label: `${section.name} Items`,
-        category: 'Pricing',
-        description: `Line items in ${section.name}`,
-      });
-      vars.push({
-        key: `pricing.${sectionKey}.itemCount`,
-        label: `${section.name} Count`,
-        category: 'Pricing',
-        description: `Number of items in ${section.name}`,
+        description: `Total for ${section.name} section: $${sectionTotal.toFixed(2)}`,
       });
     }
   });
@@ -272,15 +256,44 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
   if (itemCount > 0) {
     vars.push({
       key: 'pricing.grandTotal',
-      label: 'Grand Total',
+      label: 'Pricing Grand Total (All Sections)',
       category: 'Pricing',
-      description: 'Total of all pricing sections',
+      description: `Total of all pricing sections: $${grandTotal.toFixed(2)}`,
+    });
+  }
+
+  // Tax variables
+  const taxPercent = pricing.salesTaxPercent ?? 0;
+  if (taxPercent > 0) {
+    // Calculate tax on taxable items only
+    let taxableTotal = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        if (item.isTaxable) {
+          taxableTotal += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        }
+      });
+    });
+    const taxAmount = taxableTotal * (taxPercent / 100);
+    const grandTotalWithTax = grandTotal + taxAmount;
+
+    vars.push({
+      key: 'pricing.salesTaxPercent',
+      label: 'Sales Tax Rate (%)',
+      category: 'Pricing',
+      description: `Tax rate: ${taxPercent}%`,
     });
     vars.push({
-      key: 'pricing.itemCount',
-      label: 'Total Items',
+      key: 'pricing.taxAmount',
+      label: 'Tax Amount',
       category: 'Pricing',
-      description: 'Number of line items',
+      description: `Tax on taxable items: $${taxAmount.toFixed(2)}`,
+    });
+    vars.push({
+      key: 'pricing.grandTotalWithTax',
+      label: 'Grand Total (with Tax)',
+      category: 'Pricing',
+      description: `Total including tax: $${grandTotalWithTax.toFixed(2)}`,
     });
   }
 
@@ -298,14 +311,6 @@ export function getLeadTimesVariables(data: FormBuilderData): VariableDefinition
     const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_') || `section${sectionIdx + 1}`;
 
     if (section.phases.length > 0) {
-      // Section summary
-      vars.push({
-        key: `leadtimes.${sectionKey}.phases`,
-        label: `${section.name} Phases`,
-        category: 'Lead Times',
-        description: `All phases in ${section.name}`,
-      });
-
       // Individual phases
       section.phases.forEach((phase, phaseIdx) => {
         const phaseKey = `${sectionKey}_phase${phaseIdx + 1}`;

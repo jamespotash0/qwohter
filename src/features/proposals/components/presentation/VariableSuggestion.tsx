@@ -103,7 +103,7 @@ const VariableList = forwardRef<VariableListRef, VariableListProps>(({ items, co
   }
 
   return (
-    <div className="variable-suggestion-menu bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden max-h-64 overflow-y-auto w-64">
+    <div className="variable-suggestion-menu bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-72 overflow-y-auto min-w-96 w-max max-w-[600px]">
       <div className="p-2">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-2 py-1">
           Variables
@@ -112,8 +112,9 @@ const VariableList = forwardRef<VariableListRef, VariableListProps>(({ items, co
           <button
             key={item.key}
             onClick={() => selectItem(index)}
+            title={item.label}
             className={cn(
-              'flex items-center gap-2 w-full px-3 py-2 rounded-lg text-left transition-colors',
+              'flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-left transition-colors',
               selectedIndex === index
                 ? 'bg-coral/10 text-coral'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
@@ -123,12 +124,7 @@ const VariableList = forwardRef<VariableListRef, VariableListProps>(({ items, co
               'w-4 h-4 flex-shrink-0',
               selectedIndex === index ? 'text-coral' : 'text-gray-400'
             )} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{item.label}</p>
-              <p className="text-xs text-gray-400 truncate font-mono">
-                {'{' + item.key + '}'}
-              </p>
-            </div>
+            <span className="text-sm font-medium flex-1">{item.label}</span>
           </button>
         ))}
       </div>

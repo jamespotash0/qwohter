@@ -32,6 +32,7 @@ import { exportToPdf, exportToDocx } from '../../utils/documentExport';
 import { resolveContentVariables, renderContentToHtml } from '../../utils/contentRenderer';
 
 interface ProposalData {
+  proposal_number?: string;
   form_data?: {
     info?: {
       projectName?: string;
@@ -46,12 +47,12 @@ interface ProposalData {
   };
   organization?: {
     name?: string;
-    organization_info?: {
-      address?: string;
-      phone?: string;
-      email?: string;
-    };
-  };
+    phone_number?: string;
+    fax_number?: string;
+    company_address?: string;
+    website?: string;
+    industry?: string;
+  } | null;
 }
 
 interface PresentationTabProps {
@@ -77,11 +78,21 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
     if (!org) return undefined;
     return {
       name: org.name,
-      address: org.organization_info?.address,
-      phone: org.organization_info?.phone,
-      email: org.organization_info?.email,
+      phone: org.phone_number,
+      fax: org.fax_number,
+      address: org.company_address,
+      website: org.website,
+      industry: org.industry,
     };
   }, [proposalData?.organization]);
+
+  // Proposal data for variable resolution (proposal_number from DB)
+  const previewProposalData = useMemo(() => {
+    if (!proposalData?.proposal_number) return undefined;
+    return {
+      proposalNumber: proposalData.proposal_number,
+    };
+  }, [proposalData?.proposal_number]);
 
   // Editor ref for programmatic control
   const editorRef = useRef<PresentationEditorRef>(null);
@@ -205,8 +216,8 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
         throw new Error('No content to export');
       }
 
-      // Resolve all variables (undefined for proposalData - direct proposal fields not yet available here)
-      const resolvedContent = resolveContentVariables(currentContent, data, undefined, infoData, orgData);
+      // Resolve all variables including proposal data
+      const resolvedContent = resolveContentVariables(currentContent, data, previewProposalData, infoData, orgData);
 
       // Render to HTML
       const resolvedHtml = renderContentToHtml(resolvedContent);
@@ -236,7 +247,7 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
     } finally {
       setIsExporting(false);
     }
-  }, [editor, data, infoData, orgData]);
+  }, [editor, data, previewProposalData, infoData, orgData]);
 
   // Export to DOCX with resolved variables
   const handleExportDocx = useCallback(async () => {
@@ -248,8 +259,8 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
         throw new Error('No content to export');
       }
 
-      // Resolve all variables before export (undefined for proposalData - direct proposal fields not yet available here)
-      const resolvedContent = resolveContentVariables(currentContent, data, undefined, infoData, orgData);
+      // Resolve all variables before export
+      const resolvedContent = resolveContentVariables(currentContent, data, previewProposalData, infoData, orgData);
 
       const projectName = infoData?.projectName || infoData?.clientName || 'proposal';
       const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_presentation.docx`;
@@ -269,7 +280,7 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
     } finally {
       setIsExporting(false);
     }
-  }, [editor, data, infoData, orgData]);
+  }, [editor, data, previewProposalData, infoData, orgData]);
 
   // Builder mode: Show disabled state
   if (isBuilderMode) {
@@ -335,6 +346,7 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
         onClose={() => setShowPreview(false)}
         content={editor?.getJSON() as EditorContent | null}
         formData={data}
+        proposalData={previewProposalData}
         infoData={infoData}
         orgData={orgData}
         onExportPdf={handleExportPdf}

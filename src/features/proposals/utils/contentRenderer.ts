@@ -149,6 +149,8 @@ function resolveOrgVariable(parts: string[], orgData?: OrgData): string {
       return orgData.address || `{org.address}`;
     case 'website':
       return orgData.website || `{org.website}`;
+    case 'industry':
+      return orgData.industry || `{org.industry}`;
     default:
       return `{org.${parts.join('.')}}`;
   }
@@ -168,6 +170,48 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
       style: 'currency',
       currency: 'USD',
     }).format(total);
+  }
+
+  // Tax variables
+  if (parts[0] === 'salesTaxPercent') {
+    return `${pricing.salesTaxPercent ?? 0}%`;
+  }
+
+  if (parts[0] === 'taxAmount') {
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    let taxableTotal = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        if (item.isTaxable) {
+          taxableTotal += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        }
+      });
+    });
+    const taxAmount = taxableTotal * (taxPercent / 100);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(taxAmount);
+  }
+
+  if (parts[0] === 'grandTotalWithTax') {
+    let total = 0;
+    let taxableTotal = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        const itemTotal = item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        total += itemTotal;
+        if (item.isTaxable) {
+          taxableTotal += itemTotal;
+        }
+      });
+    });
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    const taxAmount = taxableTotal * (taxPercent / 100);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(total + taxAmount);
   }
 
   if (parts[0] === 'itemCount') {

@@ -22,7 +22,8 @@ import TableHeader from '@tiptap/extension-table-header';
 import Link from '@tiptap/extension-link';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
-import Typography from '@tiptap/extension-typography';
+// Typography disabled - was causing unwanted character insertions
+// import Typography from '@tiptap/extension-typography';
 import Dropcursor from '@tiptap/extension-dropcursor';
 import Gapcursor from '@tiptap/extension-gapcursor';
 // Font and color extensions (named exports)
@@ -168,7 +169,7 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
-      Typography,
+      // Typography disabled - was causing unwanted character insertions
       Dropcursor.configure({
         color: '#ee6c4d',
         width: 2,
