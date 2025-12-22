@@ -99,6 +99,18 @@ const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
 
+// Admin pages - Product Catalog Management
+const AdminLayout = lazy(() => import("@/features/admin/components/AdminLayout").then(m => ({ default: m.AdminLayout })));
+const AdminDashboard = lazy(() => import("@/features/admin/pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const DomainsPage = lazy(() => import("@/features/admin/pages/DomainsPage").then(m => ({ default: m.DomainsPage })));
+const ManufacturersPage = lazy(() => import("@/features/admin/pages/ManufacturersPage").then(m => ({ default: m.ManufacturersPage })));
+const ProductLinesPage = lazy(() => import("@/features/admin/pages/ProductLinesPage").then(m => ({ default: m.ProductLinesPage })));
+const SeriesPage = lazy(() => import("@/features/admin/pages/SeriesPage").then(m => ({ default: m.SeriesPage })));
+const ModelsPage = lazy(() => import("@/features/admin/pages/ModelsPage").then(m => ({ default: m.ModelsPage })));
+const VariantsPage = lazy(() => import("@/features/admin/pages/VariantsPage").then(m => ({ default: m.VariantsPage })));
+const OptionGroupsPage = lazy(() => import("@/features/admin/pages/OptionGroupsPage").then(m => ({ default: m.OptionGroupsPage })));
+const OptionValuesPage = lazy(() => import("@/features/admin/pages/OptionValuesPage").then(m => ({ default: m.OptionValuesPage })));
+
 // Products page - HIDDEN for now
 // const Products = lazy(() => import("@/pages/Products"));
 
@@ -154,6 +166,21 @@ export const AppRouter = () => (
 
           {/* Proposal Filler - NEW V4 filler mode for entering proposal data */}
           <Route path="/proposals/:proposalId/edit" element={<ProposalFiller />} />
+
+          {/* Admin Panel - Product Catalog Management (full-screen with own layout) */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="products/domains" element={<DomainsPage />} />
+            <Route path="products/manufacturers" element={<ManufacturersPage />} />
+            <Route path="products/lines" element={<ProductLinesPage />} />
+            <Route path="products/series" element={<SeriesPage />} />
+            <Route path="products/models" element={<ModelsPage />} />
+            <Route path="products/variants" element={<VariantsPage />} />
+            <Route path="options/groups" element={<OptionGroupsPage />} />
+            <Route path="options/values" element={<OptionValuesPage />} />
+            <Route path="config/model-options" element={<NotFound />} />
+            <Route path="config/rules" element={<NotFound />} />
+          </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}
           <Route path="/*" element={
