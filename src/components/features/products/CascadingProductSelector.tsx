@@ -2,7 +2,7 @@
  * Cascading Product Selector
  * Simple dropdown-based product selection with dynamic configuration fields
  *
- * Hierarchy: Domain → Category → Manufacturer → Series → Model
+ * Hierarchy: Domain → Manufacturer → Product Line → Series → Model → Variant (optional)
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
@@ -42,23 +42,26 @@ export function CascadingProductSelector({
 }: CascadingProductSelectorProps) {
   const {
     domains,
-    categories,
     manufacturers,
+    productLines,
     series,
     models,
+    variants,
     selectedDomain,
-    selectedCategory,
     selectedManufacturer,
+    selectedProductLine,
     selectedSeries,
     selectedModel,
+    selectedVariant,
     loading,
     error,
     fetchDomains,
     selectDomain,
-    selectCategory,
     selectManufacturer,
+    selectProductLine,
     selectSeries,
     selectModel,
+    selectVariant,
   } = useProductStore();
 
   // Configuration values for the selected model
@@ -90,21 +93,7 @@ export function CascadingProductSelector({
     setInitialized(true);
   }, [initialValues, initialized, domains, selectDomain]);
 
-  // Step 2: Select category when category list loads
-  useEffect(() => {
-    if (!initialValues || !selectedDomain) return;
-
-    const categoryName = initialValues.productCategory as string;
-    if (categoryName) {
-      const catList = categories.get(selectedDomain.id) || [];
-      const cat = catList.find(c => c.name === categoryName);
-      if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
-        selectCategory(cat);
-      }
-    }
-  }, [initialValues, selectedDomain, categories, selectedCategory, selectCategory]);
-
-  // Step 3: Select manufacturer when manufacturer list loads
+  // Step 2: Select manufacturer when manufacturer list loads
   useEffect(() => {
     if (!initialValues || !selectedDomain) return;
 
@@ -118,19 +107,33 @@ export function CascadingProductSelector({
     }
   }, [initialValues, selectedDomain, manufacturers, selectedManufacturer, selectManufacturer]);
 
-  // Step 4: Select series when series list loads
+  // Step 3: Select product line when product line list loads
   useEffect(() => {
     if (!initialValues || !selectedManufacturer) return;
 
+    const productLineName = initialValues.productLine as string || initialValues.productCategory as string;
+    if (productLineName) {
+      const plList = productLines.get(selectedManufacturer.id) || [];
+      const pl = plList.find(p => p.name === productLineName);
+      if (pl && (!selectedProductLine || selectedProductLine.id !== pl.id)) {
+        selectProductLine(pl);
+      }
+    }
+  }, [initialValues, selectedManufacturer, productLines, selectedProductLine, selectProductLine]);
+
+  // Step 4: Select series when series list loads
+  useEffect(() => {
+    if (!initialValues || !selectedProductLine) return;
+
     const seriesName = initialValues.series as string;
     if (seriesName) {
-      const serList = series.get(selectedManufacturer.id) || [];
+      const serList = series.get(selectedProductLine.id) || [];
       const ser = serList.find(s => s.name === seriesName);
       if (ser && (!selectedSeries || selectedSeries.id !== ser.id)) {
         selectSeries(ser);
       }
     }
-  }, [initialValues, selectedManufacturer, series, selectedSeries, selectSeries]);
+  }, [initialValues, selectedProductLine, series, selectedSeries, selectSeries]);
 
   // Step 5: Select model when model list loads
   useEffect(() => {
@@ -145,6 +148,20 @@ export function CascadingProductSelector({
       }
     }
   }, [initialValues, selectedSeries, models, selectedModel, selectModel]);
+
+  // Step 6: Select variant when variant list loads (optional)
+  useEffect(() => {
+    if (!initialValues || !selectedModel) return;
+
+    const variantName = initialValues.variant as string;
+    if (variantName) {
+      const variantList = variants.get(selectedModel.id) || [];
+      const variant = variantList.find(v => v.name === variantName);
+      if (variant && (!selectedVariant || selectedVariant.id !== variant.id)) {
+        selectVariant(variant);
+      }
+    }
+  }, [initialValues, selectedModel, variants, selectedVariant, selectVariant]);
 
   // Initialize config values when model is selected or when editing with initialValues
   useEffect(() => {
@@ -168,19 +185,19 @@ export function CascadingProductSelector({
   }, [selectedModel, initialValues]);
 
   // Helper functions to get filtered lists
-  const getCategoriesForDomain = () => {
-    if (!selectedDomain) return [];
-    return categories.get(selectedDomain.id) || [];
-  };
-
   const getManufacturersForDomain = () => {
     if (!selectedDomain) return [];
     return manufacturers.get(selectedDomain.id) || [];
   };
 
-  const getSeriesForManufacturer = () => {
+  const getProductLinesForManufacturer = () => {
     if (!selectedManufacturer) return [];
-    return series.get(selectedManufacturer.id) || [];
+    return productLines.get(selectedManufacturer.id) || [];
+  };
+
+  const getSeriesForProductLine = () => {
+    if (!selectedProductLine) return [];
+    return series.get(selectedProductLine.id) || [];
   };
 
   const getModelsForSeries = () => {
@@ -188,11 +205,17 @@ export function CascadingProductSelector({
     return models.get(selectedSeries.id) || [];
   };
 
+  const getVariantsForModel = () => {
+    if (!selectedModel) return [];
+    return variants.get(selectedModel.id) || [];
+  };
+
   // Get lists for dropdowns
-  const categoriesList = getCategoriesForDomain();
   const manufacturersList = getManufacturersForDomain();
-  const seriesList = getSeriesForManufacturer();
+  const productLinesList = getProductLinesForManufacturer();
+  const seriesList = getSeriesForProductLine();
   const modelsList = getModelsForSeries();
+  const variantsList = getVariantsForModel();
 
   const handleConfigChange = (key: string, value: any) => {
     setConfigValues(prev => ({ ...prev, [key]: value }));
@@ -203,16 +226,19 @@ export function CascadingProductSelector({
 
     const selection: ProductSelection = {
       product_model_id: selectedModel.id,
+      product_variant_id: selectedVariant?.id || null,
       product_hierarchy: {
         domain: selectedDomain?.name || '',
         domain_id: selectedDomain?.id || '',
-        category: selectedCategory?.name || '',
-        category_id: selectedCategory?.id || '',
         manufacturer: selectedManufacturer?.name || '',
         manufacturer_id: selectedManufacturer?.id || '',
+        product_line: selectedProductLine?.name || '',
+        product_line_id: selectedProductLine?.id || '',
         series: selectedSeries?.name || '',
         series_id: selectedSeries?.id || '',
         model: selectedModel.name || '',
+        variant: selectedVariant?.name || null,
+        variant_id: selectedVariant?.id || null,
       },
       specifications: configValues,
       pricing: {
@@ -501,7 +527,7 @@ export function CascadingProductSelector({
         </div>
       )}
 
-      {/* Dropdown Selects - New Hierarchy: Domain → Category → Manufacturer → Series → Model */}
+      {/* Dropdown Selects - Hierarchy: Domain → Manufacturer → Product Line → Series → Model */}
       <div className="grid grid-cols-2 gap-4">
         {/* Product Domain (top level) */}
         <div className="space-y-1.5">
@@ -530,39 +556,6 @@ export function CascadingProductSelector({
               {domains.map((domain) => (
                 <SelectItem key={domain.id} value={domain.id}>
                   {domain.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Category */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Category
-          </label>
-          <Select
-            value={selectedCategory?.id || ''}
-            onValueChange={(id) => {
-              const cat = categoriesList.find((c) => c.id === id);
-              selectCategory(cat || null);
-            }}
-            disabled={!selectedDomain || loading.categories || isEditMode}
-          >
-            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
-              {loading.categories ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder={selectedDomain ? "Select category..." : "Select domain first"} />
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {categoriesList.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -602,6 +595,39 @@ export function CascadingProductSelector({
           </Select>
         </div>
 
+        {/* Product Line */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Product Line
+          </label>
+          <Select
+            value={selectedProductLine?.id || ''}
+            onValueChange={(id) => {
+              const pl = productLinesList.find((p) => p.id === id);
+              selectProductLine(pl || null);
+            }}
+            disabled={!selectedManufacturer || loading.productLines || isEditMode}
+          >
+            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
+              {loading.productLines ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder={selectedManufacturer ? "Select product line..." : "Select manufacturer first"} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {productLinesList.map((pl) => (
+                <SelectItem key={pl.id} value={pl.id}>
+                  {pl.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Series */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -613,7 +639,7 @@ export function CascadingProductSelector({
               const ser = seriesList.find((s) => s.id === id);
               selectSeries(ser || null);
             }}
-            disabled={!selectedManufacturer || loading.series || isEditMode}
+            disabled={!selectedProductLine || loading.series || isEditMode}
           >
             <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
               {loading.series ? (
@@ -622,7 +648,7 @@ export function CascadingProductSelector({
                   <span>Loading...</span>
                 </div>
               ) : (
-                <SelectValue placeholder={selectedManufacturer ? "Select series..." : "Select manufacturer first"} />
+                <SelectValue placeholder={selectedProductLine ? "Select series..." : "Select product line first"} />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -662,6 +688,46 @@ export function CascadingProductSelector({
               {modelsList.map((model) => (
                 <SelectItem key={model.id} value={model.id}>
                   {model.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Variant (optional) */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Variant <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <Select
+            value={selectedVariant?.id || ''}
+            onValueChange={(id) => {
+              if (id === '__none__') {
+                selectVariant(null);
+              } else {
+                const variant = variantsList.find((v) => v.id === id);
+                selectVariant(variant || null);
+              }
+            }}
+            disabled={!selectedModel || loading.variants || isEditMode}
+          >
+            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
+              {loading.variants ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder={selectedModel ? "None (base model)" : "Select model first"} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">
+                <span className="text-gray-500">None (base model)</span>
+              </SelectItem>
+              {variantsList.map((variant) => (
+                <SelectItem key={variant.id} value={variant.id}>
+                  {variant.name}
                 </SelectItem>
               ))}
             </SelectContent>

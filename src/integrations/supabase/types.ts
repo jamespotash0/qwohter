@@ -840,6 +840,517 @@ export interface Database {
           updated_at?: string;
         };
       };
+      // ============================================================================
+      // Product Hierarchy Tables
+      // ============================================================================
+      /**
+       * Product Domain - Top level product categorization (e.g., "Operable Walls")
+       * Renamed from product_types
+       */
+      product_domain: {
+        Row: {
+          id: string;
+          name: string;
+          code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Category - Domain subcategories (e.g., "Accordion Fold", "Panel")
+       * Renamed from product_categories
+       */
+      product_category: {
+        Row: {
+          id: string;
+          domain_id: string | null;
+          name: string;
+          code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          domain_id?: string | null;
+          name: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          domain_id?: string | null;
+          name?: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Manufacturers - Manufacturer companies
+       */
+      product_manufacturers: {
+        Row: {
+          id: string;
+          name: string;
+          code: string | null;
+          logo_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          code?: string | null;
+          logo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          code?: string | null;
+          logo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Manufacturer Product Domains - Junction table for many-to-many relationship
+       */
+      manufacturer_product_domains: {
+        Row: {
+          id: string;
+          manufacturer_id: string;
+          domain_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          manufacturer_id: string;
+          domain_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          manufacturer_id?: string;
+          domain_id?: string;
+          created_at?: string;
+        };
+      };
+      /**
+       * Product Line - Product lines under manufacturers
+       */
+      product_line: {
+        Row: {
+          id: string;
+          manufacturer_id: string;
+          name: string;
+          code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          manufacturer_id: string;
+          name: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          manufacturer_id?: string;
+          name?: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Series - Series under product lines or directly under manufacturers
+       */
+      product_series: {
+        Row: {
+          id: string;
+          manufacturer_id: string | null;
+          product_line_id: string | null;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          manufacturer_id?: string | null;
+          product_line_id?: string | null;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          manufacturer_id?: string | null;
+          product_line_id?: string | null;
+          name?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Models - Individual product models
+       * Can belong to a series OR directly to a manufacturer
+       */
+      product_models: {
+        Row: {
+          id: string;
+          series_id: string | null;
+          manufacturer_id: string | null;
+          category_id: string | null;
+          product_series_id: string | null;
+          product_line_id: string | null;
+          product_manufacturer_id: string | null;
+          name: string;
+          default_configurations: Record<string, any> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          series_id?: string | null;
+          manufacturer_id?: string | null;
+          category_id?: string | null;
+          product_series_id?: string | null;
+          product_line_id?: string | null;
+          product_manufacturer_id?: string | null;
+          name: string;
+          default_configurations?: Record<string, any> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          series_id?: string | null;
+          manufacturer_id?: string | null;
+          category_id?: string | null;
+          product_series_id?: string | null;
+          product_line_id?: string | null;
+          product_manufacturer_id?: string | null;
+          name?: string;
+          default_configurations?: Record<string, any> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Variants - Variant options for product models
+       */
+      product_variants: {
+        Row: {
+          id: string;
+          model_id: string;
+          name: string;
+          description: string | null;
+          specifications: Record<string, any>;
+          pricing: Record<string, any>;
+          is_default: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_id: string;
+          name: string;
+          description?: string | null;
+          specifications?: Record<string, any>;
+          pricing?: Record<string, any>;
+          is_default?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_id?: string;
+          name?: string;
+          description?: string | null;
+          specifications?: Record<string, any>;
+          pricing?: Record<string, any>;
+          is_default?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      // ============================================================================
+      // Product Configuration Tables (pc_ prefix)
+      // ============================================================================
+      /**
+       * Option Groups - Shared option definitions (Track System, Panel Face, etc.)
+       */
+      pc_option_groups: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          field_type: 'dropdown' | 'input' | 'multi-select' | 'auto';
+          input_type: 'string' | 'number' | 'decimal' | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
+          input_type?: 'string' | 'number' | 'decimal' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          description?: string | null;
+          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
+          input_type?: 'string' | 'number' | 'decimal' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Option Values - All possible values for each option group
+       */
+      pc_option_values: {
+        Row: {
+          id: string;
+          option_group_id: string;
+          value: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          option_group_id: string;
+          value: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          option_group_id?: string;
+          value?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+      };
+      /**
+       * Model Options - Links models to option groups with model-specific UI settings
+       */
+      pc_model_options: {
+        Row: {
+          id: string;
+          model_id: string;
+          option_group_id: string;
+          display_order: number;
+          display_group: 'primary' | 'secondary' | 'advanced' | 'hidden';
+          grid_span: number;
+          placeholder: string | null;
+          help_text: string | null;
+          is_required: boolean;
+          is_multi_select: boolean;
+          is_manual_select: boolean;
+          is_visible: boolean;
+          default_value_id: string | null;
+          default_input_value: string | null;
+          min_value: number | null;
+          max_value: number | null;
+          step_value: number | null;
+          validation_pattern: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_id: string;
+          option_group_id: string;
+          display_order?: number;
+          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
+          grid_span?: number;
+          placeholder?: string | null;
+          help_text?: string | null;
+          is_required?: boolean;
+          is_multi_select?: boolean;
+          is_manual_select?: boolean;
+          is_visible?: boolean;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          min_value?: number | null;
+          max_value?: number | null;
+          step_value?: number | null;
+          validation_pattern?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_id?: string;
+          option_group_id?: string;
+          display_order?: number;
+          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
+          grid_span?: number;
+          placeholder?: string | null;
+          help_text?: string | null;
+          is_required?: boolean;
+          is_multi_select?: boolean;
+          is_manual_select?: boolean;
+          is_visible?: boolean;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          min_value?: number | null;
+          max_value?: number | null;
+          step_value?: number | null;
+          validation_pattern?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Model Allowed Values - Restricts which option values are available for a specific model
+       */
+      pc_model_allowed_values: {
+        Row: {
+          id: string;
+          model_option_id: string;
+          option_value_id: string;
+          is_default: boolean;
+          sort_order: number;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          model_option_id: string;
+          option_value_id: string;
+          is_default?: boolean;
+          sort_order?: number;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          model_option_id?: string;
+          option_value_id?: string;
+          is_default?: boolean;
+          sort_order?: number;
+          is_active?: boolean;
+        };
+      };
+      /**
+       * Product Rules - Business rules for conditional option behavior
+       */
+      pc_rules: {
+        Row: {
+          id: string;
+          model_id: string | null;
+          variant_id: string | null;
+          name: string;
+          description: string | null;
+          priority: number;
+          is_active: boolean;
+          condition: Record<string, any>;
+          effect: Record<string, any>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_id?: string | null;
+          variant_id?: string | null;
+          name: string;
+          description?: string | null;
+          priority?: number;
+          is_active?: boolean;
+          condition: Record<string, any>;
+          effect: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_id?: string | null;
+          variant_id?: string | null;
+          name?: string;
+          description?: string | null;
+          priority?: number;
+          is_active?: boolean;
+          condition?: Record<string, any>;
+          effect?: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Variant Option Overrides - Variant-specific overrides for model option configurations
+       */
+      pc_variant_option_overrides: {
+        Row: {
+          id: string;
+          variant_id: string;
+          model_option_id: string;
+          is_required: boolean | null;
+          is_visible: boolean | null;
+          is_manual_select: boolean | null;
+          default_value_id: string | null;
+          default_input_value: string | null;
+          allowed_value_ids: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          variant_id: string;
+          model_option_id: string;
+          is_required?: boolean | null;
+          is_visible?: boolean | null;
+          is_manual_select?: boolean | null;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          allowed_value_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          variant_id?: string;
+          model_option_id?: string;
+          is_required?: boolean | null;
+          is_visible?: boolean | null;
+          is_manual_select?: boolean | null;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          allowed_value_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -893,6 +1404,57 @@ export interface Database {
           p_error_message?: string | null;
         };
         Returns: string;
+      };
+      /**
+       * Get complete model configuration as JSON
+       * Returns the full option configuration in a frontend-friendly format
+       */
+      get_model_configuration: {
+        Args: {
+          p_model_id: string;
+        };
+        Returns: {
+          model_id: string;
+          model_name: string;
+          series_id: string | null;
+          series_name: string | null;
+          product_line_id: string | null;
+          product_line_name: string | null;
+          option_groups: Array<{
+            id: string;
+            name: string;
+            slug: string;
+            field_type: string;
+            input_type: string | null;
+            allowed_values: Array<{
+              id: string;
+              value: string;
+            }>;
+            default_value: string | null;
+            ui_metadata: {
+              display_order: number;
+              display_group: string;
+              grid_span: number;
+              placeholder: string | null;
+              help_text: string | null;
+              is_required: boolean;
+              is_multi_select: boolean;
+              is_manual_select: boolean;
+              is_visible: boolean;
+              min_value: number | null;
+              max_value: number | null;
+              step_value: number | null;
+            };
+          }>;
+          rules: Array<{
+            id: string;
+            name: string;
+            description: string | null;
+            priority: number;
+            condition: Record<string, any>;
+            effect: Record<string, any>;
+          }>;
+        } | null;
       };
     };
     Enums: {

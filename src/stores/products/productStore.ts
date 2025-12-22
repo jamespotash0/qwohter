@@ -2,7 +2,7 @@
  * Product Store
  * Manages product hierarchy state for cascading selection
  *
- * Hierarchy: Domain → Category → Manufacturer → Series → Model → Variant
+ * Hierarchy: Domain → Manufacturer → Product Line → Series → Model → Variant
  */
 
 import { create } from 'zustand';
@@ -21,9 +21,9 @@ export interface ProductDomain {
   updated_at: string;
 }
 
-export interface ProductCategory {
+export interface ProductLine {
   id: string;
-  domain_id: string;
+  manufacturer_id: string;
   name: string;
   code?: string;
   created_at: string;
@@ -41,7 +41,7 @@ export interface ProductManufacturer {
 
 export interface ProductSeries {
   id: string;
-  manufacturer_id: string;
+  product_line_id: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -49,8 +49,9 @@ export interface ProductSeries {
 
 export interface ProductModel {
   id: string;
-  series_id: string;
-  category_id?: string;
+  product_series_id: string;
+  product_line_id?: string;
+  product_manufacturer_id?: string;
   name: string;
   default_configurations: Record<string, FieldDefinition>;
   created_at: string;
@@ -99,16 +100,19 @@ export interface FieldDefinition {
 
 export interface ProductSelection {
   product_model_id: string;
+  product_variant_id: string | null;
   product_hierarchy: {
     domain: string;
     domain_id: string;
-    category: string;
-    category_id: string;
     manufacturer: string;
     manufacturer_id: string;
+    product_line: string;
+    product_line_id: string;
     series: string;
     series_id: string;
     model: string;
+    variant: string | null;
+    variant_id: string | null;
   };
   specifications: Record<string, unknown>;
   pricing: {
@@ -125,16 +129,16 @@ export interface ProductSelection {
 interface ProductState {
   // Hierarchy data (cached)
   domains: ProductDomain[];
-  categories: Map<string, ProductCategory[]>; // keyed by domain_id
   manufacturers: Map<string, ProductManufacturer[]>; // keyed by domain_id (via junction)
-  series: Map<string, ProductSeries[]>; // keyed by manufacturer_id
-  models: Map<string, ProductModel[]>; // keyed by series_id or cat_${category_id}
+  productLines: Map<string, ProductLine[]>; // keyed by manufacturer_id
+  series: Map<string, ProductSeries[]>; // keyed by product_line_id
+  models: Map<string, ProductModel[]>; // keyed by product_series.id or pl_${product_line_id}
   variants: Map<string, ProductVariant[]>; // keyed by model_id
 
   // Selected state
   selectedDomain: ProductDomain | null;
-  selectedCategory: ProductCategory | null;
   selectedManufacturer: ProductManufacturer | null;
+  selectedProductLine: ProductLine | null;
   selectedSeries: ProductSeries | null;
   selectedModel: ProductModel | null;
   selectedVariant: ProductVariant | null;
@@ -142,8 +146,8 @@ interface ProductState {
   // Loading states
   loading: {
     domains: boolean;
-    categories: boolean;
     manufacturers: boolean;
+    productLines: boolean;
     series: boolean;
     models: boolean;
     variants: boolean;
@@ -153,26 +157,26 @@ interface ProductState {
 
   // Actions
   fetchDomains: () => Promise<void>;
-  fetchCategories: (domainId: string) => Promise<void>;
   fetchManufacturers: (domainId: string) => Promise<void>;
-  fetchSeries: (manufacturerId: string) => Promise<void>;
+  fetchProductLines: (manufacturerId: string) => Promise<void>;
+  fetchSeries: (productLineId: string) => Promise<void>;
   fetchModels: (seriesId: string) => Promise<void>;
-  fetchModelsByCategory: (categoryId: string) => Promise<void>;
+  fetchModelsByProductLine: (productLineId: string) => Promise<void>;
   fetchModelsByManufacturer: (manufacturerId: string) => Promise<void>;
   fetchVariants: (modelId: string) => Promise<void>;
   getModelDetails: (modelId: string) => Promise<ProductModel | null>;
 
   // Selection actions
   selectDomain: (domain: ProductDomain | null) => void;
-  selectCategory: (category: ProductCategory | null) => void;
   selectManufacturer: (manufacturer: ProductManufacturer | null) => void;
+  selectProductLine: (productLine: ProductLine | null) => void;
   selectSeries: (series: ProductSeries | null) => void;
   selectModel: (model: ProductModel | null) => void;
   selectVariant: (variant: ProductVariant | null) => void;
 
   // Utilities
   reset: () => void;
-  clearFromLevel: (level: 'category' | 'manufacturer' | 'series' | 'model' | 'variant') => void;
+  clearFromLevel: (level: 'manufacturer' | 'productLine' | 'series' | 'model' | 'variant') => void;
   setError: (error: string | null) => void;
 
   // Legacy aliases for backward compatibility
@@ -190,23 +194,23 @@ export const useProductStore = create<ProductState>()(
   devtools((set, get) => ({
     // Initial state
     domains: [],
-    categories: new Map(),
     manufacturers: new Map(),
+    productLines: new Map(),
     series: new Map(),
     models: new Map(),
     variants: new Map(),
 
     selectedDomain: null,
-    selectedCategory: null,
     selectedManufacturer: null,
+    selectedProductLine: null,
     selectedSeries: null,
     selectedModel: null,
     selectedVariant: null,
 
     loading: {
       domains: false,
-      categories: false,
       manufacturers: false,
+      productLines: false,
       series: false,
       models: false,
       variants: false,
@@ -255,35 +259,35 @@ export const useProductStore = create<ProductState>()(
       return get().fetchDomains();
     },
 
-    // Fetch categories for a domain
-    fetchCategories: async (domainId: string) => {
-      const cached = get().categories.get(domainId);
+    // Fetch product lines for a manufacturer
+    fetchProductLines: async (manufacturerId: string) => {
+      const cached = get().productLines.get(manufacturerId);
       if (cached && cached.length > 0) return;
 
       set((state) => ({
-        loading: { ...state.loading, categories: true },
+        loading: { ...state.loading, productLines: true },
         error: null,
       }));
 
       try {
         const { data, error } = await supabase
-          .from('product_category')
+          .from('product_line')
           .select('*')
-          .eq('domain_id', domainId)
+          .eq('manufacturer_id', manufacturerId)
           .order('name', { ascending: true });
 
         if (error) throw error;
 
-        const newMap = new Map(get().categories);
-        newMap.set(domainId, data || []);
-        set({ categories: newMap });
+        const newMap = new Map(get().productLines);
+        newMap.set(manufacturerId, data || []);
+        set({ productLines: newMap });
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         set({ error: message });
-        console.error('Error fetching categories:', error);
+        console.error('Error fetching product lines:', error);
       } finally {
         set((state) => ({
-          loading: { ...state.loading, categories: false },
+          loading: { ...state.loading, productLines: false },
         }));
       }
     },
@@ -336,9 +340,9 @@ export const useProductStore = create<ProductState>()(
       }
     },
 
-    // Fetch series for a manufacturer
-    fetchSeries: async (manufacturerId: string) => {
-      const cached = get().series.get(manufacturerId);
+    // Fetch series for a product line
+    fetchSeries: async (productLineId: string) => {
+      const cached = get().series.get(productLineId);
       if (cached && cached.length > 0) return;
 
       set((state) => ({
@@ -350,13 +354,13 @@ export const useProductStore = create<ProductState>()(
         const { data, error } = await supabase
           .from('product_series')
           .select('*')
-          .eq('manufacturer_id', manufacturerId)
+          .eq('product_line_id', productLineId)
           .order('name', { ascending: true });
 
         if (error) throw error;
 
         const newMap = new Map(get().series);
-        newMap.set(manufacturerId, data || []);
+        newMap.set(productLineId, data || []);
         set({ series: newMap });
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
@@ -383,7 +387,7 @@ export const useProductStore = create<ProductState>()(
         const { data, error } = await supabase
           .from('product_models')
           .select('*')
-          .eq('series_id', seriesId)
+          .eq('product_series_id', seriesId)
           .order('name', { ascending: true });
 
         if (error) throw error;
@@ -402,9 +406,9 @@ export const useProductStore = create<ProductState>()(
       }
     },
 
-    // Fetch models directly by category (alternative path)
-    fetchModelsByCategory: async (categoryId: string) => {
-      const cacheKey = `cat_${categoryId}`;
+    // Fetch models directly by product line (alternative path, skipping series)
+    fetchModelsByProductLine: async (productLineId: string) => {
+      const cacheKey = `pl_${productLineId}`;
       const cached = get().models.get(cacheKey);
       if (cached && cached.length > 0) return;
 
@@ -417,7 +421,7 @@ export const useProductStore = create<ProductState>()(
         const { data, error } = await supabase
           .from('product_models')
           .select('*')
-          .eq('category_id', categoryId)
+          .eq('product_line_id', productLineId)
           .order('name', { ascending: true });
 
         if (error) throw error;
@@ -428,7 +432,7 @@ export const useProductStore = create<ProductState>()(
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         set({ error: message });
-        console.error('Error fetching models by category:', error);
+        console.error('Error fetching models by product line:', error);
       } finally {
         set((state) => ({
           loading: { ...state.loading, models: false },
@@ -451,8 +455,8 @@ export const useProductStore = create<ProductState>()(
         const { data, error } = await supabase
           .from('product_models')
           .select('*')
-          .eq('manufacturer_id', manufacturerId)
-          .is('series_id', null) // Only models directly under manufacturer (no series)
+          .eq('product_manufacturer_id', manufacturerId)
+          .is('product_series_id', null) // Only models directly under manufacturer (no series)
           .order('name', { ascending: true });
 
         if (error) throw error;
@@ -527,16 +531,15 @@ export const useProductStore = create<ProductState>()(
     selectDomain: (domain) => {
       set({
         selectedDomain: domain,
-        selectedCategory: null,
         selectedManufacturer: null,
+        selectedProductLine: null,
         selectedSeries: null,
         selectedModel: null,
         selectedVariant: null,
       });
 
       if (domain) {
-        // Fetch both categories and manufacturers for the domain
-        get().fetchCategories(domain.id);
+        // Fetch manufacturers for the domain
         get().fetchManufacturers(domain.id);
       }
     },
@@ -546,23 +549,32 @@ export const useProductStore = create<ProductState>()(
       get().selectDomain(domain);
     },
 
-    selectCategory: (category) => {
-      set({
-        selectedCategory: category,
-        // Don't clear manufacturer - user may want to keep filtering
-      });
-    },
-
     selectManufacturer: (manufacturer) => {
       set({
         selectedManufacturer: manufacturer,
+        selectedProductLine: null,
         selectedSeries: null,
         selectedModel: null,
         selectedVariant: null,
       });
 
       if (manufacturer) {
-        get().fetchSeries(manufacturer.id);
+        // Fetch product lines for this manufacturer
+        get().fetchProductLines(manufacturer.id);
+      }
+    },
+
+    selectProductLine: (productLine) => {
+      set({
+        selectedProductLine: productLine,
+        selectedSeries: null,
+        selectedModel: null,
+        selectedVariant: null,
+      });
+
+      if (productLine) {
+        // Fetch series for this product line
+        get().fetchSeries(productLine.id);
       }
     },
 
@@ -596,14 +608,18 @@ export const useProductStore = create<ProductState>()(
     // Clear from a specific level
     clearFromLevel: (level) => {
       switch (level) {
-        case 'category':
-          set({
-            selectedCategory: null,
-          });
-          break;
         case 'manufacturer':
           set({
             selectedManufacturer: null,
+            selectedProductLine: null,
+            selectedSeries: null,
+            selectedModel: null,
+            selectedVariant: null,
+          });
+          break;
+        case 'productLine':
+          set({
+            selectedProductLine: null,
             selectedSeries: null,
             selectedModel: null,
             selectedVariant: null,
@@ -632,8 +648,8 @@ export const useProductStore = create<ProductState>()(
     reset: () => {
       set({
         selectedDomain: null,
-        selectedCategory: null,
         selectedManufacturer: null,
+        selectedProductLine: null,
         selectedSeries: null,
         selectedModel: null,
         selectedVariant: null,
