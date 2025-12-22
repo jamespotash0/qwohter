@@ -536,13 +536,22 @@ export function PricingTab({ mode }: PricingTabProps) {
   // Track if initial data has been loaded from context
   const hasLoadedInitialData = useRef(false);
 
+  // Track if we're currently updating from context to avoid sync loops
+  const isUpdatingFromContext = useRef(false);
+
+  // Track if we should allow syncing (prevents premature sync before data loads)
+  const canSync = useRef(false);
+
   // Load data from context when proposal data changes (e.g., proposal loaded async)
   useEffect(() => {
-    // Skip if we've already loaded OR if context has no data
+    // Skip if we've already loaded
     if (hasLoadedInitialData.current) return;
 
     const contextSections = formData.pricing?.sections;
+
+    // If context has sections with data, load them
     if (contextSections && contextSections.length > 0) {
+      isUpdatingFromContext.current = true;
       setSections(contextSections.map(s => ({
         ...s,
         lineItems: s.lineItems.map(item => ({
@@ -551,7 +560,10 @@ export function PricingTab({ mode }: PricingTabProps) {
         })),
       })));
       hasLoadedInitialData.current = true;
+      canSync.current = true; // Now we can sync
     }
+
+    // Load tax settings
     if (formData.pricing?.salesTaxPercent !== undefined) {
       setSalesTaxPercent(formData.pricing.salesTaxPercent);
     }
@@ -560,11 +572,25 @@ export function PricingTab({ mode }: PricingTabProps) {
     }
   }, [formData.pricing]);
 
-  // Sync local state changes back to context
-  // Use a ref to track if we're updating from context to avoid loops
-  const isUpdatingFromContext = useRef(false);
-
+  // Enable syncing after a brief delay to allow initial data to load
+  // This prevents overwriting saved data with defaults on mount
   useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!canSync.current) {
+        // No context data loaded after delay, safe to start syncing user edits
+        canSync.current = true;
+        hasLoadedInitialData.current = true;
+      }
+    }, 500); // Wait 500ms for proposal data to load
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Sync local state changes back to context
+  useEffect(() => {
+    // Don't sync until we're ready (data has loaded or timeout passed)
+    if (!canSync.current) return;
+
     // Skip syncing back if we're currently loading from context
     if (isUpdatingFromContext.current) {
       isUpdatingFromContext.current = false;

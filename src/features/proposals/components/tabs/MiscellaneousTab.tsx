@@ -46,30 +46,58 @@ export function MiscellaneousTab({ mode }: MiscellaneousTabProps) {
 
   // Track if we've loaded initial data
   const hasLoadedInitialData = useRef(false);
+  // Track if we're updating from context to avoid sync loops
+  const isUpdatingFromContext = useRef(false);
+  // Track if we should allow syncing (prevents premature sync before data loads)
+  const canSync = useRef(false);
 
   // Load data from context when it changes
   useEffect(() => {
     if (hasLoadedInitialData.current) return;
 
     const contextFields = formData.miscellaneous?.fields;
-    if (contextFields && contextFields.length > 0) {
-      setReferences(contextFields.map(f => ({
-        id: f.id,
-        label: f.label,
-        value: f.value,
-      })));
-      hasLoadedInitialData.current = true;
-    }
+    const contextNotes = formData.miscellaneous?.notes;
 
-    if (formData.miscellaneous?.notes) {
-      setInternalNotes(formData.miscellaneous.notes);
+    // Check if we have any actual data from context
+    const hasContextData = (contextFields && contextFields.length > 0) || (contextNotes && contextNotes.length > 0);
+
+    if (hasContextData) {
+      isUpdatingFromContext.current = true;
+
+      if (contextFields && contextFields.length > 0) {
+        setReferences(contextFields.map(f => ({
+          id: f.id,
+          label: f.label,
+          value: f.value,
+        })));
+      }
+
+      if (contextNotes) {
+        setInternalNotes(contextNotes);
+      }
+
+      hasLoadedInitialData.current = true;
+      canSync.current = true; // Now we can sync - data has loaded
     }
   }, [formData.miscellaneous]);
 
-  // Sync local state back to context
-  const isUpdatingFromContext = useRef(false);
-
+  // Enable syncing after a brief delay to allow initial data to load
+  // This ensures new proposals (with no saved data) can still sync after the delay
   useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!canSync.current) {
+        canSync.current = true;
+        hasLoadedInitialData.current = true;
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Sync local state back to context
+  useEffect(() => {
+    // Don't sync until we've either loaded data or waited for the timeout
+    if (!canSync.current) return;
+
     if (isUpdatingFromContext.current) {
       isUpdatingFromContext.current = false;
       return;

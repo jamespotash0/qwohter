@@ -329,8 +329,9 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         name: `${product_hierarchy.manufacturer} ${product_hierarchy.series} ${product_hierarchy.model}`.trim(),
         quantity: specifications.Quantity || editingProduct.quantity || 1,
         rawData: {
-          // Catalog hierarchy
-          productType: product_hierarchy.type,
+          // Catalog hierarchy (domain is the new top level)
+          productDomain: product_hierarchy.domain,
+          productType: product_hierarchy.domain, // Keep for backward compatibility
           manufacturer: product_hierarchy.manufacturer,
           productCategory: product_hierarchy.category,
           series: product_hierarchy.series,
@@ -364,8 +365,9 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         unit: 'ea',
         description: '',
         rawData: {
-          // Catalog hierarchy
-          productType: product_hierarchy.type,
+          // Catalog hierarchy (domain is the new top level)
+          productDomain: product_hierarchy.domain,
+          productType: product_hierarchy.domain, // Keep for backward compatibility
           manufacturer: product_hierarchy.manufacturer,
           productCategory: product_hierarchy.category,
           series: product_hierarchy.series,

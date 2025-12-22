@@ -1123,17 +1123,19 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                 />
               </Field>
             ) : (
-              <MapboxInput
-                id="job-location"
-                label="Job Address"
-                value={jobLocation}
-                onChange={setJobLocation}
-                placeholder="Enter job site address"
-                className={cn(
-                  'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-                  'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-                )}
-              />
+              <Field label="Job Address" tooltip="Physical address where work will be performed - start typing for suggestions">
+                <MapboxInput
+                  id="job-location"
+                  label=""
+                  value={jobLocation}
+                  onChange={setJobLocation}
+                  placeholder="Enter job site address"
+                  className={cn(
+                    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
+                    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
+                  )}
+                />
+              </Field>
             )}
           </div>
 

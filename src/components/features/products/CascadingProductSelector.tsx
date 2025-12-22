@@ -1,6 +1,8 @@
 /**
  * Cascading Product Selector
  * Simple dropdown-based product selection with dynamic configuration fields
+ *
+ * Hierarchy: Domain → Category → Manufacturer → Series → Model
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
@@ -39,25 +41,24 @@ export function CascadingProductSelector({
   initialValues,
 }: CascadingProductSelectorProps) {
   const {
-    types,
-    manufacturers,
+    domains,
     categories,
+    manufacturers,
     series,
     models,
-    selectedType,
-    selectedManufacturer,
+    selectedDomain,
     selectedCategory,
+    selectedManufacturer,
     selectedSeries,
     selectedModel,
     loading,
     error,
-    fetchTypes,
-    selectType,
-    selectManufacturer,
+    fetchDomains,
+    selectDomain,
     selectCategory,
+    selectManufacturer,
     selectSeries,
     selectModel,
-    fetchModelsByCategory,
   } = useProductStore();
 
   // Configuration values for the selected model
@@ -69,92 +70,81 @@ export function CascadingProductSelector({
   // Determine if we're in edit mode (initialValues provided means editing existing product)
   const isEditMode = !!initialValues;
 
-  // Check if category has series or should go directly to models
-  // Defined early so it can be used in cascade effects
-  const categoryHasSeries = selectedCategory?.has_series !== false;
-
-  // Load types on mount
+  // Load domains on mount
   useEffect(() => {
-    fetchTypes();
-  }, [fetchTypes]);
+    fetchDomains();
+  }, [fetchDomains]);
 
   // Auto-select hierarchy dropdowns when editing (initialValues provided)
+  // Step 1: Select domain
   useEffect(() => {
-    if (!initialValues || initialized || types.length === 0) return;
+    if (!initialValues || initialized || domains.length === 0) return;
 
-    const initializeHierarchy = async () => {
-      // Find and select type by name
-      const typeName = initialValues.productType as string;
-      if (typeName) {
-        const type = types.find(t => t.name === typeName);
-        if (type) {
-          selectType(type);
-        }
-      }
-      setInitialized(true);
-    };
-
-    initializeHierarchy();
-  }, [initialValues, initialized, types, selectType]);
-
-  // Continue cascading selection when manufacturer list loads
-  useEffect(() => {
-    if (!initialValues || !selectedType) return;
-
-    const manufacturerName = initialValues.manufacturer as string;
-    if (manufacturerName) {
-      const mfrList = manufacturers.get(selectedType.id) || [];
-      const mfr = mfrList.find(m => m.name === manufacturerName);
-      if (mfr && (!selectedManufacturer || selectedManufacturer.id !== mfr.id)) {
-        selectManufacturer(mfr);
+    const domainName = initialValues.productDomain as string || initialValues.productType as string;
+    if (domainName) {
+      const domain = domains.find(d => d.name === domainName);
+      if (domain) {
+        selectDomain(domain);
       }
     }
-  }, [initialValues, selectedType, manufacturers, selectedManufacturer, selectManufacturer]);
+    setInitialized(true);
+  }, [initialValues, initialized, domains, selectDomain]);
 
-  // Continue cascading selection when category list loads
+  // Step 2: Select category when category list loads
   useEffect(() => {
-    if (!initialValues || !selectedManufacturer) return;
+    if (!initialValues || !selectedDomain) return;
 
     const categoryName = initialValues.productCategory as string;
     if (categoryName) {
-      const catList = categories.get(selectedManufacturer.id) || [];
+      const catList = categories.get(selectedDomain.id) || [];
       const cat = catList.find(c => c.name === categoryName);
       if (cat && (!selectedCategory || selectedCategory.id !== cat.id)) {
         selectCategory(cat);
       }
     }
-  }, [initialValues, selectedManufacturer, categories, selectedCategory, selectCategory]);
+  }, [initialValues, selectedDomain, categories, selectedCategory, selectCategory]);
 
-  // Continue cascading selection when series list loads
+  // Step 3: Select manufacturer when manufacturer list loads
   useEffect(() => {
-    if (!initialValues || !selectedCategory) return;
+    if (!initialValues || !selectedDomain) return;
+
+    const manufacturerName = initialValues.manufacturer as string;
+    if (manufacturerName) {
+      const mfrList = manufacturers.get(selectedDomain.id) || [];
+      const mfr = mfrList.find(m => m.name === manufacturerName);
+      if (mfr && (!selectedManufacturer || selectedManufacturer.id !== mfr.id)) {
+        selectManufacturer(mfr);
+      }
+    }
+  }, [initialValues, selectedDomain, manufacturers, selectedManufacturer, selectManufacturer]);
+
+  // Step 4: Select series when series list loads
+  useEffect(() => {
+    if (!initialValues || !selectedManufacturer) return;
 
     const seriesName = initialValues.series as string;
-    if (seriesName && categoryHasSeries) {
-      const serList = series.get(selectedCategory.id) || [];
+    if (seriesName) {
+      const serList = series.get(selectedManufacturer.id) || [];
       const ser = serList.find(s => s.name === seriesName);
       if (ser && (!selectedSeries || selectedSeries.id !== ser.id)) {
         selectSeries(ser);
       }
     }
-  }, [initialValues, selectedCategory, series, selectedSeries, selectSeries, categoryHasSeries]);
+  }, [initialValues, selectedManufacturer, series, selectedSeries, selectSeries]);
 
-  // Continue cascading selection when model list loads
+  // Step 5: Select model when model list loads
   useEffect(() => {
-    if (!initialValues) return;
+    if (!initialValues || !selectedSeries) return;
 
     const modelName = initialValues.model as string;
     if (modelName) {
-      const modelList = categoryHasSeries
-        ? (selectedSeries ? models.get(selectedSeries.id) || [] : [])
-        : (selectedCategory ? models.get(`cat_${selectedCategory.id}`) || [] : []);
-
+      const modelList = models.get(selectedSeries.id) || [];
       const model = modelList.find(m => m.name === modelName);
       if (model && (!selectedModel || selectedModel.id !== model.id)) {
         selectModel(model);
       }
     }
-  }, [initialValues, selectedSeries, selectedCategory, models, selectedModel, selectModel, categoryHasSeries]);
+  }, [initialValues, selectedSeries, models, selectedModel, selectModel]);
 
   // Initialize config values when model is selected or when editing with initialValues
   useEffect(() => {
@@ -177,26 +167,20 @@ export function CascadingProductSelector({
     }
   }, [selectedModel, initialValues]);
 
-  // Fetch models by category when category doesn't have series
-  useEffect(() => {
-    if (selectedCategory && !categoryHasSeries) {
-      fetchModelsByCategory(selectedCategory.id);
-    }
-  }, [selectedCategory, categoryHasSeries, fetchModelsByCategory]);
-
-  const getManufacturersForType = () => {
-    if (!selectedType) return [];
-    return manufacturers.get(selectedType.id) || [];
+  // Helper functions to get filtered lists
+  const getCategoriesForDomain = () => {
+    if (!selectedDomain) return [];
+    return categories.get(selectedDomain.id) || [];
   };
 
-  const getCategoriesForManufacturer = () => {
+  const getManufacturersForDomain = () => {
+    if (!selectedDomain) return [];
+    return manufacturers.get(selectedDomain.id) || [];
+  };
+
+  const getSeriesForManufacturer = () => {
     if (!selectedManufacturer) return [];
-    return categories.get(selectedManufacturer.id) || [];
-  };
-
-  const getSeriesForCategory = () => {
-    if (!selectedCategory) return [];
-    return series.get(selectedCategory.id) || [];
+    return series.get(selectedManufacturer.id) || [];
   };
 
   const getModelsForSeries = () => {
@@ -204,13 +188,11 @@ export function CascadingProductSelector({
     return models.get(selectedSeries.id) || [];
   };
 
-  const getModelsForCategory = () => {
-    if (!selectedCategory) return [];
-    return models.get(`cat_${selectedCategory.id}`) || [];
-  };
-
-  // Get models based on whether category has series or not
-  const modelsList = categoryHasSeries ? getModelsForSeries() : getModelsForCategory();
+  // Get lists for dropdowns
+  const categoriesList = getCategoriesForDomain();
+  const manufacturersList = getManufacturersForDomain();
+  const seriesList = getSeriesForManufacturer();
+  const modelsList = getModelsForSeries();
 
   const handleConfigChange = (key: string, value: any) => {
     setConfigValues(prev => ({ ...prev, [key]: value }));
@@ -222,16 +204,15 @@ export function CascadingProductSelector({
     const selection: ProductSelection = {
       product_model_id: selectedModel.id,
       product_hierarchy: {
-        type: selectedType?.name || '',
-        type_id: selectedType?.id || '',
-        manufacturer: selectedManufacturer?.name || '',
-        manufacturer_id: selectedManufacturer?.id || '',
+        domain: selectedDomain?.name || '',
+        domain_id: selectedDomain?.id || '',
         category: selectedCategory?.name || '',
         category_id: selectedCategory?.id || '',
+        manufacturer: selectedManufacturer?.name || '',
+        manufacturer_id: selectedManufacturer?.id || '',
         series: selectedSeries?.name || '',
         series_id: selectedSeries?.id || '',
         model: selectedModel.name || '',
-        model_number: selectedModel.name || '',
       },
       specifications: configValues,
       pricing: {
@@ -242,10 +223,6 @@ export function CascadingProductSelector({
     };
     onProductSelect(selection);
   };
-
-  const manufacturersList = getManufacturersForType();
-  const categoriesList = getCategoriesForManufacturer();
-  const seriesList = getSeriesForCategory();
 
   // Render a configuration field based on its definition
   const renderConfigField = (key: string, field: FieldDefinition) => {
@@ -524,68 +501,35 @@ export function CascadingProductSelector({
         </div>
       )}
 
-      {/* Dropdown Selects */}
+      {/* Dropdown Selects - New Hierarchy: Domain → Category → Manufacturer → Series → Model */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Product Type */}
+        {/* Product Domain (top level) */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Product Type
+            Product Domain
           </label>
           <Select
-            value={selectedType?.id || ''}
+            value={selectedDomain?.id || ''}
             onValueChange={(id) => {
-              const type = types.find((t) => t.id === id);
-              selectType(type || null);
+              const domain = domains.find((d) => d.id === id);
+              selectDomain(domain || null);
             }}
-            disabled={loading.types || isEditMode}
+            disabled={loading.domains || isEditMode}
           >
             <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
-              {loading.types ? (
+              {loading.domains ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Loading...</span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select type..." />
+                <SelectValue placeholder="Select domain..." />
               )}
             </SelectTrigger>
             <SelectContent>
-              {types.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Manufacturer */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Manufacturer
-          </label>
-          <Select
-            value={selectedManufacturer?.id || ''}
-            onValueChange={(id) => {
-              const mfr = manufacturersList.find((m) => m.id === id);
-              selectManufacturer(mfr || null);
-            }}
-            disabled={!selectedType || loading.manufacturers || isEditMode}
-          >
-            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
-              {loading.manufacturers ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder={selectedType ? "Select manufacturer..." : "Select type first"} />
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {manufacturersList.map((mfr) => (
-                <SelectItem key={mfr.id} value={mfr.id}>
-                  {mfr.name}
+              {domains.map((domain) => (
+                <SelectItem key={domain.id} value={domain.id}>
+                  {domain.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -603,7 +547,7 @@ export function CascadingProductSelector({
               const cat = categoriesList.find((c) => c.id === id);
               selectCategory(cat || null);
             }}
-            disabled={!selectedManufacturer || loading.categories || isEditMode}
+            disabled={!selectedDomain || loading.categories || isEditMode}
           >
             <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
               {loading.categories ? (
@@ -612,7 +556,7 @@ export function CascadingProductSelector({
                   <span>Loading...</span>
                 </div>
               ) : (
-                <SelectValue placeholder={selectedManufacturer ? "Select category..." : "Select manufacturer first"} />
+                <SelectValue placeholder={selectedDomain ? "Select category..." : "Select domain first"} />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -625,43 +569,74 @@ export function CascadingProductSelector({
           </Select>
         </div>
 
-        {/* Series - Only show if category has series */}
-        {categoryHasSeries && (
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Series
-            </label>
-            <Select
-              value={selectedSeries?.id || ''}
-              onValueChange={(id) => {
-                const ser = seriesList.find((s) => s.id === id);
-                selectSeries(ser || null);
-              }}
-              disabled={!selectedCategory || loading.series || isEditMode}
-            >
-              <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
-                {loading.series ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Loading...</span>
-                  </div>
-                ) : (
-                  <SelectValue placeholder={selectedCategory ? "Select series..." : "Select category first"} />
-                )}
-              </SelectTrigger>
-              <SelectContent>
-                {seriesList.map((ser) => (
-                  <SelectItem key={ser.id} value={ser.id}>
-                    {ser.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        {/* Manufacturer */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Manufacturer
+          </label>
+          <Select
+            value={selectedManufacturer?.id || ''}
+            onValueChange={(id) => {
+              const mfr = manufacturersList.find((m) => m.id === id);
+              selectManufacturer(mfr || null);
+            }}
+            disabled={!selectedDomain || loading.manufacturers || isEditMode}
+          >
+            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
+              {loading.manufacturers ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder={selectedDomain ? "Select manufacturer..." : "Select domain first"} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {manufacturersList.map((mfr) => (
+                <SelectItem key={mfr.id} value={mfr.id}>
+                  {mfr.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Series */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Series
+          </label>
+          <Select
+            value={selectedSeries?.id || ''}
+            onValueChange={(id) => {
+              const ser = seriesList.find((s) => s.id === id);
+              selectSeries(ser || null);
+            }}
+            disabled={!selectedManufacturer || loading.series || isEditMode}
+          >
+            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
+              {loading.series ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder={selectedManufacturer ? "Select series..." : "Select manufacturer first"} />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {seriesList.map((ser) => (
+                <SelectItem key={ser.id} value={ser.id}>
+                  {ser.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Model */}
-        <div className={`space-y-1.5 ${!categoryHasSeries ? '' : ''}`}>
+        <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Model
           </label>
@@ -671,7 +646,7 @@ export function CascadingProductSelector({
               const model = modelsList.find((m) => m.id === id);
               selectModel(model || null);
             }}
-            disabled={(categoryHasSeries ? !selectedSeries : !selectedCategory) || loading.models || isEditMode}
+            disabled={!selectedSeries || loading.models || isEditMode}
           >
             <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
               {loading.models ? (
@@ -680,13 +655,7 @@ export function CascadingProductSelector({
                   <span>Loading...</span>
                 </div>
               ) : (
-                <SelectValue
-                  placeholder={
-                    categoryHasSeries
-                      ? (selectedSeries ? "Select model..." : "Select series first")
-                      : (selectedCategory ? "Select model..." : "Select category first")
-                  }
-                />
+                <SelectValue placeholder={selectedSeries ? "Select model..." : "Select series first"} />
               )}
             </SelectTrigger>
             <SelectContent>
