@@ -72,6 +72,58 @@ export interface ProductVariant {
   updated_at: string;
 }
 
+// ============================================================================
+// MODEL OPTIONS & VALUES (from pc_* tables)
+// ============================================================================
+
+export interface OptionGroup {
+  id: string;
+  slug: string;
+  label: string;
+  field_type: 'dropdown' | 'input' | 'multi-select' | 'checkbox' | 'textarea' | 'radio' | 'auto';
+  input_type?: string;
+  description?: string;
+}
+
+export interface OptionValue {
+  id: string;
+  option_group_id: string;
+  value: string;
+  label?: string;
+  category?: string; // For hierarchical filtering (e.g., "Standard Vinyl")
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface ModelOption {
+  id: string;
+  model_id: string;
+  option_group_id: string;
+  display_order: number;
+  display_group: 'primary' | 'secondary' | 'advanced';
+  grid_span: number;
+  placeholder?: string;
+  help_text?: string;
+  is_required: boolean;
+  is_multi_select: boolean;
+  is_manual_select: boolean;
+  is_visible: boolean;
+  // Joined data
+  option_group?: OptionGroup;
+  allowed_values?: AllowedValue[];
+}
+
+export interface AllowedValue {
+  id: string;
+  model_option_id: string;
+  option_value_id: string;
+  is_default: boolean;
+  sort_order: number;
+  is_active: boolean;
+  // Joined option value data
+  option_value?: OptionValue;
+}
+
 export interface FieldDefinition {
   field_type:
     | 'input'
@@ -134,6 +186,7 @@ interface ProductState {
   series: Map<string, ProductSeries[]>; // keyed by product_line_id
   models: Map<string, ProductModel[]>; // keyed by product_series.id or pl_${product_line_id}
   variants: Map<string, ProductVariant[]>; // keyed by model_id
+  modelOptions: Map<string, ModelOption[]>; // keyed by model_id - options from pc_* tables
 
   // Selected state
   selectedDomain: ProductDomain | null;
@@ -151,6 +204,7 @@ interface ProductState {
     series: boolean;
     models: boolean;
     variants: boolean;
+    modelOptions: boolean;
   };
 
   error: string | null;
@@ -164,6 +218,7 @@ interface ProductState {
   fetchModelsByProductLine: (productLineId: string) => Promise<void>;
   fetchModelsByManufacturer: (manufacturerId: string) => Promise<void>;
   fetchVariants: (modelId: string) => Promise<void>;
+  fetchModelOptions: (modelId: string) => Promise<ModelOption[]>;
   getModelDetails: (modelId: string) => Promise<ProductModel | null>;
 
   // Selection actions
@@ -199,6 +254,7 @@ export const useProductStore = create<ProductState>()(
     series: new Map(),
     models: new Map(),
     variants: new Map(),
+    modelOptions: new Map(),
 
     selectedDomain: null,
     selectedManufacturer: null,
@@ -214,6 +270,7 @@ export const useProductStore = create<ProductState>()(
       series: false,
       models: false,
       variants: false,
+      modelOptions: false,
     },
 
     error: null,
@@ -508,6 +565,100 @@ export const useProductStore = create<ProductState>()(
       }
     },
 
+    // Fetch model options with allowed values (from pc_* tables)
+    fetchModelOptions: async (modelId: string) => {
+      const cached = get().modelOptions.get(modelId);
+      if (cached && cached.length > 0) return cached;
+
+      set((state) => ({
+        loading: { ...state.loading, modelOptions: true },
+        error: null,
+      }));
+
+      try {
+        // Fetch model options with option group info
+        const { data: optionsData, error: optionsError } = await supabase
+          .from('pc_model_options')
+          .select(`
+            *,
+            pc_option_groups (
+              id,
+              name,
+              slug,
+              field_type,
+              input_type,
+              description
+            )
+          `)
+          .eq('model_id', modelId)
+          .eq('is_visible', true)
+          .order('display_order', { ascending: true });
+
+        if (optionsError) throw optionsError;
+
+        // For each option, fetch allowed values with option_value details
+        const optionsWithValues: ModelOption[] = await Promise.all(
+          (optionsData || []).map(async (option) => {
+            const { data: allowedData } = await supabase
+              .from('pc_model_allowed_values')
+              .select(`
+                *,
+                pc_option_values (
+                  id,
+                  value,
+                  category,
+                  sort_order,
+                  is_active
+                )
+              `)
+              .eq('model_option_id', option.id)
+              .eq('is_active', true)
+              .order('sort_order', { ascending: true });
+
+            return {
+              id: option.id,
+              model_id: option.model_id,
+              option_group_id: option.option_group_id,
+              display_order: option.display_order,
+              display_group: option.display_group || 'primary',
+              grid_span: option.grid_span || 2,
+              placeholder: option.placeholder,
+              help_text: option.help_text,
+              is_required: option.is_required,
+              is_multi_select: option.is_multi_select,
+              is_manual_select: option.is_manual_select,
+              is_visible: option.is_visible,
+              option_group: option.pc_option_groups,
+              allowed_values: (allowedData || []).map((av) => ({
+                id: av.id,
+                model_option_id: av.model_option_id,
+                option_value_id: av.option_value_id,
+                is_default: av.is_default,
+                sort_order: av.sort_order,
+                is_active: av.is_active,
+                option_value: av.pc_option_values,
+              })),
+            } as ModelOption;
+          })
+        );
+
+        const newMap = new Map(get().modelOptions);
+        newMap.set(modelId, optionsWithValues);
+        set({ modelOptions: newMap });
+
+        return optionsWithValues;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        set({ error: message });
+        console.error('Error fetching model options:', error);
+        return [];
+      } finally {
+        set((state) => ({
+          loading: { ...state.loading, modelOptions: false },
+        }));
+      }
+    },
+
     // Get detailed model information
     getModelDetails: async (modelId: string) => {
       try {
@@ -598,6 +749,7 @@ export const useProductStore = create<ProductState>()(
 
       if (model) {
         get().fetchVariants(model.id);
+        get().fetchModelOptions(model.id); // Fetch dynamic options from pc_* tables
       }
     },
 

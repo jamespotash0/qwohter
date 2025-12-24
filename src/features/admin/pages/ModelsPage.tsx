@@ -103,14 +103,17 @@ export function ModelsPage() {
     }
   }, [selectedProductLineId]);
 
-  // Load models when series changes
+  // Load models when series changes (or when "no series" is selected)
   useEffect(() => {
-    if (selectedSeriesId) {
+    if (selectedSeriesId === 'no-series') {
+      // Load models directly under manufacturer (no series)
+      loadModelsWithoutSeries(selectedManufacturerId);
+    } else if (selectedSeriesId) {
       loadModels(selectedSeriesId);
     } else {
       setModels([]);
     }
-  }, [selectedSeriesId]);
+  }, [selectedSeriesId, selectedManufacturerId]);
 
   const loadManufacturers = async () => {
     try {
@@ -178,6 +181,22 @@ export function ModelsPage() {
     }
   };
 
+  const loadModelsWithoutSeries = async (manufacturerId: string) => {
+    setLoading(true);
+    try {
+      const data = await productAdminService.getModelsWithoutSeries(manufacturerId);
+      setModels(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load models',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenDialog = (item?: ProductModel) => {
     if (item) {
       setEditingModel(item);
@@ -202,7 +221,7 @@ export function ModelsPage() {
     if (!selectedSeriesId && !editingModel) {
       toast({
         title: 'Validation Error',
-        description: 'Please select a series first',
+        description: 'Please select a series (or "No Series") first',
         variant: 'destructive',
       });
       return;
@@ -216,15 +235,20 @@ export function ModelsPage() {
         });
         toast({ title: 'Model updated' });
       } else {
+        const isNoSeries = selectedSeriesId === 'no-series';
         await productAdminService.createModel({
-          product_series_id: selectedSeriesId,
+          product_series_id: isNoSeries ? null : selectedSeriesId,
           product_manufacturer_id: selectedManufacturerId,
           name: formData.name.trim(),
         });
         toast({ title: 'Model created' });
       }
       setIsDialogOpen(false);
-      loadModels(selectedSeriesId);
+      if (selectedSeriesId === 'no-series') {
+        loadModelsWithoutSeries(selectedManufacturerId);
+      } else {
+        loadModels(selectedSeriesId);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -244,7 +268,11 @@ export function ModelsPage() {
       await productAdminService.deleteModel(deleteTarget.id);
       toast({ title: 'Model deleted' });
       setDeleteTarget(null);
-      loadModels(selectedSeriesId);
+      if (selectedSeriesId === 'no-series') {
+        loadModelsWithoutSeries(selectedManufacturerId);
+      } else {
+        loadModels(selectedSeriesId);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -333,12 +361,15 @@ export function ModelsPage() {
           <Select
             value={selectedSeriesId}
             onValueChange={setSelectedSeriesId}
-            disabled={!selectedProductLineId || series.length === 0}
+            disabled={!selectedManufacturerId}
           >
             <SelectTrigger>
-              <SelectValue placeholder={series.length === 0 ? 'No series' : 'Select series'} />
+              <SelectValue placeholder="Select series" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="no-series" className="text-blue-600 font-medium">
+                ⊕ No Series (Direct Models)
+              </SelectItem>
               {series.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name}

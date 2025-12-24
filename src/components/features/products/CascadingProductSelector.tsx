@@ -6,7 +6,13 @@
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useProductStore, type FieldDefinition } from '@/stores/products/productStore';
+import {
+  useProductStore,
+  type FieldDefinition,
+  type ModelOption,
+  type AllowedValue,
+  type ProductSelection,
+} from '@/stores/products/productStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,7 +31,6 @@ import {
 } from '@/components/ui/popover';
 import { Check, Loader2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ProductSelection } from '@/stores/products/productStore';
 
 interface CascadingProductSelectorProps {
   onProductSelect: (product: ProductSelection) => void;
@@ -47,6 +52,7 @@ export function CascadingProductSelector({
     series,
     models,
     variants,
+    modelOptions,
     selectedDomain,
     selectedManufacturer,
     selectedProductLine,
@@ -210,12 +216,190 @@ export function CascadingProductSelector({
     return variants.get(selectedModel.id) || [];
   };
 
+  // Get model options from pc_* tables
+  const getModelOptionsForModel = (): ModelOption[] => {
+    if (!selectedModel) return [];
+    return modelOptions.get(selectedModel.id) || [];
+  };
+
+  // Filter allowed values by category based on parent selection
+  // e.g., when finish_style="Vinyl", filter finish_color to show only values with category containing "Vinyl"
+  const filterValuesByCategory = useCallback((
+    allowedValues: AllowedValue[],
+    optionSlug: string
+  ): AllowedValue[] => {
+    // Define parent-child relationships for category filtering
+    const categoryFilters: Record<string, string> = {
+      'finish_color': 'finish_style', // finish_color is filtered by finish_style
+    };
+
+    const parentSlug = categoryFilters[optionSlug];
+    if (!parentSlug) {
+      return allowedValues; // No category filtering for this option
+    }
+
+    const parentValue = configValues[parentSlug];
+    if (!parentValue) {
+      return allowedValues; // No parent selected, show all
+    }
+
+    // Filter values where category contains the parent value
+    // e.g., category="Standard Vinyl" matches parentValue="Vinyl"
+    return allowedValues.filter((av) => {
+      const category = av.option_value?.category;
+      if (!category) return false;
+      return category.includes(parentValue);
+    });
+  }, [configValues]);
+
   // Get lists for dropdowns
   const manufacturersList = getManufacturersForDomain();
   const productLinesList = getProductLinesForManufacturer();
   const seriesList = getSeriesForProductLine();
   const modelsList = getModelsForSeries();
   const variantsList = getVariantsForModel();
+  const currentModelOptions = getModelOptionsForModel();
+
+  // Render a model option field (from pc_* tables)
+  const renderModelOptionField = (option: ModelOption) => {
+    const slug = option.option_group?.slug || '';
+    const fieldType = option.option_group?.field_type || 'dropdown';
+    const value = configValues[slug];
+    const allowedValues = option.allowed_values || [];
+    const filteredValues = filterValuesByCategory(allowedValues, slug);
+
+    // Clear child values when parent changes (e.g., clear finish_color when finish_style changes)
+    const handleOptionChange = (newValue: any) => {
+      handleConfigChange(slug, newValue);
+
+      // Clear dependent fields
+      if (slug === 'finish_style') {
+        handleConfigChange('finish_color', undefined);
+      }
+    };
+
+    switch (fieldType) {
+      case 'dropdown':
+        return (
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={handleOptionChange}
+            disabled={isEditMode}
+          >
+            <SelectTrigger className={cn(
+              'w-full',
+              isEditMode && 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70'
+            )}>
+              <SelectValue placeholder={option.placeholder || `Select ${option.option_group?.label || slug}...`} />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredValues.map((av) => (
+                <SelectItem key={av.id} value={av.option_value?.value || ''}>
+                  {av.option_value?.label || av.option_value?.value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'multi-select': {
+        const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
+
+        const toggleOption = (optValue: string) => {
+          if (isEditMode) return;
+          const newValues = selectedValues.includes(optValue)
+            ? selectedValues.filter((v: string) => v !== optValue)
+            : [...selectedValues, optValue];
+          handleOptionChange(newValues);
+        };
+
+        if (isEditMode) {
+          return (
+            <div className={cn(
+              'flex h-10 w-full items-center rounded-md border border-input px-3 py-2 text-sm',
+              'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70'
+            )}>
+              <span className="truncate text-left">
+                {selectedValues.length > 0 ? selectedValues.join(', ') : option.placeholder || 'Select...'}
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm',
+                  'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
+                )}
+              >
+                <span className="truncate text-left">
+                  {selectedValues.length > 0 ? selectedValues.join(', ') : option.placeholder || 'Select...'}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <div className="max-h-60 overflow-y-auto p-1">
+                {filteredValues.map((av) => {
+                  const optValue = av.option_value?.value || '';
+                  const isSelected = selectedValues.includes(optValue);
+                  return (
+                    <div
+                      key={av.id}
+                      onClick={() => toggleOption(optValue)}
+                      className={cn(
+                        'flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm',
+                        'hover:bg-gray-100 dark:hover:bg-gray-800',
+                        isSelected && 'bg-emerald-50 dark:bg-emerald-900/20'
+                      )}
+                    >
+                      <Checkbox checked={isSelected} className="pointer-events-none" />
+                      <span>{av.option_value?.label || optValue}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      }
+
+      case 'input':
+        return (
+          <Input
+            type={option.option_group?.input_type || 'text'}
+            value={value ?? ''}
+            onChange={(e) => handleOptionChange(e.target.value)}
+            placeholder={option.placeholder}
+            readOnly={isEditMode}
+            className={isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}
+          />
+        );
+
+      default:
+        return (
+          <Input
+            value={value ?? ''}
+            onChange={(e) => handleOptionChange(e.target.value)}
+            placeholder={option.placeholder}
+            readOnly={isEditMode}
+            className={isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}
+          />
+        );
+    }
+  };
+
+  // Group model options by display_group
+  const groupedModelOptions = useMemo(() => {
+    const primary = currentModelOptions.filter(o => o.display_group === 'primary');
+    const secondary = currentModelOptions.filter(o => o.display_group === 'secondary' || !o.display_group);
+    const advanced = currentModelOptions.filter(o => o.display_group === 'advanced');
+    return { primary, secondary, advanced };
+  }, [currentModelOptions]);
 
   const handleConfigChange = (key: string, value: any) => {
     setConfigValues(prev => ({ ...prev, [key]: value }));
@@ -735,8 +919,85 @@ export function CascadingProductSelector({
         </div>
       </div>
 
-      {/* Configuration Fields - Show when model is selected */}
-      {selectedModel && (primaryFields.length > 0 || secondaryFields.length > 0 || advancedFields.length > 0) && (
+      {/* Dynamic Model Options (from pc_* tables) - Show when model has options configured */}
+      {selectedModel && currentModelOptions.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+            Configuration Options
+          </h4>
+
+          {loading.modelOptions ? (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Loading options...</span>
+            </div>
+          ) : (
+            <>
+              {/* Primary Model Options */}
+              {groupedModelOptions.primary.length > 0 && (
+                <div className="grid grid-cols-4 gap-3 mb-4">
+                  {groupedModelOptions.primary.map((option) => (
+                    <div key={option.id} className={`space-y-1.5 ${getGridColClass(option.grid_span)}`}>
+                      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {option.option_group?.label || option.option_group?.slug}
+                        {option.is_required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      {renderModelOptionField(option)}
+                      {option.help_text && (
+                        <p className="text-xs text-gray-400">{option.help_text}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Secondary Model Options */}
+              {groupedModelOptions.secondary.length > 0 && (
+                <div className="grid grid-cols-4 gap-4">
+                  {groupedModelOptions.secondary.map((option) => (
+                    <div key={option.id} className={`space-y-1.5 ${getGridColClass(option.grid_span)}`}>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {option.option_group?.label || option.option_group?.slug}
+                        {option.is_required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      {renderModelOptionField(option)}
+                      {option.help_text && (
+                        <p className="text-xs text-gray-400">{option.help_text}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Advanced Model Options */}
+              {groupedModelOptions.advanced.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <h5 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
+                    Advanced Options
+                  </h5>
+                  <div className="grid grid-cols-4 gap-4">
+                    {groupedModelOptions.advanced.map((option) => (
+                      <div key={option.id} className={`space-y-1.5 ${getGridColClass(option.grid_span)}`}>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {option.option_group?.label || option.option_group?.slug}
+                          {option.is_required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        {renderModelOptionField(option)}
+                        {option.help_text && (
+                          <p className="text-xs text-gray-400">{option.help_text}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Legacy Configuration Fields (fallback for models using default_configurations) */}
+      {selectedModel && currentModelOptions.length === 0 && (primaryFields.length > 0 || secondaryFields.length > 0 || advancedFields.length > 0) && (
         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
             Configuration Options

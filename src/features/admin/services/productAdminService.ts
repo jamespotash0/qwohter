@@ -378,6 +378,21 @@ class ProductAdminService {
     return data || [];
   }
 
+  /**
+   * Get models that don't belong to any series (directly under manufacturer)
+   */
+  async getModelsWithoutSeries(manufacturerId: string): Promise<ProductModel[]> {
+    const { data, error } = await supabase
+      .from('product_models')
+      .select('*')
+      .eq('product_manufacturer_id', manufacturerId)
+      .is('product_series_id', null)
+      .order('name');
+
+    if (error) throw new Error(`Failed to fetch models: ${error.message}`);
+    return data || [];
+  }
+
   async createModel(input: {
     product_series_id?: string | null;
     product_manufacturer_id?: string | null;

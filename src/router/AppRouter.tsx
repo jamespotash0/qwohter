@@ -110,6 +110,9 @@ const ModelsPage = lazy(() => import("@/features/admin/pages/ModelsPage").then(m
 const VariantsPage = lazy(() => import("@/features/admin/pages/VariantsPage").then(m => ({ default: m.VariantsPage })));
 const OptionGroupsPage = lazy(() => import("@/features/admin/pages/OptionGroupsPage").then(m => ({ default: m.OptionGroupsPage })));
 const OptionValuesPage = lazy(() => import("@/features/admin/pages/OptionValuesPage").then(m => ({ default: m.OptionValuesPage })));
+const ModelOptionsPage = lazy(() => import("@/features/admin/pages/ModelOptionsPage").then(m => ({ default: m.ModelOptionsPage })));
+const ModelAllowedValuesPage = lazy(() => import("@/features/admin/pages/ModelAllowedValuesPage").then(m => ({ default: m.ModelAllowedValuesPage })));
+const RulesPage = lazy(() => import("@/features/admin/pages/RulesPage").then(m => ({ default: m.RulesPage })));
 
 // Products page - HIDDEN for now
 // const Products = lazy(() => import("@/pages/Products"));
@@ -178,8 +181,9 @@ export const AppRouter = () => (
             <Route path="products/variants" element={<VariantsPage />} />
             <Route path="options/groups" element={<OptionGroupsPage />} />
             <Route path="options/values" element={<OptionValuesPage />} />
-            <Route path="config/model-options" element={<NotFound />} />
-            <Route path="config/rules" element={<NotFound />} />
+            <Route path="config/model-options" element={<ModelOptionsPage />} />
+            <Route path="config/allowed-values" element={<ModelAllowedValuesPage />} />
+            <Route path="config/rules" element={<RulesPage />} />
           </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}

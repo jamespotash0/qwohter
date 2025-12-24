@@ -24,6 +24,7 @@ export interface OptionValue {
   id: string;
   option_group_id: string;
   value: string;
+  category: string | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;

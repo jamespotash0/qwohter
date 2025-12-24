@@ -15,6 +15,7 @@ import {
   ListTree,
   ChevronLeft,
   LogOut,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logoutAdmin } from './AdminPasswordGate';
@@ -53,6 +54,7 @@ const navSections: NavSection[] = [
     title: 'Configuration',
     items: [
       { label: 'Model Options', path: '/admin/config/model-options', icon: Settings2 },
+      { label: 'Allowed Values', path: '/admin/config/allowed-values', icon: ListChecks },
       { label: 'Business Rules', path: '/admin/config/rules', icon: ListTree },
     ],
   },

@@ -11,3 +11,6 @@ export { ModelsPage } from './ModelsPage';
 export { VariantsPage } from './VariantsPage';
 export { OptionGroupsPage } from './OptionGroupsPage';
 export { OptionValuesPage } from './OptionValuesPage';
+export { ModelOptionsPage } from './ModelOptionsPage';
+export { ModelAllowedValuesPage } from './ModelAllowedValuesPage';
+export { RulesPage } from './RulesPage';

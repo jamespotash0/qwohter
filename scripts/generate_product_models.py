@@ -315,6 +315,130 @@ ACCORDION_MODELS = {
     }
 }
 
+# Unispan Support System
+UNISPAN_MODELS = {
+    "U900": {
+        "series": "900",
+        "description": "Unispan Partition Support System",
+        "compatible_models": ["3030", "2030", "Stella", "Luna"],
+        "truss_depth": "24\"",
+        "truss_sections": ["1 Section", "2 Sections", "3 Sections"],
+        "truss_material": ["Aluminum", "Steel"],
+        "max_opening_width": "39'-8\"",
+        "max_load": "100 lbs./lineal foot",
+        "truss_finish": ["Clear Anodized Aluminum"],
+        "side_panel_substrate": ["1/2\" MDF Substrate (24\" x 48\" sections)"],
+        "track_material": "6063-T6 Clear Anodized Aluminum",
+        "post_material": "6063-T6 Clear Anodized Aluminum",
+        "post_dimensions": "2.5\" x 5\"",
+        "post_load_capacity": "360 psi",
+        "stacking_configurations": ["Single Stacking", "Split Stacking"],
+        "panel_configurations": ["Hinged-Paired Panels"]
+    }
+}
+
+
+def create_unispan_config(model_name, model_data):
+    """Create default_configurations for Unispan support system"""
+    return {
+        "Truss Depth": {
+            "value": model_data["truss_depth"],
+            "manual_select": False,
+            "options": None,
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Truss Sections": {
+            "value": None,
+            "manual_select": True,
+            "options": model_data["truss_sections"],
+            "placeholder": "Select number of sections",
+            "required": True,
+            "depends_on": "Opening Width"
+        },
+        "Truss Material": {
+            "value": None,
+            "manual_select": True,
+            "options": model_data["truss_material"],
+            "placeholder": "Select truss material",
+            "required": True,
+            "depends_on": None
+        },
+        "Truss Finish": {
+            "value": model_data["truss_finish"][0],
+            "manual_select": False,
+            "options": model_data["truss_finish"],
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Side Panel Substrate": {
+            "value": model_data["side_panel_substrate"][0],
+            "manual_select": False,
+            "options": model_data["side_panel_substrate"],
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Side Panel Finish": {
+            "value": None,
+            "manual_select": True,
+            "options": [],
+            "placeholder": "Select finish material",
+            "required": True,
+            "depends_on": "Panel Finish Category"
+        },
+        "Stacking Configuration": {
+            "value": None,
+            "manual_select": True,
+            "options": model_data["stacking_configurations"],
+            "placeholder": "Select stacking configuration",
+            "required": True,
+            "depends_on": None
+        },
+        "Track Material": {
+            "value": model_data["track_material"],
+            "manual_select": False,
+            "options": None,
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Post Material": {
+            "value": model_data["post_material"],
+            "manual_select": False,
+            "options": None,
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Post Dimensions": {
+            "value": model_data["post_dimensions"],
+            "manual_select": False,
+            "options": None,
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Maximum Opening Width": {
+            "value": model_data["max_opening_width"],
+            "manual_select": False,
+            "options": None,
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        },
+        "Maximum Load": {
+            "value": model_data["max_load"],
+            "manual_select": False,
+            "options": None,
+            "placeholder": None,
+            "required": True,
+            "depends_on": None
+        }
+    }
+
 
 def create_operable_config(model_name, model_data):
     """Create default_configurations for operable wall model"""
