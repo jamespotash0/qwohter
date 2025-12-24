@@ -40,7 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
-import { extractProductsFromFile } from '@/services/productExtraction';
+import { extractProductsWithSummary, type ExtractedProduct, type ExtractionResult } from '@/services/productExtraction';
 import { useFormBuilder, type Product, type PricingSection } from '../../context/FormBuilderContext';
 import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { generateProductAlias } from '../../utils/productVariables';
@@ -94,8 +94,9 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const [entryMode, setEntryMode] = useState<EntryMode>('manual');
   const [extracting, setExtracting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [extractedProducts, setExtractedProducts] = useState<Product[]>([]);
+  const [extractedProducts, setExtractedProducts] = useState<ExtractedProduct[]>([]);
   const [extractedFileName, setExtractedFileName] = useState<string>();
+  const [extractionSummary, setExtractionSummary] = useState<ExtractionResult['summary']>();
 
   // Catalog selection state
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
@@ -263,17 +264,28 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     setExtracting(true);
 
     try {
-      // Use the real AI extraction service
-      const extracted = await extractProductsFromFile(file);
+      // Use multi-pass AI extraction with summary
+      const result = await extractProductsWithSummary(file);
 
-      if (extracted.length === 0) {
+      if (result.products.length === 0) {
         toast.warning(`No products found in ${file.name}`);
       } else {
-        // Show preview modal instead of directly adding
-        setExtractedProducts(extracted as Product[]);
+        // Show preview modal with extraction summary
+        setExtractedProducts(result.products);
         setExtractedFileName(file.name);
+        setExtractionSummary(result.summary);
         setPreviewOpen(true);
-        toast.success(`Found ${extracted.length} product${extracted.length === 1 ? '' : 's'}. Review before adding.`);
+
+        // Build summary message
+        const { configurableCount, simpleCount, confidence } = result.summary;
+        const parts: string[] = [];
+        if (configurableCount > 0) parts.push(`${configurableCount} configurable`);
+        if (simpleCount > 0) parts.push(`${simpleCount} line items`);
+        const confidencePercent = Math.round(confidence * 100);
+
+        toast.success(
+          `Found ${result.products.length} product${result.products.length === 1 ? '' : 's'} (${parts.join(', ')}) - ${confidencePercent}% confidence`
+        );
       }
 
       // Reset file input
@@ -290,7 +302,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   }, []);
 
   // Handle confirming selected products from preview
-  const handleConfirmExtraction = useCallback((selectedProducts: Product[]) => {
+  const handleConfirmExtraction = useCallback((selectedProducts: ExtractedProduct[]) => {
     if (selectedProducts.length > 0) {
       // Get existing aliases to avoid duplicates
       const existingAliases = products
@@ -299,15 +311,30 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
       // Auto-generate aliases for AI-extracted products using reduce for accumulation
       const generatedAliases: string[] = [];
-      const productsWithAliases = selectedProducts.map((product, index) => {
-        // Only generate alias for AI-extracted products (those with rawData)
-        if (product.rawData && Object.keys(product.rawData).length > 0 && !product.alias) {
+      const productsWithAliases: Product[] = selectedProducts.map((product, index) => {
+        // Convert ExtractedProduct to Product format
+        const convertedProduct: Product = {
+          id: product.id,
+          name: product.name,
+          quantity: product.quantity,
+          unit: product.unit,
+          description: product.description,
+          rawData: product.rawData,
+          // Store additional extracted data
+          isConfigurable: product.isConfigurable,
+          options: product.options,
+          selectedConfiguration: product.selectedConfiguration,
+          pricing: product.pricing,
+        } as Product;
+
+        // Generate alias for AI-extracted products
+        if (product.rawData && Object.keys(product.rawData).length > 0) {
           const allAliases = [...existingAliases, ...generatedAliases];
-          const alias = generateProductAlias(product, allAliases, index);
+          const alias = generateProductAlias(convertedProduct, allAliases, index);
           generatedAliases.push(alias);
-          return { ...product, alias };
+          convertedProduct.alias = alias;
         }
-        return product;
+        return convertedProduct;
       });
 
       setProductsData({ items: [...products, ...productsWithAliases] });
@@ -316,6 +343,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     }
     setExtractedProducts([]);
     setExtractedFileName(undefined);
+    setExtractionSummary(undefined);
   }, [products, setProductsData, onDirtyChange]);
 
   // Handle product selected from catalog (add or update)
@@ -931,6 +959,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         products={extractedProducts}
         onConfirm={handleConfirmExtraction}
         fileName={extractedFileName}
+        summary={extractionSummary}
       />
 
       {/* Catalog Selection Dialog */}

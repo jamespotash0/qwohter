@@ -1145,7 +1145,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                             updateLineItem(section.id, item.id, { sellRule: v })
                           }
                         >
-                          <SelectTrigger className={cn(selectTriggerClassName, 'px-0.5 text-[10px]')}>
+                          <SelectTrigger className={cn(selectTriggerClassName, 'px-1.5 text-[12px]')}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

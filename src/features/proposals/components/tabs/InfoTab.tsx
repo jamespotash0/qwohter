@@ -32,6 +32,8 @@ import {
 import { cn } from '@/lib/utils';
 import type { EditorMode } from '../ProposalEditor';
 import MapboxInput from '@/components/common/inputs/MapboxInput';
+import { DatePickerInput } from '@/components/common/inputs/DatePickerInput';
+import { ValidityDateInput } from '@/components/common/inputs/ValidityDateInput';
 import { useUser } from '@/auth';
 import { useCurrentOrganization, useOrganizationMembers } from '@/hooks/queries/useOrganization';
 import { useContacts, useCreateContact } from '@/hooks/useContacts';
@@ -167,6 +169,7 @@ function formatStoredPhone(value: string): string {
 export interface InfoTabData {
   projectName: string;
   proposalDate: string;
+  validUntil: string;         // Quote validity expiration date
   contactName: string;        // Display name (resolved from contact/member)
   contactNameId?: string;     // Reference ID for maintaining relationship
   contactEmail: string;
@@ -221,6 +224,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   // Project Details
   const [projectName, setProjectName] = useState('');
   const [proposalDate, setProposalDate] = useState('');
+  const [validUntil, setValidUntil] = useState('');
   const [contactName, setContactName] = useState('');      // Display name
   const [contactNameId, setContactNameId] = useState('');  // Reference ID
   const [contactEmail, setContactEmail] = useState('');
@@ -255,6 +259,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   const [initialValues, setInitialValues] = useState({
     projectName: '',
     proposalDate: '',
+    validUntil: '',
     contactName: '',
     contactEmail: '',
     proposalSource: '',
@@ -305,11 +310,18 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     ? cn(selectTriggerClassName, 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60')
     : selectTriggerClassName;
 
-  // Set proposal date to today in filler mode
+  // Track if initial date defaults have been set
+  const hasSetInitialDates = useRef(false);
+
+  // Set proposal date to today in filler mode (only once) - validUntil starts empty
   useEffect(() => {
-    if (!isBuilderMode && !proposalDate) {
-      const today = new Date().toISOString().split('T')[0] ?? '';
-      setProposalDate(today);
+    if (!isBuilderMode && !hasSetInitialDates.current) {
+      hasSetInitialDates.current = true;
+      if (!proposalDate) {
+        const today = new Date().toISOString().split('T')[0] ?? '';
+        setProposalDate(today);
+      }
+      // validUntil intentionally left empty - user must set it
     }
   }, [isBuilderMode, proposalDate]);
 
@@ -331,6 +343,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       if (info) {
         setProjectName(info.projectName || proposalData.project_name || '');
         setProposalDate(info.proposalDate || '');
+        setValidUntil(info.validUntil || '');
 
         // Handle contact name - check if it's a UUID that needs resolution
         const savedContactName = info.contactName || '';
@@ -451,6 +464,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         setInitialValues({
           projectName,
           proposalDate,
+          validUntil,
           contactName,
           contactEmail,
           proposalSource,
@@ -479,6 +493,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     initialValuesCaptured,
     projectName,
     proposalDate,
+    validUntil,
     contactName,
     contactEmail,
     proposalSource,
@@ -506,6 +521,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     const hasChanges =
       projectName !== initialValues.projectName ||
       proposalDate !== initialValues.proposalDate ||
+      validUntil !== initialValues.validUntil ||
       contactName !== initialValues.contactName ||
       contactEmail !== initialValues.contactEmail ||
       proposalSource !== initialValues.proposalSource ||
@@ -531,6 +547,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     onDirtyChange,
     projectName,
     proposalDate,
+    validUntil,
     contactName,
     contactEmail,
     proposalSource,
@@ -557,6 +574,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     getData: (): InfoTabData => ({
       projectName,
       proposalDate,
+      validUntil,
       contactName,
       contactNameId: contactNameId || undefined,
       contactEmail,
@@ -583,6 +601,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       setInitialValues({
         projectName,
         proposalDate,
+        validUntil,
         contactName,
         contactEmail,
         proposalSource,
@@ -606,6 +625,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   }), [
     projectName,
     proposalDate,
+    validUntil,
     contactName,
     contactNameId,
     contactEmail,
@@ -750,9 +770,9 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           title="Project Details"
           icon={<CalendarBlank className="w-4 h-4" />}
         >
-          {/* Project Name (60%) + Proposal Date (40%) */}
-          <div className="grid grid-cols-5 gap-3">
-            <div className="col-span-3">
+          {/* Project Name + Proposal Date + Valid Until */}
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-5">
               <Field label="Project Name" tooltip="Name of the project or job">
                 <Input
                   value={projectName}
@@ -763,15 +783,44 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                 />
               </Field>
             </div>
-            <div className="col-span-2">
-              <Field label="Proposal Date" tooltip="Date this proposal is being created">
-                <Input
-                  type="date"
-                  value={proposalDate}
-                  onChange={(e) => setProposalDate(e.target.value)}
-                  className={disabledInputClassName}
-                  disabled={isBuilderMode}
-                />
+            <div className="col-span-3">
+              <Field label="Date" tooltip="Date this proposal is being created">
+                {isBuilderMode ? (
+                  <Input
+                    type="date"
+                    value={proposalDate}
+                    onChange={(e) => setProposalDate(e.target.value)}
+                    className={disabledInputClassName}
+                    disabled={isBuilderMode}
+                  />
+                ) : (
+                  <DatePickerInput
+                    value={proposalDate}
+                    onChange={setProposalDate}
+                    placeholder="Select date..."
+                    disabled={isBuilderMode}
+                  />
+                )}
+              </Field>
+            </div>
+            <div className="col-span-4">
+              <Field label="Valid Until" tooltip="Quote validity expiration date - click to set days from proposal date">
+                {isBuilderMode ? (
+                  <Input
+                    type="date"
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                    className={disabledInputClassName}
+                    disabled={isBuilderMode}
+                  />
+                ) : (
+                  <ValidityDateInput
+                    value={validUntil}
+                    onChange={setValidUntil}
+                    proposalDate={proposalDate}
+                    disabled={isBuilderMode}
+                  />
+                )}
               </Field>
             </div>
           </div>
@@ -1151,13 +1200,22 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
               />
             </Field>
             <Field label="Est. Due Date" tooltip="Estimated completion or due date for the project">
-              <Input
-                type="date"
-                value={estimatedDueDate}
-                onChange={(e) => setEstimatedDueDate(e.target.value)}
-                className={disabledInputClassName}
-                disabled={isBuilderMode}
-              />
+              {isBuilderMode ? (
+                <Input
+                  type="date"
+                  value={estimatedDueDate}
+                  onChange={(e) => setEstimatedDueDate(e.target.value)}
+                  className={disabledInputClassName}
+                  disabled={isBuilderMode}
+                />
+              ) : (
+                <DatePickerInput
+                  value={estimatedDueDate}
+                  onChange={setEstimatedDueDate}
+                  placeholder="Select date..."
+                  disabled={isBuilderMode}
+                />
+              )}
             </Field>
           </div>
 

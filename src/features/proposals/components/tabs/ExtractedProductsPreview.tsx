@@ -1,12 +1,14 @@
 /**
  * Extracted Products Preview Modal
  * Shows AI-extracted products for user review before adding
+ * Supports both configurable products (with options) and simple line items
  */
 
 import { useState } from 'react';
-import { Check, X, Trash, Package, Sparkle } from '@phosphor-icons/react';
+import { Check, X, Package, Sparkle, Gear, ListBullets, CaretDown, CaretRight } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +16,117 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { Product } from '../../context/FormBuilderContext';
+import type { ExtractedProduct, ExtractedProductOption } from '@/services/productExtraction';
 
 interface ExtractedProductsPreviewProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  products: Product[];
-  onConfirm: (selectedProducts: Product[]) => void;
+  products: ExtractedProduct[];
+  onConfirm: (selectedProducts: ExtractedProduct[]) => void;
   fileName?: string;
+  summary?: {
+    configurableCount: number;
+    simpleCount: number;
+    confidence: number;
+    passes: string[];
+  };
+}
+
+function OptionsDisplay({ options }: { options: ExtractedProductOption[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!options || options.length === 0) return null;
+
+  const displayOptions = expanded ? options : options.slice(0, 3);
+  const hasMore = options.length > 3;
+
+  return (
+    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-1">
+        <Gear className="w-3 h-3" />
+        <span>{options.length} configuration option{options.length !== 1 ? 's' : ''}</span>
+        {hasMore && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="ml-1 text-purple-600 hover:text-purple-700 flex items-center"
+          >
+            {expanded ? (
+              <>
+                <CaretDown className="w-3 h-3" />
+                <span>less</span>
+              </>
+            ) : (
+              <>
+                <CaretRight className="w-3 h-3" />
+                <span>+{options.length - 3} more</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {displayOptions.map((option, idx) => {
+          const selectedValue = option.values.find(v => v.isSelected);
+          return (
+            <span
+              key={idx}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 rounded text-xs"
+            >
+              <span className="text-purple-700 dark:text-purple-300 font-medium">
+                {option.optionName}:
+              </span>
+              <span className="text-purple-600 dark:text-purple-400">
+                {selectedValue?.label || `${option.values.length} options`}
+              </span>
+              {selectedValue?.priceDelta && selectedValue.priceDelta > 0 && (
+                <span className="text-green-600 dark:text-green-400">
+                  +${selectedValue.priceDelta.toLocaleString()}
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PricingDisplay({ pricing }: { pricing: ExtractedProduct['pricing'] }) {
+  if (!pricing) return null;
+
+  const hasMaterialPricing = pricing.material?.subtotal || pricing.material?.pricePerSqFt;
+  const hasFreight = pricing.freight?.total;
+  const hasTotal = pricing.totalPrice || pricing.unitPrice;
+
+  if (!hasMaterialPricing && !hasFreight && !hasTotal) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+      {pricing.material?.subtotal && (
+        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded text-green-700 dark:text-green-300">
+          Material: ${pricing.material.subtotal.toLocaleString()}
+        </span>
+      )}
+      {pricing.material?.pricePerSqFt && (
+        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded text-green-700 dark:text-green-300">
+          ${pricing.material.pricePerSqFt}/sqft
+        </span>
+      )}
+      {hasFreight && (
+        <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 rounded text-orange-700 dark:text-orange-300">
+          Freight: ${pricing.freight!.total!.toLocaleString()}
+        </span>
+      )}
+      {pricing.totalPrice && (
+        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-700 dark:text-blue-300 font-medium">
+          Total: ${pricing.totalPrice.toLocaleString()}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export function ExtractedProductsPreview({
@@ -30,6 +135,7 @@ export function ExtractedProductsPreview({
   products,
   onConfirm,
   fileName,
+  summary,
 }: ExtractedProductsPreviewProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(products.map(p => p.id))
@@ -62,6 +168,8 @@ export function ExtractedProductsPreview({
   };
 
   const selectedCount = selectedIds.size;
+  const configurableCount = products.filter(p => p.isConfigurable).length;
+  const simpleCount = products.length - configurableCount;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -80,9 +188,30 @@ export function ExtractedProductsPreview({
 
         {/* Summary Bar */}
         <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {selectedCount} of {products.length} products selected
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {selectedCount} of {products.length} selected
+            </span>
+            <div className="flex gap-1">
+              {configurableCount > 0 && (
+                <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                  <Gear className="w-3 h-3 mr-1" />
+                  {configurableCount} configurable
+                </Badge>
+              )}
+              {simpleCount > 0 && (
+                <Badge variant="secondary" className="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                  <ListBullets className="w-3 h-3 mr-1" />
+                  {simpleCount} line items
+                </Badge>
+              )}
+            </div>
+            {summary?.confidence && (
+              <span className="text-xs text-gray-400">
+                {Math.round(summary.confidence * 100)}% confidence
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={selectAll}>
               Select All
@@ -123,50 +252,66 @@ export function ExtractedProductsPreview({
                     <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
                       x{product.quantity} {product.unit}
                     </span>
+                    {product.isConfigurable && (
+                      <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs">
+                        <Gear className="w-3 h-3 mr-1" />
+                        Configurable
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Product Hierarchy */}
-                  {product.rawData && (product.rawData.manufacturer || product.rawData.series || product.rawData.model) && (
+                  {(product.manufacturer || product.series || product.model) && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                       {[
-                        product.rawData.manufacturer,
-                        product.rawData.series,
-                        product.rawData.model && `Model: ${product.rawData.model}`
+                        product.manufacturer,
+                        product.series,
+                        product.model && `Model: ${product.model}`
                       ].filter(Boolean).join(' • ')}
                     </div>
                   )}
 
                   {/* Key Details */}
                   <div className="flex flex-wrap gap-2 text-xs">
-                    {product.rawData?.productType && (
+                    {product.productType && (
                       <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">
-                        {product.rawData.productType}
+                        {product.productType}
                       </span>
                     )}
-                    {product.rawData?.productCategory && (
+                    {product.productCategory && (
                       <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">
-                        {product.rawData.productCategory}
+                        {product.productCategory}
                       </span>
                     )}
-                    {product.rawData?.performanceRatings?.stc && (
+                    {product.performanceRatings?.stc && (
                       <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded text-blue-700 dark:text-blue-300">
-                        STC {product.rawData.performanceRatings.stc}
+                        STC {product.performanceRatings.stc}
                       </span>
                     )}
-                    {product.rawData?.performanceRatings?.fireRating && (
+                    {product.performanceRatings?.fireRating && (
                       <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded text-red-700 dark:text-red-300">
-                        {product.rawData.performanceRatings.fireRating}
+                        {product.performanceRatings.fireRating}
                       </span>
                     )}
-                    {product.rawData?.appearance?.color && (
+                    {product.appearance?.color && (
                       <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded text-purple-700 dark:text-purple-300">
-                        {product.rawData.appearance.color}
+                        {product.appearance.color}
                       </span>
                     )}
                   </div>
 
+                  {/* Options (for configurable products) */}
+                  {product.isConfigurable && product.options && (
+                    <OptionsDisplay options={product.options} />
+                  )}
+
+                  {/* Pricing (for configurable products) */}
+                  {product.isConfigurable && product.pricing && (
+                    <PricingDisplay pricing={product.pricing} />
+                  )}
+
                   {/* Description Preview */}
-                  {product.description && (
+                  {product.description && !product.isConfigurable && (
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                       {product.description}
                     </p>

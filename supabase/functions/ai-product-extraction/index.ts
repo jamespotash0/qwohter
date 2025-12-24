@@ -7,438 +7,853 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
 interface ExtractProductsRequest {
   documentText: string;
   fileName?: string;
 }
 
-interface ExtractedProduct {
+interface ProductOption {
+  optionName: string;
+  optionCategory: string;
+  values: Array<{
+    label: string;
+    priceDelta?: number | null;
+    absolutePrice?: number | null;
+    isSelected?: boolean;
+  }>;
+}
+
+interface PricingBreakdown {
+  material?: {
+    subtotal?: number | null;
+    components?: Record<string, number>;
+    pricePerUnit?: number | null;
+    pricePerSqFt?: number | null;
+  };
+  freight?: {
+    items?: Record<string, number>;
+    total?: number | null;
+  };
+  escalation?: {
+    terms?: string | null;
+    percentage?: number | null;
+    validUntil?: string | null;
+  };
+  unitPrice?: number | null;
+  totalPrice?: number | null;
+}
+
+interface ConfigurableProduct {
+  id: string;
   manufacturer: string | null;
   productType: string | null;
   productCategory: string | null;
   series: string | null;
   model: string | null;
+  name: string;
+  description: string | null;
+  baseSpecifications: {
+    dimensions?: {
+      height?: string | null;
+      width?: string | null;
+      length?: string | null;
+      thickness?: string | null;
+      area?: string | null;
+    };
+    quantity?: number | null;
+    unit?: string | null;
+  };
+  options: ProductOption[];
+  selectedConfiguration: Record<string, string>;
+  pricing: PricingBreakdown;
+  performanceRatings: {
+    stc?: number | null;
+    fireRating?: string | null;
+    acousticRating?: string | null;
+  };
+  certifications: string[];
+}
 
+interface SimpleProduct {
+  id: string;
+  manufacturer: string | null;
+  productType: string | null;
+  productCategory: string | null;
+  series: string | null;
+  model: string | null;
   name: string;
   quantity: string | null;
   unit: string | null;
   unitPrice?: number | null;
   totalPrice?: number | null;
-
   dimensions: {
     height: string | null;
     width: string | null;
     length: string | null;
     thickness: string | null;
   };
-
   performanceRatings: {
     stc: number | null;
     fireRating: string | null;
     acousticRating: string | null;
   };
-
   appearance: {
     color: string | null;
     finish: string | null;
     trim: string | null;
   };
-
   materials: {
     core: string | null;
     face: string | null;
     frame: string | null;
   };
-
   certifications: string[];
-  specifications: Record<string, any>;
+  specifications: Record<string, unknown>;
   description: string | null;
+}
+
+interface DocumentPricingSummary {
+  materialCost?: number | null;
+  laborCost?: number | null;
+  freightCost?: number | null;
+  markup?: {
+    amount?: number | null;
+    percentage?: number | null;
+  };
+  subtotal?: number | null;
+  tax?: {
+    amount?: number | null;
+    percentage?: number | null;
+  };
+  grandTotal?: number | null;
+  pricePerSqFt?: number | null;
+  currency?: string;
+}
+
+interface DocumentMetadata {
+  validUntil?: string | null;           // Quote expiration date
+  quoteNumber?: string | null;          // Quote/proposal reference number
+  quoteDate?: string | null;            // Date quote was created
+  pricingSummary: DocumentPricingSummary;
+  paymentTerms?: string | null;
+  leadTime?: string | null;
+  escalationTerms?: string | null;
+  notes?: string | null;
 }
 
 interface ExtractProductsResponse {
   success: boolean;
   data?: {
-    products: ExtractedProduct[];
-    summary?: string;
+    configurableProducts: ConfigurableProduct[];
+    simpleProducts: SimpleProduct[];
+    documentMetadata: DocumentMetadata;
+    documentSummary: {
+      totalProducts: number;
+      configurableCount: number;
+      simpleCount: number;
+      hasFreight: boolean;
+      hasEscalation: boolean;
+    };
+    extractionMetadata: {
+      passes: string[];
+      confidence: number;
+    };
   };
   error?: string;
 }
 
-serve(async (req: { method: string; json: () => ExtractProductsRequest | PromiseLike<ExtractProductsRequest>; }) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+// ============================================================================
+// OPENAI API HELPER
+// ============================================================================
+
+async function callOpenAI(
+  apiKey: string,
+  systemPrompt: string,
+  userPrompt: string,
+  temperature = 0.1
+): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature,
+      response_format: { type: 'json_object' }
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('OpenAI API error:', error);
+    throw new Error(`OpenAI API request failed: ${response.status}`);
   }
 
-  try {
-    const { documentText, fileName }: ExtractProductsRequest = await req.json()
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content;
 
-    if (!documentText) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Document text is required'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      )
-    }
+  if (!content) {
+    throw new Error('No response from OpenAI');
+  }
 
-    // Get OpenAI API key from environment
-    //@ts-ignore
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
+  return content;
+}
 
-    // Product extraction prompt
-    const systemPrompt = `
-You are an expert product catalog and construction-materials data extraction engine.
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 11);
+}
 
-Your task is to extract structured, normalized product data from unstructured documents
-(spec sheets, proposals, submittals, invoices, line items, PDFs, emails).
+// ============================================================================
+// PASS 1: PRODUCT INVENTORY & CLASSIFICATION
+// ============================================================================
 
-Your output MUST support cascading dropdowns and CPQ product modeling.
+const PASS1_SYSTEM_PROMPT = `You are analyzing a commercial product document to identify ALL products.
 
-────────────────────────────────────────────
-EXTRACTION GOAL
-────────────────────────────────────────────
-For each distinct product mentioned, infer and extract the most complete hierarchy possible:
+Your task is to:
+1. Identify EVERY distinct product in the document
+2. Classify each as "configurable" or "simple"
 
-Manufacturer → Product Type → Product Category → Series → Model
+CLASSIFICATION RULES:
 
-Then extract all relevant attributes and pricing information.
+"configurable" products have:
+- Multiple selectable options (STC ratings, finishes, closures, etc.)
+- Variant tables or "Add for..." pricing
+- Component breakdowns that belong to ONE system
+- Examples: Wall systems, door systems, custom furniture with finish options
 
-You may infer missing hierarchy levels when they are strongly implied.
-If a hierarchy level cannot be determined, return null for that field.
+"simple" products are:
+- Single items with fixed specifications
+- No meaningful options to select
+- Examples: Individual parts, accessories, standard supplies, freight line items
 
-────────────────────────────────────────────
-REQUIRED OUTPUT STRUCTURE
-────────────────────────────────────────────
-Return a JSON object with the following structure:
+IMPORTANT:
+- Each distinct product system = one entry (don't split panels/track/seals of one wall into multiple products)
+- A quote with 3 different wall systems = 3 configurable products
+- Freight, shipping, and installation should be EXCLUDED from products
 
+Return JSON:
 {
   "products": [
     {
+      "tempId": "unique_temp_id_1",
+      "name": "Product name",
+      "type": "configurable" | "simple",
+      "manufacturer": "string | null",
+      "model": "string | null",
+      "series": "string | null",
+      "productType": "e.g., Partitions, Furniture, Doors",
+      "productCategory": "e.g., Operable Walls, Glass Partitions",
+      "briefDescription": "One-line description",
+      "reasoning": "Why this is configurable or simple"
+    }
+  ],
+  "documentInfo": {
+    "hasFreight": true | false,
+    "hasEscalation": true | false,
+    "freightTotal": number | null,
+    "escalationTerms": "string | null"
+  },
+  "confidence": 0.0-1.0
+}`;
+
+interface InventoryProduct {
+  tempId: string;
+  name: string;
+  type: 'configurable' | 'simple';
+  manufacturer: string | null;
+  model: string | null;
+  series: string | null;
+  productType: string | null;
+  productCategory: string | null;
+  briefDescription: string | null;
+  reasoning: string;
+}
+
+interface Pass1Result {
+  products: InventoryProduct[];
+  documentInfo: {
+    hasFreight: boolean;
+    hasEscalation: boolean;
+    freightTotal?: number | null;
+    escalationTerms?: string | null;
+  };
+  confidence: number;
+}
+
+async function pass1_inventoryProducts(
+  apiKey: string,
+  documentText: string,
+  fileName?: string
+): Promise<Pass1Result> {
+  console.log('=== PASS 1: Product Inventory & Classification ===');
+
+  const userPrompt = fileName
+    ? `Analyze this document (${fileName}) and identify all products:\n\n${documentText}`
+    : `Analyze this document and identify all products:\n\n${documentText}`;
+
+  const response = await callOpenAI(apiKey, PASS1_SYSTEM_PROMPT, userPrompt);
+  const result = JSON.parse(response) as Pass1Result;
+
+  console.log('Pass 1 Result:', JSON.stringify(result, null, 2));
+  console.log(`Found ${result.products.length} products (${result.products.filter(p => p.type === 'configurable').length} configurable, ${result.products.filter(p => p.type === 'simple').length} simple)`);
+
+  return result;
+}
+
+// ============================================================================
+// PASS 2: CONFIGURABLE PRODUCT DETAILS
+// ============================================================================
+
+const PASS2_SYSTEM_PROMPT = `You are extracting detailed configuration options for a specific product.
+
+CONTEXT: You are extracting options for ONE specific product that has already been identified.
+The product information is provided in the user prompt.
+
+IMPORTANT RULES:
+- Extract ONLY options relevant to the specified product
+- Collapse variant rows into options (don't treat variants as separate products)
+- "Add for..." = priceDelta pricing
+- Replacement pricing = absolutePrice
+- Mark selected/quoted options with isSelected: true
+
+OPTION CATEGORIES:
+- Closure: Left/Right closures, pocket doors, pass doors
+- Seal: Acoustic seals, smoke seals, perimeter seals
+- Track: Track types, mounting options
+- Finish: Colors, powder coats, veneers, laminates
+- Performance: STC ratings, fire ratings
+- Hardware: Handles, locks, hinges
+- Glass: Glass types, tints, patterns
+- Stacking: Stack configurations
+- Dimensions: Height/width variations with pricing
+- Other: Any other configurable aspect
+
+Return JSON:
+{
+  "baseSpecifications": {
+    "dimensions": {
+      "height": "string | null",
+      "width": "string | null",
+      "length": "string | null",
+      "thickness": "string | null",
+      "area": "string | null"
+    },
+    "quantity": number | null,
+    "unit": "ea | sqft | lf | null"
+  },
+  "options": [
+    {
+      "optionName": "Human-readable option name",
+      "optionCategory": "Category from list above",
+      "values": [
+        {
+          "label": "Option value",
+          "priceDelta": number | null,
+          "absolutePrice": number | null,
+          "isSelected": boolean
+        }
+      ]
+    }
+  ],
+  "selectedConfiguration": {
+    "optionName": "selectedValue"
+  },
+  "pricing": {
+    "material": {
+      "subtotal": number | null,
+      "components": { "componentName": price },
+      "pricePerUnit": number | null,
+      "pricePerSqFt": number | null
+    },
+    "unitPrice": number | null,
+    "totalPrice": number | null
+  },
+  "performanceRatings": {
+    "stc": number | null,
+    "fireRating": "string | null",
+    "acousticRating": "string | null"
+  },
+  "certifications": ["UL", "ASTM", "etc"],
+  "fullDescription": "Comprehensive product description"
+}`;
+
+interface Pass2Result {
+  baseSpecifications: {
+    dimensions?: {
+      height?: string | null;
+      width?: string | null;
+      length?: string | null;
+      thickness?: string | null;
+      area?: string | null;
+    };
+    quantity?: number | null;
+    unit?: string | null;
+  };
+  options: ProductOption[];
+  selectedConfiguration: Record<string, string>;
+  pricing: PricingBreakdown;
+  performanceRatings: {
+    stc?: number | null;
+    fireRating?: string | null;
+    acousticRating?: string | null;
+  };
+  certifications: string[];
+  fullDescription: string | null;
+}
+
+async function pass2_extractConfigurableDetails(
+  apiKey: string,
+  documentText: string,
+  product: InventoryProduct
+): Promise<Pass2Result> {
+  console.log(`=== PASS 2: Extracting details for "${product.name}" ===`);
+
+  const userPrompt = `Extract configuration options for this SPECIFIC product:
+
+PRODUCT TO EXTRACT:
+- Name: ${product.name}
+- Manufacturer: ${product.manufacturer || 'Unknown'}
+- Model: ${product.model || 'Unknown'}
+- Series: ${product.series || 'Unknown'}
+- Type: ${product.productType || 'Unknown'}
+- Category: ${product.productCategory || 'Unknown'}
+- Description: ${product.briefDescription || 'N/A'}
+
+Focus ONLY on options and specifications for this product. Ignore other products.
+
+DOCUMENT TEXT:
+${documentText}`;
+
+  const response = await callOpenAI(apiKey, PASS2_SYSTEM_PROMPT, userPrompt);
+  const result = JSON.parse(response) as Pass2Result;
+
+  console.log(`Pass 2 Result for "${product.name}": ${result.options.length} options found`);
+  return result;
+}
+
+// ============================================================================
+// PASS 3: SIMPLE PRODUCTS EXTRACTION
+// ============================================================================
+
+const PASS3_SYSTEM_PROMPT = `You are extracting simple line-item products from a document.
+
+CONTEXT: Some products have already been identified as "configurable" and extracted separately.
+You are extracting the remaining "simple" products.
+
+RULES:
+1. Each product must have a name
+2. Default quantity to "1" and unit to "ea" if not specified
+3. Normalize units (ft, sqft, in, mm, ea, pcs)
+4. Preserve manufacturer terminology exactly
+5. EXCLUDE freight, shipping, installation line items
+6. ONLY extract products from the provided list
+
+Return JSON:
+{
+  "products": [
+    {
+      "tempId": "matching_temp_id",
       "manufacturer": "string | null",
       "productType": "string | null",
       "productCategory": "string | null",
       "series": "string | null",
       "model": "string | null",
-
-      "name": "Human-readable product name",
+      "name": "Product name",
       "quantity": "string",
       "unit": "string",
       "unitPrice": number | null,
       "totalPrice": number | null,
-
       "dimensions": {
         "height": "string | null",
         "width": "string | null",
         "length": "string | null",
         "thickness": "string | null"
       },
-
       "performanceRatings": {
         "stc": number | null,
         "fireRating": "string | null",
         "acousticRating": "string | null"
       },
-
       "appearance": {
         "color": "string | null",
         "finish": "string | null",
         "trim": "string | null"
       },
-
       "materials": {
         "core": "string | null",
         "face": "string | null",
         "frame": "string | null"
       },
-
-      "certifications": ["UL", "ASTM", "LEED", "..."],
-
-      "specifications": {
-        "key": "value"
-      },
-
-      "description": "Full descriptive text synthesized from the source"
-    }
-  ],
-
-  "summary": "Brief description of the extracted catalog data"
-}
-
-────────────────────────────────────────────
-EXTRACTION RULES
-────────────────────────────────────────────
-1. Extract ALL products, even if incomplete
-2. Default quantity to "1" and unit to "ea" if missing
-3. Normalize units (ft, sqft, in, mm, ea, pcs)
-4. Preserve manufacturer terminology and model numbers exactly
-5. Do NOT invent specs — infer only when clearly implied
-6. Prefer structured fields over description text
-7. If multiple variants appear, create separate product entries
-8. Assume construction and architectural domain unless stated otherwise
-
-────────────────────────────────────────────
-DOMAIN INTELLIGENCE
-────────────────────────────────────────────
-- Walls, doors, panels, partitions, glazing, furniture, and finishes may have
-  performance ratings such as STC, fire rating, or acoustic values.
-- Series typically groups models under a manufacturer.
-- Model is the most specific purchasable configuration.
-
-Your output will be consumed by a CPQ system and MUST be deterministic, structured,
-and suitable for dropdown-based product selection.
-
-────────────────────────────────────────────
-EXAMPLES
-────────────────────────────────────────────
-
-EXAMPLE 1 - Simple Product:
-Input: "50 boxes of 2x4 screws, $12.50 per box"
-
-Output:
-{
-  "products": [
-    {
-      "manufacturer": null,
-      "productType": "Fasteners",
-      "productCategory": "Screws",
-      "series": null,
-      "model": "2x4",
-      "name": "2x4 Screws",
-      "quantity": "50",
-      "unit": "box",
-      "unitPrice": 12.50,
-      "totalPrice": 625.00,
-      "dimensions": { "height": null, "width": null, "length": null, "thickness": null },
-      "performanceRatings": { "stc": null, "fireRating": null, "acousticRating": null },
-      "appearance": { "color": null, "finish": null, "trim": null },
-      "materials": { "core": null, "face": null, "frame": null },
       "certifications": [],
       "specifications": {},
-      "description": "Standard construction screws, 2x4 size"
+      "description": "string | null"
     }
-  ],
-  "summary": "Extracted 1 fastener product"
+  ]
+}`;
+
+interface Pass3Result {
+  products: Array<SimpleProduct & { tempId: string }>;
 }
 
-EXAMPLE 2 - Complex Construction Product:
-Input: "ModernFold Acousti-Clear 924 series, model AC-924-48-STC52, 48\" wide demountable glass partition with aluminum frame, clear tempered glass, STC 52 rating, 2-hour fire rating, brushed aluminum finish. Quantity: 15 panels @ $2,850/panel"
+async function pass3_extractSimpleProducts(
+  apiKey: string,
+  documentText: string,
+  simpleProducts: InventoryProduct[]
+): Promise<Pass3Result> {
+  console.log(`=== PASS 3: Extracting ${simpleProducts.length} simple products ===`);
 
-Output:
+  if (simpleProducts.length === 0) {
+    return { products: [] };
+  }
+
+  const productList = simpleProducts.map(p =>
+    `- [${p.tempId}] ${p.name} (${p.manufacturer || 'Unknown manufacturer'})`
+  ).join('\n');
+
+  const userPrompt = `Extract details for these SPECIFIC simple products:
+
+PRODUCTS TO EXTRACT:
+${productList}
+
+IMPORTANT: Use the tempId from the list for each product in your response.
+
+DOCUMENT TEXT:
+${documentText}`;
+
+  const response = await callOpenAI(apiKey, PASS3_SYSTEM_PROMPT, userPrompt);
+  const result = JSON.parse(response) as Pass3Result;
+
+  console.log(`Pass 3 Result: ${result.products.length} simple products extracted`);
+  return result;
+}
+
+// ============================================================================
+// PASS 4: FREIGHT & ESCALATION EXTRACTION
+// ============================================================================
+
+const PASS4_SYSTEM_PROMPT = `You are extracting freight and escalation pricing from a product quote.
+
+RULES:
+- Extract ALL freight/shipping line items with their costs
+- Capture escalation terms exactly as written
+- Do NOT include product prices, only logistics
+
+Return JSON:
 {
-  "products": [
-    {
-      "manufacturer": "ModernFold",
-      "productType": "Partitions",
-      "productCategory": "Glass Partitions",
-      "series": "Acousti-Clear 924",
-      "model": "AC-924-48-STC52",
-      "name": "ModernFold Acousti-Clear 924 Glass Partition",
-      "quantity": "15",
-      "unit": "ea",
-      "unitPrice": 2850.00,
-      "totalPrice": 42750.00,
-      "dimensions": {
-        "height": null,
-        "width": "48 in",
-        "length": null,
-        "thickness": null
-      },
-      "performanceRatings": {
-        "stc": 52,
-        "fireRating": "2-hour",
-        "acousticRating": "STC 52"
-      },
-      "appearance": {
-        "color": "Clear",
-        "finish": "Brushed Aluminum",
-        "trim": "Aluminum Frame"
-      },
-      "materials": {
-        "core": null,
-        "face": "Tempered Glass",
-        "frame": "Aluminum"
-      },
-      "certifications": [],
-      "specifications": {
-        "demountable": "Yes",
-        "glassType": "Clear Tempered"
-      },
-      "description": "48-inch wide demountable glass partition with aluminum frame, clear tempered glass, STC 52 rating, 2-hour fire rating, brushed aluminum finish"
-    }
-  ],
-  "summary": "Extracted 1 high-performance glass partition with acoustic and fire ratings"
+  "freight": {
+    "items": [
+      {
+        "description": "Freight description",
+        "cost": number
+      }
+    ],
+    "total": number | null
+  },
+  "escalation": {
+    "terms": "Exact escalation terms text | null",
+    "percentage": number | null,
+    "validUntil": "date | null"
+  },
+  "paymentTerms": "string | null",
+  "leadTime": "string | null"
+}`;
+
+interface Pass4Result {
+  freight: {
+    items: Array<{ description: string; cost: number }>;
+    total: number | null;
+  };
+  escalation: {
+    terms: string | null;
+    percentage: number | null;
+    validUntil: string | null;
+  };
+  paymentTerms: string | null;
+  leadTime: string | null;
 }
 
-EXAMPLE 3 - Multiple Products from Invoice:
-Input:
-"Line 1: Steelcase Flex Height-Adjustable Desk, 60x30, Walnut top - Qty 10 @ $1,245
-Line 2: Herman Miller Aeron Chair, Size B, Graphite - Qty 10 @ $1,495
-Line 3: 3M Privacy Screen 24\" - Qty 10 @ $89.99"
+async function pass4_extractFreightAndEscalation(
+  apiKey: string,
+  documentText: string
+): Promise<Pass4Result> {
+  console.log('=== PASS 4: Freight & Escalation Extraction ===');
 
-Output:
+  const userPrompt = `Extract freight and escalation information from this document:\n\n${documentText}`;
+
+  const response = await callOpenAI(apiKey, PASS4_SYSTEM_PROMPT, userPrompt);
+  const result = JSON.parse(response) as Pass4Result;
+
+  console.log('Pass 4 Result:', JSON.stringify(result, null, 2));
+  return result;
+}
+
+// ============================================================================
+// PASS 5: DOCUMENT METADATA EXTRACTION
+// ============================================================================
+
+const PASS5_SYSTEM_PROMPT = `You are extracting document-level metadata from a commercial quote or proposal.
+
+Extract the following information if present:
+1. Quote validity / expiration date
+2. Quote number or reference
+3. Quote date
+4. Overall pricing summary (calculated totals, not line items)
+5. Payment terms
+6. Lead time / delivery timeline
+7. Escalation terms
+8. Important notes or conditions
+
+PRICING SUMMARY should include significant calculated costs:
+- Material cost (total materials)
+- Labor cost (installation, labor charges)
+- Freight cost (shipping, delivery)
+- Markup (profit margin - amount and/or percentage)
+- Subtotal (before tax)
+- Tax (if applicable - amount and/or percentage)
+- Grand total (final price)
+- Price per square foot (if quoted that way)
+
+IMPORTANT:
+- Only extract values that are explicitly stated
+- For dates, use ISO format (YYYY-MM-DD) when possible
+- For currency, default to USD if not specified
+- Look for phrases like "valid until", "expires", "quote valid for X days"
+
+Return JSON:
 {
-  "products": [
-    {
-      "manufacturer": "Steelcase",
-      "productType": "Furniture",
-      "productCategory": "Desks",
-      "series": "Flex",
-      "model": "Height-Adjustable 60x30",
-      "name": "Steelcase Flex Height-Adjustable Desk",
-      "quantity": "10",
-      "unit": "ea",
-      "unitPrice": 1245.00,
-      "totalPrice": 12450.00,
-      "dimensions": {
-        "height": "Adjustable",
-        "width": "60 in",
-        "length": "30 in",
-        "thickness": null
-      },
-      "performanceRatings": { "stc": null, "fireRating": null, "acousticRating": null },
-      "appearance": {
-        "color": "Walnut",
-        "finish": "Wood Top",
-        "trim": null
-      },
-      "materials": { "core": null, "face": "Walnut", "frame": null },
-      "certifications": [],
-      "specifications": {
-        "adjustable": "Height-Adjustable"
-      },
-      "description": "Height-adjustable desk with walnut top, 60x30 inches"
+  "validUntil": "YYYY-MM-DD | null",
+  "quoteNumber": "string | null",
+  "quoteDate": "YYYY-MM-DD | null",
+  "pricingSummary": {
+    "materialCost": number | null,
+    "laborCost": number | null,
+    "freightCost": number | null,
+    "markup": {
+      "amount": number | null,
+      "percentage": number | null
     },
-    {
-      "manufacturer": "Herman Miller",
-      "productType": "Furniture",
-      "productCategory": "Seating",
-      "series": "Aeron",
-      "model": "Size B",
-      "name": "Herman Miller Aeron Chair",
-      "quantity": "10",
-      "unit": "ea",
-      "unitPrice": 1495.00,
-      "totalPrice": 14950.00,
-      "dimensions": { "height": null, "width": null, "length": null, "thickness": null },
-      "performanceRatings": { "stc": null, "fireRating": null, "acousticRating": null },
-      "appearance": {
-        "color": "Graphite",
-        "finish": null,
-        "trim": null
-      },
-      "materials": { "core": null, "face": null, "frame": null },
-      "certifications": [],
-      "specifications": {
-        "size": "B"
-      },
-      "description": "Ergonomic office chair, Size B, Graphite color"
+    "subtotal": number | null,
+    "tax": {
+      "amount": number | null,
+      "percentage": number | null
     },
-    {
-      "manufacturer": "3M",
-      "productType": "Accessories",
-      "productCategory": "Privacy Screens",
-      "series": null,
-      "model": "24\"",
-      "name": "3M Privacy Screen 24\"",
-      "quantity": "10",
-      "unit": "ea",
-      "unitPrice": 89.99,
-      "totalPrice": 899.90,
-      "dimensions": {
-        "height": null,
-        "width": "24 in",
-        "length": null,
-        "thickness": null
-      },
-      "performanceRatings": { "stc": null, "fireRating": null, "acousticRating": null },
-      "appearance": { "color": null, "finish": null, "trim": null },
-      "materials": { "core": null, "face": null, "frame": null },
-      "certifications": [],
-      "specifications": {
-        "screenSize": "24 inch"
-      },
-      "description": "Privacy screen for 24-inch monitor"
-    }
-  ],
-  "summary": "Extracted 3 products: 1 desk, 1 chair, 1 privacy screen"
+    "grandTotal": number | null,
+    "pricePerSqFt": number | null,
+    "currency": "USD"
+  },
+  "paymentTerms": "string | null",
+  "leadTime": "string | null",
+  "escalationTerms": "string | null",
+  "notes": "string | null"
+}`;
+
+async function pass5_extractDocumentMetadata(
+  apiKey: string,
+  documentText: string
+): Promise<DocumentMetadata> {
+  console.log('=== PASS 5: Document Metadata Extraction ===');
+
+  const userPrompt = `Extract document-level metadata and pricing summary from this quote/proposal:\n\n${documentText}`;
+
+  const response = await callOpenAI(apiKey, PASS5_SYSTEM_PROMPT, userPrompt);
+  const result = JSON.parse(response) as DocumentMetadata;
+
+  console.log('Pass 5 Result:', JSON.stringify(result, null, 2));
+  return result;
 }
-`
 
-    const userPrompt = fileName
-      ? `Extract all products from this document (${fileName}):\n\n${documentText}`
-      : `Extract all products from this document:\n\n${documentText}`
+// ============================================================================
+// MAIN HANDLER
+// ============================================================================
 
-    // Call OpenAI API
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      }),
-    })
+serve(async (req: { method: string; json: () => ExtractProductsRequest | PromiseLike<ExtractProductsRequest>; }) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
-    if (!openaiResponse.ok) {
-      const error = await openaiResponse.text()
-      console.error('OpenAI API error:', error)
-      throw new Error(`OpenAI API request failed: ${openaiResponse.status}`)
+  try {
+    const { documentText, fileName }: ExtractProductsRequest = await req.json();
+
+    if (!documentText) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Document text is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
-    const openaiData = await openaiResponse.json()
-    const content = openaiData.choices[0]?.message?.content
-
-    if (!content) {
-      throw new Error('No response from OpenAI')
+    //@ts-ignore
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key not configured');
     }
 
-    // Parse the JSON response
-    const extractedData = JSON.parse(content)
+    console.log('=== MULTI-PASS EXTRACTION STARTED ===');
+    console.log('File:', fileName);
+    console.log('Text length:', documentText.length);
 
-    // Validate and return the response
+    const passes: string[] = [];
+
+    // ========== PASS 1: Product Inventory ==========
+    const pass1Result = await pass1_inventoryProducts(openaiApiKey, documentText, fileName);
+    passes.push('inventory');
+
+    const configurableProducts: ConfigurableProduct[] = [];
+    const simpleProducts: SimpleProduct[] = [];
+
+    // ========== PASS 2: Extract Configurable Products ==========
+    const configurableInventory = pass1Result.products.filter(p => p.type === 'configurable');
+
+    for (const product of configurableInventory) {
+      const details = await pass2_extractConfigurableDetails(openaiApiKey, documentText, product);
+      passes.push(`configurable:${product.tempId}`);
+
+      configurableProducts.push({
+        id: generateId(),
+        manufacturer: product.manufacturer,
+        productType: product.productType,
+        productCategory: product.productCategory,
+        series: product.series,
+        model: product.model,
+        name: product.name,
+        description: details.fullDescription,
+        baseSpecifications: details.baseSpecifications,
+        options: details.options,
+        selectedConfiguration: details.selectedConfiguration,
+        pricing: details.pricing,
+        performanceRatings: details.performanceRatings,
+        certifications: details.certifications,
+      });
+    }
+
+    // ========== PASS 3: Extract Simple Products ==========
+    const simpleInventory = pass1Result.products.filter(p => p.type === 'simple');
+
+    if (simpleInventory.length > 0) {
+      const pass3Result = await pass3_extractSimpleProducts(openaiApiKey, documentText, simpleInventory);
+      passes.push('simple_products');
+
+      for (const product of pass3Result.products) {
+        simpleProducts.push({
+          id: generateId(),
+          manufacturer: product.manufacturer,
+          productType: product.productType,
+          productCategory: product.productCategory,
+          series: product.series,
+          model: product.model,
+          name: product.name,
+          quantity: product.quantity,
+          unit: product.unit,
+          unitPrice: product.unitPrice,
+          totalPrice: product.totalPrice,
+          dimensions: product.dimensions,
+          performanceRatings: product.performanceRatings,
+          appearance: product.appearance,
+          materials: product.materials,
+          certifications: product.certifications,
+          specifications: product.specifications,
+          description: product.description,
+        });
+      }
+    }
+
+    // ========== PASS 4: Freight & Escalation (if needed) ==========
+    let freightData: Pass4Result | null = null;
+    if (pass1Result.documentInfo.hasFreight || pass1Result.documentInfo.hasEscalation) {
+      freightData = await pass4_extractFreightAndEscalation(openaiApiKey, documentText);
+      passes.push('freight_escalation');
+
+      // Attach freight data to configurable products
+      if (configurableProducts.length > 0 && freightData.freight.total) {
+        const freightPerProduct = freightData.freight.total / configurableProducts.length;
+        configurableProducts.forEach(product => {
+          product.pricing.freight = {
+            total: freightPerProduct,
+            items: freightData!.freight.items.reduce((acc, item) => {
+              acc[item.description] = item.cost / configurableProducts.length;
+              return acc;
+            }, {} as Record<string, number>),
+          };
+          if (freightData!.escalation.terms) {
+            product.pricing.escalation = freightData!.escalation;
+          }
+        });
+      }
+    }
+
+    // ========== PASS 5: Document Metadata ==========
+    const documentMetadata = await pass5_extractDocumentMetadata(openaiApiKey, documentText);
+    passes.push('document_metadata');
+
+    // Merge freight data into document metadata if not already captured
+    if (freightData) {
+      if (!documentMetadata.pricingSummary) {
+        documentMetadata.pricingSummary = {};
+      }
+      if (!documentMetadata.pricingSummary.freightCost && freightData.freight.total) {
+        documentMetadata.pricingSummary.freightCost = freightData.freight.total;
+      }
+      if (!documentMetadata.paymentTerms && freightData.paymentTerms) {
+        documentMetadata.paymentTerms = freightData.paymentTerms;
+      }
+      if (!documentMetadata.leadTime && freightData.leadTime) {
+        documentMetadata.leadTime = freightData.leadTime;
+      }
+      if (!documentMetadata.escalationTerms && freightData.escalation.terms) {
+        documentMetadata.escalationTerms = freightData.escalation.terms;
+      }
+    }
+
+    // ========== Build Response ==========
     const response: ExtractProductsResponse = {
       success: true,
       data: {
-        products: extractedData.products || [],
-        summary: extractedData.summary
-      }
-    }
+        configurableProducts,
+        simpleProducts,
+        documentMetadata,
+        documentSummary: {
+          totalProducts: configurableProducts.length + simpleProducts.length,
+          configurableCount: configurableProducts.length,
+          simpleCount: simpleProducts.length,
+          hasFreight: pass1Result.documentInfo.hasFreight,
+          hasEscalation: pass1Result.documentInfo.hasEscalation,
+        },
+        extractionMetadata: {
+          passes,
+          confidence: pass1Result.confidence,
+        },
+      },
+    };
+
+    console.log('=== MULTI-PASS EXTRACTION COMPLETE ===');
+    console.log(`Total: ${response.data?.documentSummary.totalProducts} products`);
+    console.log(`Configurable: ${response.data?.documentSummary.configurableCount}`);
+    console.log(`Simple: ${response.data?.documentSummary.simpleCount}`);
+    console.log('Passes executed:', passes);
 
     return new Response(
       JSON.stringify(response),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
-    )
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
 
   } catch (error) {
-    console.error('Extract products error:', error)
+    console.error('Extract products error:', error);
 
     return new Response(
       JSON.stringify({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    )
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
   }
-})
+});
