@@ -66,6 +66,30 @@ interface ConfigurableProduct {
     };
     quantity?: number | null;
     unit?: string | null;
+    panelCount?: number | null;
+    weight?: string | null;
+    weightPerSqFt?: number | null;
+  };
+  frame?: {
+    type?: string | null;
+    material?: string | null;
+  };
+  closures?: {
+    left?: string | null;
+    right?: string | null;
+  };
+  seals?: {
+    top?: string | null;
+    bottom?: string | null;
+    perimeter?: string | null;
+  };
+  track?: {
+    type?: string | null;
+    hangingWeight?: number | null;
+  };
+  stacking?: {
+    configuration?: string | null;
+    direction?: string | null;
   };
   options: ProductOption[];
   selectedConfiguration: Record<string, string>;
@@ -74,6 +98,12 @@ interface ConfigurableProduct {
     stc?: number | null;
     fireRating?: string | null;
     acousticRating?: string | null;
+  };
+  appearance?: {
+    color?: string | null;
+    finish?: string | null;
+    trim?: string | null;
+    surface?: string | null;
   };
   certifications: string[];
 }
@@ -314,29 +344,29 @@ async function pass1_inventoryProducts(
 // PASS 2: CONFIGURABLE PRODUCT DETAILS
 // ============================================================================
 
-const PASS2_SYSTEM_PROMPT = `You are extracting detailed configuration options for a specific product.
+const PASS2_SYSTEM_PROMPT = `You are extracting detailed specifications and configuration options for a specific product.
 
-CONTEXT: You are extracting options for ONE specific product that has already been identified.
+CONTEXT: You are extracting data for ONE specific product that has already been identified.
 The product information is provided in the user prompt.
 
-IMPORTANT RULES:
-- Extract ONLY options relevant to the specified product
-- Collapse variant rows into options (don't treat variants as separate products)
-- "Add for..." = priceDelta pricing
-- Replacement pricing = absolutePrice
-- Mark selected/quoted options with isSelected: true
+CRITICAL DISTINCTION - Selected Specifications vs Configurable Options:
 
-OPTION CATEGORIES:
-- Closure: Left/Right closures, pocket doors, pass doors
-- Seal: Acoustic seals, smoke seals, perimeter seals
-- Track: Track types, mounting options
-- Finish: Colors, powder coats, veneers, laminates
-- Performance: STC ratings, fire ratings
-- Hardware: Handles, locks, hinges
-- Glass: Glass types, tints, patterns
-- Stacking: Stack configurations
-- Dimensions: Height/width variations with pricing
-- Other: Any other configurable aspect
+1. SELECTED SPECIFICATIONS (single values already chosen for this quote):
+   Put these in the dedicated fields, NOT in options array!
+   Examples: "Frame: 2000", "STC Rating: 49S", "Color: Satin (Gray)", "Left Closure: Expander Panel"
+   → These are SELECTED values, put them in performanceRatings, appearance, closures, seals, etc.
+
+2. CONFIGURABLE OPTIONS (multiple choices available with pricing):
+   ONLY use options array when document shows MULTIPLE alternatives the customer can choose.
+   Examples: "Available finishes: Red (+$100), Blue (+$150), Green" or "Add for STC 52: +$500"
+   → These have multiple values with pricing variations
+
+RULES:
+- If only ONE value is specified (like "STC Rating: 49S"), put it in performanceRatings.stc = 49
+- If only ONE closure is specified (like "Left Closure: Expander Panel"), put it in closures.left = "Expander Panel"
+- ONLY create an option when there are MULTIPLE choices listed in the document
+- "Add for..." with alternatives = options array
+- Single selected value = specification field
 
 Return JSON:
 {
@@ -349,12 +379,36 @@ Return JSON:
       "area": "string | null"
     },
     "quantity": number | null,
-    "unit": "ea | sqft | lf | null"
+    "unit": "ea | sqft | lf | null",
+    "panelCount": number | null,
+    "weight": "string | null",
+    "weightPerSqFt": number | null
+  },
+  "frame": {
+    "type": "string | null (e.g., '2000', 'Standard')",
+    "material": "string | null"
+  },
+  "closures": {
+    "left": "string | null (e.g., 'Expander Panel', 'Pocket Door')",
+    "right": "string | null (e.g., 'Bulb Seal', 'Flush Panel')"
+  },
+  "seals": {
+    "top": "string | null (e.g., 'Fixed Tops')",
+    "bottom": "string | null (e.g., 'Operable Bottoms')",
+    "perimeter": "string | null"
+  },
+  "track": {
+    "type": "string | null (e.g., '425MD')",
+    "hangingWeight": number | null
+  },
+  "stacking": {
+    "configuration": "string | null",
+    "direction": "string | null (e.g., 'Multi-Directional')"
   },
   "options": [
     {
       "optionName": "Human-readable option name",
-      "optionCategory": "Category from list above",
+      "optionCategory": "Closure | Seal | Track | Finish | Performance | Hardware | Glass | Stacking | Dimensions | Other",
       "values": [
         {
           "label": "Option value",
@@ -383,6 +437,12 @@ Return JSON:
     "fireRating": "string | null",
     "acousticRating": "string | null"
   },
+  "appearance": {
+    "color": "string | null (e.g., 'Satin (Gray)')",
+    "finish": "string | null",
+    "trim": "string | null (e.g., 'Trimless')",
+    "surface": "string | null (e.g., 'Standard Vinyl')"
+  },
   "certifications": ["UL", "ASTM", "etc"],
   "fullDescription": "Comprehensive product description"
 }`;
@@ -398,6 +458,30 @@ interface Pass2Result {
     };
     quantity?: number | null;
     unit?: string | null;
+    panelCount?: number | null;
+    weight?: string | null;
+    weightPerSqFt?: number | null;
+  };
+  frame?: {
+    type?: string | null;
+    material?: string | null;
+  };
+  closures?: {
+    left?: string | null;
+    right?: string | null;
+  };
+  seals?: {
+    top?: string | null;
+    bottom?: string | null;
+    perimeter?: string | null;
+  };
+  track?: {
+    type?: string | null;
+    hangingWeight?: number | null;
+  };
+  stacking?: {
+    configuration?: string | null;
+    direction?: string | null;
   };
   options: ProductOption[];
   selectedConfiguration: Record<string, string>;
@@ -406,6 +490,12 @@ interface Pass2Result {
     stc?: number | null;
     fireRating?: string | null;
     acousticRating?: string | null;
+  };
+  appearance?: {
+    color?: string | null;
+    finish?: string | null;
+    trim?: string | null;
+    surface?: string | null;
   };
   certifications: string[];
   fullDescription: string | null;
@@ -727,10 +817,16 @@ serve(async (req: { method: string; json: () => ExtractProductsRequest | Promise
         name: product.name,
         description: details.fullDescription,
         baseSpecifications: details.baseSpecifications,
+        frame: details.frame,
+        closures: details.closures,
+        seals: details.seals,
+        track: details.track,
+        stacking: details.stacking,
         options: details.options,
         selectedConfiguration: details.selectedConfiguration,
         pricing: details.pricing,
         performanceRatings: details.performanceRatings,
+        appearance: details.appearance,
         certifications: details.certifications,
       });
     }

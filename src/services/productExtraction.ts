@@ -61,6 +61,30 @@ interface ConfigurableProductResponse {
     };
     quantity?: number | null;
     unit?: string | null;
+    panelCount?: number | null;
+    weight?: string | null;
+    weightPerSqFt?: number | null;
+  };
+  frame?: {
+    type?: string | null;
+    material?: string | null;
+  };
+  closures?: {
+    left?: string | null;
+    right?: string | null;
+  };
+  seals?: {
+    top?: string | null;
+    bottom?: string | null;
+    perimeter?: string | null;
+  };
+  track?: {
+    type?: string | null;
+    hangingWeight?: number | null;
+  };
+  stacking?: {
+    configuration?: string | null;
+    direction?: string | null;
   };
   options: ProductOption[];
   selectedConfiguration: Record<string, string>;
@@ -69,6 +93,12 @@ interface ConfigurableProductResponse {
     stc?: number | null;
     fireRating?: string | null;
     acousticRating?: string | null;
+  };
+  appearance?: {
+    color?: string | null;
+    finish?: string | null;
+    trim?: string | null;
+    surface?: string | null;
   };
   certifications: string[];
 }
@@ -223,6 +253,32 @@ export interface ExtractedProduct {
     length?: string | null;
     thickness?: string | null;
     area?: string | null;
+    panelCount?: number | null;
+    weight?: string | null;
+    weightPerSqFt?: number | null;
+  };
+
+  // Selected specifications (for configurable products)
+  frame?: {
+    type?: string | null;
+    material?: string | null;
+  };
+  closures?: {
+    left?: string | null;
+    right?: string | null;
+  };
+  seals?: {
+    top?: string | null;
+    bottom?: string | null;
+    perimeter?: string | null;
+  };
+  track?: {
+    type?: string | null;
+    hangingWeight?: number | null;
+  };
+  stacking?: {
+    configuration?: string | null;
+    direction?: string | null;
   };
 
   // Performance
@@ -232,11 +288,12 @@ export interface ExtractedProduct {
     acousticRating?: string | null;
   };
 
-  // Appearance (for simple products)
+  // Appearance
   appearance?: {
     color?: string | null;
     finish?: string | null;
     trim?: string | null;
+    surface?: string | null;
   };
 
   // Materials (for simple products)
@@ -366,6 +423,14 @@ function convertConfigurableProduct(product: ConfigurableProductResponse): Extra
     descriptionParts.push(product.description);
   }
 
+  // Build dimensions with additional panel specs
+  const dimensions = {
+    ...product.baseSpecifications?.dimensions,
+    panelCount: product.baseSpecifications?.panelCount,
+    weight: product.baseSpecifications?.weight,
+    weightPerSqFt: product.baseSpecifications?.weightPerSqFt,
+  };
+
   return {
     id: product.id,
     name: product.name,
@@ -384,8 +449,14 @@ function convertConfigurableProduct(product: ConfigurableProductResponse): Extra
     selectedConfiguration: product.selectedConfiguration,
     pricing: product.pricing,
 
-    dimensions: product.baseSpecifications?.dimensions,
+    dimensions,
+    frame: product.frame,
+    closures: product.closures,
+    seals: product.seals,
+    track: product.track,
+    stacking: product.stacking,
     performanceRatings: product.performanceRatings,
+    appearance: product.appearance,
     certifications: product.certifications,
 
     rawData: {
@@ -396,6 +467,7 @@ function convertConfigurableProduct(product: ConfigurableProductResponse): Extra
       model: product.model,
       dimensions: product.baseSpecifications?.dimensions,
       performanceRatings: product.performanceRatings,
+      appearance: product.appearance,
       certifications: product.certifications,
     },
   };

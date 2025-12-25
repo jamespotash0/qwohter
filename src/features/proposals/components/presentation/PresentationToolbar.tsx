@@ -40,16 +40,18 @@ import {
   Link,
   HighlighterCircle,
   PaintBucket,
-  LineSegments,
+  Rows,
   BracketsCurly,
   Eye,
-  DotsThree,
   FilePdf,
   FileDoc,
   Spinner,
   CaretDown,
   Check,
   GearSix,
+  ArrowCounterClockwise,
+  ArrowClockwise,
+  Printer,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
@@ -82,9 +84,14 @@ interface PresentationToolbarProps {
   onPreview: () => void;
   onExportPdf: () => void;
   onExportDocx: () => void;
+  onPrint?: () => void;
   isExporting?: boolean;
   pageSettings?: PageSettings;
   onPageSettingsChange?: (settings: PageSettings) => void;
+  /** Word count for the document */
+  wordCount?: number;
+  /** Character count for the document */
+  characterCount?: number;
 }
 
 export function PresentationToolbar({
@@ -94,9 +101,12 @@ export function PresentationToolbar({
   onPreview,
   onExportPdf,
   onExportDocx,
+  onPrint,
   isExporting = false,
   pageSettings,
   onPageSettingsChange,
+  wordCount = 0,
+  characterCount = 0,
 }: PresentationToolbarProps) {
   // Link dialog state
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
@@ -267,10 +277,86 @@ export function PresentationToolbar({
     editor.chain().focus().unsetLink().run();
   }, [editor]);
 
+  // Handle print
+  const handlePrint = useCallback(() => {
+    if (onPrint) {
+      onPrint();
+    } else {
+      // Default print behavior
+      window.print();
+    }
+  }, [onPrint]);
+
   return (
     <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
       {/* Main Toolbar Row */}
       <div className="flex items-center gap-1 px-2 py-1.5 flex-wrap">
+        {/* File Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'h-7 px-2 rounded',
+                'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
+                'flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300'
+              )}
+            >
+              <span>File</span>
+              <CaretDown className="w-3 h-3" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={onPreview}>
+              <Eye className="w-4 h-4 mr-2" />
+              Preview
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {onPageSettingsChange && (
+              <>
+                <DropdownMenuItem onClick={() => setPageSettingsOpen(true)}>
+                  <GearSix className="w-4 h-4 mr-2" />
+                  Page Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={onExportPdf} disabled={isExporting}>
+              <FilePdf className="w-4 h-4 mr-2 text-red-500" />
+              Export as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onExportDocx} disabled={isExporting}>
+              <FileDoc className="w-4 h-4 mr-2 text-blue-500" />
+              Export as DOCX
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ToolbarDivider />
+
+        {/* Undo/Redo */}
+        <ToolbarButton
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.can().undo()}
+          title="Undo (⌘Z)"
+        >
+          <ArrowCounterClockwise className="w-4 h-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.can().redo()}
+          title="Redo (⌘⇧Z)"
+        >
+          <ArrowClockwise className="w-4 h-4" />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
         {/* Font Family Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -518,7 +604,7 @@ export function PresentationToolbar({
                 'text-gray-600 dark:text-gray-400 flex items-center gap-0.5'
               )}
             >
-              <LineSegments className="w-4 h-4" />
+              <Rows className="w-4 h-4" />
               <CaretDown className="w-2.5 h-2.5" />
             </button>
           </DropdownMenuTrigger>
@@ -569,9 +655,7 @@ export function PresentationToolbar({
           <Link className="w-4 h-4" />
         </ToolbarButton>
 
-        <div className="flex-1" />
-
-        {/* Right side actions */}
+        {/* Variables */}
         <ToolbarButton
           onClick={onToggleVariables}
           isActive={showVariables}
@@ -580,50 +664,24 @@ export function PresentationToolbar({
           <BracketsCurly className="w-4 h-4" weight={showVariables ? 'bold' : 'regular'} />
         </ToolbarButton>
 
-        <ToolbarButton onClick={onPreview} title="Preview Document">
-          <Eye className="w-4 h-4" />
-        </ToolbarButton>
+        <div className="flex-1" />
 
-        {/* Page Settings */}
-        {onPageSettingsChange && (
-          <ToolbarButton
-            onClick={() => setPageSettingsOpen(true)}
-            title="Page Settings"
-          >
-            <GearSix className="w-4 h-4" />
-          </ToolbarButton>
+        {/* Word/Character Count */}
+        {(wordCount > 0 || characterCount > 0) && (
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mr-2">
+            <span>{wordCount.toLocaleString()} words</span>
+            <span>•</span>
+            <span>{characterCount.toLocaleString()} chars</span>
+          </div>
         )}
 
-        {/* More Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                'p-1.5 rounded transition-all duration-150',
-                'hover:bg-gray-100 dark:hover:bg-gray-700',
-                'text-gray-600 dark:text-gray-400'
-              )}
-              title="More options"
-            >
-              {isExporting ? (
-                <Spinner className="w-4 h-4 animate-spin" />
-              ) : (
-                <DotsThree className="w-4 h-4" weight="bold" />
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={onExportPdf} disabled={isExporting}>
-              <FilePdf className="w-4 h-4 mr-2 text-red-500" />
-              Export as PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExportDocx} disabled={isExporting}>
-              <FileDoc className="w-4 h-4 mr-2 text-blue-500" />
-              Export as DOCX
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Export indicator */}
+        {isExporting && (
+          <div className="flex items-center gap-1 text-sm text-gray-500">
+            <Spinner className="w-4 h-4 animate-spin" />
+            <span>Exporting...</span>
+          </div>
+        )}
       </div>
 
       {/* Link Dialog */}

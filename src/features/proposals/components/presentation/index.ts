@@ -10,6 +10,23 @@ export {
   type PageSettings,
 } from './PresentationEditor';
 
+// Page-based editor
+export {
+  PageBasedPresentationEditor,
+  type PageBasedEditorRef,
+} from './PageBasedPresentationEditor';
+export { PageNodeView } from './PageNodeView';
+
+// Canvas-like positioning
+export { PositionedBlockNodeView } from './PositionedBlockNodeView';
+
+// Table controls
+export { TableControls } from './TableControls';
+export { TableFloatingMenu } from './TableFloatingMenu';
+
+// Hooks
+export * from './hooks';
+
 export {
   DEFAULT_PAGE_SETTINGS,
 } from './toolbar';

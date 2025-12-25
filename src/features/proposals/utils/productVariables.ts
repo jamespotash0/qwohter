@@ -56,33 +56,34 @@ export const PRODUCT_VARIABLE_FIELDS: ProductVariableField[] = [
 ];
 
 /**
- * Generate a URL-safe alias from product name/type
- * Produces aliases like "wallA", "ceilingB", "partition1"
+ * Generate a human-readable alias from product name/type
+ * Produces aliases like "Wall A", "Ceiling B", "Partition 1"
+ * Allows spaces for readability
  */
 export function generateProductAlias(
   product: Product,
   existingAliases: string[],
-  index: number
+  _index: number
 ): string {
   // Try to create alias from product type or category
   const rawData = product.rawData;
   let baseAlias = '';
 
   if (rawData?.productType) {
-    baseAlias = sanitizeAlias(rawData.productType);
+    baseAlias = formatAliasBase(rawData.productType);
   } else if (rawData?.productCategory) {
-    baseAlias = sanitizeAlias(rawData.productCategory);
+    baseAlias = formatAliasBase(rawData.productCategory);
   } else if (product.name) {
-    // Extract first word from name
+    // Extract first meaningful word from name
     const firstWord = product.name.split(/[\s-_]/)[0];
-    baseAlias = sanitizeAlias(firstWord);
+    baseAlias = formatAliasBase(firstWord);
   } else {
-    baseAlias = 'product';
+    baseAlias = 'Wall';
   }
 
-  // Ensure base alias is valid (starts with letter, only alphanumeric)
-  if (!/^[a-zA-Z]/.test(baseAlias)) {
-    baseAlias = 'product';
+  // Default to "Wall" if we couldn't extract a valid base
+  if (!baseAlias || baseAlias.length < 2) {
+    baseAlias = 'Wall';
   }
 
   // Find unique suffix (A, B, C... or 1, 2, 3...)
@@ -93,23 +94,28 @@ export function generateProductAlias(
   do {
     suffix = counter < 26 ? letters[counter] : String(counter - 25);
     counter++;
-  } while (existingAliases.includes(baseAlias + suffix) && counter < 100);
+  } while (existingAliases.includes(`${baseAlias} ${suffix}`) && counter < 100);
 
-  return baseAlias + suffix;
+  return `${baseAlias} ${suffix}`;
 }
 
 /**
- * Sanitize string to valid alias (camelCase, alphanumeric only)
+ * Format string to Title Case alias base (e.g., "operable wall" -> "Wall")
+ * Extracts first meaningful word and capitalizes it
  */
-function sanitizeAlias(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .trim()
-    .split(/\s+/)
-    .map((word, i) => i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
-    .join('')
-    .substring(0, 20); // Keep reasonable length
+function formatAliasBase(input: string): string {
+  // Clean and get first word
+  const cleaned = input
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim();
+
+  // Get first word and capitalize
+  const firstWord = cleaned.split(/\s+/)[0] || '';
+
+  if (!firstWord) return '';
+
+  // Title case the word
+  return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
 }
 
 /**

@@ -43,6 +43,8 @@ import type { EditorMode } from '../ProposalEditor';
 import { extractProductsWithSummary, type ExtractedProduct, type ExtractionResult } from '@/services/productExtraction';
 import { useFormBuilder, type Product, type PricingSection } from '../../context/FormBuilderContext';
 import { ExtractedProductsPreview } from './ExtractedProductsPreview';
+import { ExtractionProgressDialog } from './ExtractionProgressDialog';
+import { ExtractedProductEditor } from './ExtractedProductEditor';
 import { generateProductAlias } from '../../utils/productVariables';
 import { CascadingProductSelector } from '@/components/features/products/CascadingProductSelector';
 import { useProductStore, type ProductSelection } from '@/stores/products/productStore';
@@ -93,6 +95,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
   const [entryMode, setEntryMode] = useState<EntryMode>('manual');
   const [extracting, setExtracting] = useState(false);
+  const [extractingFile, setExtractingFile] = useState<File | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [extractedProducts, setExtractedProducts] = useState<ExtractedProduct[]>([]);
   const [extractedFileName, setExtractedFileName] = useState<string>();
@@ -102,6 +105,10 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { reset: resetProductStore, fetchTypes } = useProductStore();
+
+  // AI-extracted product editing state
+  const [aiEditDialogOpen, setAiEditDialogOpen] = useState(false);
+  const [editingAiProduct, setEditingAiProduct] = useState<Product | null>(null);
 
   // Pre-fetch product types when selector mode is selected
   useEffect(() => {
@@ -262,10 +269,15 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     }
 
     setExtracting(true);
+    setExtractingFile(file);
 
     try {
       // Use multi-pass AI extraction with summary
       const result = await extractProductsWithSummary(file);
+
+      // Close progress dialog first
+      setExtracting(false);
+      setExtractingFile(null);
 
       if (result.products.length === 0) {
         toast.warning(`No products found in ${file.name}`);
@@ -296,8 +308,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       console.error('AI extraction error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error(`Failed to extract products: ${errorMessage}`);
-    } finally {
       setExtracting(false);
+      setExtractingFile(null);
     }
   }, []);
 
@@ -434,6 +446,55 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const handleEditCatalogProduct = useCallback((product: Product) => {
     setEditingProduct(product);
     setCatalogDialogOpen(true);
+  }, []);
+
+  // Handle edit button click for AI-extracted products
+  const handleEditAiProduct = useCallback((product: Product) => {
+    setEditingAiProduct(product);
+    setAiEditDialogOpen(true);
+  }, []);
+
+  // Handle AI-extracted product update from editor
+  const handleAiProductUpdate = useCallback((updatedProduct: ExtractedProduct) => {
+    if (!editingAiProduct) return;
+
+    // Convert ExtractedProduct back to Product format with updates
+    const updatedProductData: Product = {
+      ...editingAiProduct,
+      name: updatedProduct.name,
+      quantity: updatedProduct.quantity,
+      unit: updatedProduct.unit,
+      description: updatedProduct.description,
+      rawData: updatedProduct.rawData,
+      isConfigurable: updatedProduct.isConfigurable,
+      options: updatedProduct.options,
+      selectedConfiguration: updatedProduct.selectedConfiguration,
+      pricing: updatedProduct.pricing,
+    };
+
+    // Add the new fields if present (cast through unknown for TypeScript)
+    const productRecord = updatedProductData as unknown as Record<string, unknown>;
+    if (updatedProduct.frame) productRecord.frame = updatedProduct.frame;
+    if (updatedProduct.closures) productRecord.closures = updatedProduct.closures;
+    if (updatedProduct.seals) productRecord.seals = updatedProduct.seals;
+    if (updatedProduct.track) productRecord.track = updatedProduct.track;
+    if (updatedProduct.stacking) productRecord.stacking = updatedProduct.stacking;
+    if (updatedProduct.performanceRatings) productRecord.performanceRatings = updatedProduct.performanceRatings;
+    if (updatedProduct.appearance) productRecord.appearance = updatedProduct.appearance;
+    if (updatedProduct.dimensions) productRecord.dimensions = updatedProduct.dimensions;
+
+    const updatedProducts = products.map(p =>
+      p.id === editingAiProduct.id ? updatedProductData : p
+    );
+    setProductsData({ items: updatedProducts });
+    setEditingAiProduct({ ...editingAiProduct, ...updatedProductData }); // Update local state for dialog
+    onDirtyChange?.(true);
+  }, [editingAiProduct, products, setProductsData, onDirtyChange]);
+
+  // Close AI edit dialog
+  const handleCloseAiEditDialog = useCallback(() => {
+    setAiEditDialogOpen(false);
+    setEditingAiProduct(null);
   }, []);
 
   // Helper to find a field value by checking multiple possible keys (case-insensitive)
@@ -583,9 +644,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           {/* Selected Products Display */}
           {aiExtractedProducts.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Selected Products ({aiExtractedProducts.length})
-              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {aiExtractedProducts.map((product) => {
                   const isCatalogProduct = product.rawData?.source === 'catalog';
@@ -613,20 +671,22 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                               {product.name}
                             </h5>
                           </div>
-                          {/* Product Hierarchy - only show for AI-extracted products, not catalog */}
-                          {!isCatalogProduct && (product.rawData?.manufacturer || product.rawData?.series) && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {[product.rawData.manufacturer, product.rawData.series].filter(Boolean).join(' • ')}
-                            </div>
-                          )}
                         </div>
                         <div className="flex items-center gap-1">
-                          {/* Edit button - only for catalog products */}
-                          {isCatalogProduct && (
+                          {/* Edit button - for both catalog and AI-extracted products */}
+                          {isCatalogProduct ? (
                             <button
                               onClick={() => handleEditCatalogProduct(product)}
                               className="p-1 text-gray-400 hover:text-emerald-600 transition-colors rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                               title="Edit product"
+                            >
+                              <PencilSimple className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleEditAiProduct(product)}
+                              className="p-1 text-gray-400 hover:text-purple-600 transition-colors rounded hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                              title="Edit extracted data"
                             >
                               <PencilSimple className="w-4 h-4" />
                             </button>
@@ -673,7 +733,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                       <div className="space-y-2 text-xs">
                         {/* Key Info Row: Model, Size, Panel Count */}
                         {(() => {
-                          const rawData = product.rawData as Record<string, unknown> | undefined;
+                          const rawData = product.rawData as unknown as Record<string, unknown> | undefined;
                           const heightVal = findFieldValue(rawData, KEY_INFO_FIELDS.height);
                           const widthVal = findFieldValue(rawData, KEY_INFO_FIELDS.width);
                           const panelCountVal = findFieldValue(rawData, KEY_INFO_FIELDS.panelCount);
@@ -724,7 +784,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                         })()}
 
                         {/* Other Specification Fields */}
-                        {getSpecificationFields(product.rawData as Record<string, unknown>).map(([key, value]) => (
+                        {getSpecificationFields(product.rawData as unknown as Record<string, unknown>).map(([key, value]) => (
                           <div key={key} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
                             <span className="text-gray-600 dark:text-gray-400">{key}:</span>
                             <span className="text-gray-900 dark:text-gray-100 text-right max-w-[60%] truncate" title={String(value)}>
@@ -952,6 +1012,13 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         </div>
       )}
 
+      {/* Extraction Progress Dialog */}
+      <ExtractionProgressDialog
+        open={extracting}
+        file={extractingFile}
+        isExtracting={extracting}
+      />
+
       {/* Extracted Products Preview Modal */}
       <ExtractedProductsPreview
         open={previewOpen}
@@ -989,6 +1056,68 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
             onCancel={handleCatalogCancel}
             initialValues={editingProduct?.rawData as Record<string, unknown> | undefined}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* AI-Extracted Product Edit Dialog */}
+      <Dialog open={aiEditDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          handleCloseAiEditDialog();
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PencilSimple className="w-5 h-5 text-purple-600" />
+              Edit Extracted Product
+            </DialogTitle>
+          </DialogHeader>
+          {editingAiProduct && (() => {
+            // Cast through unknown for TypeScript
+            const aiProduct = editingAiProduct as unknown as Record<string, unknown>;
+            return (
+            <ExtractedProductEditor
+              product={{
+                id: editingAiProduct.id,
+                name: editingAiProduct.name,
+                quantity: editingAiProduct.quantity || 1,
+                unit: editingAiProduct.unit || 'ea',
+                description: editingAiProduct.description,
+                isConfigurable: !!aiProduct.isConfigurable,
+                manufacturer: editingAiProduct.rawData?.manufacturer as string | undefined,
+                productType: editingAiProduct.rawData?.productType as string | undefined,
+                productCategory: editingAiProduct.rawData?.productCategory as string | undefined,
+                series: editingAiProduct.rawData?.series as string | undefined,
+                model: editingAiProduct.rawData?.model as string | undefined,
+                options: aiProduct.options as ExtractedProduct['options'],
+                selectedConfiguration: aiProduct.selectedConfiguration as Record<string, string>,
+                pricing: editingAiProduct.pricing,
+                dimensions: aiProduct.dimensions as ExtractedProduct['dimensions'],
+                frame: aiProduct.frame as ExtractedProduct['frame'],
+                closures: aiProduct.closures as ExtractedProduct['closures'],
+                seals: aiProduct.seals as ExtractedProduct['seals'],
+                track: aiProduct.track as ExtractedProduct['track'],
+                stacking: aiProduct.stacking as ExtractedProduct['stacking'],
+                performanceRatings: aiProduct.performanceRatings as ExtractedProduct['performanceRatings'],
+                appearance: aiProduct.appearance as ExtractedProduct['appearance'],
+                certifications: aiProduct.certifications as string[],
+                rawData: editingAiProduct.rawData,
+              }}
+              onChange={handleAiProductUpdate}
+              isSelected={true}
+              onToggleSelect={() => {}}
+              onDelete={() => {
+                removeProduct(editingAiProduct.id);
+                handleCloseAiEditDialog();
+              }}
+            />
+          );
+          })()}
+          <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+            <Button variant="outline" onClick={handleCloseAiEditDialog}>
+              Done
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

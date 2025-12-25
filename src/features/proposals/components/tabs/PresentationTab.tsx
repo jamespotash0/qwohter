@@ -115,6 +115,17 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Word and character count - update when editor changes
+  const { wordCount, characterCount } = useMemo(() => {
+    if (!editor) return { wordCount: 0, characterCount: 0 };
+
+    const text = editor.getText();
+    const characters = text.length;
+    const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+
+    return { wordCount: words, characterCount: characters };
+  }, [editor, editor?.state.doc]);
+
   // Load pageSettings from context, fallback to default
   const pageSettings = useMemo((): PageSettings => {
     const contextSettings = data.presentation?.pageSettings;
@@ -311,6 +322,8 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
           isExporting={isExporting}
           pageSettings={pageSettings}
           onPageSettingsChange={handlePageSettingsChange}
+          wordCount={wordCount}
+          characterCount={characterCount}
         />
       )}
 

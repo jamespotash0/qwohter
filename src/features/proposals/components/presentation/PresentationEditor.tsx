@@ -92,8 +92,8 @@ interface PresentationEditorProps {
   className?: string;
   /** If true, renders with Word-like page styling */
   pageStyle?: boolean;
-  /** If true, hides the bubble menu */
-  hideBubbleMenu?: boolean;
+  /** If true, shows the bubble menu (hidden by default) */
+  showBubbleMenu?: boolean;
   /** Page layout settings */
   pageSettings?: PageSettings;
 }
@@ -106,7 +106,7 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
   placeholder = 'Start creating your document...',
   className,
   pageStyle = false,
-  hideBubbleMenu = false,
+  showBubbleMenu = false,
   pageSettings,
 }, ref) => {
   // Store last selection so we can restore it when inserting from external panels
@@ -332,9 +332,13 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
     // Blockquote
     '[&_.tiptap_blockquote]:border-l-4 [&_.tiptap_blockquote]:border-coral [&_.tiptap_blockquote]:pl-4 [&_.tiptap_blockquote]:py-1 [&_.tiptap_blockquote]:italic [&_.tiptap_blockquote]:my-4 [&_.tiptap_blockquote]:text-gray-600 dark:[&_.tiptap_blockquote]:text-gray-400',
     // Lists
-    '[&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6 [&_.tiptap_ul]:my-3',
-    '[&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_ol]:my-3',
-    '[&_.tiptap_li]:my-1 [&_.tiptap_li]:text-gray-600 dark:[&_.tiptap_li]:text-gray-400',
+    '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2',
+    '[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2',
+    '[&_li]:my-1 [&_li]:text-gray-600 dark:[&_li]:text-gray-400',
+    '[&_li_p]:mb-0 [&_li_p]:my-0', // Remove paragraph margin inside list items
+    // Nested lists
+    '[&_li_ul]:my-1 [&_li_ol]:my-1',
+    '[&_li_ul]:pl-5 [&_li_ol]:pl-5',
     // Task list
     '[&_.task-list]:list-none [&_.task-list]:pl-0',
     '[&_.task-item]:flex [&_.task-item]:items-start [&_.task-item]:gap-2 [&_.task-item]:my-1',
@@ -369,7 +373,7 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
 
   return (
     <div className={cn('presentation-editor h-full', className)}>
-      {!readOnly && !hideBubbleMenu && <BubbleMenuComponent editor={editor} />}
+      {!readOnly && showBubbleMenu && <BubbleMenuComponent editor={editor} />}
 
       {/* Word-like page container */}
       {pageStyle ? (
