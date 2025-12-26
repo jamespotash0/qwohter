@@ -156,50 +156,117 @@ function resolveOrgVariable(parts: string[], orgData?: OrgData): string {
   }
 }
 
+/**
+ * Calculate sell price for a line item (matches PricingTab logic)
+ * Handles markup type (percent/dollar) and discounts
+ */
+function calculateItemSellPrice(item: {
+  quantity: number;
+  unitCost: number;
+  markupValue: number;
+  markupType?: 'percent' | 'dollar';
+  discountValue?: number;
+  discountType?: 'percent' | 'dollar';
+}): number {
+  const baseCost = item.quantity * item.unitCost;
+  let priceAfterMarkup: number;
+
+  if (item.markupType === 'dollar') {
+    // Flat dollar markup (total amount, not per unit)
+    priceAfterMarkup = baseCost + (item.markupValue || 0);
+  } else {
+    // Percentage markup (default)
+    const markup = baseCost * (item.markupValue / 100);
+    priceAfterMarkup = baseCost + markup;
+  }
+
+  // Apply discount if present
+  if (item.discountValue && item.discountValue > 0) {
+    if (item.discountType === 'percent') {
+      return priceAfterMarkup * (1 - item.discountValue / 100);
+    } else {
+      return Math.max(0, priceAfterMarkup - item.discountValue);
+    }
+  }
+
+  return priceAfterMarkup;
+}
+
+/**
+ * Round to 2 decimal places
+ */
+function round2(num: number): number {
+  return Math.round(num * 100) / 100;
+}
+
+/**
+ * Format currency
+ */
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
 function resolvePricingVariable(parts: string[], data: FormBuilderData): string {
   const pricing = data.pricing;
+  const summary = pricing.summary;
 
+  // Summary variables - use stored values if available
+  if (parts[0] === 'subtotal') {
+    if (summary?.subtotal !== undefined) {
+      return formatCurrency(summary.subtotal);
+    }
+    // Fallback: calculate
+    let total = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        total += calculateItemSellPrice(item);
+      });
+    });
+    return formatCurrency(round2(total));
+  }
+
+  if (parts[0] === 'totalCost') {
+    if (summary?.totalCost !== undefined) {
+      return formatCurrency(summary.totalCost);
+    }
+    // Fallback: calculate
+    let cost = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        cost += item.quantity * item.unitCost;
+      });
+    });
+    return formatCurrency(round2(cost));
+  }
+
+  if (parts[0] === 'grossProfit') {
+    if (summary?.grossProfit !== undefined) {
+      return formatCurrency(summary.grossProfit);
+    }
+    return formatCurrency(0);
+  }
+
+  if (parts[0] === 'grossProfitPercent') {
+    if (summary?.grossProfitPercent !== undefined) {
+      return `${summary.grossProfitPercent.toFixed(2)}%`;
+    }
+    return '0%';
+  }
+
+  // Grand total (with tax) - this is the main total variable
   if (parts[0] === 'grandTotal') {
-    let total = 0;
-    pricing.sections.forEach(section => {
-      section.lineItems.forEach(item => {
-        total += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
-      });
-    });
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(total);
-  }
-
-  // Tax variables
-  if (parts[0] === 'salesTaxPercent') {
-    return `${pricing.salesTaxPercent ?? 0}%`;
-  }
-
-  if (parts[0] === 'taxAmount') {
-    const taxPercent = pricing.salesTaxPercent ?? 0;
-    let taxableTotal = 0;
-    pricing.sections.forEach(section => {
-      section.lineItems.forEach(item => {
-        if (item.isTaxable) {
-          taxableTotal += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
-        }
-      });
-    });
-    const taxAmount = taxableTotal * (taxPercent / 100);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(taxAmount);
-  }
-
-  if (parts[0] === 'grandTotalWithTax') {
+    if (summary?.grandTotal !== undefined) {
+      return formatCurrency(summary.grandTotal);
+    }
+    // Fallback: calculate
     let total = 0;
     let taxableTotal = 0;
     pricing.sections.forEach(section => {
       section.lineItems.forEach(item => {
-        const itemTotal = item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        const itemTotal = calculateItemSellPrice(item);
         total += itemTotal;
         if (item.isTaxable) {
           taxableTotal += itemTotal;
@@ -208,10 +275,52 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
     });
     const taxPercent = pricing.salesTaxPercent ?? 0;
     const taxAmount = taxableTotal * (taxPercent / 100);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(total + taxAmount);
+    return formatCurrency(round2(total + taxAmount));
+  }
+
+  // Tax variables
+  if (parts[0] === 'salesTaxPercent') {
+    return `${pricing.salesTaxPercent ?? 0}%`;
+  }
+
+  if (parts[0] === 'taxAmount') {
+    if (summary?.totalTax !== undefined) {
+      return formatCurrency(summary.totalTax);
+    }
+    // Fallback: calculate
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    let taxableTotal = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        if (item.isTaxable) {
+          taxableTotal += calculateItemSellPrice(item);
+        }
+      });
+    });
+    const taxAmount = taxableTotal * (taxPercent / 100);
+    return formatCurrency(round2(taxAmount));
+  }
+
+  // Legacy: grandTotalWithTax (alias for grandTotal)
+  if (parts[0] === 'grandTotalWithTax') {
+    if (summary?.grandTotal !== undefined) {
+      return formatCurrency(summary.grandTotal);
+    }
+    // Fallback: calculate
+    let total = 0;
+    let taxableTotal = 0;
+    pricing.sections.forEach(section => {
+      section.lineItems.forEach(item => {
+        const itemTotal = calculateItemSellPrice(item);
+        total += itemTotal;
+        if (item.isTaxable) {
+          taxableTotal += itemTotal;
+        }
+      });
+    });
+    const taxPercent = pricing.salesTaxPercent ?? 0;
+    const taxAmount = taxableTotal * (taxPercent / 100);
+    return formatCurrency(round2(total + taxAmount));
   }
 
   if (parts[0] === 'itemCount') {
@@ -231,12 +340,9 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
     if (parts[1] === 'total') {
       let total = 0;
       section.lineItems.forEach(item => {
-        total += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        total += calculateItemSellPrice(item);
       });
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(total);
+      return formatCurrency(round2(total));
     }
     // Section items list
     if (parts[1] === 'items') {
@@ -258,16 +364,10 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
           case 'quantity':
             return lineItem.quantity.toString();
           case 'unitCost':
-            return new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
-            }).format(lineItem.unitCost);
+            return formatCurrency(lineItem.unitCost);
           case 'total':
-            const total = lineItem.quantity * lineItem.unitCost * (1 + lineItem.markupPercent / 100);
-            return new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
-            }).format(total);
+            const total = calculateItemSellPrice(lineItem);
+            return formatCurrency(round2(total));
         }
       }
     }

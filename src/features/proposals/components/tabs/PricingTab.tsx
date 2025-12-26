@@ -71,12 +71,15 @@ interface PricingLineItem {
   quantity: number;
   sellRule: string;
   unitCost: number;
-  markupPercent: number;
+  markupValue: number; // Markup value - interpreted based on markupType
   markupType?: 'percent' | 'dollar'; // Markup type (default: percent)
   isTaxable: boolean; // Whether this item has sales tax applied
   discountValue?: number; // Discount value (applied after markup, before tax)
   discountType?: 'percent' | 'dollar'; // Discount type
   sourceProductId?: string; // Optional: links to a product, if any
+  // Calculated fields (stored for reference)
+  sellPrice?: number; // Calculated sell price (after markup/discount, before tax)
+  taxAmount?: number; // Calculated tax amount for this item
 }
 
 // Pricing section interface
@@ -106,10 +109,10 @@ const calculateSellPrice = (item: PricingLineItem): number => {
   let priceAfterMarkup: number;
   if (item.markupType === 'dollar') {
     // Flat dollar markup
-    priceAfterMarkup = baseCost + (item.markupPercent || 0);
+    priceAfterMarkup = baseCost + (item.markupValue || 0);
   } else {
     // Percentage markup (default)
-    const markup = baseCost * (item.markupPercent / 100);
+    const markup = baseCost * (item.markupValue / 100);
     priceAfterMarkup = baseCost + markup;
   }
 
@@ -611,14 +614,27 @@ export function PricingTab({ mode }: PricingTabProps) {
     // Helper to round to 2 decimal places
     const round2 = (num: number) => Math.round(num * 100) / 100;
 
-    // Calculate summary totals
-    const subtotalValue = round2(sections.reduce((total, section) => total + calculateSubtotal(section.lineItems), 0));
-    const totalCostValue = round2(sections.reduce((total, section) => total + calculateTotalCost(section.lineItems), 0));
-    const taxableAmountValue = sections.reduce((total, section) => {
-      const taxableItems = section.lineItems.filter(item => item.isTaxable);
-      return total + calculateSubtotal(taxableItems);
-    }, 0);
-    const totalTaxValue = round2(taxableAmountValue * (salesTaxPercent / 100));
+    // Calculate per-item sellPrice and taxAmount, then create enriched sections
+    const enrichedSections = sections.map(section => ({
+      ...section,
+      lineItems: section.lineItems.map(item => {
+        const sellPrice = round2(calculateSellPrice(item));
+        const taxAmount = item.isTaxable ? round2(sellPrice * (salesTaxPercent / 100)) : 0;
+        return {
+          ...item,
+          sellPrice,
+          taxAmount,
+        };
+      }),
+    }));
+
+    // Calculate summary totals from enriched sections
+    const subtotalValue = round2(enrichedSections.reduce((total, section) =>
+      total + section.lineItems.reduce((sum, item) => sum + (item.sellPrice || 0), 0), 0));
+    const totalCostValue = round2(enrichedSections.reduce((total, section) =>
+      total + section.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0), 0));
+    const totalTaxValue = round2(enrichedSections.reduce((total, section) =>
+      total + section.lineItems.reduce((sum, item) => sum + (item.taxAmount || 0), 0), 0));
     const grossProfitValue = round2(subtotalValue - totalCostValue);
     const grossProfitPercentValue = round2(subtotalValue > 0 ? (grossProfitValue / subtotalValue) * 100 : 0);
 
@@ -631,9 +647,9 @@ export function PricingTab({ mode }: PricingTabProps) {
       grandTotal: round2(subtotalValue + totalTaxValue),
     };
 
-    // Sync to context whenever local state changes (includes calculated summary)
+    // Sync to context whenever local state changes (includes calculated summary and per-item values)
     setPricingData({
-      sections: sections,
+      sections: enrichedSections,
       salesTaxPercent: salesTaxPercent,
       taxState: selectedTaxState,
       summary: summary,
@@ -796,7 +812,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                   quantity: 1,
                   sellRule: 'flat_rate',
                   unitCost: 0,
-                  markupPercent: 0,
+                  markupValue: 0,
                   markupType: 'percent' as const,
                   isTaxable: false,
                   discountValue: 0,
@@ -1128,8 +1144,8 @@ export function PricingTab({ mode }: PricingTabProps) {
                   // Calculate breakdown for popover
                   const baseCost = item.quantity * item.unitCost;
                   const markupAmount = markupType === 'dollar'
-                    ? (item.markupPercent || 0)
-                    : baseCost * (item.markupPercent / 100);
+                    ? (item.markupValue || 0)
+                    : baseCost * (item.markupValue / 100);
                   const priceAfterMarkup = baseCost + markupAmount;
                   const discountAmount = item.discountValue && item.discountValue > 0
                     ? (discountType === 'percent'
@@ -1222,10 +1238,10 @@ export function PricingTab({ mode }: PricingTabProps) {
                             min={0}
                             max={markupType === 'percent' ? 999 : undefined}
                             step={markupType === 'dollar' ? 0.01 : 1}
-                            value={item.markupPercent === 0 ? '' : item.markupPercent}
+                            value={item.markupValue === 0 ? '' : item.markupValue}
                             onChange={(e) =>
                               updateLineItem(section.id, item.id, {
-                                markupPercent: parseFloat(e.target.value) || 0,
+                                markupValue: parseFloat(e.target.value) || 0,
                               })
                             }
                             placeholder="0"
@@ -1320,13 +1336,13 @@ export function PricingTab({ mode }: PricingTabProps) {
                                 </div>
                                 {markupAmount !== 0 && (
                                   <div className="flex justify-between text-green-600 dark:text-green-400">
-                                    <span>+ Markup ({markupType === 'percent' ? `${item.markupPercent}%` : 'flat'})</span>
+                                    <span>+ Markup ({markupType === 'percent' ? `${item.markupValue}%` : 'Flat'})</span>
                                     <span className="font-mono">+{formatCurrency(markupAmount)}</span>
                                   </div>
                                 )}
                                 {discountAmount > 0 && (
                                   <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                                    <span>− Discount ({discountType === 'percent' ? `${item.discountValue}%` : 'flat'})</span>
+                                    <span>− Discount ({discountType === 'percent' ? `${item.discountValue}%` : 'Flat'})</span>
                                     <span className="font-mono">−{formatCurrency(discountAmount)}</span>
                                   </div>
                                 )}

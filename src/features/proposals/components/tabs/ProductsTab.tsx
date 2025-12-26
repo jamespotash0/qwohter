@@ -217,7 +217,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       quantity: product.quantity || 1,
       sellRule: 'per_unit',
       unitCost: product.unitCost || 0,
-      markupPercent: 0,
+      markupValue: 0,
       markupType: 'percent' as const,
       isTaxable: false,
       sourceProductId: product.id, // Link to source product for cascade delete

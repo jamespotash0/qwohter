@@ -40,12 +40,28 @@ function resolveVariableValue(key: string, data: FormBuilderData): string | null
 function resolvePricingVariable(parts: string[], data: FormBuilderData): string | null {
   const pricing = data.pricing;
 
+  // Helper to get item sell price (use stored value or fallback to calculation)
+  const getItemSellPrice = (item: {
+    sellPrice?: number;
+    quantity: number;
+    unitCost: number;
+    markupValue?: number;
+    markupType?: 'percent' | 'dollar';
+  }) => {
+    if (item.sellPrice !== undefined) return item.sellPrice;
+    const baseCost = item.quantity * item.unitCost;
+    if (item.markupType === 'dollar') {
+      return baseCost + (item.markupValue || 0);
+    }
+    return baseCost * (1 + (item.markupValue || 0) / 100);
+  };
+
   if (parts[0] === 'grandTotal') {
     let total = 0;
     let hasItems = false;
     pricing.sections.forEach(section => {
       section.lineItems.forEach(item => {
-        total += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        total += getItemSellPrice(item);
         hasItems = true;
       });
     });
@@ -70,13 +86,18 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
   }
 
   if (parts[0] === 'taxAmount') {
+    // Use stored summary if available
+    if (pricing.summary?.totalTax !== undefined) {
+      if (pricing.summary.totalTax === 0) return null;
+      return formatCurrency(pricing.summary.totalTax);
+    }
     const taxPercent = pricing.salesTaxPercent ?? 0;
     if (taxPercent === 0) return null;
     let taxableTotal = 0;
     pricing.sections.forEach(section => {
       section.lineItems.forEach(item => {
         if (item.isTaxable) {
-          taxableTotal += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+          taxableTotal += getItemSellPrice(item);
         }
       });
     });
@@ -85,12 +106,16 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
   }
 
   if (parts[0] === 'grandTotalWithTax') {
+    // Use stored summary if available
+    if (pricing.summary?.grandTotal !== undefined) {
+      return formatCurrency(pricing.summary.grandTotal);
+    }
     let total = 0;
     let taxableTotal = 0;
     let hasItems = false;
     pricing.sections.forEach(section => {
       section.lineItems.forEach(item => {
-        const itemTotal = item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        const itemTotal = getItemSellPrice(item);
         total += itemTotal;
         if (item.isTaxable) {
           taxableTotal += itemTotal;
@@ -112,7 +137,7 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
     if (parts[1] === 'total') {
       let total = 0;
       section.lineItems.forEach(item => {
-        total += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
+        total += getItemSellPrice(item);
       });
       if (section.lineItems.length === 0) return null;
       return formatCurrency(total);

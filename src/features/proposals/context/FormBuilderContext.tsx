@@ -23,7 +23,8 @@ export interface PricingLineItem {
   quantity: number;
   sellRule: string;
   unitCost: number;
-  markupPercent: number;
+  /** Markup value - interpreted based on markupType (percent or dollar amount) */
+  markupValue: number;
   /** Markup type: 'percent' or 'dollar' (default: percent) */
   markupType?: 'percent' | 'dollar';
   isTaxable?: boolean;

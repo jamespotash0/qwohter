@@ -190,23 +190,73 @@ export function getAllVariablesByCategory(products: Product[]): Record<string, V
 
 
 /**
+ * Calculate sell price for a line item (matches PricingTab logic)
+ * Handles markup type (percent/dollar) and discounts
+ */
+function calculateItemSellPrice(item: {
+  quantity: number;
+  unitCost: number;
+  markupValue: number;
+  markupType?: 'percent' | 'dollar';
+  discountValue?: number;
+  discountType?: 'percent' | 'dollar';
+}): number {
+  const baseCost = item.quantity * item.unitCost;
+  let priceAfterMarkup: number;
+
+  if (item.markupType === 'dollar') {
+    // Flat dollar markup (total amount, not per unit)
+    priceAfterMarkup = baseCost + (item.markupValue || 0);
+  } else {
+    // Percentage markup (default)
+    const markup = baseCost * (item.markupValue / 100);
+    priceAfterMarkup = baseCost + markup;
+  }
+
+  // Apply discount if present
+  if (item.discountValue && item.discountValue > 0) {
+    if (item.discountType === 'percent') {
+      return priceAfterMarkup * (1 - item.discountValue / 100);
+    } else {
+      return Math.max(0, priceAfterMarkup - item.discountValue);
+    }
+  }
+
+  return priceAfterMarkup;
+}
+
+/**
+ * Round to 2 decimal places
+ */
+function round2(num: number): number {
+  return Math.round(num * 100) / 100;
+}
+
+/**
  * Generate variables from Pricing tab data
  */
 export function getPricingVariables(data: FormBuilderData): VariableDefinition[] {
   const vars: VariableDefinition[] = [];
   const pricing = data.pricing;
 
-  // Calculate totals
-  let grandTotal = 0;
+  // Use stored summary if available, otherwise calculate
+  const summary = pricing.summary;
+
+  // Calculate totals (for line item variables)
+  let subtotal = 0;
+  let totalCost = 0;
   let itemCount = 0;
 
   pricing.sections.forEach((section, sectionIdx) => {
     let sectionTotal = 0;
+    let sectionCost = 0;
     const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_') || `section${sectionIdx + 1}`;
 
     section.lineItems.forEach((item, itemIdx) => {
-      const total = item.quantity * item.unitCost * (1 + item.markupPercent / 100);
-      sectionTotal += total;
+      const sellPrice = round2(calculateItemSellPrice(item));
+      const itemCost = item.quantity * item.unitCost;
+      sectionTotal += sellPrice;
+      sectionCost += itemCost;
       itemCount++;
 
       // Individual line item variables
@@ -230,16 +280,17 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
         key: `${itemKey}.unitCost`,
         label: `${sectionPrefix}${itemName} - Unit Cost`,
         category: 'Pricing',
-        description: `Unit cost: $${item.unitCost}`,
+        description: `Unit cost: $${item.unitCost.toFixed(2)}`,
       });
       vars.push({
         key: `${itemKey}.total`,
-        label: `${sectionPrefix}${itemName} - Total`,
+        label: `${sectionPrefix}${itemName} - Sell Price`,
         category: 'Pricing',
-        description: `Total: $${total.toFixed(2)}`,
+        description: `Sell price: $${sellPrice.toFixed(2)}`,
       });
     });
-    grandTotal += sectionTotal;
+    subtotal += sectionTotal;
+    totalCost += sectionCost;
 
     // Section-level variables
     if (section.lineItems.length > 0) {
@@ -247,36 +298,51 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
         key: `pricing.${sectionKey}.total`,
         label: `[${section.name}] Section Total`,
         category: 'Pricing',
-        description: `Total for ${section.name} section: $${sectionTotal.toFixed(2)}`,
+        description: `Total for ${section.name} section: $${round2(sectionTotal).toFixed(2)}`,
       });
     }
   });
 
-  // Grand totals
+  // Use summary values if available (more accurate), fallback to calculated
+  const finalSubtotal = summary?.subtotal ?? round2(subtotal);
+  const finalTotalCost = summary?.totalCost ?? round2(totalCost);
+  const finalGrossProfit = summary?.grossProfit ?? round2(subtotal - totalCost);
+  const finalGrossProfitPercent = summary?.grossProfitPercent ?? (subtotal > 0 ? round2((subtotal - totalCost) / subtotal * 100) : 0);
+
+  // Summary variables (always show if there are items)
   if (itemCount > 0) {
     vars.push({
-      key: 'pricing.grandTotal',
-      label: 'Pricing Grand Total (All Sections)',
+      key: 'pricing.subtotal',
+      label: 'Subtotal (before tax)',
       category: 'Pricing',
-      description: `Total of all pricing sections: $${grandTotal.toFixed(2)}`,
+      description: `Subtotal: $${finalSubtotal.toFixed(2)}`,
+    });
+    vars.push({
+      key: 'pricing.totalCost',
+      label: 'Total Cost of Goods',
+      category: 'Pricing',
+      description: `Cost before markup: $${finalTotalCost.toFixed(2)}`,
+    });
+    vars.push({
+      key: 'pricing.grossProfit',
+      label: 'Gross Profit',
+      category: 'Pricing',
+      description: `Profit: $${finalGrossProfit.toFixed(2)}`,
+    });
+    vars.push({
+      key: 'pricing.grossProfitPercent',
+      label: 'Gross Profit %',
+      category: 'Pricing',
+      description: `Margin: ${finalGrossProfitPercent.toFixed(2)}%`,
     });
   }
 
   // Tax variables
   const taxPercent = pricing.salesTaxPercent ?? 0;
-  if (taxPercent > 0) {
-    // Calculate tax on taxable items only
-    let taxableTotal = 0;
-    pricing.sections.forEach(section => {
-      section.lineItems.forEach(item => {
-        if (item.isTaxable) {
-          taxableTotal += item.quantity * item.unitCost * (1 + item.markupPercent / 100);
-        }
-      });
-    });
-    const taxAmount = taxableTotal * (taxPercent / 100);
-    const grandTotalWithTax = grandTotal + taxAmount;
+  const finalTaxAmount = summary?.totalTax ?? 0;
+  const finalGrandTotal = summary?.grandTotal ?? round2(subtotal + finalTaxAmount);
 
+  if (taxPercent > 0 || finalTaxAmount > 0) {
     vars.push({
       key: 'pricing.salesTaxPercent',
       label: 'Sales Tax Rate (%)',
@@ -287,13 +353,17 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
       key: 'pricing.taxAmount',
       label: 'Tax Amount',
       category: 'Pricing',
-      description: `Tax on taxable items: $${taxAmount.toFixed(2)}`,
+      description: `Tax: $${finalTaxAmount.toFixed(2)}`,
     });
+  }
+
+  // Grand total (always show if there are items)
+  if (itemCount > 0) {
     vars.push({
-      key: 'pricing.grandTotalWithTax',
+      key: 'pricing.grandTotal',
       label: 'Grand Total (with Tax)',
       category: 'Pricing',
-      description: `Total including tax: $${grandTotalWithTax.toFixed(2)}`,
+      description: `Total: $${finalGrandTotal.toFixed(2)}`,
     });
   }
 
