@@ -33,6 +33,11 @@ export interface PricingLineItem {
   discountValue?: number;
   /** Discount type: 'percent' or 'dollar' */
   discountType?: 'percent' | 'dollar';
+  // Calculated fields (stored for reference)
+  /** Calculated sell price for this line item */
+  sellPrice?: number;
+  /** Calculated tax amount for this line item */
+  taxAmount?: number;
 }
 
 export interface PricingSection {
@@ -43,10 +48,28 @@ export interface PricingSection {
   lineItems: PricingLineItem[];
 }
 
+/** Calculated pricing summary (stored for reference/reporting) */
+export interface PricingSummary {
+  /** Total cost of goods (before markup) */
+  totalCost: number;
+  /** Subtotal (after markup, before tax) - this is total_value */
+  subtotal: number;
+  /** Gross profit (subtotal - totalCost) */
+  grossProfit: number;
+  /** Gross profit as percentage of subtotal */
+  grossProfitPercent: number;
+  /** Total tax amount */
+  totalTax: number;
+  /** Grand total (subtotal + tax) */
+  grandTotal: number;
+}
+
 export interface PricingData {
   sections: PricingSection[];
   salesTaxPercent?: number;
   taxState?: string; // US state code for auto tax rate lookup
+  /** Calculated summary totals */
+  summary?: PricingSummary;
 }
 
 // ============ Lead Times Tab Data ============

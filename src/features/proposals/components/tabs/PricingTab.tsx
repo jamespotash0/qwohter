@@ -76,6 +76,7 @@ interface PricingLineItem {
   isTaxable: boolean; // Whether this item has sales tax applied
   discountValue?: number; // Discount value (applied after markup, before tax)
   discountType?: 'percent' | 'dollar'; // Discount type
+  sourceProductId?: string; // Optional: links to a product, if any
 }
 
 // Pricing section interface
@@ -85,6 +86,16 @@ interface PricingSection {
   type: string;
   collapsed: boolean;
   lineItems: PricingLineItem[];
+}
+
+// Pricing summary interface (calculated totals)
+interface PricingSummary {
+  totalCost: number;
+  subtotal: number;
+  grossProfit: number;
+  grossProfitPercent: number;
+  totalTax: number;
+  grandTotal: number;
 }
 
 // Calculate sell price (after markup and discount, before tax)
@@ -597,11 +608,35 @@ export function PricingTab({ mode }: PricingTabProps) {
       return;
     }
 
-    // Sync to context whenever local state changes
+    // Helper to round to 2 decimal places
+    const round2 = (num: number) => Math.round(num * 100) / 100;
+
+    // Calculate summary totals
+    const subtotalValue = round2(sections.reduce((total, section) => total + calculateSubtotal(section.lineItems), 0));
+    const totalCostValue = round2(sections.reduce((total, section) => total + calculateTotalCost(section.lineItems), 0));
+    const taxableAmountValue = sections.reduce((total, section) => {
+      const taxableItems = section.lineItems.filter(item => item.isTaxable);
+      return total + calculateSubtotal(taxableItems);
+    }, 0);
+    const totalTaxValue = round2(taxableAmountValue * (salesTaxPercent / 100));
+    const grossProfitValue = round2(subtotalValue - totalCostValue);
+    const grossProfitPercentValue = round2(subtotalValue > 0 ? (grossProfitValue / subtotalValue) * 100 : 0);
+
+    const summary: PricingSummary = {
+      totalCost: totalCostValue,
+      subtotal: subtotalValue,
+      grossProfit: grossProfitValue,
+      grossProfitPercent: grossProfitPercentValue,
+      totalTax: totalTaxValue,
+      grandTotal: round2(subtotalValue + totalTaxValue),
+    };
+
+    // Sync to context whenever local state changes (includes calculated summary)
     setPricingData({
       sections: sections,
       salesTaxPercent: salesTaxPercent,
       taxState: selectedTaxState,
+      summary: summary,
     });
   }, [sections, salesTaxPercent, selectedTaxState, setPricingData]);
 

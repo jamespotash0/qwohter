@@ -145,7 +145,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       }
       // Load the form metadata (config + defaults) from the form's metadata field
       if (isBuilderMode) {
-        loadMetadata(formData.metadata);
+        loadMetadata(formData.metadata ?? null);
       }
     }
   }, [formData, loadMetadata, isBuilderMode]);
@@ -312,6 +312,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         // Track what we saved for comparison
         lastSavedDataRef.current = JSON.stringify(formDataPayload);
 
+        // Extract total_value from pricing summary (subtotal before tax)
+        const totalValue = builderData.pricing?.summary?.subtotal;
+
         await updateProposalMutation.mutateAsync({
           proposalId: proposalId,
           updates: {
@@ -323,6 +326,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             client_company: infoData?.clientCompany || undefined,
             job_location: infoData?.jobLocation || undefined,
             proposal_source: infoData?.proposalSource || undefined,
+            // Total value from pricing (subtotal before tax)
+            total_value: totalValue !== undefined ? totalValue : undefined,
           },
         });
         if (!isAutoSave) toast.success('Proposal saved');
