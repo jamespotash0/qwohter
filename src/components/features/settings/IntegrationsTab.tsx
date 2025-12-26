@@ -10,9 +10,11 @@ import { toast } from 'sonner';
 import { IntegrationCard } from '@/components/features/integrations/IntegrationCard';
 import { QBOnlineConnectDialog } from '@/components/features/integrations/QBOnlineConnectDialog';
 import { QBDesktopConnectDialog } from '@/components/features/integrations/QBDesktopConnectDialog';
+import { GoogleDocsConnectDialog } from '@/components/features/integrations/GoogleDocsConnectDialog';
 import { useIntegrationsData } from '@/hooks/useIntegrations';
 import { disconnectQBOnline } from '@/services/quickbooksOnlineService';
 import { disconnectQBDesktop } from '@/services/quickbooksDesktopService';
+import { disconnectGoogle } from '@/services/googleDocsIntegrationService';
 import { hasAdminPermissions } from '@/utils/permissions';
 import { invalidateQueries } from '@/lib/queryClient';
 import type { IntegrationType } from '@/lib/types/integrations';
@@ -29,6 +31,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const [connectingType, setConnectingType] = useState<IntegrationType | null>(null);
   const [showQBOnlineDialog, setShowQBOnlineDialog] = useState(false);
   const [showQBDesktopDialog, setShowQBDesktopDialog] = useState(false);
+  const [showGoogleDocsDialog, setShowGoogleDocsDialog] = useState(false);
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
@@ -60,6 +63,8 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         setShowQBOnlineDialog(true);
       } else if (type === 'quickbooks_desktop') {
         setShowQBDesktopDialog(true);
+      } else if (type === 'google_docs') {
+        setShowGoogleDocsDialog(true);
       }
     } finally {
       setConnectingType(null);
@@ -82,6 +87,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       } else if (type === 'quickbooks_desktop') {
         await disconnectQBDesktop(organization.id);
         toast.success('QuickBooks Desktop disconnected');
+      } else if (type === 'google_docs') {
+        await disconnectGoogle(organization.id);
+        toast.success('Google Docs disconnected');
       }
 
       // Invalidate cache to trigger refetch
@@ -96,6 +104,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const handleConnectionSuccess = async () => {
     setShowQBOnlineDialog(false);
     setShowQBDesktopDialog(false);
+    setShowGoogleDocsDialog(false);
 
     if (!organization?.id) return;
 
@@ -184,6 +193,13 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       <QBDesktopConnectDialog
         isOpen={showQBDesktopDialog}
         onClose={() => setShowQBDesktopDialog(false)}
+        onSuccess={handleConnectionSuccess}
+        organizationId={organization?.id || ''}
+      />
+
+      <GoogleDocsConnectDialog
+        isOpen={showGoogleDocsDialog}
+        onClose={() => setShowGoogleDocsDialog(false)}
         onSuccess={handleConnectionSuccess}
         organizationId={organization?.id || ''}
       />

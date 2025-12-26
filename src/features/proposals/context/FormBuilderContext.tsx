@@ -197,9 +197,21 @@ export interface PresentationSection {
   collapsed?: boolean;
 }
 
+/** Google Docs template for document generation */
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  google_doc_id: string;
+  google_doc_url: string;
+  is_default: boolean;
+  created_at: string;
+}
+
 export interface PresentationData {
   sections: PresentationSection[];
   pageSettings?: PresentationPageSettings;
+  /** Google Docs templates for this form */
+  templates?: DocumentTemplate[];
 }
 
 // ============ Complete Form Structure ============

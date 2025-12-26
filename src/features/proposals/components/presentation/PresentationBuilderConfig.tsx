@@ -43,17 +43,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useFormBuilder } from '../../context/FormBuilderContext';
-
-// Template interface
-interface DocumentTemplate {
-  id: string;
-  name: string;
-  google_doc_id: string;
-  google_doc_url: string;
-  is_default: boolean;
-  created_at: string;
-}
+import { useFormBuilder, type DocumentTemplate } from '../../context/FormBuilderContext';
 
 // Extract Google Doc ID from URL
 function extractGoogleDocId(url: string): string | null {
@@ -81,11 +71,24 @@ export function PresentationBuilderConfig() {
   const defaultMode = presentationConfig.defaultMode ?? 'richtext';
 
   // Templates state (stored in presentation data)
-  const [templates, setTemplates] = useState<DocumentTemplate[]>(() => {
-    // Load templates from presentation data if available
-    const storedTemplates = (data.presentation as any)?.templates;
-    return Array.isArray(storedTemplates) ? storedTemplates : [];
-  });
+  const [templates, setTemplates] = useState<DocumentTemplate[]>(
+    data.presentation?.templates ?? []
+  );
+
+  // Track if user has made local changes (to avoid overwriting)
+  const [userHasModified, setUserHasModified] = useState(false);
+
+  // Sync templates FROM context when form data loads (async loading)
+  // This handles the case where component mounts before form data is fetched
+  useEffect(() => {
+    const contextTemplates = data.presentation?.templates;
+    // Only sync from context if:
+    // 1. User hasn't made local changes yet
+    // 2. Context has templates and local state is empty (initial async load)
+    if (!userHasModified && contextTemplates && contextTemplates.length > 0 && templates.length === 0) {
+      setTemplates(contextTemplates);
+    }
+  }, [data.presentation?.templates, userHasModified, templates.length]);
 
   // Dialog states
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -99,14 +102,15 @@ export function PresentationBuilderConfig() {
   const [isDefault, setIsDefault] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
 
-  // Sync templates to presentation data
+  // Sync templates to presentation data when templates change
   useEffect(() => {
     setPresentationData({
       ...data.presentation,
       sections: data.presentation?.sections || [],
       templates: templates,
-    } as any);
-  }, [templates]);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates, setPresentationData]);
 
   // Handle mode toggle
   const handleRichTextToggle = useCallback((enabled: boolean) => {
@@ -204,6 +208,9 @@ export function PresentationBuilderConfig() {
         created_at: new Date().toISOString(),
       };
 
+      // Mark that user has modified templates
+      setUserHasModified(true);
+
       // If setting as default, update other templates
       if (newTemplate.is_default) {
         setTemplates(prev => [
@@ -233,6 +240,7 @@ export function PresentationBuilderConfig() {
 
     setIsSaving(true);
     try {
+      setUserHasModified(true);
       setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
       setShowDeleteDialog(false);
       setTemplateToDelete(null);
@@ -247,6 +255,7 @@ export function PresentationBuilderConfig() {
 
   // Handle set as default
   const handleSetDefault = useCallback((template: DocumentTemplate) => {
+    setUserHasModified(true);
     setTemplates(prev =>
       prev.map(t => ({ ...t, is_default: t.id === template.id }))
     );

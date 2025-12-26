@@ -104,11 +104,16 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const user = useUser();
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '', !!user?.id);
 
-  // Fetch form data if formId is provided
+  // Fetch form data if formId is provided (builder mode)
   const { data: formData } = useForm(formId || '', !!formId);
 
-  // Fetch proposal data if proposalId is provided
+  // Fetch proposal data if proposalId is provided (filler mode)
   const { data: proposalData } = useProposal(proposalId || '', !!proposalId);
+
+  // In filler mode, also fetch the form template the proposal was created from
+  // This is needed to get templates and other form configuration
+  const proposalFormId = proposalData?.form_id;
+  const { data: proposalFormData } = useForm(proposalFormId || '', !!proposalFormId && !isBuilderMode);
 
   // Form mutation hooks
   const updateFormMutation = useUpdateForm();
@@ -132,6 +137,28 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   // Track dirty state for each tab
   const [tabDirtyStates, setTabDirtyStates] = useState<Record<string, boolean>>({});
+
+  // Track selected Google Doc template ID (for presentation tab)
+  const [selectedGoogleDocId, setSelectedGoogleDocId] = useState<string | null>(
+    proposalData?.google_doc_id || null
+  );
+
+  // Extract Google Docs templates from the form's metadata (for filler mode)
+  const formTemplates = useMemo(() => {
+    const metadata = proposalFormData?.metadata as Record<string, unknown> | null;
+    if (!metadata) return undefined;
+
+    // Check new format: metadata.defaults.presentation.templates
+    if ('defaults' in metadata && metadata.defaults) {
+      const defaults = metadata.defaults as Record<string, unknown>;
+      const presentation = defaults.presentation as Record<string, unknown> | undefined;
+      return presentation?.templates as typeof builderData.presentation.templates | undefined;
+    }
+
+    // Check legacy format: metadata.presentation.templates
+    const presentation = metadata.presentation as Record<string, unknown> | undefined;
+    return presentation?.templates as typeof builderData.presentation.templates | undefined;
+  }, [proposalFormData?.metadata, builderData.presentation.templates]);
 
   // Confirmation dialog for unsaved changes
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
@@ -161,6 +188,10 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       if (proposalData.form_data) {
         const parsedData = parseFormBuilderData(proposalData.form_data);
         loadData(parsedData);
+      }
+      // Load google_doc_id from proposal
+      if (proposalData.google_doc_id) {
+        setSelectedGoogleDocId(proposalData.google_doc_id);
       }
     }
   }, [proposalData, isBuilderMode, loadData]);
@@ -196,6 +227,13 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       setProposalName(name);
     }
   }, [isBuilderMode]);
+
+  // Callback for PresentationTab when a Google Doc is generated/selected
+  const handleGoogleDocGenerated = useCallback((docId: string) => {
+    setSelectedGoogleDocId(docId);
+    // Mark as dirty to trigger auto-save
+    setTabDirtyStates(prev => ({ ...prev, presentation: true }));
+  }, []);
 
   // Create stable callbacks for each tab (memoized to prevent infinite loops)
   const tabCallbacks = useMemo(() => {
@@ -328,6 +366,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             proposal_source: infoData?.proposalSource || undefined,
             // Total value from pricing (subtotal before tax)
             total_value: totalValue !== undefined ? totalValue : undefined,
+            // Selected Google Docs template ID
+            google_doc_id: selectedGoogleDocId || undefined,
           },
         });
         if (!isAutoSave) toast.success('Proposal saved');
@@ -367,6 +407,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     createFormMutation,
     updateProposalMutation,
     markClean,
+    selectedGoogleDocId,
   ]);
 
   // Auto-save effect - debounced save when data changes
@@ -445,7 +486,23 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     const proposalWithOrg = {
       ...proposalData,
       organization: currentOrganization,
+      google_doc_id: selectedGoogleDocId,
     };
+
+    // PresentationTab needs extra props
+    if (tab.id === 'presentation') {
+      return (
+        <TabComponent
+          mode={mode}
+          proposalData={proposalWithOrg}
+          proposalId={proposalId}
+          organizationId={currentOrganization?.id}
+          onDirtyChange={onDirtyChange}
+          onGoogleDocGenerated={handleGoogleDocGenerated}
+          formTemplates={formTemplates}
+        />
+      );
+    }
 
     return <TabComponent mode={mode} proposalData={proposalWithOrg} onDirtyChange={onDirtyChange} />;
   };

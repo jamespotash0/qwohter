@@ -39,6 +39,7 @@ type ProposalRow = Database['public']['Tables']['proposals']['Row'];
 export type Proposal = ProposalRow & {
   is_complete?: boolean;
   documents_count?: number;
+  google_doc_id?: string; // Selected Google Docs template ID
 };
 
 export interface CreateProposalData {
@@ -60,6 +61,7 @@ export interface CreateProposalData {
   is_complete?: boolean; // Whether the proposal is marked as finished or unfinished
   proposal_source?: string; // Lead source (e.g., 'Website', 'Referral')
   document_type?: DocumentType; // Type of document (inherited from form)
+  google_doc_id?: string; // Selected Google Docs template ID for this proposal
 }
 
 export interface UpdateProposalData {
@@ -74,6 +76,7 @@ export interface UpdateProposalData {
   won_at?: string;
   rejected_at?: string;
   proposal_source?: string;
+  google_doc_id?: string; // Selected Google Docs template ID
 }
 
 export interface ProposalVersionInfo {

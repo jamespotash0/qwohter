@@ -3,7 +3,7 @@
  *
  * Handles the Google Docs integration for the Presentation tab.
  * Shows either:
- * - Empty state with "Generate Document" button
+ * - Empty state with template selection and "Generate Document" button
  * - Embedded Google Doc with variable panel
  */
 
@@ -15,13 +15,24 @@ import {
   Copy,
   Check,
   ArrowsClockwise,
+  FileDoc,
+  LinkSimple,
+  Warning,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
-import { VariablePanel } from './VariablePanel';
 import { getAllFormVariables } from './VariableExtension';
-import type { FormBuilderData } from '../../context/FormBuilderContext';
+import type { FormBuilderData, DocumentTemplate } from '../../context/FormBuilderContext';
+import { useGenerateGoogleDoc } from '@/hooks/queries/useGenerateGoogleDoc';
+import { useGoogleConnection } from '@/hooks/queries/useGoogleConnection';
 import { cn } from '@/lib/utils';
 
 interface GoogleDocsModeProps {
@@ -29,12 +40,42 @@ interface GoogleDocsModeProps {
   googleDocId?: string | null;
   /** The form data for variable resolution */
   formData: FormBuilderData;
+  /** Proposal ID for saving the generated doc */
+  proposalId?: string;
+  /** Organization ID for OAuth token lookup */
+  organizationId?: string;
+  /** Full proposal data for variable resolution */
+  proposalData?: {
+    proposal_number?: string;
+    project_name?: string;
+    form_data?: {
+      info?: {
+        projectName?: string;
+        proposalDate?: string;
+        clientName?: string;
+        clientCompany?: string;
+        clientEmail?: string;
+        clientPhone?: string;
+        clientAddress?: string;
+        jobLocation?: string;
+      };
+    };
+    organization?: {
+      name?: string;
+      phone_number?: string;
+      fax_number?: string;
+      company_address?: string;
+      website?: string;
+    } | null;
+  };
   /** Proposal info for display */
   proposalInfo?: {
     projectName?: string;
     clientName?: string;
     proposalNumber?: string;
   };
+  /** Available templates from the form */
+  templates?: DocumentTemplate[];
   /** Callback when a document is generated */
   onDocGenerated?: (docId: string) => void;
   /** Callback when document should be regenerated */
@@ -46,17 +87,37 @@ interface GoogleDocsModeProps {
 export function GoogleDocsMode({
   googleDocId,
   formData,
+  proposalId,
+  organizationId,
+  proposalData,
   proposalInfo,
+  templates = [],
   onDocGenerated,
   onRegenerate,
   canEdit = false,
 }: GoogleDocsModeProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
+    templates.find(t => t.is_default)?.id || templates[0]?.id || ''
+  );
+
+  // Check if user has connected Google
+  const { data: googleConnection, isLoading: isCheckingConnection } = useGoogleConnection(organizationId);
+  const isGoogleConnected = googleConnection?.isConnected ?? false;
+
+  // Get the generate mutation
+  const generateMutation = useGenerateGoogleDoc();
+  const isGenerating = generateMutation.isPending;
 
   // Get all available variables
   const variables = useMemo(() => getAllFormVariables(formData), [formData]);
+
+  // Get selected template
+  const selectedTemplate = useMemo(
+    () => templates.find(t => t.id === selectedTemplateId),
+    [templates, selectedTemplateId]
+  );
 
   // Handle variable selection - copy to clipboard for Google Docs
   const handleVariableSelect = useCallback((variableKey: string, _variableLabel: string) => {
@@ -72,47 +133,156 @@ export function GoogleDocsMode({
 
   // Handle document generation
   const handleGenerate = useCallback(async () => {
-    setIsGenerating(true);
+    // Validate Google connection
+    if (!isGoogleConnected) {
+      toast.error('Google not connected', {
+        description: 'An admin needs to connect Google in Settings → Integrations',
+      });
+      return;
+    }
+
+    // Validate we have required data
+    if (!selectedTemplate) {
+      toast.error('No template selected', {
+        description: 'Please select a Google Docs template to generate from',
+      });
+      return;
+    }
+
+    if (!proposalId) {
+      toast.error('Proposal not saved', {
+        description: 'Please save the proposal before generating a document',
+      });
+      return;
+    }
+
+    if (!organizationId) {
+      toast.error('Organization not found', {
+        description: 'Unable to determine organization',
+      });
+      return;
+    }
+
+    // Build output title
+    const outputTitle = proposalInfo?.projectName
+      ? `${proposalInfo.projectName} - Proposal ${proposalInfo.proposalNumber || ''}`
+      : `Proposal ${proposalInfo?.proposalNumber || proposalId}`;
+
     try {
-      // TODO: Call Supabase Edge Function to generate the document
-      // For now, show a placeholder message
-      toast.info('Google Docs Integration', {
-        description: 'Document generation will be implemented with the Edge Function',
+      const result = await generateMutation.mutateAsync({
+        templateDocId: selectedTemplate.google_doc_id,
+        proposalId,
+        organizationId,
+        proposalData: proposalData || {},
+        formData,
+        outputTitle: outputTitle.trim(),
       });
 
-      // Simulate generation delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast.success('Document generated!', {
+        description: 'Your Google Doc is ready to edit',
+        action: {
+          label: 'Open',
+          onClick: () => window.open(result.docUrl, '_blank'),
+        },
+      });
 
-      // In real implementation:
-      // const { data } = await supabase.functions.invoke('generate-google-doc', {
-      //   body: { proposalId, templateDocId }
-      // });
-      // onDocGenerated?.(data.docId);
-
+      onDocGenerated?.(result.docId);
     } catch (error) {
       console.error('Document generation failed:', error);
-      toast.error('Failed to generate document', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  }, []);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-  // Handle regeneration
-  const handleRegenerate = useCallback(async () => {
-    if (onRegenerate) {
-      setIsGenerating(true);
-      try {
-        await onRegenerate();
-      } finally {
-        setIsGenerating(false);
+      // Check if needs reconnection
+      if (errorMessage.includes('connect') || errorMessage.includes('reconnect')) {
+        toast.error('Google connection expired', {
+          description: 'An admin needs to reconnect Google in Settings → Integrations',
+        });
+      } else {
+        toast.error('Failed to generate document', {
+          description: errorMessage,
+        });
       }
     }
-  }, [onRegenerate]);
+  }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected]);
+
+  // Handle regeneration - regenerate from the same or new template
+  const handleRegenerate = useCallback(async () => {
+    // Use the provided callback if available, otherwise regenerate using our logic
+    if (onRegenerate) {
+      try {
+        await onRegenerate();
+      } catch (error) {
+        console.error('Regeneration failed:', error);
+        toast.error('Failed to regenerate document');
+      }
+      return;
+    }
+
+    // If no callback, generate a new document (same as handleGenerate)
+    await handleGenerate();
+  }, [onRegenerate, handleGenerate]);
 
   // No document yet - show generation UI
   if (!googleDocId) {
+    const hasTemplates = templates.length > 0;
+
+    // Show loading state while checking connection
+    if (isCheckingConnection) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <div className="text-center">
+              <Spinner className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-500">Checking Google connection...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Show connect prompt if not connected
+    if (!isGoogleConnected) {
+      return (
+        <div className="flex flex-col h-full">
+          <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <div className="text-center max-w-md p-8">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                <Warning className="w-10 h-10 text-amber-500" weight="bold" />
+              </div>
+
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                Google Docs Not Connected
+              </h3>
+
+              <p className="text-gray-500 dark:text-gray-400 mb-6">
+                To generate Google Docs proposals, an admin needs to connect the organization's Google account.
+                Documents will be created in your team's shared folder.
+              </p>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm p-4 rounded-lg mb-6 text-left">
+                <p className="font-medium mb-1">For Admins:</p>
+                <ol className="text-xs space-y-1 list-decimal list-inside">
+                  <li>Go to <strong>Settings → Integrations</strong></li>
+                  <li>Find "Google Docs" and click Connect</li>
+                  <li>Enter your shared folder ID and sign in</li>
+                  <li>All team members can then generate documents</li>
+                </ol>
+              </div>
+
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => window.open('/settings?tab=integrations', '_blank')}
+                className="w-full"
+              >
+                <LinkSimple className="w-5 h-5 mr-2" />
+                Go to Integrations
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col h-full">
         {/* Empty state */}
@@ -130,6 +300,55 @@ export function GoogleDocsMode({
               Generate a professional proposal document from your data.
               Edit with the full power of Google Docs.
             </p>
+
+            {/* Connected account info */}
+            {googleConnection?.email && (
+              <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400 mb-4">
+                <Check className="w-4 h-4" />
+                <span>Team connected via {googleConnection.email}</span>
+              </div>
+            )}
+
+            {/* Template Selection */}
+            {hasTemplates ? (
+              <div className="text-left mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Select Template
+                </label>
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a template">
+                      {selectedTemplate && (
+                        <div className="flex items-center gap-2">
+                          <FileDoc className="w-4 h-4 text-blue-500" />
+                          <span>{selectedTemplate.name}</span>
+                        </div>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        <div className="flex items-center gap-2">
+                          <FileDoc className="w-4 h-4 text-blue-500" />
+                          <span>{template.name}</span>
+                          {template.is_default && (
+                            <span className="text-xs text-gray-400">(default)</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm p-4 rounded-lg mb-6 text-left">
+                <p className="font-medium mb-1">No templates configured</p>
+                <p className="text-xs">
+                  Add Google Docs templates in the Form Builder to enable document generation.
+                </p>
+              </div>
+            )}
 
             {/* What will be included */}
             <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
@@ -159,7 +378,7 @@ export function GoogleDocsMode({
             <Button
               size="lg"
               onClick={handleGenerate}
-              disabled={isGenerating}
+              disabled={isGenerating || !hasTemplates || !selectedTemplate}
               className="w-full"
             >
               {isGenerating ? (

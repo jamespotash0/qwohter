@@ -10,10 +10,10 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { FileText, GoogleLogo, TextAa } from '@phosphor-icons/react';
+import { GoogleLogo, TextAa } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
-import { useFormBuilder, type PresentationSection } from '../../context/FormBuilderContext';
+import { useFormBuilder, type PresentationSection, type DocumentTemplate } from '../../context/FormBuilderContext';
 import {
   PresentationEditor,
   PresentationToolbar,
@@ -38,7 +38,9 @@ import { cn } from '@/lib/utils';
 type PresentationModeType = 'richtext' | 'google-docs';
 
 interface ProposalData {
+  id?: string;
   proposal_number?: string;
+  project_name?: string;
   google_doc_id?: string | null;
   presentation_mode?: PresentationModeType;
   form_data?: {
@@ -67,12 +69,18 @@ interface PresentationTabProps {
   mode: EditorMode;
   onDirtyChange?: (isDirty: boolean) => void;
   proposalData?: ProposalData;
+  /** Proposal ID for Google Docs generation */
+  proposalId?: string;
+  /** Organization ID for Google OAuth */
+  organizationId?: string;
   /** Callback when Google Doc is generated */
   onGoogleDocGenerated?: (docId: string) => void;
   /** Callback when presentation mode changes */
   onPresentationModeChange?: (mode: PresentationModeType) => void;
   /** Whether user has Google Auth for editing */
   hasGoogleAuth?: boolean;
+  /** Google Docs templates from form metadata (for filler mode) */
+  formTemplates?: DocumentTemplate[];
 }
 
 // Empty default content - placeholder will show when editor is empty
@@ -85,9 +93,12 @@ export function PresentationTab({
   mode,
   onDirtyChange,
   proposalData,
+  proposalId,
+  organizationId,
   onGoogleDocGenerated,
   onPresentationModeChange,
   hasGoogleAuth = false,
+  formTemplates,
 }: PresentationTabProps) {
   const isBuilderMode = mode === 'builder';
   const { data, setPresentationData } = useFormBuilder();
@@ -440,11 +451,15 @@ export function PresentationTab({
         <GoogleDocsMode
           googleDocId={proposalData?.google_doc_id}
           formData={data}
+          proposalId={proposalId || proposalData?.id}
+          organizationId={organizationId}
+          proposalData={proposalData}
           proposalInfo={{
             projectName: infoData?.projectName,
             clientName: infoData?.clientName,
             proposalNumber: proposalData?.proposal_number,
           }}
+          templates={formTemplates || data.presentation?.templates}
           onDocGenerated={handleGoogleDocGenerated}
           canEdit={hasGoogleAuth}
         />

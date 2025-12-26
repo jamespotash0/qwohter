@@ -82,6 +82,9 @@ export {
   createDefaultFormMetadata,
 } from './useForms';
 
+// Google Docs Generation
+export { useGenerateGoogleDoc } from './useGenerateGoogleDoc';
+
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats } from './useDashboard';

@@ -73,6 +73,7 @@ const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
 const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
+const GoogleCallback = lazy(() => import("@/pages/Auth/GoogleCallback"));
 
 // Main application pages - import eagerly to prevent navigation flicker
 import Dashboard from "@/pages/Dashboard";
@@ -155,6 +156,9 @@ export const AppRouter = () => (
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
+
+          {/* OAuth callback routes */}
+          <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
           {/* Legacy redirects */}
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
