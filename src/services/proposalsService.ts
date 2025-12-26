@@ -8,6 +8,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
+import { fetchUserProfile } from '@/auth/services/profileService';
 import {
   getNextProposalNumber as getNextFromConfig,
   incrementLastNumber,
@@ -680,6 +681,10 @@ export async function createProposalVersion(
     throw new Error('Parent proposal has no proposal number');
   }
 
+  // Fetch user profile to get the creator's name
+  const userProfile = await fetchUserProfile(session.user.id);
+  const createdByName = userProfile?.full_name || null;
+
   // Generate the next version number (e.g., SR-1005 → SR-1005.2)
   const versionedNumber = await generateProposalVersion(
     parentProposal.proposal_number,
@@ -691,6 +696,7 @@ export async function createProposalVersion(
   const insertData = {
     organization_id: parentProposal.organization_id,
     created_by: session.user.id,
+    created_by_name: createdByName,
     form_id: parentProposal.form_id,
     proposal_number: versionedNumber, // Contains version in the number itself (e.g., "SR-1005.2")
     form_data: proposalData?.form_data || parentProposal.form_data || {},

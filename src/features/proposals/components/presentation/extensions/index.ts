@@ -4,6 +4,8 @@
 
 export { FontSize } from './FontSize';
 export { LineHeight } from './LineHeight';
+export { StyledListItem } from './StyledListItem';
+export { StyledTableRow } from './StyledTableRow';
 
 // Page-based editor extensions
 export { PageNode } from './PageNode';

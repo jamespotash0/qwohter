@@ -46,3 +46,10 @@ export {
 export { EditorHelpButton } from './EditorHelpButton';
 export { PreviewDialog } from './PreviewDialog';
 export { VariableSuggestion, setVariablesGetter } from './VariableSuggestion';
+
+// Google Docs Integration
+export { GoogleDocsEmbed } from './GoogleDocsEmbed';
+export { GoogleDocsMode } from './GoogleDocsMode';
+
+// Builder Configuration
+export { PresentationBuilderConfig } from './PresentationBuilderConfig';

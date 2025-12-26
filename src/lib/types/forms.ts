@@ -96,6 +96,12 @@ export interface DocumentsTabConfig {
  */
 export interface PresentationTabConfig {
   enabled: boolean;
+  /** Enable Rich Text (TipTap) editor mode */
+  enableRichText?: boolean;
+  /** Enable Google Docs integration mode */
+  enableGoogleDocs?: boolean;
+  /** Default mode when both are enabled */
+  defaultMode?: 'richtext' | 'google-docs';
 }
 
 /**
@@ -201,6 +207,9 @@ export function createDefaultFormConfiguration(): FormConfiguration {
       },
       presentation: {
         enabled: true,
+        enableRichText: true,
+        enableGoogleDocs: false,
+        defaultMode: 'richtext',
       },
     },
   };

@@ -16,7 +16,7 @@
  * - Preview and export
  */
 
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
   TextB,
@@ -115,44 +115,115 @@ export function PresentationToolbar({
   // Page settings dialog state
   const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
 
-  // Get current font family
-  const currentFontFamily = useMemo(() => {
-    try {
-      const attrs = editor.getAttributes('textStyle');
-      const fontFamily = attrs?.fontFamily || '';
-      // Find matching label or return 'Font'
-      const match = FONT_FAMILIES.find((f) => f.value === fontFamily);
-      return match?.label || 'Font';
-    } catch {
-      return 'Font';
-    }
-  }, [editor.state.selection]);
+  // Current formatting state - updated on selection change
+  const [currentFontFamily, setCurrentFontFamily] = useState('Font');
+  const [currentFontSize, setCurrentFontSize] = useState('12');
+  const [currentLineHeight, setCurrentLineHeight] = useState('1.5');
 
-  // Get current font size
-  const currentFontSize = useMemo(() => {
-    try {
-      const attrs = editor.getAttributes('textStyle');
-      const fontSize = attrs?.fontSize || '';
-      // Extract number from fontSize (e.g., '16px' -> '16')
-      const match = fontSize.match(/^(\d+)/);
-      return match ? match[1] : '12';
-    } catch {
-      return '12';
-    }
-  }, [editor.state.selection]);
+  // Text formatting states
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
+  const [isStrike, setIsStrike] = useState(false);
 
-  // Get current line height
-  const currentLineHeight = useMemo(() => {
-    try {
-      // Check paragraph or heading attributes
-      const paragraphAttrs = editor.getAttributes('paragraph');
-      const headingAttrs = editor.getAttributes('heading');
-      const lineHeight = paragraphAttrs?.lineHeight || headingAttrs?.lineHeight || '';
-      return lineHeight || '1.5';
-    } catch {
-      return '1.5';
-    }
-  }, [editor.state.selection]);
+  // Alignment state
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left');
+
+  // List states
+  const [isBulletList, setIsBulletList] = useState(false);
+  const [isOrderedList, setIsOrderedList] = useState(false);
+  const [isTaskList, setIsTaskList] = useState(false);
+
+  // Block states
+  const [isBlockquote, setIsBlockquote] = useState(false);
+  const [isLink, setIsLink] = useState(false);
+
+  // Update formatting state when selection changes
+  useEffect(() => {
+    const updateFormattingState = () => {
+      try {
+        // Get font family
+        const textStyleAttrs = editor.getAttributes('textStyle');
+        if (textStyleAttrs?.fontFamily) {
+          const match = FONT_FAMILIES.find((f) => f.value === textStyleAttrs.fontFamily);
+          setCurrentFontFamily(match?.label || 'Font');
+        } else {
+          // Check marks at cursor position
+          const { from } = editor.state.selection;
+          const marks = editor.state.doc.resolve(from).marks();
+          const textStyleMark = marks.find(m => m.type.name === 'textStyle');
+          if (textStyleMark?.attrs?.fontFamily) {
+            const match = FONT_FAMILIES.find((f) => f.value === textStyleMark.attrs.fontFamily);
+            setCurrentFontFamily(match?.label || 'Font');
+          } else {
+            setCurrentFontFamily('Font');
+          }
+        }
+
+        // Get font size
+        if (textStyleAttrs?.fontSize) {
+          const match = textStyleAttrs.fontSize.match(/^(\d+)/);
+          setCurrentFontSize(match ? match[1] : '12');
+        } else {
+          const { from } = editor.state.selection;
+          const marks = editor.state.doc.resolve(from).marks();
+          const textStyleMark = marks.find(m => m.type.name === 'textStyle');
+          if (textStyleMark?.attrs?.fontSize) {
+            const match = textStyleMark.attrs.fontSize.match(/^(\d+)/);
+            setCurrentFontSize(match ? match[1] : '12');
+          } else {
+            setCurrentFontSize('12');
+          }
+        }
+
+        // Get line height
+        const paragraphAttrs = editor.getAttributes('paragraph');
+        const headingAttrs = editor.getAttributes('heading');
+        const lineHeight = paragraphAttrs?.lineHeight || headingAttrs?.lineHeight || '';
+        setCurrentLineHeight(lineHeight || '1.5');
+
+        // Update text formatting states
+        setIsBold(editor.isActive('bold'));
+        setIsItalic(editor.isActive('italic'));
+        setIsUnderline(editor.isActive('underline'));
+        setIsStrike(editor.isActive('strike'));
+
+        // Update alignment state
+        if (editor.isActive({ textAlign: 'center' })) {
+          setTextAlign('center');
+        } else if (editor.isActive({ textAlign: 'right' })) {
+          setTextAlign('right');
+        } else if (editor.isActive({ textAlign: 'justify' })) {
+          setTextAlign('justify');
+        } else {
+          setTextAlign('left');
+        }
+
+        // Update list states
+        setIsBulletList(editor.isActive('bulletList'));
+        setIsOrderedList(editor.isActive('orderedList'));
+        setIsTaskList(editor.isActive('taskList'));
+
+        // Update block states
+        setIsBlockquote(editor.isActive('blockquote'));
+        setIsLink(editor.isActive('link'));
+      } catch {
+        // Keep current values on error
+      }
+    };
+
+    // Update immediately
+    updateFormattingState();
+
+    // Listen to selection and transaction updates
+    editor.on('selectionUpdate', updateFormattingState);
+    editor.on('transaction', updateFormattingState);
+
+    return () => {
+      editor.off('selectionUpdate', updateFormattingState);
+      editor.off('transaction', updateFormattingState);
+    };
+  }, [editor]);
 
   // Get current text color
   const getCurrentTextColor = useCallback(() => {
@@ -427,28 +498,28 @@ export function PresentationToolbar({
         {/* Text Formatting */}
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive('bold')}
+          isActive={isBold}
           title="Bold (⌘B)"
         >
           <TextB className="w-4 h-4" weight="bold" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive('italic')}
+          isActive={isItalic}
           title="Italic (⌘I)"
         >
           <TextItalic className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleUnderline().run()}
-          isActive={editor.isActive('underline')}
+          isActive={isUnderline}
           title="Underline (⌘U)"
         >
           <TextUnderline className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleStrike().run()}
-          isActive={editor.isActive('strike')}
+          isActive={isStrike}
           title="Strikethrough"
         >
           <TextStrikethrough className="w-4 h-4" />
@@ -522,28 +593,28 @@ export function PresentationToolbar({
         {/* Alignment */}
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          isActive={editor.isActive({ textAlign: 'left' })}
+          isActive={textAlign === 'left'}
           title="Align Left"
         >
           <TextAlignLeft className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          isActive={editor.isActive({ textAlign: 'center' })}
+          isActive={textAlign === 'center'}
           title="Align Center"
         >
           <TextAlignCenter className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          isActive={editor.isActive({ textAlign: 'right' })}
+          isActive={textAlign === 'right'}
           title="Align Right"
         >
           <TextAlignRight className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          isActive={editor.isActive({ textAlign: 'justify' })}
+          isActive={textAlign === 'justify'}
           title="Justify"
         >
           <TextAlignJustify className="w-4 h-4" />
@@ -554,21 +625,21 @@ export function PresentationToolbar({
         {/* Lists */}
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive('bulletList')}
+          isActive={isBulletList}
           title="Bullet List"
         >
           <ListBullets className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive('orderedList')}
+          isActive={isOrderedList}
           title="Numbered List"
         >
           <ListNumbers className="w-4 h-4" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleTaskList().run()}
-          isActive={editor.isActive('taskList')}
+          isActive={isTaskList}
           title="Task List"
         >
           <ListChecks className="w-4 h-4" />
@@ -632,7 +703,7 @@ export function PresentationToolbar({
         {/* Quote */}
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          isActive={editor.isActive('blockquote')}
+          isActive={isBlockquote}
           title="Quote"
         >
           <Quotes className="w-4 h-4" />
@@ -649,7 +720,7 @@ export function PresentationToolbar({
         {/* Link */}
         <ToolbarButton
           onClick={handleLinkClick}
-          isActive={editor.isActive('link')}
+          isActive={isLink}
           title="Insert Link (⌘K)"
         >
           <Link className="w-4 h-4" />
@@ -689,7 +760,7 @@ export function PresentationToolbar({
         isOpen={linkDialogOpen}
         onClose={() => setLinkDialogOpen(false)}
         onSubmit={handleLinkSubmit}
-        onRemove={editor.isActive('link') ? handleLinkRemove : undefined}
+        onRemove={isLink ? handleLinkRemove : undefined}
         initialUrl={existingLinkUrl}
         hasSelection={!editor.state.selection.empty}
       />

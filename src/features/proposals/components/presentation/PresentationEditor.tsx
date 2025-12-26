@@ -17,7 +17,6 @@ import Underline from '@tiptap/extension-underline';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { Table } from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import Link from '@tiptap/extension-link';
@@ -36,7 +35,7 @@ import { BubbleMenuComponent } from './BubbleMenu';
 import { SlashCommand } from './SlashCommand';
 import { VariableExtension } from './VariableExtension';
 import { VariableSuggestion } from './VariableSuggestion';
-import { FontSize, LineHeight } from './extensions';
+import { FontSize, LineHeight, StyledListItem, StyledTableRow } from './extensions';
 
 // Ref interface for external access to editor
 export interface PresentationEditorRef {
@@ -116,6 +115,12 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
 
   const editor = useEditor({
     immediatelyRender: false, // Prevent hydration issues and improve initial render
+    editorProps: {
+      // Prevent unwanted scroll behavior when clicking in the editor
+      scrollThreshold: { top: 100, bottom: 100, left: 0, right: 0 },
+      scrollMargin: { top: 100, bottom: 100, left: 0, right: 0 },
+      handleScrollToSelection: () => false, // Disable auto-scroll to selection
+    },
     extensions: [
       StarterKit.configure({
         heading: {
@@ -123,7 +128,9 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
         },
         dropcursor: false,
         gapcursor: false,
+        listItem: false, // Using custom StyledListItem instead
       }),
+      StyledListItem, // Custom list item with font styling support
       Underline,
       Placeholder.configure({
         placeholder: ({ node, editor }) => {
@@ -160,7 +167,7 @@ export const PresentationEditor = forwardRef<PresentationEditorRef, Presentation
           class: 'editor-table',
         },
       }),
-      TableRow,
+      StyledTableRow, // Custom TableRow with height adjustment
       TableHeader,
       TableCell,
       Link.configure({

@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { FileText } from '@phosphor-icons/react';
+import { FileText, GoogleLogo, TextAa } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder, type PresentationSection } from '../../context/FormBuilderContext';
@@ -23,6 +23,8 @@ import {
   DEFAULT_PAGE_SETTINGS,
   setVariablesGetter,
   getAllFormVariables,
+  GoogleDocsMode,
+  PresentationBuilderConfig,
   type EditorContent,
   type PresentationEditorRef,
   type PageSettings,
@@ -30,9 +32,15 @@ import {
 import type { Editor } from '@tiptap/react';
 import { exportToPdf, exportToDocx } from '../../utils/documentExport';
 import { resolveContentVariables, renderContentToHtml } from '../../utils/contentRenderer';
+import { cn } from '@/lib/utils';
+
+// Presentation mode type
+type PresentationModeType = 'richtext' | 'google-docs';
 
 interface ProposalData {
   proposal_number?: string;
+  google_doc_id?: string | null;
+  presentation_mode?: PresentationModeType;
   form_data?: {
     info?: {
       projectName?: string;
@@ -59,6 +67,12 @@ interface PresentationTabProps {
   mode: EditorMode;
   onDirtyChange?: (isDirty: boolean) => void;
   proposalData?: ProposalData;
+  /** Callback when Google Doc is generated */
+  onGoogleDocGenerated?: (docId: string) => void;
+  /** Callback when presentation mode changes */
+  onPresentationModeChange?: (mode: PresentationModeType) => void;
+  /** Whether user has Google Auth for editing */
+  hasGoogleAuth?: boolean;
 }
 
 // Empty default content - placeholder will show when editor is empty
@@ -67,9 +81,34 @@ const DEFAULT_PRESENTATION_CONTENT: EditorContent = {
   content: [{ type: 'paragraph' }],
 };
 
-export function PresentationTab({ mode, onDirtyChange, proposalData }: PresentationTabProps) {
+export function PresentationTab({
+  mode,
+  onDirtyChange,
+  proposalData,
+  onGoogleDocGenerated,
+  onPresentationModeChange,
+  hasGoogleAuth = false,
+}: PresentationTabProps) {
   const isBuilderMode = mode === 'builder';
   const { data, setPresentationData } = useFormBuilder();
+
+  // Presentation mode state (Rich Text vs Google Docs)
+  const [presentationMode, setPresentationMode] = useState<PresentationModeType>(
+    proposalData?.presentation_mode || 'richtext'
+  );
+
+  // Handle mode toggle
+  const handleModeChange = useCallback((newMode: PresentationModeType) => {
+    setPresentationMode(newMode);
+    onPresentationModeChange?.(newMode);
+    onDirtyChange?.(true);
+  }, [onPresentationModeChange, onDirtyChange]);
+
+  // Handle Google Doc generation
+  const handleGoogleDocGenerated = useCallback((docId: string) => {
+    onGoogleDocGenerated?.(docId);
+    onDirtyChange?.(true);
+  }, [onGoogleDocGenerated, onDirtyChange]);
 
   // Extract info and org data for variable resolution
   const infoData = useMemo(() => proposalData?.form_data?.info, [proposalData?.form_data?.info]);
@@ -293,78 +332,123 @@ export function PresentationTab({ mode, onDirtyChange, proposalData }: Presentat
     }
   }, [editor, data, previewProposalData, infoData, orgData]);
 
-  // Builder mode: Show disabled state
+  // Builder mode: Show configuration UI for presentation settings
   if (isBuilderMode) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center text-gray-500">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-          <p className="text-lg font-medium">Presentation Editor</p>
-          <p className="text-sm mt-1">
-            Presentations are created when filling out proposals
-          </p>
-        </div>
-      </div>
-    );
+    return <PresentationBuilderConfig />;
   }
 
   return (
     <div className="flex flex-col h-[calc(100vh-200px)] min-h-[600px] -mx-6 -mt-6">
-      {/* Toolbar - only show when editor is ready */}
-      {editor && (
-        <PresentationToolbar
-          editor={editor}
-          showVariables={showVariables}
-          onToggleVariables={handleToggleVariables}
-          onPreview={handlePreview}
-          onExportPdf={handleExportPdf}
-          onExportDocx={handleExportDocx}
-          isExporting={isExporting}
-          pageSettings={pageSettings}
-          onPageSettingsChange={handlePageSettingsChange}
-          wordCount={wordCount}
-          characterCount={characterCount}
-        />
-      )}
-
-      {/* Main content area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Editor */}
-        <div className="flex-1 overflow-hidden">
-          <PresentationEditor
-            ref={editorRef}
-            value={initialContent}
-            onChange={handleContentChange}
-            onReady={handleEditorReady}
-            pageStyle
-            placeholder="Start writing your presentation..."
-            pageSettings={pageSettings}
-          />
+      {/* Mode Toggle Header */}
+      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Presentation Editor
+          </span>
         </div>
 
-        {/* Variables Panel */}
-        <VariablePanel
-          isOpen={showVariables}
-          onClose={() => setShowVariables(false)}
-          onSelect={handleVariableSelect}
-        />
+        {/* Mode Toggle */}
+        <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+          <button
+            onClick={() => handleModeChange('richtext')}
+            className={cn(
+              'px-4 py-1.5 text-sm font-medium flex items-center gap-2 transition-colors',
+              presentationMode === 'richtext'
+                ? 'bg-blue-500 text-white'
+                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+            )}
+          >
+            <TextAa className="w-4 h-4" />
+            Rich Text
+          </button>
+          <button
+            onClick={() => handleModeChange('google-docs')}
+            className={cn(
+              'px-4 py-1.5 text-sm font-medium flex items-center gap-2 transition-colors',
+              presentationMode === 'google-docs'
+                ? 'bg-blue-500 text-white'
+                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+            )}
+          >
+            <GoogleLogo className="w-4 h-4" weight="bold" />
+            Google Docs
+          </button>
+        </div>
       </div>
 
-      {/* Help Button */}
-      <EditorHelpButton />
+      {/* Conditional Content Based on Mode */}
+      {presentationMode === 'richtext' ? (
+        <>
+          {/* Rich Text Toolbar - only show when editor is ready */}
+          {editor && (
+            <PresentationToolbar
+              editor={editor}
+              showVariables={showVariables}
+              onToggleVariables={handleToggleVariables}
+              onPreview={handlePreview}
+              onExportPdf={handleExportPdf}
+              onExportDocx={handleExportDocx}
+              isExporting={isExporting}
+              pageSettings={pageSettings}
+              onPageSettingsChange={handlePageSettingsChange}
+              wordCount={wordCount}
+              characterCount={characterCount}
+            />
+          )}
 
-      {/* Preview Dialog */}
-      <PreviewDialog
-        isOpen={showPreview}
-        onClose={() => setShowPreview(false)}
-        content={editor?.getJSON() as EditorContent | null}
-        formData={data}
-        proposalData={previewProposalData}
-        infoData={infoData}
-        orgData={orgData}
-        onExportPdf={handleExportPdf}
-        onExportDocx={handleExportDocx}
-      />
+          {/* Main content area */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Editor */}
+            <div className="flex-1 overflow-hidden">
+              <PresentationEditor
+                ref={editorRef}
+                value={initialContent}
+                onChange={handleContentChange}
+                onReady={handleEditorReady}
+                pageStyle
+                placeholder="Start writing your presentation..."
+                pageSettings={pageSettings}
+              />
+            </div>
+
+            {/* Variables Panel */}
+            <VariablePanel
+              isOpen={showVariables}
+              onClose={() => setShowVariables(false)}
+              onSelect={handleVariableSelect}
+            />
+          </div>
+
+          {/* Help Button */}
+          <EditorHelpButton />
+
+          {/* Preview Dialog */}
+          <PreviewDialog
+            isOpen={showPreview}
+            onClose={() => setShowPreview(false)}
+            content={editor?.getJSON() as EditorContent | null}
+            formData={data}
+            proposalData={previewProposalData}
+            infoData={infoData}
+            orgData={orgData}
+            onExportPdf={handleExportPdf}
+            onExportDocx={handleExportDocx}
+          />
+        </>
+      ) : (
+        /* Google Docs Mode */
+        <GoogleDocsMode
+          googleDocId={proposalData?.google_doc_id}
+          formData={data}
+          proposalInfo={{
+            projectName: infoData?.projectName,
+            clientName: infoData?.clientName,
+            proposalNumber: proposalData?.proposal_number,
+          }}
+          onDocGenerated={handleGoogleDocGenerated}
+          canEdit={hasGoogleAuth}
+        />
+      )}
     </div>
   );
 }

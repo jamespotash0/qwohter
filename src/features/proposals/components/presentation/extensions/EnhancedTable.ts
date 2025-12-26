@@ -55,6 +55,12 @@ declare module '@tiptap/core' {
       insertColumnAt: (columnIndex: number) => ReturnType;
       /** Get table dimensions */
       getTableDimensions: () => { rows: number; columns: number } | null;
+      /** Set row height for the current row */
+      setRowHeight: (height: number) => ReturnType;
+      /** Move table up in the document */
+      moveTableUp: () => ReturnType;
+      /** Move table down in the document */
+      moveTableDown: () => ReturnType;
     };
   }
 }
@@ -195,6 +201,84 @@ export const EnhancedTable = Extension.create<EnhancedTableOptions>({
           });
 
           return { rows, columns };
+        },
+
+      setRowHeight:
+        (height: number) =>
+        ({ tr, state, dispatch }) => {
+          if (!dispatch) return true;
+
+          const { $from } = state.selection;
+          const constrainedHeight = Math.max(this.options.minRowHeight, height);
+
+          // Find the table row at current selection
+          for (let d = $from.depth; d >= 0; d--) {
+            const node = $from.node(d);
+            if (node.type.name === 'tableRow') {
+              const rowPos = $from.before(d);
+              tr.setNodeMarkup(rowPos, undefined, {
+                ...node.attrs,
+                minHeight: constrainedHeight,
+              });
+              dispatch(tr);
+              return true;
+            }
+          }
+
+          return false;
+        },
+
+      moveTableUp:
+        () =>
+        ({ tr, state, dispatch }) => {
+          if (!dispatch) return true;
+
+          const table = findTable(state);
+          if (!table) return false;
+
+          const { node: tableNode, pos: tablePos } = table;
+          const $tablePos = state.doc.resolve(tablePos);
+
+          // Find the previous sibling node
+          if ($tablePos.nodeBefore) {
+            const prevNodeSize = $tablePos.nodeBefore.nodeSize;
+            const newPos = tablePos - prevNodeSize;
+
+            // Delete the table and insert it before the previous node
+            tr.delete(tablePos, tablePos + tableNode.nodeSize);
+            tr.insert(newPos, tableNode);
+            dispatch(tr);
+            return true;
+          }
+
+          return false;
+        },
+
+      moveTableDown:
+        () =>
+        ({ tr, state, dispatch }) => {
+          if (!dispatch) return true;
+
+          const table = findTable(state);
+          if (!table) return false;
+
+          const { node: tableNode, pos: tablePos } = table;
+          const tableEnd = tablePos + tableNode.nodeSize;
+          const $tableEnd = state.doc.resolve(tableEnd);
+
+          // Find the next sibling node
+          if ($tableEnd.nodeAfter) {
+            const nextNodeSize = $tableEnd.nodeAfter.nodeSize;
+            const newPos = tableEnd + nextNodeSize;
+
+            // Delete the table and insert it after the next node
+            tr.delete(tablePos, tableEnd);
+            tr.insert(newPos - tableNode.nodeSize, tableNode);
+            dispatch(tr);
+            return true;
+          }
+
+          return false;
         },
     };
   },

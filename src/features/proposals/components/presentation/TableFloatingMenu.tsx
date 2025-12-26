@@ -19,6 +19,9 @@ import {
   MoreHorizontal,
   Rows,
   Columns,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
 } from 'lucide-react';
 
 interface TableFloatingMenuProps {
@@ -92,6 +95,44 @@ export const TableFloatingMenu: React.FC<TableFloatingMenuProps> = ({ editor }) 
     editor.chain().focus().toggleHeaderColumn().run();
   }, [editor]);
 
+  // Row height adjustment
+  const increaseRowHeight = useCallback(() => {
+    // Get current row height and increase by 10px
+    const { $from } = editor.state.selection;
+    for (let d = $from.depth; d >= 0; d--) {
+      const node = $from.node(d);
+      if (node.type.name === 'tableRow') {
+        const currentHeight = node.attrs.minHeight || 30;
+        editor.commands.setRowHeight(currentHeight + 10);
+        break;
+      }
+    }
+  }, [editor]);
+
+  const decreaseRowHeight = useCallback(() => {
+    // Get current row height and decrease by 10px
+    const { $from } = editor.state.selection;
+    for (let d = $from.depth; d >= 0; d--) {
+      const node = $from.node(d);
+      if (node.type.name === 'tableRow') {
+        const currentHeight = node.attrs.minHeight || 30;
+        if (currentHeight > 30) {
+          editor.commands.setRowHeight(currentHeight - 10);
+        }
+        break;
+      }
+    }
+  }, [editor]);
+
+  // Table repositioning
+  const moveTableUp = useCallback(() => {
+    editor.commands.moveTableUp();
+  }, [editor]);
+
+  const moveTableDown = useCallback(() => {
+    editor.commands.moveTableDown();
+  }, [editor]);
+
   // Initialize tippy and handle visibility
   useEffect(() => {
     if (!editor || !menuRef.current) return;
@@ -108,6 +149,24 @@ export const TableFloatingMenu: React.FC<TableFloatingMenuProps> = ({ editor }) 
       duration: [150, 100],
       hideOnClick: false,
       appendTo: () => document.body,
+      // Prevent scroll jumping
+      popperOptions: {
+        modifiers: [
+          {
+            name: 'preventOverflow',
+            options: {
+              boundary: 'viewport',
+              padding: 8,
+            },
+          },
+          {
+            name: 'flip',
+            options: {
+              fallbackPlacements: ['bottom-start', 'top-end', 'bottom-end'],
+            },
+          },
+        ],
+      },
       onShow: () => setIsVisible(true),
       onHide: () => {
         setIsVisible(false);
@@ -119,30 +178,35 @@ export const TableFloatingMenu: React.FC<TableFloatingMenuProps> = ({ editor }) 
 
         try {
           const coords = editor.view.coordsAtPos(from);
-          return {
-            top: coords.top - 10,
-            bottom: coords.bottom,
-            left: coords.left,
-            right: coords.right,
-            width: 0,
-            height: coords.bottom - coords.top,
-            x: coords.left,
-            y: coords.top - 10,
-            toJSON: () => ({}),
-          };
+          // Return valid rect only if we have reasonable values
+          if (coords.top > 0 && coords.left > 0) {
+            return {
+              top: coords.top - 10,
+              bottom: coords.bottom,
+              left: coords.left,
+              right: coords.right,
+              width: 0,
+              height: coords.bottom - coords.top,
+              x: coords.left,
+              y: coords.top - 10,
+              toJSON: () => ({}),
+            };
+          }
         } catch {
-          return {
-            top: 0,
-            bottom: 0,
-            left: 0,
-            right: 0,
-            width: 0,
-            height: 0,
-            x: 0,
-            y: 0,
-            toJSON: () => ({}),
-          };
+          // Ignore errors
         }
+        // Return a rect that won't cause scroll issues
+        return {
+          top: window.innerHeight / 2,
+          bottom: window.innerHeight / 2,
+          left: window.innerWidth / 2,
+          right: window.innerWidth / 2,
+          width: 0,
+          height: 0,
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          toJSON: () => ({}),
+        };
       },
     });
 
@@ -289,10 +353,51 @@ export const TableFloatingMenu: React.FC<TableFloatingMenuProps> = ({ editor }) 
               'bg-white dark:bg-gray-800',
               'border border-gray-200 dark:border-gray-700',
               'rounded-lg shadow-lg',
-              'py-1 min-w-[150px]',
+              'py-1 min-w-[180px]',
               'z-50'
             )}
           >
+            {/* Row height controls */}
+            <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
+              Row Height
+            </div>
+            <div className="flex items-center gap-1 px-3 pb-1.5">
+              <button
+                type="button"
+                onClick={decreaseRowHeight}
+                className="flex-1 px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Decrease row height"
+              >
+                <Minus className="w-3 h-3 mx-auto" />
+              </button>
+              <span className="flex-1 text-center">
+                <ChevronsUpDown className="w-4 h-4 mx-auto text-gray-400" />
+              </span>
+              <button
+                type="button"
+                onClick={increaseRowHeight}
+                className="flex-1 px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Increase row height"
+              >
+                <Plus className="w-3 h-3 mx-auto" />
+              </button>
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+
+            {/* Table position controls */}
+            <DropdownItem
+              icon={<ArrowUp className="w-4 h-4" />}
+              label="Move table up"
+              onClick={moveTableUp}
+            />
+            <DropdownItem
+              icon={<ArrowDown className="w-4 h-4" />}
+              label="Move table down"
+              onClick={moveTableDown}
+            />
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+
+            {/* Header controls */}
             <DropdownItem
               icon={<Rows className="w-4 h-4" />}
               label="Toggle header row"

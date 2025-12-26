@@ -105,16 +105,33 @@ export function BubbleMenuComponent({ editor }: BubbleMenuProps) {
       animation: 'shift-away',
       duration: 150,
       hideOnClick: false,
+      // Prevent scroll jumping
+      popperOptions: {
+        modifiers: [
+          {
+            name: 'preventOverflow',
+            options: {
+              boundary: 'viewport',
+              padding: 8,
+            },
+          },
+        ],
+      },
       getReferenceClientRect: () => {
         const { from, to } = editor.state.selection;
         const start = safeGetCoords(from);
         const end = safeGetCoords(to);
 
-        // Return a fallback rect if coords couldn't be resolved
+        // Return a center-screen fallback rect if coords couldn't be resolved
         if (!start || !end) {
           return {
-            top: 0, bottom: 0, left: 0, right: 0,
-            width: 0, height: 0, x: 0, y: 0,
+            top: window.innerHeight / 2,
+            bottom: window.innerHeight / 2,
+            left: window.innerWidth / 2,
+            right: window.innerWidth / 2,
+            width: 0, height: 0,
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
             toJSON: () => ({}),
           } as DOMRect;
         }
