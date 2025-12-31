@@ -7,11 +7,21 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { FormBuilderData } from '@/features/proposals/context/FormBuilderContext';
 
+/** Data for dynamic table row duplication */
+export interface TableRowData {
+  /** Unique identifier for the table (e.g., 'pricing', 'products') */
+  tableId: string;
+  /** Array of row data - each object's keys become {{row.key}} variables */
+  rows: Array<Record<string, string | number>>;
+}
+
 export interface GenerateDocRequest {
   templateDocId: string;
   proposalId?: string;
   organizationId: string;
   variables: Record<string, string>;
+  /** Optional table data for row duplication */
+  tableData?: TableRowData[];
   outputTitle?: string;
   mode?: 'create' | 'overwrite';
   existingDocId?: string;
@@ -212,6 +222,60 @@ export function buildProposalVariables(
     variables['misc.notes'] = formData.miscellaneous.notes;
   }
 
+  // ============ DYNAMIC TABLE VARIABLES ============
+  // These generate formatted text blocks for tables
+
+  // Products table - all products in a formatted list
+  if (formData?.products?.items && formData.products.items.length > 0) {
+    const productRows = formData.products.items.map((product, idx) => {
+      const name = product.name || `Product ${idx + 1}`;
+      const qty = product.quantity || 0;
+      const unit = product.unit || 'ea';
+      const desc = product.description ? ` - ${product.description}` : '';
+      return `${name}\t${qty} ${unit}${desc}`;
+    });
+    variables['products.table'] = productRows.join('\n');
+    variables['products.count'] = formData.products.items.length.toString();
+  } else {
+    variables['products.table'] = '';
+    variables['products.count'] = '0';
+  }
+
+  // Pricing items table - all line items across all sections
+  if (pricing?.sections && pricing.sections.length > 0) {
+    const allLineItems: Array<{
+      section: string;
+      name: string;
+      quantity: number;
+      sellPrice: number;
+    }> = [];
+
+    pricing.sections.forEach((section) => {
+      section.lineItems.forEach((item) => {
+        allLineItems.push({
+          section: section.name,
+          name: item.name,
+          quantity: item.quantity,
+          sellPrice: item.sellPrice || 0,
+        });
+      });
+    });
+
+    if (allLineItems.length > 0) {
+      const pricingRows = allLineItems.map((item) => {
+        return `${item.name}\t${item.quantity}\t${formatCurrency(item.sellPrice)}`;
+      });
+      variables['pricing.itemsTable'] = pricingRows.join('\n');
+      variables['pricing.itemsCount'] = allLineItems.length.toString();
+    } else {
+      variables['pricing.itemsTable'] = '';
+      variables['pricing.itemsCount'] = '0';
+    }
+  } else {
+    variables['pricing.itemsTable'] = '';
+    variables['pricing.itemsCount'] = '0';
+  }
+
   return variables;
 }
 
@@ -249,6 +313,67 @@ export interface GenerateProposalDocOptions {
 }
 
 /**
+ * Build table data for dynamic row duplication in Google Docs
+ */
+export function buildTableData(formData: FormBuilderData): TableRowData[] {
+  const tables: TableRowData[] = [];
+  const formatCurrency = (amount: number | undefined) => {
+    if (amount === undefined || amount === null) return '';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  // Products table
+  if (formData?.products?.items && formData.products.items.length > 0) {
+    tables.push({
+      tableId: 'products',
+      rows: formData.products.items.map((product, idx) => ({
+        index: idx + 1,
+        name: product.name || '',
+        quantity: product.quantity || 0,
+        unit: product.unit || 'ea',
+        description: product.description || '',
+        alias: product.alias || '',
+      })),
+    });
+  }
+
+  // Pricing items table - all line items across all sections
+  if (formData?.pricing?.sections && formData.pricing.sections.length > 0) {
+    const allItems: Array<Record<string, string | number>> = [];
+    let itemIndex = 1;
+
+    formData.pricing.sections.forEach((section) => {
+      section.lineItems.forEach((item) => {
+        allItems.push({
+          index: itemIndex++,
+          section: section.name,
+          name: item.name || '',
+          quantity: item.quantity || 0,
+          unitCost: formatCurrency(item.unitCost),
+          sellPrice: formatCurrency(item.sellPrice),
+          // Raw numeric values for calculations
+          unitCostRaw: item.unitCost || 0,
+          sellPriceRaw: item.sellPrice || 0,
+        });
+      });
+    });
+
+    if (allItems.length > 0) {
+      tables.push({
+        tableId: 'pricing',
+        rows: allItems,
+      });
+    }
+  }
+
+  return tables;
+}
+
+/**
  * Generate a Google Doc from proposal data
  */
 export async function generateProposalDoc(
@@ -261,12 +386,14 @@ export async function generateProposalDoc(
   options?: { mode?: 'create' | 'overwrite'; existingDocId?: string; version?: number }
 ): Promise<GenerateDocResponse> {
   const variables = buildProposalVariables(proposalData, formData);
+  const tableData = buildTableData(formData);
 
   return generateGoogleDoc({
     templateDocId,
     proposalId,
     organizationId,
     variables,
+    tableData,
     outputTitle,
     mode: options?.mode,
     existingDocId: options?.existingDocId,

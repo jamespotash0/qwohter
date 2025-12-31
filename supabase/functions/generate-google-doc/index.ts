@@ -19,11 +19,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** Data for dynamic table row duplication */
+interface TableRowData {
+  tableId: string;
+  rows: Array<Record<string, string | number>>;
+}
+
 interface RequestBody {
   templateDocId: string;
   proposalId: string;
   organizationId: string;
   variables: Record<string, string>;
+  tableData?: TableRowData[]; // Optional table data for row duplication
   outputTitle?: string;
   mode?: 'create' | 'overwrite'; // create = new version, overwrite = replace existing
   existingDocId?: string; // doc to overwrite (delete and recreate)
@@ -449,9 +456,261 @@ function processExpressions(variables: Record<string, string>): Record<string, s
 }
 
 /**
+ * Process dynamic table rows in a Google Doc
+ * Finds markers like {{#ROW:pricing}} and duplicates rows for each item
+ *
+ * Template format in Google Docs:
+ * Create a table with a header row and a template row containing:
+ * {{#ROW:pricing}} in the first cell
+ * {{row.name}}, {{row.quantity}}, {{row.sellPrice}} in other cells
+ * {{/ROW}} in the last cell (optional, auto-detected)
+ */
+async function processTableRows(
+  accessToken: string,
+  docId: string,
+  tableData: TableRowData[]
+): Promise<void> {
+  if (!tableData || tableData.length === 0) return;
+
+  // Get the document structure
+  const docResponse = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!docResponse.ok) {
+    console.error('Failed to read document for table processing');
+    return;
+  }
+
+  const docData = await docResponse.json();
+  const content = docData.body?.content || [];
+
+  // Process each table definition
+  for (const tableDef of tableData) {
+    const marker = `{{#ROW:${tableDef.tableId}}}`;
+    const endMarker = '{{/ROW}}';
+
+    // Find the table containing our marker
+    let targetTable: any = null;
+    let templateRowIndex = -1;
+    let tableStartIndex = -1;
+
+    for (const element of content) {
+      if (element.table) {
+        const table = element.table;
+        tableStartIndex = element.startIndex;
+
+        // Search for marker in table rows
+        for (let rowIdx = 0; rowIdx < table.tableRows.length; rowIdx++) {
+          const row = table.tableRows[rowIdx];
+          for (const cell of row.tableCells) {
+            const cellContent = JSON.stringify(cell);
+            if (cellContent.includes(marker)) {
+              targetTable = table;
+              templateRowIndex = rowIdx;
+              break;
+            }
+          }
+          if (targetTable) break;
+        }
+      }
+      if (targetTable) break;
+    }
+
+    if (!targetTable || templateRowIndex === -1) {
+      console.log(`No table found with marker ${marker}`);
+      continue;
+    }
+
+    if (tableDef.rows.length === 0) {
+      // No rows - just remove the template row markers
+      continue;
+    }
+
+    const requests: any[] = [];
+    const templateRow = targetTable.tableRows[templateRowIndex];
+
+    // Build cell content template from the template row
+    const cellTemplates: string[] = [];
+    for (const cell of templateRow.tableCells) {
+      let cellText = '';
+      if (cell.content) {
+        for (const para of cell.content) {
+          if (para.paragraph?.elements) {
+            for (const elem of para.paragraph.elements) {
+              if (elem.textRun?.content) {
+                cellText += elem.textRun.content;
+              }
+            }
+          }
+        }
+      }
+      // Remove the markers from template
+      cellText = cellText.replace(marker, '').replace(endMarker, '').trim();
+      cellTemplates.push(cellText);
+    }
+
+    // First, remove the start/end markers
+    requests.push({
+      replaceAllText: {
+        containsText: { text: marker, matchCase: false },
+        replaceText: '',
+      },
+    });
+    requests.push({
+      replaceAllText: {
+        containsText: { text: endMarker, matchCase: false },
+        replaceText: '',
+      },
+    });
+
+    // For each data row (except first which uses template row), insert new rows
+    // We'll duplicate by inserting rows after the template row
+    if (tableDef.rows.length > 1) {
+      // Insert additional rows after template row
+      const rowsToInsert = tableDef.rows.length - 1;
+      for (let i = 0; i < rowsToInsert; i++) {
+        requests.push({
+          insertTableRow: {
+            tableCellLocation: {
+              tableStartLocation: { index: tableStartIndex + 1 },
+              rowIndex: templateRowIndex,
+              columnIndex: 0,
+            },
+            insertBelow: true,
+          },
+        });
+      }
+    }
+
+    // Apply first batch (markers + row insertions)
+    if (requests.length > 0) {
+      const response = await fetch(
+        `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('Failed to insert table rows:', error);
+        continue;
+      }
+    }
+
+    // Now replace row variables for all rows
+    // Each row gets {{row.X}} replaced with its values
+    const replaceRequests: any[] = [];
+
+    // Replace {{row.field}} patterns for each row's data
+    // Since we can't target specific rows with replaceAllText,
+    // we'll use indexed patterns: {{row.1.name}}, {{row.2.name}}, etc.
+    // But for simpler usage, we use the sequential replacement approach
+
+    for (let rowIdx = 0; rowIdx < tableDef.rows.length; rowIdx++) {
+      const rowData = tableDef.rows[rowIdx];
+
+      // For each cell template, create the replacement text
+      for (let cellIdx = 0; cellIdx < cellTemplates.length; cellIdx++) {
+        let cellText = cellTemplates[cellIdx];
+
+        // Replace {{row.field}} with actual values
+        for (const [key, value] of Object.entries(rowData)) {
+          const pattern = `{{row.${key}}}`;
+          cellText = cellText.replace(new RegExp(pattern.replace(/[{}]/g, '\\$&'), 'g'), String(value));
+        }
+
+        // Also support {{item.field}} as alias
+        for (const [key, value] of Object.entries(rowData)) {
+          const pattern = `{{item.${key}}}`;
+          cellText = cellText.replace(new RegExp(pattern.replace(/[{}]/g, '\\$&'), 'g'), String(value));
+        }
+      }
+    }
+
+    // Use a different approach: replace all {{row.field}} patterns globally
+    // This works because after row duplication, each row has the same template
+    // We'll replace with indexed values using numbered patterns
+    const firstRow = tableDef.rows[0];
+    for (const [key, value] of Object.entries(firstRow)) {
+      replaceRequests.push({
+        replaceAllText: {
+          containsText: { text: `{{row.${key}}}`, matchCase: false },
+          replaceText: String(value),
+        },
+      });
+      replaceRequests.push({
+        replaceAllText: {
+          containsText: { text: `{{item.${key}}}`, matchCase: false },
+          replaceText: String(value),
+        },
+      });
+    }
+
+    if (replaceRequests.length > 0) {
+      await fetch(
+        `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests: replaceRequests }),
+        }
+      );
+    }
+  }
+}
+
+/**
+ * Resolve a variable with fallback support
+ * Supports: {{varA || varB || varC}} - returns first non-empty value
+ * Also supports: {{varA ?? varB}} as an alias
+ */
+function resolveVariableWithFallback(
+  expr: string,
+  variables: Record<string, string>
+): string {
+  // Split by || or ?? (fallback operators)
+  const parts = expr.split(/\s*(\|\||\\?\\?)\s*/);
+
+  // Filter out the operators, keep only variable names
+  const varNames = parts.filter((_, idx) => idx % 2 === 0).map(v => v.trim());
+
+  // Return the first variable that has a non-empty value
+  for (const varName of varNames) {
+    const value = variables[varName];
+    if (value !== undefined && value !== null && value.trim() !== '') {
+      return value;
+    }
+  }
+
+  // If all are empty, return empty string
+  return '';
+}
+
+/**
+ * Check if expression contains fallback operators (|| or ??)
+ */
+function hasFallbackOperator(expr: string): boolean {
+  return /\|\||\\?\\?/.test(expr);
+}
+
+/**
  * Replace variables in a Google Doc using Docs API
- * Supports both simple variables and expressions:
+ * Supports:
  * - Simple: {{pricing.total}} -> $1,234.56
+ * - Fallback: {{project.jobLocation || project.locationName}} -> first non-empty value
  * - Expression: {{pricing.materials + pricing.labor}} -> $2,500.00
  * Note: replaceAllText preserves formatting (bold, italic, etc.)
  */
@@ -486,13 +745,14 @@ async function replaceVariables(
     // Extract the content inside {{ }}
     const inner = pattern.slice(2, -2).trim();
 
-    // Check if it's a simple variable or an expression
-    const isExpression = /[+\-*/()]/.test(inner);
-
     let replacement: string;
 
-    if (isExpression) {
-      // Evaluate the expression
+    // Check for fallback operator (|| or ??) first
+    if (hasFallbackOperator(inner)) {
+      // Resolve with fallback chain
+      replacement = resolveVariableWithFallback(inner, variables);
+    } else if (/[+\-*/()]/.test(inner)) {
+      // Math expression
       replacement = evaluateExpression(inner, variables);
     } else {
       // Simple variable lookup
@@ -569,6 +829,7 @@ serve(async (req) => {
       proposalId,
       organizationId,
       variables,
+      tableData,
       outputTitle,
       mode = 'create',
       existingDocId,
@@ -615,6 +876,12 @@ serve(async (req) => {
     console.log(`Copying template ${templateDocId} to folder ${folderId || 'root'}...`);
     const newDocId = await copyDocument(accessToken, templateDocId, title, folderId);
     console.log(`Created new document: ${newDocId} (version ${version})`);
+
+    // Process dynamic table rows first (if any)
+    if (tableData && tableData.length > 0) {
+      console.log(`Processing ${tableData.length} dynamic tables...`);
+      await processTableRows(accessToken, newDocId, tableData);
+    }
 
     // Replace variables (formatting like bold/italic is preserved)
     if (variables && Object.keys(variables).length > 0) {

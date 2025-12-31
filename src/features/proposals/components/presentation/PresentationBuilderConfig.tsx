@@ -470,21 +470,105 @@ export function PresentationBuilderConfig() {
 
             {/* Variable Reference */}
             <div className="mt-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
+              <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-3">
                 Available Variables
               </h4>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
-                Use these placeholders in your template. They'll be replaced with proposal data:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {['{{client.name}}', '{{project.name}}', '{{pricing.grandTotal}}', '{{org.name}}', '{{proposal.number}}'].map(v => (
-                  <code
-                    key={v}
-                    className="px-2 py-1 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-800 dark:text-amber-300"
-                  >
-                    {v}
+
+              {/* Basic Variables */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">
+                  Basic Info:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['{{proposal.number}}', '{{proposal.date}}', '{{project.name}}', '{{project.location}}'].map(v => (
+                    <code key={v} className="px-2 py-1 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-800 dark:text-amber-300">
+                      {v}
+                    </code>
+                  ))}
+                </div>
+              </div>
+
+              {/* Client & Org */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">
+                  Client & Organization:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['{{client.name}}', '{{client.company}}', '{{client.email}}', '{{org.name}}', '{{org.phone}}'].map(v => (
+                    <code key={v} className="px-2 py-1 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-800 dark:text-amber-300">
+                      {v}
+                    </code>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">
+                  Pricing Totals:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['{{pricing.grandTotal}}', '{{pricing.totalWithoutTax}}', '{{pricing.tax}}', '{{pricing.taxRate}}'].map(v => (
+                    <code key={v} className="px-2 py-1 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-800 dark:text-amber-300">
+                      {v}
+                    </code>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dynamic Tables - NEW */}
+              <div className="mb-2 p-3 rounded bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-2">
+                  📊 Dynamic Tables (NEW):
+                </p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['{{pricing.itemsTable}}', '{{products.table}}', '{{pricing.itemsCount}}', '{{products.count}}'].map(v => (
+                    <code key={v} className="px-2 py-1 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 rounded text-xs text-green-800 dark:text-green-300">
+                      {v}
+                    </code>
+                  ))}
+                </div>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  These generate formatted lists of all pricing items or products dynamically.
+                </p>
+              </div>
+
+              {/* Fallback Variables */}
+              <div className="mb-2 p-3 rounded bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+                <p className="text-xs font-medium text-indigo-700 dark:text-indigo-400 mb-2">
+                  🔄 Fallback Variables:
+                </p>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-2">
+                  Use <code className="px-1 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 rounded">||</code> to provide fallback values if a variable is empty:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <code className="px-2 py-1 bg-white dark:bg-gray-800 border border-indigo-300 dark:border-indigo-700 rounded text-xs text-indigo-800 dark:text-indigo-300">
+                    {'{{project.location || project.jobLocation}}'}
                   </code>
-                ))}
+                </div>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2">
+                  Returns the first non-empty value. Chain multiple: <code className="text-[10px]">{'{{a || b || c}}'}</code>
+                </p>
+              </div>
+
+              {/* Table Row Markers */}
+              <div className="p-3 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                <p className="text-xs font-medium text-purple-700 dark:text-purple-400 mb-2">
+                  📋 Table Row Markers (Advanced):
+                </p>
+                <p className="text-xs text-purple-600 dark:text-purple-400 mb-2">
+                  For real tables, create a table in Google Docs with a template row:
+                </p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['{{#ROW:pricing}}', '{{row.name}}', '{{row.quantity}}', '{{row.sellPrice}}', '{{/ROW}}'].map(v => (
+                    <code key={v} className="px-2 py-1 bg-white dark:bg-gray-800 border border-purple-300 dark:border-purple-700 rounded text-xs text-purple-800 dark:text-purple-300">
+                      {v}
+                    </code>
+                  ))}
+                </div>
+                <p className="text-xs text-purple-600 dark:text-purple-400">
+                  The row will be duplicated for each item. Available: <code className="text-[10px]">pricing</code>, <code className="text-[10px]">products</code>
+                </p>
               </div>
             </div>
           </div>
@@ -505,7 +589,7 @@ export function PresentationBuilderConfig() {
             <div className="space-y-2">
               <Label>Select Template Document</Label>
               <DriveFilePicker
-                organizationId={organizationId}
+                organizationId={organizationId ?? undefined}
                 value={selectedFile?.id}
                 onSelect={handleFileSelect}
                 placeholder="Search for [TEMPLATE] files..."

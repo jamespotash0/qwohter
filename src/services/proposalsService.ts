@@ -38,6 +38,7 @@ type ProposalRow = Database['public']['Tables']['proposals']['Row'];
 // Extended proposal type with additional fields (added via migrations)
 export type Proposal = ProposalRow & {
   is_complete?: boolean;
+  completed_at?: string; // Timestamp when proposal was first marked complete
   documents_count?: number;
   google_doc_id?: string; // Selected Google Docs template ID
 };
@@ -77,6 +78,8 @@ export interface UpdateProposalData {
   rejected_at?: string;
   proposal_source?: string;
   google_doc_id?: string; // Selected Google Docs template ID
+  is_complete?: boolean; // Whether proposal is finished (auto-calculated)
+  completed_at?: string; // Timestamp when proposal was first marked complete
 }
 
 export interface ProposalVersionInfo {

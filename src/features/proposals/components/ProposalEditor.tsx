@@ -43,6 +43,9 @@ import {
   type FormBuilderData,
 } from '../context/FormBuilderContext';
 
+// Proposal completion check
+import { isProposalComplete } from '@/utils/proposalCompletion';
+
 // Tab Components
 import { InfoTab, type InfoTabRef, type InfoTabData } from './tabs/InfoTab';
 import { LeadTimesTab } from './tabs/LeadTimesTab';
@@ -359,6 +362,19 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         // Extract total_value from pricing summary (subtotal before tax)
         const totalValue = builderData.pricing?.summary?.subtotal;
 
+        // Calculate is_complete based on filled fields
+        const proposalForCompletion = {
+          google_doc_id: selectedGoogleDocId,
+          form_data: formDataPayload,
+        };
+        const isComplete = isProposalComplete(proposalForCompletion);
+
+        // Track completed_at timestamp: set when first becoming complete
+        const wasComplete = proposalData?.is_complete === true;
+        const completedAt = isComplete && !wasComplete
+          ? new Date().toISOString()
+          : undefined; // Don't update if already complete or not complete
+
         await updateProposalMutation.mutateAsync({
           proposalId: proposalId,
           updates: {
@@ -374,6 +390,10 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             total_value: totalValue !== undefined ? totalValue : undefined,
             // Selected Google Docs template ID (null clears the field)
             google_doc_id: selectedGoogleDocId,
+            // Auto-calculated completion status
+            is_complete: isComplete,
+            // Timestamp when proposal first became complete
+            ...(completedAt && { completed_at: completedAt }),
           },
         });
         if (!isAutoSave) toast.success('Proposal saved');
