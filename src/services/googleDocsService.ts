@@ -55,6 +55,11 @@ export function buildProposalVariables(
         clientPhone?: string;
         clientAddress?: string;
         jobLocation?: string;
+        // Work details
+        isUnion?: boolean;
+        isPrevailingWage?: boolean;
+        projectType?: string;
+        categoryOfWork?: string;
       };
     };
     organization?: {
@@ -104,6 +109,12 @@ export function buildProposalVariables(
     // Project info
     'project.name': info.projectName || proposalData?.project_name || '',
     'project.location': info.jobLocation || '',
+    'project.type': info.projectType || '',
+    'project.workType': info.categoryOfWork || '',
+
+    // Labor & Wage info
+    'project.laborType': info.isUnion ? 'Union' : 'Non-Union',
+    'project.wageType': info.isPrevailingWage ? 'Prevailing Wage' : 'Standard Wage',
 
     // Contact (internal contact person)
     'contact.name': info.contactName || '',

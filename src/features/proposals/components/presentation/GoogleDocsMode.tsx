@@ -433,7 +433,7 @@ export function GoogleDocsMode({
 
             <Button
               size="lg"
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               disabled={isGenerating || !hasTemplates || !selectedTemplate}
               className="w-full"
             >
@@ -482,7 +482,7 @@ export function GoogleDocsMode({
         <div className="flex items-center gap-2">
           <GoogleLogo className="w-5 h-5 text-blue-500" weight="bold" />
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {proposalInfo?.projectName || proposalInfo?.clientName || 'Google Docs'}
+            {proposalInfo?.proposalNumber || proposalInfo?.projectName || 'Google Docs'}
           </span>
           {currentVersion > 0 && (
             <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">

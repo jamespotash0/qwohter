@@ -99,8 +99,9 @@ export const AVAILABLE_VARIABLES: VariableDefinition[] = [
   // Work Details (from form_data.info)
   { key: 'project.source', label: 'Proposal Source', category: 'Project', description: 'Where the lead came from' },
   { key: 'project.workType', label: 'Type of Work', category: 'Project', description: 'Category of work being done' },
-  { key: 'project.laborType', label: 'Labor Type', category: 'Project', description: 'Union or non-union' },
-  { key: 'project.projectType', label: 'Project Type', category: 'Project', description: 'Type of project/facility' },
+  { key: 'project.type', label: 'Project Type', category: 'Project', description: 'Type of project/facility' },
+  { key: 'project.laborType', label: 'Labor Type', category: 'Project', description: '"Union" or "Non-Union"' },
+  { key: 'project.wageType', label: 'Wage Type', category: 'Project', description: '"Prevailing Wage" or "Standard Wage"' },
 
   // Contact Person (from form_data.info - internal contact)
   { key: 'contact.name', label: 'Contact Name', category: 'Contact', description: 'Internal contact person' },
