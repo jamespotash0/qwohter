@@ -20,7 +20,7 @@ import {
 } from '@tanstack/react-table';
 import {
   ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal,
-  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText
+  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -130,7 +130,6 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
     columnVisibility: storedColumnVisibility = {},
     dataDensity = 'comfortable',
     pageSize: storedPageSize = 10,
-    setExpandedRows,
     toggleExpandedRow,
     setColumnVisibility: setStoredColumnVisibility,
     setDataDensity,
@@ -327,9 +326,35 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
         const displayNumber = hasMultipleVersions ? baseNumber : proposalNumber;
         const isComplete = proposal.is_complete ?? false;
 
+        // Check if proposal is expired (validUntil date has passed)
+        // Compare date strings to avoid timezone issues (validUntil is "YYYY-MM-DD")
+        const formData = proposal.form_data as Record<string, any> | null;
+        const validUntil = formData?.info?.validUntil as string | undefined;
+        // Get today's date in local timezone as "YYYY-MM-DD"
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        // Expired if validUntil is before today (not including today)
+        const isExpired = validUntil ? validUntil < todayStr : false;
+        const formattedExpiredDate = validUntil
+          ? new Date(validUntil + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : '';
+
         return (
           <div className="flex items-center gap-1.5 group/versions">
-            {/* Only show unfinished icon for single proposals, not version groups */}
+            {/* Expired indicator - only show for single proposals (version groups show on children) */}
+            {!hasMultipleVersions && isExpired && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Proposal no longer valid as of {formattedExpiredDate}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {/* Unfinished indicator - only show for single proposals */}
             {!hasMultipleVersions && !isComplete && (
               <TooltipProvider>
                 <Tooltip>
@@ -795,37 +820,65 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                               </div>
                             </td>
                             <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('proposal_number')?.getSize() }}>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-gray-300 text-xs">└</span>
-                                {!(version.is_complete ?? false) && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Unfinished</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                                <span className="font-mono text-xs text-gray-500">{version.proposal_number}</span>
-                                <button
-                                  className={`transition-colors cursor-pointer ${
-                                    version.is_main_version === true
-                                      ? 'text-amber-500 hover:text-amber-600'
-                                      : 'text-gray-400 hover:text-amber-600'
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onSetMainVersion) onSetMainVersion(version.id, versionGroup.baseNumber);
-                                    setMainVersions(prev => ({ ...prev, [versionGroup.baseNumber]: version.id }));
-                                  }}
-                                  title={version.is_main_version === true ? 'Current main version (click to keep)' : 'Set as main version'}
-                                >
-                                  <Star className={`w-3 h-3 ${version.is_main_version === true ? 'fill-amber-400 stroke-amber-500' : ''}`} />
-                                </button>
-                              </div>
+                              {(() => {
+                                // Check if this version is expired
+                                const versionFormData = version.form_data as Record<string, any> | null;
+                                const versionValidUntil = versionFormData?.info?.validUntil as string | undefined;
+                                const nowDate = new Date();
+                                const todayDateStr = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}-${String(nowDate.getDate()).padStart(2, '0')}`;
+                                const versionIsExpired = versionValidUntil ? versionValidUntil < todayDateStr : false;
+                                const versionExpiredDate = versionValidUntil
+                                  ? new Date(versionValidUntil + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                  : '';
+
+                                return (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-gray-300 text-xs">└</span>
+                                    {/* Expired indicator for child version */}
+                                    {versionIsExpired && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Clock className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Proposal no longer valid as of {versionExpiredDate}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {/* Unfinished indicator for child version */}
+                                    {!(version.is_complete ?? false) && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Unfinished</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    <span className="font-mono text-xs text-gray-500">{version.proposal_number}</span>
+                                    <button
+                                      className={`transition-colors cursor-pointer ${
+                                        version.is_main_version === true
+                                          ? 'text-amber-500 hover:text-amber-600'
+                                          : 'text-gray-400 hover:text-amber-600'
+                                      }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onSetMainVersion) onSetMainVersion(version.id, versionGroup.baseNumber);
+                                        setMainVersions(prev => ({ ...prev, [versionGroup.baseNumber]: version.id }));
+                                      }}
+                                      title={version.is_main_version === true ? 'Current main version (click to keep)' : 'Set as main version'}
+                                    >
+                                      <Star className={`w-3 h-3 ${version.is_main_version === true ? 'fill-amber-400 stroke-amber-500' : ''}`} />
+                                    </button>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('project_name')?.getSize() }}>
                               <div className="space-y-0 min-w-0">
