@@ -213,8 +213,246 @@ async function deleteDocument(
   }
 }
 
+// ============ EXPRESSION EVALUATOR ============
+// Supports: +, -, *, /, parentheses, PEMDAS order of operations
+// Example: {{pricing.materials + pricing.labor}} or {{(subtotal + tax) * 1.1}}
+
+type Token =
+  | { type: 'number'; value: number }
+  | { type: 'operator'; value: '+' | '-' | '*' | '/' }
+  | { type: 'lparen' }
+  | { type: 'rparen' };
+
+/**
+ * Parse a currency string to a number
+ * Handles: "$1,234.56", "1234.56", "$1234", etc.
+ */
+function parseCurrency(value: string): number {
+  if (!value || value.trim() === '') return 0;
+  // Remove $ and commas, then parse
+  const cleaned = value.replace(/[$,]/g, '').trim();
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Format a number as currency
+ */
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * Tokenize an expression string
+ */
+function tokenize(expr: string): Token[] {
+  const tokens: Token[] = [];
+  let i = 0;
+
+  while (i < expr.length) {
+    const char = expr[i];
+
+    // Skip whitespace
+    if (/\s/.test(char)) {
+      i++;
+      continue;
+    }
+
+    // Operators
+    if (char === '+' || char === '-' || char === '*' || char === '/') {
+      tokens.push({ type: 'operator', value: char });
+      i++;
+      continue;
+    }
+
+    // Parentheses
+    if (char === '(') {
+      tokens.push({ type: 'lparen' });
+      i++;
+      continue;
+    }
+    if (char === ')') {
+      tokens.push({ type: 'rparen' });
+      i++;
+      continue;
+    }
+
+    // Numbers (including decimals and negative)
+    if (/[\d.]/.test(char)) {
+      let numStr = '';
+      while (i < expr.length && /[\d.]/.test(expr[i])) {
+        numStr += expr[i];
+        i++;
+      }
+      tokens.push({ type: 'number', value: parseFloat(numStr) });
+      continue;
+    }
+
+    // Unknown character - skip it
+    i++;
+  }
+
+  return tokens;
+}
+
+/**
+ * Recursive descent parser for PEMDAS
+ * Grammar:
+ *   expr    = term (('+' | '-') term)*
+ *   term    = factor (('*' | '/') factor)*
+ *   factor  = number | '(' expr ')'
+ */
+function parseExpression(tokens: Token[]): number {
+  let pos = 0;
+
+  function peek(): Token | undefined {
+    return tokens[pos];
+  }
+
+  function consume(): Token {
+    return tokens[pos++];
+  }
+
+  function parseFactor(): number {
+    const token = peek();
+
+    if (!token) {
+      throw new Error('Unexpected end of expression');
+    }
+
+    if (token.type === 'number') {
+      consume();
+      return token.value;
+    }
+
+    if (token.type === 'lparen') {
+      consume(); // consume '('
+      const result = parseExpr();
+      const closing = peek();
+      if (closing?.type !== 'rparen') {
+        throw new Error('Missing closing parenthesis');
+      }
+      consume(); // consume ')'
+      return result;
+    }
+
+    // Handle negative numbers
+    if (token.type === 'operator' && token.value === '-') {
+      consume();
+      return -parseFactor();
+    }
+
+    throw new Error(`Unexpected token: ${JSON.stringify(token)}`);
+  }
+
+  function parseTerm(): number {
+    let left = parseFactor();
+
+    while (true) {
+      const token = peek();
+      if (!token || token.type !== 'operator') break;
+      if (token.value !== '*' && token.value !== '/') break;
+
+      consume();
+      const right = parseFactor();
+
+      if (token.value === '*') {
+        left = left * right;
+      } else {
+        left = left / right;
+      }
+    }
+
+    return left;
+  }
+
+  function parseExpr(): number {
+    let left = parseTerm();
+
+    while (true) {
+      const token = peek();
+      if (!token || token.type !== 'operator') break;
+      if (token.value !== '+' && token.value !== '-') break;
+
+      consume();
+      const right = parseTerm();
+
+      if (token.value === '+') {
+        left = left + right;
+      } else {
+        left = left - right;
+      }
+    }
+
+    return left;
+  }
+
+  return parseExpr();
+}
+
+/**
+ * Evaluate an expression string
+ * First resolves variables, then evaluates the math
+ */
+function evaluateExpression(
+  expr: string,
+  variables: Record<string, string>
+): string {
+  // First, replace all variable references with their numeric values
+  let resolved = expr;
+
+  // Find all variable references (words with dots, like "pricing.total")
+  const varPattern = /[a-zA-Z_][a-zA-Z0-9_.]+/g;
+  const matches = expr.match(varPattern) || [];
+
+  for (const varName of matches) {
+    const value = variables[varName];
+    if (value !== undefined) {
+      // Parse the value as a number (handle currency formatting)
+      const numValue = parseCurrency(value);
+      resolved = resolved.replace(new RegExp(varName.replace(/\./g, '\\.'), 'g'), numValue.toString());
+    }
+  }
+
+  // Now tokenize and evaluate
+  try {
+    const tokens = tokenize(resolved);
+    if (tokens.length === 0) return '';
+
+    const result = parseExpression(tokens);
+
+    // Format as currency if it looks like a money value (has decimals or is > 1)
+    return formatCurrency(result);
+  } catch (error) {
+    console.warn(`Failed to evaluate expression: ${expr}`, error);
+    return `{{${expr}}}`; // Return original if evaluation fails
+  }
+}
+
+/**
+ * Process all expressions in the variables
+ * Finds {{expr}} patterns that contain operators and evaluates them
+ */
+function processExpressions(variables: Record<string, string>): Record<string, string> {
+  const processed: Record<string, string> = { ...variables };
+
+  // Also add expression-evaluated versions
+  // These will be used for patterns like {{pricing.a + pricing.b}}
+  // The replaceVariables function will handle simple replacements first,
+  // then we need to handle expressions separately in the document
+
+  return processed;
+}
+
 /**
  * Replace variables in a Google Doc using Docs API
+ * Supports both simple variables and expressions:
+ * - Simple: {{pricing.total}} -> $1,234.56
+ * - Expression: {{pricing.materials + pricing.labor}} -> $2,500.00
  * Note: replaceAllText preserves formatting (bold, italic, etc.)
  */
 async function replaceVariables(
@@ -222,16 +460,55 @@ async function replaceVariables(
   docId: string,
   variables: Record<string, string>
 ): Promise<void> {
-  // Build batch update requests for each variable
-  const requests = Object.entries(variables).map(([key, value]) => ({
-    replaceAllText: {
-      containsText: {
-        text: `{{${key}}}`,
-        matchCase: false,
+  // First, get the document content to find expressions
+  const docResponse = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!docResponse.ok) {
+    throw new Error('Failed to read document for expression processing');
+  }
+
+  const docData = await docResponse.json();
+  const docContent = JSON.stringify(docData);
+
+  // Find all {{...}} patterns in the document
+  const allPatterns = docContent.match(/\{\{[^}]+\}\}/g) || [];
+  const uniquePatterns = [...new Set(allPatterns)];
+
+  // Build replacement requests
+  const requests: any[] = [];
+
+  for (const pattern of uniquePatterns) {
+    // Extract the content inside {{ }}
+    const inner = pattern.slice(2, -2).trim();
+
+    // Check if it's a simple variable or an expression
+    const isExpression = /[+\-*/()]/.test(inner);
+
+    let replacement: string;
+
+    if (isExpression) {
+      // Evaluate the expression
+      replacement = evaluateExpression(inner, variables);
+    } else {
+      // Simple variable lookup
+      replacement = variables[inner] ?? '';
+    }
+
+    requests.push({
+      replaceAllText: {
+        containsText: {
+          text: pattern,
+          matchCase: false,
+        },
+        replaceText: replacement,
       },
-      replaceText: value || '',
-    },
-  }));
+    });
+  }
 
   if (requests.length === 0) return;
 

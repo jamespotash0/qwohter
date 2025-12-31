@@ -26,6 +26,12 @@ interface DriveFilePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Filter to only show files with [TEMPLATE] prefix */
+  templateOnly?: boolean;
+  /** Filter to exclude files with [TEMPLATE] prefix (for linking existing docs) */
+  excludeTemplates?: boolean;
+  /** Show hint about naming convention */
+  showNamingHint?: boolean;
 }
 
 export function DriveFilePicker({
@@ -35,19 +41,31 @@ export function DriveFilePicker({
   placeholder = 'Search for a Google Doc...',
   disabled = false,
   className,
+  templateOnly = false,
+  excludeTemplates = false,
+  showNamingHint = false,
 }: DriveFilePickerProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Build search query - prepend [TEMPLATE] filter if templateOnly is true
+  const effectiveSearch = templateOnly
+    ? `[TEMPLATE] ${debouncedSearch}`.trim()
+    : debouncedSearch;
+
   // Fetch files from Drive
   const { data, isLoading, error } = useDriveFiles({
     organizationId,
-    searchQuery: debouncedSearch,
+    searchQuery: effectiveSearch,
     enabled: open && !!organizationId,
   });
 
-  const files = data?.files || [];
+  // Filter out templates if excludeTemplates is true (client-side filter)
+  const allFiles = data?.files || [];
+  const files = excludeTemplates
+    ? allFiles.filter(f => !f.name.startsWith('[TEMPLATE]'))
+    : allFiles;
   const folderId = data?.folderId;
 
   // Find selected file name
@@ -118,7 +136,13 @@ export function DriveFilePicker({
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <FolderOpen className="h-3.5 w-3.5" />
-              <span>Searching in connected folder</span>
+              <span>
+                {templateOnly
+                  ? 'Searching for [TEMPLATE] files'
+                  : excludeTemplates
+                    ? 'Showing proposal documents (excluding templates)'
+                    : 'Searching in connected folder'}
+              </span>
             </div>
           </div>
         )}
@@ -141,9 +165,31 @@ export function DriveFilePicker({
             <div className="p-6 text-center">
               <GoogleLogo className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-600" weight="bold" />
               <p className="text-sm text-gray-500 mt-2">
-                {searchQuery ? 'No documents found' : 'No Google Docs in this folder'}
+                {searchQuery
+                  ? 'No documents found'
+                  : templateOnly
+                    ? 'No templates found'
+                    : excludeTemplates
+                      ? 'No proposal documents found'
+                      : 'No Google Docs in this folder'}
               </p>
-              {!folderId && (
+              {templateOnly ? (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-left">
+                  <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+                    Template Naming Convention
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Name your template files with <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded">[TEMPLATE]</code> prefix in Google Drive:
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 italic">
+                    e.g., "[TEMPLATE] Formal Proposal"
+                  </p>
+                </div>
+              ) : excludeTemplates ? (
+                <p className="text-xs text-gray-400 mt-1">
+                  Generate a proposal document first, or check your folder
+                </p>
+              ) : !folderId && (
                 <p className="text-xs text-gray-400 mt-1">
                   Connect a specific folder in Settings for better organization
                 </p>

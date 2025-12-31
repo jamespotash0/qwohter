@@ -47,6 +47,8 @@ interface PresentationTabProps {
   organizationId?: string;
   /** Callback when Google Doc is generated */
   onGoogleDocGenerated?: (docId: string) => void;
+  /** Callback when Google Doc is unlinked */
+  onGoogleDocUnlinked?: () => void;
   /** Whether user has Google Auth for editing */
   hasGoogleAuth?: boolean;
   /** Google Docs templates from form metadata (for filler mode) */
@@ -60,6 +62,7 @@ export function PresentationTab({
   proposalId,
   organizationId,
   onGoogleDocGenerated,
+  onGoogleDocUnlinked,
   hasGoogleAuth = false,
   formTemplates,
 }: PresentationTabProps) {
@@ -71,6 +74,12 @@ export function PresentationTab({
     onGoogleDocGenerated?.(docId);
     onDirtyChange?.(true);
   }, [onGoogleDocGenerated, onDirtyChange]);
+
+  // Handle Google Doc unlink
+  const handleGoogleDocUnlinked = useCallback(() => {
+    onGoogleDocUnlinked?.();
+    onDirtyChange?.(true);
+  }, [onGoogleDocUnlinked, onDirtyChange]);
 
   // Extract info data for display
   const infoData = useMemo(() => proposalData?.form_data?.info, [proposalData?.form_data?.info]);
@@ -96,6 +105,7 @@ export function PresentationTab({
         }}
         templates={formTemplates || data.presentation?.templates}
         onDocGenerated={handleGoogleDocGenerated}
+        onUnlinkDocument={handleGoogleDocUnlinked}
         canEdit={hasGoogleAuth}
       />
     </div>

@@ -235,6 +235,13 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     setTabDirtyStates(prev => ({ ...prev, presentation: true }));
   }, []);
 
+  // Callback for PresentationTab when a Google Doc is unlinked
+  const handleGoogleDocUnlinked = useCallback(() => {
+    setSelectedGoogleDocId(null);
+    // Mark as dirty to trigger auto-save
+    setTabDirtyStates(prev => ({ ...prev, presentation: true }));
+  }, []);
+
   // Create stable callbacks for each tab (memoized to prevent infinite loops)
   const tabCallbacks = useMemo(() => {
     const callbacks: Record<string, (isDirty: boolean) => void> = {};
@@ -366,8 +373,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             proposal_source: infoData?.proposalSource || undefined,
             // Total value from pricing (subtotal before tax)
             total_value: totalValue !== undefined ? totalValue : undefined,
-            // Selected Google Docs template ID
-            google_doc_id: selectedGoogleDocId || undefined,
+            // Selected Google Docs template ID (null clears the field)
+            google_doc_id: selectedGoogleDocId,
           },
         });
         if (!isAutoSave) toast.success('Proposal saved');
@@ -499,6 +506,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           organizationId={currentOrganization?.id}
           onDirtyChange={onDirtyChange}
           onGoogleDocGenerated={handleGoogleDocGenerated}
+          onGoogleDocUnlinked={handleGoogleDocUnlinked}
           formTemplates={formTemplates}
         />
       );

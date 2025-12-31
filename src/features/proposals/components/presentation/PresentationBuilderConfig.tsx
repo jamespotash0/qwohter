@@ -455,16 +455,29 @@ export function PresentationBuilderConfig() {
               </div>
             )}
 
+            {/* Template Setup Guide */}
+            <div className="mt-6 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+                📋 Template Setup Guide
+              </h4>
+              <ol className="text-xs text-blue-700 dark:text-blue-400 space-y-1.5 list-decimal list-inside">
+                <li>Create a Google Doc in your connected folder</li>
+                <li>Name it with <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded">[TEMPLATE]</code> prefix (e.g., "[TEMPLATE] Formal Proposal")</li>
+                <li>Add variable placeholders like <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded">{'{{client.name}}'}</code></li>
+                <li>Click "Add Template" above to register it</li>
+              </ol>
+            </div>
+
             {/* Variable Reference */}
-            <div className="mt-6 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <div className="mt-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
               <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
-                Using Variables in Templates
+                Available Variables
               </h4>
               <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
-                Use these placeholders in your Google Doc template. They'll be replaced with actual data when generating proposals:
+                Use these placeholders in your template. They'll be replaced with proposal data:
               </p>
               <div className="flex flex-wrap gap-2">
-                {['{{client.name}}', '{{project.name}}', '{{pricing.total}}', '{{org.name}}'].map(v => (
+                {['{{client.name}}', '{{project.name}}', '{{pricing.grandTotal}}', '{{org.name}}', '{{proposal.number}}'].map(v => (
                   <code
                     key={v}
                     className="px-2 py-1 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded text-xs text-amber-800 dark:text-amber-300"
@@ -490,18 +503,22 @@ export function PresentationBuilderConfig() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Select Document</Label>
+              <Label>Select Template Document</Label>
               <DriveFilePicker
                 organizationId={organizationId}
                 value={selectedFile?.id}
                 onSelect={handleFileSelect}
-                placeholder="Search for a Google Doc..."
+                placeholder="Search for [TEMPLATE] files..."
+                templateOnly
               />
               {selectedFile && (
                 <p className="text-xs text-gray-500">
                   Selected: {selectedFile.name}
                 </p>
               )}
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                💡 Only files named with <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded">[TEMPLATE]</code> prefix are shown
+              </p>
             </div>
 
             <div className="space-y-2">

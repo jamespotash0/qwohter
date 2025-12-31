@@ -14,12 +14,13 @@ import {
   Spinner,
   Copy,
   Check,
-  ArrowsClockwise,
+  ArrowClockwise,
   FileDoc,
   LinkSimple,
   Warning,
   ArrowSquareOut,
   BracketsCurly,
+  Trash,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,10 +30,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
 import { getAllFormVariables } from './VariableExtension';
 import { VersionDialog, type VersionMode } from './VersionDialog';
+import { DriveFilePicker } from './DriveFilePicker';
+import type { DriveFile } from '@/hooks/queries/useDriveFiles';
 import type { FormBuilderData, DocumentTemplate } from '../../context/FormBuilderContext';
 import type { GeneratedDocVersion } from '@/services/googleDocsService';
 import { useGenerateGoogleDoc } from '@/hooks/queries/useGenerateGoogleDoc';
@@ -87,6 +106,8 @@ interface GoogleDocsModeProps {
   onDocGenerated?: (docId: string) => void;
   /** Callback when document should be regenerated */
   onRegenerate?: () => Promise<void>;
+  /** Callback to unlink/remove the document */
+  onUnlinkDocument?: () => void;
   /** Whether the user can edit (has Google auth) */
   canEdit?: boolean;
 }
@@ -101,6 +122,7 @@ export function GoogleDocsMode({
   templates = [],
   onDocGenerated,
   onRegenerate,
+  onUnlinkDocument,
   canEdit = false,
 }: GoogleDocsModeProps) {
   const [showVariables, setShowVariables] = useState(false);
@@ -109,6 +131,9 @@ export function GoogleDocsMode({
     templates.find(t => t.is_default)?.id || templates[0]?.id || ''
   );
   const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+  const [showLinkExisting, setShowLinkExisting] = useState(false);
+  const [selectedExistingDoc, setSelectedExistingDoc] = useState<DriveFile | null>(null);
 
   // Check if user has connected Google - check BOTH sources
   // 1. google_oauth_tokens table (has actual tokens for API calls)
@@ -275,6 +300,53 @@ export function GoogleDocsMode({
     setShowVersionDialog(false);
   }, [handleGenerate, googleDocId, currentVersion]);
 
+  // Build the Google Doc URL (define before early return to keep hooks consistent)
+  const googleDocUrl = googleDocId
+    ? `https://docs.google.com/document/d/${googleDocId}/edit`
+    : '';
+
+  // Handle copy link to clipboard (must be defined before early return)
+  const handleCopyLink = useCallback(() => {
+    if (googleDocUrl) {
+      navigator.clipboard.writeText(googleDocUrl);
+      toast.success('URL copied');
+    }
+  }, [googleDocUrl]);
+
+  // Handle open in new tab (must be defined before early return)
+  const handleOpenInNewTab = useCallback(() => {
+    if (googleDocUrl) {
+      window.open(googleDocUrl, '_blank');
+    }
+  }, [googleDocUrl]);
+
+  // Handle unlink confirmation
+  const handleUnlinkConfirm = useCallback(() => {
+    setShowUnlinkDialog(false);
+    onUnlinkDocument?.();
+    toast.success('Document unlinked', {
+      description: 'You can generate a new document anytime',
+    });
+  }, [onUnlinkDocument]);
+
+  // Handle linking an existing document from Drive picker
+  const handleLinkExisting = useCallback(() => {
+    if (!selectedExistingDoc) {
+      toast.error('No document selected', {
+        description: 'Please select a document from your Google Drive',
+      });
+      return;
+    }
+
+    // Call the onDocGenerated callback with the selected doc ID
+    onDocGenerated?.(selectedExistingDoc.id);
+    setSelectedExistingDoc(null);
+    setShowLinkExisting(false);
+    toast.success('Document linked!', {
+      description: `"${selectedExistingDoc.name}" is now connected to this proposal`,
+    });
+  }, [selectedExistingDoc, onDocGenerated]);
+
   // No document yet - show generation UI
   if (!googleDocId) {
     const hasTemplates = templates.length > 0;
@@ -349,12 +421,13 @@ export function GoogleDocsMode({
             </div>
 
             <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              Create with Google Docs
+              {showLinkExisting ? 'Link Existing Document' : 'Create with Google Docs'}
             </h3>
 
             <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Generate a professional proposal document from your data.
-              Edit with the full power of Google Docs.
+              {showLinkExisting
+                ? 'Connect an existing Google Doc to this proposal.'
+                : 'Generate a professional proposal document from your data.'}
             </p>
 
             {/* Connected account info */}
@@ -365,113 +438,157 @@ export function GoogleDocsMode({
               </div>
             )}
 
-            {/* Template Selection */}
-            {hasTemplates ? (
-              <div className="text-left mb-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Select Template
-                </label>
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a template">
-                      {selectedTemplate && (
-                        <div className="flex items-center gap-2">
-                          <FileDoc className="w-4 h-4 text-blue-500" />
-                          <span>{selectedTemplate.name}</span>
-                        </div>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        <div className="flex items-center gap-2">
-                          <FileDoc className="w-4 h-4 text-blue-500" />
-                          <span>{template.name}</span>
-                          {template.is_default && (
-                            <span className="text-xs text-gray-400">(default)</span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {showLinkExisting ? (
+              /* Link Existing Document UI */
+              <>
+                <div className="text-left mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Document from Drive
+                  </label>
+                  <DriveFilePicker
+                    organizationId={organizationId}
+                    value={selectedExistingDoc?.id}
+                    onSelect={setSelectedExistingDoc}
+                    placeholder="Search for proposal documents..."
+                    excludeTemplates
+                  />
+                  {selectedExistingDoc && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1.5">
+                      Selected: {selectedExistingDoc.name}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => {
+                      setShowLinkExisting(false);
+                      setSelectedExistingDoc(null);
+                    }}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={handleLinkExisting}
+                    disabled={!selectedExistingDoc}
+                    className="flex-1"
+                  >
+                    <LinkSimple className="w-5 h-5 mr-2" />
+                    Link Document
+                  </Button>
+                </div>
+              </>
             ) : (
-              <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm p-4 rounded-lg mb-6 text-left">
-                <p className="font-medium mb-1">No templates configured</p>
-                <p className="text-xs">
-                  Add Google Docs templates in the Form Builder to enable document generation.
-                </p>
-              </div>
+              /* Generate from Template UI */
+              <>
+                {/* Template Selection */}
+                {hasTemplates ? (
+                  <div className="text-left mb-6">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Select Template
+                    </label>
+                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose a template">
+                          {selectedTemplate && (
+                            <div className="flex items-center gap-2">
+                              <FileDoc className="w-4 h-4 text-blue-500" />
+                              <span>{selectedTemplate.name}</span>
+                            </div>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex items-center gap-2">
+                              <FileDoc className="w-4 h-4 text-blue-500" />
+                              <span>{template.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm p-4 rounded-lg mb-6 text-left">
+                    <p className="font-medium mb-1">No templates configured</p>
+                    <p className="text-xs">
+                      Add Google Docs templates in the Form Builder to enable document generation.
+                    </p>
+                  </div>
+                )}
+
+                {/* What will be included */}
+                <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                    Document will include:
+                  </p>
+                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Client & project information
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      All products with specifications
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Pricing breakdown & totals
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Lead times & phases
+                    </li>
+                  </ul>
+                </div>
+
+                <Button
+                  size="lg"
+                  onClick={() => handleGenerate()}
+                  disabled={isGenerating || !hasTemplates || !selectedTemplate}
+                  className="w-full"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Spinner className="w-5 h-5 mr-2 animate-spin" />
+                      Generating Document...
+                    </>
+                  ) : (
+                    <>
+                      <FilePlus className="w-5 h-5 mr-2" />
+                      Generate Google Doc
+                    </>
+                  )}
+                </Button>
+
+                {/* Divider and Link Existing option */}
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs text-gray-400">or</span>
+                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                </div>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowLinkExisting(true)}
+                  className="w-full text-gray-600 dark:text-gray-400"
+                >
+                  <LinkSimple className="w-4 h-4 mr-2" />
+                  Link Existing Document
+                </Button>
+              </>
             )}
-
-            {/* What will be included */}
-            <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                Document will include:
-              </p>
-              <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Client & project information
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  All products with specifications
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Pricing breakdown & totals
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  Lead times & phases
-                </li>
-              </ul>
-            </div>
-
-            <Button
-              size="lg"
-              onClick={() => handleGenerate()}
-              disabled={isGenerating || !hasTemplates || !selectedTemplate}
-              className="w-full"
-            >
-              {isGenerating ? (
-                <>
-                  <Spinner className="w-5 h-5 mr-2 animate-spin" />
-                  Generating Document...
-                </>
-              ) : (
-                <>
-                  <FilePlus className="w-5 h-5 mr-2" />
-                  Generate Google Doc
-                </>
-              )}
-            </Button>
-
-            <p className="text-xs text-gray-400 mt-4">
-              You can edit and customize the document after generation
-            </p>
           </div>
         </div>
       </div>
     );
   }
-
-  // Build the Google Doc URL
-  const googleDocUrl = `https://docs.google.com/document/d/${googleDocId}/edit`;
-
-  // Handle copy link to clipboard
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(googleDocUrl);
-    toast.success('URL copied');
-  }, [googleDocUrl]);
-
-  // Handle open in new tab
-  const handleOpenInNewTab = useCallback(() => {
-    window.open(googleDocUrl, '_blank');
-  }, [googleDocUrl]);
 
   // Document exists - show embedded view with variable panel
   return (
@@ -492,52 +609,87 @@ export function GoogleDocsMode({
         </div>
 
         {/* Right side - Icon buttons */}
-        <div className="flex items-center gap-1">
-          {/* Variables Panel Toggle */}
-          <Button
-            variant={showVariables ? 'secondary' : 'ghost'}
-            size="icon"
-            onClick={() => setShowVariables(!showVariables)}
-            title="Variables"
-            className="h-8 w-8"
-          >
-            <BracketsCurly className="w-4 h-4" />
-          </Button>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center gap-1">
+            {/* Variables Panel Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showVariables ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setShowVariables(!showVariables)}
+                  className="h-8 w-8"
+                >
+                  <BracketsCurly className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Variables</TooltipContent>
+            </Tooltip>
 
-          {/* Regenerate */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRegenerate}
-            disabled={isGenerating}
-            title="Regenerate"
-            className="h-8 w-8"
-          >
-            <ArrowsClockwise className={cn('w-4 h-4', isGenerating && 'animate-spin')} />
-          </Button>
+            {/* Regenerate */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRegenerate}
+                  disabled={isGenerating}
+                  className="h-8 w-8"
+                >
+                  <ArrowClockwise className={cn('w-4 h-4', isGenerating && 'animate-spin')} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Regenerate</TooltipContent>
+            </Tooltip>
 
-          {/* Copy Link */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopyLink}
-            title="Copy Link"
-            className="h-8 w-8"
-          >
-            <LinkSimple className="w-4 h-4" />
-          </Button>
+            {/* Copy Link */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopyLink}
+                  className="h-8 w-8"
+                >
+                  <LinkSimple className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy Link</TooltipContent>
+            </Tooltip>
 
-          {/* Open in New Tab */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleOpenInNewTab}
-            title="Open in New Tab"
-            className="h-8 w-8"
-          >
-            <ArrowSquareOut className="w-4 h-4" />
-          </Button>
-        </div>
+            {/* Open in New Tab */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleOpenInNewTab}
+                  className="h-8 w-8"
+                >
+                  <ArrowSquareOut className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Open in New Tab</TooltipContent>
+            </Tooltip>
+
+            {/* Unlink Document */}
+            {onUnlinkDocument && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowUnlinkDialog(true)}
+                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Unlink Document</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
       </div>
 
       {/* Main Content */}
@@ -608,6 +760,37 @@ export function GoogleDocsMode({
         currentVersion={currentVersion}
         isLoading={isGenerating}
       />
+
+      {/* Unlink Confirmation Dialog */}
+      <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink Document?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will remove the link between this proposal and the Google Doc.
+              </p>
+              <p className="text-sm">
+                <strong>What happens:</strong>
+              </p>
+              <ul className="text-sm list-disc list-inside space-y-1">
+                <li>The Google Doc will remain in your Google Drive</li>
+                <li>You can generate a new document with updated data</li>
+                <li>Any edits made in Google Docs will be preserved there</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUnlinkConfirm}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Unlink Document
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
