@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -110,11 +111,6 @@ function Field({ label, required, tooltip, children }: FieldProps) {
   );
 }
 
-// Dropdown options
-const LABOR_TYPE_OPTIONS = [
-  { value: 'union', label: 'Union' },
-  { value: 'non_union', label: 'Non-Union' },
-];
 
 /**
  * Format phone number as user types using libphonenumber-js
@@ -175,7 +171,8 @@ export interface InfoTabData {
   contactEmail: string;
   proposalSource: string;
   categoryOfWork: string;
-  laborType: string;
+  isUnion: boolean;           // true = Union, false = Non-Union (default)
+  isPrevailingWage: boolean;  // true = Prevailing Wage, false = Standard (default)
   projectType: string;
   clientName: string;         // Display name (resolved from contact)
   clientNameId?: string;      // Reference ID for maintaining relationship
@@ -232,7 +229,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   // Work Details
   const [proposalSource, setProposalSource] = useState('');
   const [categoryOfWork, setCategoryOfWork] = useState('');
-  const [laborType, setLaborType] = useState('');
+  const [isUnion, setIsUnion] = useState(false);              // false = Non-Union (default)
+  const [isPrevailingWage, setIsPrevailingWage] = useState(false); // false = Standard (default)
   const [projectType, setProjectType] = useState('');
 
   // Client Information
@@ -264,7 +262,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactEmail: '',
     proposalSource: '',
     categoryOfWork: '',
-    laborType: '',
+    isUnion: false,
+    isPrevailingWage: false,
     projectType: '',
     clientName: '',
     clientCompany: '',
@@ -365,7 +364,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         setContactEmail(info.contactEmail || '');
         setProposalSource(info.proposalSource || '');
         setCategoryOfWork(info.categoryOfWork || '');
-        setLaborType(info.laborType || '');
+        setIsUnion(info.isUnion ?? false);
+        setIsPrevailingWage(info.isPrevailingWage ?? false);
         setProjectType(info.projectType || '');
 
         // Handle client name - check if it's a UUID that needs resolution
@@ -469,7 +469,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           contactEmail,
           proposalSource,
           categoryOfWork,
-          laborType,
+          isUnion,
+          isPrevailingWage,
           projectType,
           clientName,
           clientCompany,
@@ -498,7 +499,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactEmail,
     proposalSource,
     categoryOfWork,
-    laborType,
+    isUnion,
+    isPrevailingWage,
     projectType,
     clientName,
     clientCompany,
@@ -526,7 +528,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       contactEmail !== initialValues.contactEmail ||
       proposalSource !== initialValues.proposalSource ||
       categoryOfWork !== initialValues.categoryOfWork ||
-      laborType !== initialValues.laborType ||
+      isUnion !== initialValues.isUnion ||
+      isPrevailingWage !== initialValues.isPrevailingWage ||
       projectType !== initialValues.projectType ||
       clientName !== initialValues.clientName ||
       clientCompany !== initialValues.clientCompany ||
@@ -552,7 +555,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactEmail,
     proposalSource,
     categoryOfWork,
-    laborType,
+    isUnion,
+    isPrevailingWage,
     projectType,
     clientName,
     clientCompany,
@@ -580,7 +584,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       contactEmail,
       proposalSource,
       categoryOfWork,
-      laborType,
+      isUnion,
+      isPrevailingWage,
       projectType,
       clientName,
       clientNameId: clientNameId || undefined,
@@ -606,7 +611,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         contactEmail,
         proposalSource,
         categoryOfWork,
-        laborType,
+        isUnion,
+        isPrevailingWage,
         projectType,
         clientName,
         clientCompany,
@@ -631,7 +637,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactEmail,
     proposalSource,
     categoryOfWork,
-    laborType,
+    isUnion,
+    isPrevailingWage,
     projectType,
     clientName,
     clientNameId,
@@ -916,22 +923,8 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
             </Field>
           </div>
 
-          {/* Row 2: Labor Type + Project Type */}
+          {/* Row 2: Project Type + Checkboxes */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Labor Type" tooltip="Union or non-union labor requirements">
-              <Select value={laborType} onValueChange={setLaborType} disabled={isBuilderMode}>
-                <SelectTrigger className={disabledSelectClassName}>
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {LABOR_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
             <Field label="Project Type" tooltip="What type of facility or building?">
               <Input
                 value={projectType}
@@ -941,6 +934,40 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                 disabled={isBuilderMode}
               />
             </Field>
+            <div className="flex items-end gap-4 pb-0.5">
+              {/* Union Checkbox */}
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  id="isUnion"
+                  checked={isUnion}
+                  onCheckedChange={(checked) => setIsUnion(checked === true)}
+                  disabled={isBuilderMode}
+                  className="h-4 w-4"
+                />
+                <Label
+                  htmlFor="isUnion"
+                  className="text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer"
+                >
+                  Union
+                </Label>
+              </div>
+              {/* Prevailing Wage Checkbox */}
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  id="isPrevailingWage"
+                  checked={isPrevailingWage}
+                  onCheckedChange={(checked) => setIsPrevailingWage(checked === true)}
+                  disabled={isBuilderMode}
+                  className="h-4 w-4"
+                />
+                <Label
+                  htmlFor="isPrevailingWage"
+                  className="text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer"
+                >
+                  Prevailing Wage
+                </Label>
+              </div>
+            </div>
           </div>
         </InfoCard>
 

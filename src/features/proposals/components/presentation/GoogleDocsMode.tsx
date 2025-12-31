@@ -18,6 +18,8 @@ import {
   FileDoc,
   LinkSimple,
   Warning,
+  ArrowSquareOut,
+  BracketsCurly,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,9 +32,12 @@ import {
 import { toast } from 'sonner';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
 import { getAllFormVariables } from './VariableExtension';
+import { VersionDialog, type VersionMode } from './VersionDialog';
 import type { FormBuilderData, DocumentTemplate } from '../../context/FormBuilderContext';
+import type { GeneratedDocVersion } from '@/services/googleDocsService';
 import { useGenerateGoogleDoc } from '@/hooks/queries/useGenerateGoogleDoc';
 import { useGoogleConnection } from '@/hooks/queries/useGoogleConnection';
+import { useConnectedIntegrations } from '@/hooks/useIntegrations';
 import { cn } from '@/lib/utils';
 
 interface GoogleDocsModeProps {
@@ -59,6 +64,8 @@ interface GoogleDocsModeProps {
         clientAddress?: string;
         jobLocation?: string;
       };
+      generated_docs?: GeneratedDocVersion[];
+      current_doc_version?: number;
     };
     organization?: {
       name?: string;
@@ -101,10 +108,23 @@ export function GoogleDocsMode({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     templates.find(t => t.is_default)?.id || templates[0]?.id || ''
   );
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
 
-  // Check if user has connected Google
-  const { data: googleConnection, isLoading: isCheckingConnection } = useGoogleConnection(organizationId);
-  const isGoogleConnected = googleConnection?.isConnected ?? false;
+  // Check if user has connected Google - check BOTH sources
+  // 1. google_oauth_tokens table (has actual tokens for API calls)
+  const { data: googleConnection, isLoading: isCheckingTokens } = useGoogleConnection(organizationId);
+
+  // 2. integrations table (tracks connection status - same as IntegrationsTab)
+  const { data: connectedIntegrations = [], isLoading: isCheckingIntegrations } = useConnectedIntegrations(organizationId || '');
+  const googleIntegration = connectedIntegrations.find(i => i.integration_type === 'google_docs');
+
+  // Consider connected if EITHER source says connected
+  // Token source is preferred (has actual credentials), but integration status is fallback
+  const isGoogleConnected = googleConnection?.isConnected || googleIntegration?.is_connected || false;
+
+  // Show loading while organizationId is not yet available (still loading from parent)
+  const isWaitingForOrg = !organizationId;
+  const isCheckingConnection = isCheckingTokens || isCheckingIntegrations;
 
   // Get the generate mutation
   const generateMutation = useGenerateGoogleDoc();
@@ -112,6 +132,11 @@ export function GoogleDocsMode({
 
   // Get all available variables
   const variables = useMemo(() => getAllFormVariables(formData), [formData]);
+
+  // Get version information from proposal data
+  const generatedDocs = proposalData?.form_data?.generated_docs || [];
+  const currentVersion = proposalData?.form_data?.current_doc_version || 1;
+  const hasExistingDoc = !!googleDocId && generatedDocs.length > 0;
 
   // Get selected template
   const selectedTemplate = useMemo(
@@ -131,8 +156,12 @@ export function GoogleDocsMode({
     setTimeout(() => setCopiedVariable(null), 2000);
   }, []);
 
-  // Handle document generation
-  const handleGenerate = useCallback(async () => {
+  // Handle document generation with optional version parameters
+  const handleGenerate = useCallback(async (options?: {
+    mode?: VersionMode;
+    existingDocId?: string;
+    version?: number;
+  }) => {
     // Validate Google connection
     if (!isGoogleConnected) {
       toast.error('Google not connected', {
@@ -163,10 +192,15 @@ export function GoogleDocsMode({
       return;
     }
 
-    // Build output title
-    const outputTitle = proposalInfo?.projectName
-      ? `${proposalInfo.projectName} - Proposal ${proposalInfo.proposalNumber || ''}`
-      : `Proposal ${proposalInfo?.proposalNumber || proposalId}`;
+    // Build output title - use proposal number if available
+    const outputTitle = proposalInfo?.proposalNumber
+      ? proposalInfo.proposalNumber
+      : proposalInfo?.projectName
+        ? `${proposalInfo.projectName}`
+        : `Proposal-${proposalId}`;
+
+    // Determine version number
+    const version = options?.version ?? 1;
 
     try {
       const result = await generateMutation.mutateAsync({
@@ -176,10 +210,16 @@ export function GoogleDocsMode({
         proposalData: proposalData || {},
         formData,
         outputTitle: outputTitle.trim(),
+        mode: options?.mode,
+        existingDocId: options?.existingDocId,
+        version,
       });
 
-      toast.success('Document generated!', {
-        description: 'Your Google Doc is ready to edit',
+      const actionLabel = options?.mode === 'overwrite' ? 'Document updated!' : 'Document generated!';
+      const versionLabel = `Version ${result.version || version}`;
+
+      toast.success(actionLabel, {
+        description: `${versionLabel} is ready to edit`,
         action: {
           label: 'Open',
           onClick: () => window.open(result.docUrl, '_blank'),
@@ -204,35 +244,51 @@ export function GoogleDocsMode({
     }
   }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected]);
 
-  // Handle regeneration - regenerate from the same or new template
-  const handleRegenerate = useCallback(async () => {
-    // Use the provided callback if available, otherwise regenerate using our logic
-    if (onRegenerate) {
-      try {
-        await onRegenerate();
-      } catch (error) {
-        console.error('Regeneration failed:', error);
-        toast.error('Failed to regenerate document');
-      }
+  // Handle regeneration - show version dialog if document exists
+  const handleRegenerate = useCallback(() => {
+    // If there's an existing document, show the version dialog
+    if (hasExistingDoc) {
+      setShowVersionDialog(true);
       return;
     }
 
-    // If no callback, generate a new document (same as handleGenerate)
-    await handleGenerate();
-  }, [onRegenerate, handleGenerate]);
+    // No existing doc, just generate (shouldn't happen but handle it)
+    handleGenerate();
+  }, [hasExistingDoc, handleGenerate]);
+
+  // Handle version mode selection from dialog
+  const handleVersionSelect = useCallback(async (mode: VersionMode) => {
+    if (mode === 'overwrite') {
+      // Overwrite: delete old doc and create new with same version
+      await handleGenerate({
+        mode: 'overwrite',
+        existingDocId: googleDocId || undefined,
+        version: currentVersion,
+      });
+    } else {
+      // Create new version
+      await handleGenerate({
+        mode: 'create',
+        version: currentVersion + 1,
+      });
+    }
+    setShowVersionDialog(false);
+  }, [handleGenerate, googleDocId, currentVersion]);
 
   // No document yet - show generation UI
   if (!googleDocId) {
     const hasTemplates = templates.length > 0;
 
-    // Show loading state while checking connection
-    if (isCheckingConnection) {
+    // Show loading state while checking connection or waiting for org data
+    if (isCheckingConnection || isWaitingForOrg) {
       return (
         <div className="flex flex-col h-full">
           <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
             <div className="text-center">
               <Spinner className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-              <p className="text-gray-500">Checking Google connection...</p>
+              <p className="text-gray-500">
+                {isWaitingForOrg ? 'Loading organization...' : 'Checking Google connection...'}
+              </p>
             </div>
           </div>
         </div>
@@ -302,10 +358,10 @@ export function GoogleDocsMode({
             </p>
 
             {/* Connected account info */}
-            {googleConnection?.email && (
+            {(googleConnection?.email || googleIntegration?.settings?.connected_email) && (
               <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400 mb-4">
                 <Check className="w-4 h-4" />
-                <span>Team connected via {googleConnection.email}</span>
+                <span>Team connected via {googleConnection?.email || googleIntegration?.settings?.connected_email}</span>
               </div>
             )}
 
@@ -403,41 +459,83 @@ export function GoogleDocsMode({
     );
   }
 
+  // Build the Google Doc URL
+  const googleDocUrl = `https://docs.google.com/document/d/${googleDocId}/edit`;
+
+  // Handle copy link to clipboard
+  const handleCopyLink = useCallback(() => {
+    navigator.clipboard.writeText(googleDocUrl);
+    toast.success('URL copied');
+  }, [googleDocUrl]);
+
+  // Handle open in new tab
+  const handleOpenInNewTab = useCallback(() => {
+    window.open(googleDocUrl, '_blank');
+  }, [googleDocUrl]);
+
   // Document exists - show embedded view with variable panel
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Editing: <span className="font-medium text-gray-700 dark:text-gray-300">
-              {proposalInfo?.projectName || proposalInfo?.clientName || 'Proposal Document'}
-            </span>
+        {/* Left side - Google logo, title, and version */}
+        <div className="flex items-center gap-2">
+          <GoogleLogo className="w-5 h-5 text-blue-500" weight="bold" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {proposalInfo?.projectName || proposalInfo?.clientName || 'Google Docs'}
           </span>
+          {currentVersion > 0 && (
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+              v{currentVersion}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Right side - Icon buttons */}
+        <div className="flex items-center gap-1">
           {/* Variables Panel Toggle */}
           <Button
-            variant={showVariables ? 'secondary' : 'outline'}
-            size="sm"
+            variant={showVariables ? 'secondary' : 'ghost'}
+            size="icon"
             onClick={() => setShowVariables(!showVariables)}
-            className="text-xs"
+            title="Variables"
+            className="h-8 w-8"
           >
-            <Copy className="w-4 h-4 mr-1.5" />
-            Variables
+            <BracketsCurly className="w-4 h-4" />
           </Button>
 
           {/* Regenerate */}
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={handleRegenerate}
             disabled={isGenerating}
-            className="text-xs"
+            title="Regenerate"
+            className="h-8 w-8"
           >
-            <ArrowsClockwise className={cn('w-4 h-4 mr-1.5', isGenerating && 'animate-spin')} />
-            Regenerate
+            <ArrowsClockwise className={cn('w-4 h-4', isGenerating && 'animate-spin')} />
+          </Button>
+
+          {/* Copy Link */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopyLink}
+            title="Copy Link"
+            className="h-8 w-8"
+          >
+            <LinkSimple className="w-4 h-4" />
+          </Button>
+
+          {/* Open in New Tab */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleOpenInNewTab}
+            title="Open in New Tab"
+            className="h-8 w-8"
+          >
+            <ArrowSquareOut className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -501,6 +599,15 @@ export function GoogleDocsMode({
           </div>
         )}
       </div>
+
+      {/* Version Dialog for regeneration */}
+      <VersionDialog
+        isOpen={showVersionDialog}
+        onClose={() => setShowVersionDialog(false)}
+        onSelect={handleVersionSelect}
+        currentVersion={currentVersion}
+        isLoading={isGenerating}
+      />
     </div>
   );
 }

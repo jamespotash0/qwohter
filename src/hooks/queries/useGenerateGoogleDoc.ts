@@ -6,7 +6,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateProposalDoc, type GenerateDocResponse } from '@/services/googleDocsService';
+import { generateProposalDoc, type GenerateDocResponse, type GeneratedDocVersion } from '@/services/googleDocsService';
 import type { FormBuilderData } from '@/features/proposals/context/FormBuilderContext';
 
 interface GenerateGoogleDocParams {
@@ -27,6 +27,8 @@ interface GenerateGoogleDocParams {
         clientAddress?: string;
         jobLocation?: string;
       };
+      generated_docs?: GeneratedDocVersion[];
+      current_doc_version?: number;
     };
     organization?: {
       name?: string;
@@ -38,6 +40,9 @@ interface GenerateGoogleDocParams {
   };
   formData: FormBuilderData;
   outputTitle?: string;
+  mode?: 'create' | 'overwrite';
+  existingDocId?: string;
+  version?: number;
 }
 
 /**
@@ -56,6 +61,9 @@ export function useGenerateGoogleDoc() {
       proposalData,
       formData,
       outputTitle,
+      mode,
+      existingDocId,
+      version,
     }) => {
       return generateProposalDoc(
         templateDocId,
@@ -63,7 +71,8 @@ export function useGenerateGoogleDoc() {
         organizationId,
         proposalData,
         formData,
-        outputTitle
+        outputTitle,
+        { mode, existingDocId, version }
       );
     },
     onSuccess: (data, variables) => {

@@ -15,10 +15,9 @@ import {
   Star,
   ExternalLink,
   Loader2,
-  AlertCircle,
   Settings2,
 } from 'lucide-react';
-import { GoogleLogo, TextAa } from '@phosphor-icons/react';
+import { GoogleLogo, TextAa, LinkSimple } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,26 +43,22 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useFormBuilder, type DocumentTemplate } from '../../context/FormBuilderContext';
-
-// Extract Google Doc ID from URL
-function extractGoogleDocId(url: string): string | null {
-  const patterns = [
-    /\/document\/d\/([a-zA-Z0-9-_]+)/,
-    /id=([a-zA-Z0-9-_]+)/,
-    /^([a-zA-Z0-9-_]{25,})$/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-
-  return null;
-}
+import { useConnectedIntegrations } from '@/hooks/useIntegrations';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { useUser } from '@/auth';
+import { DriveFilePicker } from './DriveFilePicker';
+import type { DriveFile } from '@/hooks/queries/useDriveFiles';
 
 export function PresentationBuilderConfig() {
   const { config, updateConfig, data, setPresentationData } = useFormBuilder();
   const presentationConfig = config.tabs.presentation;
+
+  // Check if Google is connected for this organization
+  const user = useUser();
+  const { organizationId } = useCurrentOrganization(user?.id || '', !!user?.id);
+  const { data: connectedIntegrations = [] } = useConnectedIntegrations(organizationId || '');
+  const googleIntegration = connectedIntegrations.find(i => i.integration_type === 'google_docs');
+  const isGoogleConnected = googleIntegration?.is_connected || false;
 
   // Mode toggles with defaults
   const enableRichText = presentationConfig.enableRichText ?? true;
@@ -98,9 +93,8 @@ export function PresentationBuilderConfig() {
 
   // Form state for add dialog
   const [templateName, setTemplateName] = useState('');
-  const [templateUrl, setTemplateUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [isDefault, setIsDefault] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
 
   // Sync templates to presentation data when templates change
   useEffect(() => {
@@ -112,35 +106,8 @@ export function PresentationBuilderConfig() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templates, setPresentationData]);
 
-  // Handle mode toggle
-  const handleRichTextToggle = useCallback((enabled: boolean) => {
-    // At least one mode must be enabled
-    if (!enabled && !enableGoogleDocs) {
-      toast.error('At least one presentation mode must be enabled');
-      return;
-    }
-
-    updateConfig({
-      ...config,
-      tabs: {
-        ...config.tabs,
-        presentation: {
-          ...presentationConfig,
-          enableRichText: enabled,
-          // If disabling rich text, switch default to google-docs
-          defaultMode: !enabled ? 'google-docs' : defaultMode,
-        },
-      },
-    });
-  }, [config, presentationConfig, enableGoogleDocs, defaultMode, updateConfig]);
-
+  // Handle Google Docs toggle
   const handleGoogleDocsToggle = useCallback((enabled: boolean) => {
-    // At least one mode must be enabled
-    if (!enabled && !enableRichText) {
-      toast.error('At least one presentation mode must be enabled');
-      return;
-    }
-
     updateConfig({
       ...config,
       tabs: {
@@ -153,7 +120,7 @@ export function PresentationBuilderConfig() {
         },
       },
     });
-  }, [config, presentationConfig, enableRichText, defaultMode, updateConfig]);
+  }, [config, presentationConfig, defaultMode, updateConfig]);
 
   const handleDefaultModeChange = useCallback((mode: 'richtext' | 'google-docs') => {
     updateConfig({
@@ -168,18 +135,14 @@ export function PresentationBuilderConfig() {
     });
   }, [config, presentationConfig, updateConfig]);
 
-  // Validate URL and extract Doc ID
-  const handleUrlChange = useCallback((url: string) => {
-    setTemplateUrl(url);
-    setUrlError(null);
-
-    if (url.trim()) {
-      const docId = extractGoogleDocId(url);
-      if (!docId) {
-        setUrlError('Invalid Google Docs URL. Please paste a valid document link.');
-      }
+  // Handle file selection from Drive picker
+  const handleFileSelect = useCallback((file: DriveFile) => {
+    setSelectedFile(file);
+    // Auto-fill template name if empty
+    if (!templateName.trim()) {
+      setTemplateName(file.name);
     }
-  }, []);
+  }, [templateName]);
 
   // Handle add template
   const handleAddTemplate = useCallback(async () => {
@@ -188,9 +151,8 @@ export function PresentationBuilderConfig() {
       return;
     }
 
-    const docId = extractGoogleDocId(templateUrl);
-    if (!docId) {
-      setUrlError('Invalid Google Docs URL');
+    if (!selectedFile) {
+      toast.error('Please select a Google Doc');
       return;
     }
 
@@ -202,8 +164,8 @@ export function PresentationBuilderConfig() {
       const newTemplate: DocumentTemplate = {
         id: crypto.randomUUID(),
         name: templateName.trim(),
-        google_doc_id: docId,
-        google_doc_url: templateUrl,
+        google_doc_id: selectedFile.id,
+        google_doc_url: selectedFile.webViewLink,
         is_default: shouldBeDefault,
         created_at: new Date().toISOString(),
       };
@@ -223,7 +185,7 @@ export function PresentationBuilderConfig() {
 
       setShowAddDialog(false);
       setTemplateName('');
-      setTemplateUrl('');
+      setSelectedFile(null);
       setIsDefault(false);
       toast.success('Template added successfully');
     } catch (error) {
@@ -232,7 +194,7 @@ export function PresentationBuilderConfig() {
     } finally {
       setIsSaving(false);
     }
-  }, [templateName, templateUrl, isDefault, templates]);
+  }, [templateName, selectedFile, isDefault, templates]);
 
   // Handle delete template
   const handleDeleteTemplate = useCallback(async () => {
@@ -298,7 +260,7 @@ export function PresentationBuilderConfig() {
           </p>
 
           <div className="space-y-4">
-            {/* Rich Text Toggle */}
+            {/* Rich Text - Always Enabled */}
             <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/30">
@@ -311,10 +273,9 @@ export function PresentationBuilderConfig() {
                   </p>
                 </div>
               </div>
-              <Switch
-                checked={enableRichText}
-                onCheckedChange={handleRichTextToggle}
-              />
+              <span className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded">
+                Always On
+              </span>
             </div>
 
             {/* Google Docs Toggle */}
@@ -330,14 +291,26 @@ export function PresentationBuilderConfig() {
                   </p>
                 </div>
               </div>
-              <Switch
-                checked={enableGoogleDocs}
-                onCheckedChange={handleGoogleDocsToggle}
-              />
+              {isGoogleConnected ? (
+                <Switch
+                  checked={enableGoogleDocs}
+                  onCheckedChange={handleGoogleDocsToggle}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => window.open('/settings?tab=integrations', '_blank')}
+                >
+                  <LinkSimple className="w-3.5 h-3.5 mr-1.5" />
+                  Connect
+                </Button>
+              )}
             </div>
 
-            {/* Default Mode Selector (only show when both are enabled) */}
-            {enableRichText && enableGoogleDocs && (
+            {/* Default Mode Selector (only show when Google Docs is enabled) */}
+            {enableGoogleDocs && (
               <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Default Mode
@@ -373,8 +346,8 @@ export function PresentationBuilderConfig() {
           </div>
         </div>
 
-        {/* Templates Section (only show when Google Docs is enabled) */}
-        {enableGoogleDocs && (
+        {/* Templates Section (only show when connected AND enabled) */}
+        {isGoogleConnected && enableGoogleDocs && (
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -511,11 +484,26 @@ export function PresentationBuilderConfig() {
           <DialogHeader>
             <DialogTitle>Add Document Template</DialogTitle>
             <DialogDescription>
-              Paste a Google Docs URL to use as a proposal template.
+              Select a Google Doc from your connected Drive to use as a proposal template.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Document</Label>
+              <DriveFilePicker
+                organizationId={organizationId}
+                value={selectedFile?.id}
+                onSelect={handleFileSelect}
+                placeholder="Search for a Google Doc..."
+              />
+              {selectedFile && (
+                <p className="text-xs text-gray-500">
+                  Selected: {selectedFile.name}
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="template-name">Template Name</Label>
               <Input
@@ -524,23 +512,9 @@ export function PresentationBuilderConfig() {
                 value={templateName}
                 onChange={e => setTemplateName(e.target.value)}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="template-url">Google Docs URL</Label>
-              <Input
-                id="template-url"
-                placeholder="https://docs.google.com/document/d/..."
-                value={templateUrl}
-                onChange={e => handleUrlChange(e.target.value)}
-                className={urlError ? 'border-red-500' : ''}
-              />
-              {urlError && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {urlError}
-                </p>
-              )}
+              <p className="text-xs text-gray-500">
+                This name will be shown when selecting templates
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -567,7 +541,7 @@ export function PresentationBuilderConfig() {
             </Button>
             <Button
               onClick={handleAddTemplate}
-              disabled={isSaving || !templateName.trim() || !templateUrl.trim() || !!urlError}
+              disabled={isSaving || !templateName.trim() || !selectedFile}
             >
               {isSaving ? (
                 <>

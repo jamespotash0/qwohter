@@ -18,9 +18,10 @@ import type {
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const GOOGLE_REDIRECT_URI = `${window.location.origin}/auth/google/callback`;
 
-// Scopes needed for Google Docs generation
+// Scopes needed for Google Docs generation and template selection
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file', // Create/edit files created by the app
+  'https://www.googleapis.com/auth/drive.readonly', // Read existing files for template selection
   'https://www.googleapis.com/auth/documents', // Edit Google Docs
   'https://www.googleapis.com/auth/userinfo.email', // Get user email
   'https://www.googleapis.com/auth/userinfo.profile', // Get user name
@@ -75,8 +76,8 @@ export async function handleGoogleOAuthCallback(
   state: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Decode and verify state
-    const decodedState: GoogleOAuthState = JSON.parse(atob(state));
+    // Decode and verify state (URL-decode first, then base64 decode)
+    const decodedState: GoogleOAuthState = JSON.parse(atob(decodeURIComponent(state)));
     const storedState = sessionStorage.getItem('google_oauth_state');
 
     if (!storedState) {

@@ -13,12 +13,25 @@ export interface GenerateDocRequest {
   organizationId: string;
   variables: Record<string, string>;
   outputTitle?: string;
+  mode?: 'create' | 'overwrite';
+  existingDocId?: string;
+  version?: number;
 }
 
 export interface GenerateDocResponse {
   success: boolean;
   docId: string;
   docUrl: string;
+  version?: number;
+  title?: string;
+}
+
+export interface GeneratedDocVersion {
+  docId: string;
+  version: number;
+  title: string;
+  createdAt: string;
+  createdBy?: string;
 }
 
 /**
@@ -32,6 +45,10 @@ export function buildProposalVariables(
       info?: {
         projectName?: string;
         proposalDate?: string;
+        // Contact (internal contact person)
+        contactName?: string;
+        contactEmail?: string;
+        // Client (external customer)
         clientName?: string;
         clientCompany?: string;
         clientEmail?: string;
@@ -52,8 +69,8 @@ export function buildProposalVariables(
 ): Record<string, string> {
   const info = proposalData?.form_data?.info || {};
   const org = proposalData?.organization || {};
-  const pricing = formData?.pricing || {};
-  const summary = pricing.summary || {};
+  const pricing = formData?.pricing;
+  const summary = pricing?.summary;
 
   // Format currency helper
   const formatCurrency = (amount: number | undefined) => {
@@ -88,7 +105,11 @@ export function buildProposalVariables(
     'project.name': info.projectName || proposalData?.project_name || '',
     'project.location': info.jobLocation || '',
 
-    // Client info
+    // Contact (internal contact person)
+    'contact.name': info.contactName || '',
+    'contact.email': info.contactEmail || '',
+
+    // Client info (external customer)
     'client.name': info.clientName || '',
     'client.company': info.clientCompany || '',
     'client.email': info.clientEmail || '',
@@ -102,34 +123,43 @@ export function buildProposalVariables(
     'org.address': org.company_address || '',
     'org.website': org.website || '',
 
-    // Pricing summary
-    'pricing.subtotal': formatCurrency(summary.subtotal),
-    'pricing.totalCost': formatCurrency(summary.totalCost),
-    'pricing.grossProfit': formatCurrency(summary.grossProfit),
-    'pricing.grossProfitPercent': summary.grossProfitPercent
-      ? `${summary.grossProfitPercent.toFixed(1)}%`
-      : '',
-    'pricing.tax': formatCurrency(summary.totalTax),
-    'pricing.taxPercent': pricing.salesTaxPercent
+    // ============ PRICING TOTALS ============
+    // Total Without Tax (before tax, includes markup & discounts)
+    'pricing.totalWithoutTax': formatCurrency(summary?.subtotal),
+
+    // Tax
+    'pricing.tax': formatCurrency(summary?.totalTax),
+    'pricing.taxRate': pricing?.salesTaxPercent
       ? `${pricing.salesTaxPercent}%`
       : '',
-    'pricing.grandTotal': formatCurrency(summary.grandTotal),
-    'pricing.total': formatCurrency(summary.subtotal), // Alias for subtotal
+
+    // Grand Total (with tax) - the final total
+    'pricing.grandTotal': formatCurrency(summary?.grandTotal),
   };
 
-  // Add pricing section totals
-  if (pricing.sections) {
-    pricing.sections.forEach((section) => {
+  // ============ PRICING SECTION TOTALS ============
+  // Each section (e.g., "Materials", "Labor", "Equipment") gets its own total
+  if (pricing?.sections) {
+    pricing.sections.forEach((section, index) => {
       const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_');
+
+      // Calculate section sell total (what customer sees)
       let sectionTotal = 0;
       section.lineItems.forEach((item) => {
         sectionTotal += item.sellPrice || 0;
       });
+
+      // Section totals by name (e.g., pricing.materials.total)
       variables[`pricing.${sectionKey}.total`] = formatCurrency(sectionTotal);
       variables[`pricing.${sectionKey}.items`] = section.lineItems
         .map((item) => item.name)
         .filter(Boolean)
         .join(', ');
+      variables[`pricing.${sectionKey}.quantity`] = section.lineItems.length.toString();
+
+      // Also add by index for predictable ordering (e.g., pricing.section1.total)
+      variables[`pricing.section${index + 1}.name`] = section.name;
+      variables[`pricing.section${index + 1}.total`] = formatCurrency(sectionTotal);
     });
   }
 
@@ -195,6 +225,18 @@ export async function generateGoogleDoc(
   return data as GenerateDocResponse;
 }
 
+export interface GenerateProposalDocOptions {
+  templateDocId: string;
+  proposalId: string;
+  organizationId: string;
+  proposalData: Parameters<typeof buildProposalVariables>[0];
+  formData: FormBuilderData;
+  outputTitle?: string;
+  mode?: 'create' | 'overwrite';
+  existingDocId?: string;
+  version?: number;
+}
+
 /**
  * Generate a Google Doc from proposal data
  */
@@ -204,7 +246,8 @@ export async function generateProposalDoc(
   organizationId: string,
   proposalData: Parameters<typeof buildProposalVariables>[0],
   formData: FormBuilderData,
-  outputTitle?: string
+  outputTitle?: string,
+  options?: { mode?: 'create' | 'overwrite'; existingDocId?: string; version?: number }
 ): Promise<GenerateDocResponse> {
   const variables = buildProposalVariables(proposalData, formData);
 
@@ -214,5 +257,8 @@ export async function generateProposalDoc(
     organizationId,
     variables,
     outputTitle,
+    mode: options?.mode,
+    existingDocId: options?.existingDocId,
+    version: options?.version,
   });
 }

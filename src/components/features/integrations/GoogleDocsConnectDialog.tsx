@@ -5,7 +5,7 @@
  * Admin connects once for the whole organization.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ExternalLink, CheckCircle2, AlertCircle, FolderOpen, HelpCircle } from 'lucide-react';
 import { GoogleLogo } from '@phosphor-icons/react';
-import {
-  getGoogleAuthUrl,
-  handleGoogleOAuthCallback,
-  updateGoogleIntegrationStatus,
-} from '@/services/googleDocsIntegrationService';
+import { getGoogleAuthUrl } from '@/services/googleDocsIntegrationService';
 import { useUser } from '@/auth';
 import {
   Tooltip,
@@ -50,44 +46,45 @@ export const GoogleDocsConnectDialog: React.FC<GoogleDocsConnectDialogProps> = (
   const [error, setError] = useState<string | null>(null);
   const [oauthWindow, setOauthWindow] = useState<Window | null>(null);
   const [folderId, setFolderId] = useState('');
+  const checkClosedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const user = useUser();
 
-  // Listen for OAuth callback
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (checkClosedIntervalRef.current) {
+        clearInterval(checkClosedIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Listen for OAuth callback result from popup
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       // Verify origin for security
       if (event.origin !== window.location.origin) return;
 
       if (event.data?.type === 'google-oauth-callback') {
-        const { code, state, error: oauthError } = event.data;
+        // The callback page already handled the OAuth exchange
+        // We just need to react to the success/failure
+        const { success, error: oauthError } = event.data;
 
-        if (oauthError) {
-          setError(`Authentication failed: ${oauthError}`);
+        // Clear the popup check interval since we got a response
+        if (checkClosedIntervalRef.current) {
+          clearInterval(checkClosedIntervalRef.current);
+          checkClosedIntervalRef.current = null;
+        }
+
+        if (oauthError || !success) {
+          setError(oauthError || 'Authentication failed');
           setIsConnecting(false);
-          await updateGoogleIntegrationStatus(organizationId, false, oauthError);
           return;
         }
 
-        try {
-          const result = await handleGoogleOAuthCallback(code, state);
-
-          if (!result.success) {
-            throw new Error(result.error || 'Connection failed');
-          }
-
-          // Update integration status
-          await updateGoogleIntegrationStatus(organizationId, true);
-
-          onSuccess();
-          onClose();
-        } catch (err) {
-          console.error('OAuth callback handling failed:', err);
-          const errorMessage = err instanceof Error ? err.message : 'Connection failed';
-          setError(errorMessage);
-          await updateGoogleIntegrationStatus(organizationId, false, errorMessage);
-        } finally {
-          setIsConnecting(false);
-        }
+        // Success! The callback page already saved the tokens
+        setIsConnecting(false);
+        onSuccess();
+        onClose();
       }
     };
 
@@ -139,14 +136,22 @@ export const GoogleDocsConnectDialog: React.FC<GoogleDocsConnectDialogProps> = (
 
       setOauthWindow(popup);
 
-      // Monitor popup closure
-      const checkClosed = setInterval(() => {
+      // Clear any existing interval
+      if (checkClosedIntervalRef.current) {
+        clearInterval(checkClosedIntervalRef.current);
+      }
+
+      // Monitor popup closure - close dialog if user closes popup without completing
+      checkClosedIntervalRef.current = setInterval(() => {
         if (popup.closed) {
-          clearInterval(checkClosed);
-          if (isConnecting) {
-            setIsConnecting(false);
-            setError('Authentication window was closed');
+          if (checkClosedIntervalRef.current) {
+            clearInterval(checkClosedIntervalRef.current);
+            checkClosedIntervalRef.current = null;
           }
+          // Reset state and close dialog when popup is closed
+          setIsConnecting(false);
+          setOauthWindow(null);
+          onClose();
         }
       }, 500);
     } catch (err) {
@@ -157,11 +162,18 @@ export const GoogleDocsConnectDialog: React.FC<GoogleDocsConnectDialogProps> = (
   };
 
   const handleClose = () => {
+    // Clear the popup check interval
+    if (checkClosedIntervalRef.current) {
+      clearInterval(checkClosedIntervalRef.current);
+      checkClosedIntervalRef.current = null;
+    }
+    // Close the OAuth popup if still open
     if (oauthWindow && !oauthWindow.closed) {
       oauthWindow.close();
     }
     setIsConnecting(false);
     setError(null);
+    setOauthWindow(null);
     onClose();
   };
 

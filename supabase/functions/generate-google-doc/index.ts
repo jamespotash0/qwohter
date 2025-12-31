@@ -25,6 +25,9 @@ interface RequestBody {
   organizationId: string;
   variables: Record<string, string>;
   outputTitle?: string;
+  mode?: 'create' | 'overwrite'; // create = new version, overwrite = replace existing
+  existingDocId?: string; // doc to overwrite (delete and recreate)
+  version?: number; // version number for naming (e.g., 1 for _v1)
 }
 
 interface GoogleTokenResponse {
@@ -187,7 +190,32 @@ async function copyDocument(
 }
 
 /**
+ * Delete a Google Doc using Drive API
+ */
+async function deleteDocument(
+  accessToken: string,
+  docId: string
+): Promise<void> {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${docId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const error = await response.text();
+    console.warn(`Failed to delete document ${docId}: ${error}`);
+    // Don't throw - we'll create a new doc anyway
+  }
+}
+
+/**
  * Replace variables in a Google Doc using Docs API
+ * Note: replaceAllText preserves formatting (bold, italic, etc.)
  */
 async function replaceVariables(
   accessToken: string,
@@ -259,7 +287,16 @@ serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
-    const { templateDocId, proposalId, organizationId, variables, outputTitle } = body;
+    const {
+      templateDocId,
+      proposalId,
+      organizationId,
+      variables,
+      outputTitle,
+      mode = 'create',
+      existingDocId,
+      version = 1,
+    } = body;
 
     if (!templateDocId) {
       return new Response(JSON.stringify({ error: 'templateDocId is required' }), {
@@ -286,25 +323,64 @@ serve(async (req) => {
     console.log(`Getting org access token for organization ${organizationId}...`);
     const { accessToken, folderId } = await getOrgAccessToken(supabaseAdmin, organizationId);
 
-    // Generate document title
-    const title = outputTitle || `Proposal - ${proposalId || 'Draft'} - ${new Date().toLocaleDateString()}`;
+    // If overwriting, delete the existing document first
+    if (mode === 'overwrite' && existingDocId) {
+      console.log(`Overwrite mode: deleting existing document ${existingDocId}...`);
+      await deleteDocument(accessToken, existingDocId);
+    }
+
+    // Generate document title with version
+    // Format: "{title}_v{version}" e.g., "P-001_v1" or "Project ABC_v2"
+    const baseTitle = outputTitle || `Proposal-${proposalId || 'Draft'}`;
+    const title = `${baseTitle}_v${version}`;
 
     // Copy the template to the org's shared folder
     console.log(`Copying template ${templateDocId} to folder ${folderId || 'root'}...`);
     const newDocId = await copyDocument(accessToken, templateDocId, title, folderId);
-    console.log(`Created new document: ${newDocId}`);
+    console.log(`Created new document: ${newDocId} (version ${version})`);
 
-    // Replace variables
+    // Replace variables (formatting like bold/italic is preserved)
     if (variables && Object.keys(variables).length > 0) {
       console.log(`Replacing ${Object.keys(variables).length} variables...`);
       await replaceVariables(accessToken, newDocId, variables);
     }
 
-    // Update the proposal with the new doc ID
+    // Update the proposal with the new doc ID and version info
     if (proposalId) {
+      // Get current generated_docs array
+      const { data: proposalData } = await supabase
+        .from('proposals')
+        .select('form_data')
+        .eq('id', proposalId)
+        .single();
+
+      const currentFormData = proposalData?.form_data || {};
+      const generatedDocs = currentFormData.generated_docs || [];
+
+      // If overwriting, remove the old version from history
+      const updatedDocs = mode === 'overwrite'
+        ? generatedDocs.filter((doc: any) => doc.docId !== existingDocId)
+        : generatedDocs;
+
+      // Add new doc to history
+      updatedDocs.push({
+        docId: newDocId,
+        version,
+        title,
+        createdAt: new Date().toISOString(),
+        createdBy: user.id,
+      });
+
       const { error: updateError } = await supabase
         .from('proposals')
-        .update({ google_doc_id: newDocId })
+        .update({
+          google_doc_id: newDocId,
+          form_data: {
+            ...currentFormData,
+            generated_docs: updatedDocs,
+            current_doc_version: version,
+          },
+        })
         .eq('id', proposalId);
 
       if (updateError) {
@@ -318,6 +394,8 @@ serve(async (req) => {
         success: true,
         docId: newDocId,
         docUrl: `https://docs.google.com/document/d/${newDocId}/edit`,
+        version,
+        title,
       }),
       {
         status: 200,

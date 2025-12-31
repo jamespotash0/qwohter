@@ -292,6 +292,16 @@ export const invalidateQueries = {
       queryKey: queryKeys.integrations.connected(organizationId)
     });
   },
+
+  /**
+   * Invalidate Google connection status
+   * Use after: connect/disconnect Google Docs
+   */
+  googleConnection: (organizationId: string) => {
+    return queryClient.invalidateQueries({
+      queryKey: ['google-connection', organizationId]
+    });
+  },
 };
 
 /**

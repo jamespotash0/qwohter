@@ -206,7 +206,11 @@ CREATE TRIGGER set_google_oauth_tokens_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION handle_updated_at();
 
--- 10. Add documentation comments
+-- 10. Remove integration_type check constraint to allow any integration type
+ALTER TABLE integrations DROP CONSTRAINT IF EXISTS valid_integration_type;
+ALTER TABLE integrations DROP CONSTRAINT IF EXISTS integrations_integration_type_check;
+
+-- 11. Add documentation comments
 COMMENT ON TABLE google_oauth_tokens IS
   'Stores Google OAuth tokens at the organization level. One admin connects for the whole org. All team members can use the token to generate documents.';
 COMMENT ON COLUMN google_oauth_tokens.organization_id IS
