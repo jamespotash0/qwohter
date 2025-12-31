@@ -155,7 +155,20 @@ export default function Proposals() {
 
   const handleUnarchiveProposal = async (id: string) => {
     try {
-      await unarchiveMutation.mutateAsync(id);
+      // Check if this is a main version with multiple versions - unarchive ALL versions in the group
+      const groups = groupProposalsByVersion(allProposals);
+      const proposal = allProposals.find(p => p.id === id);
+      if (!proposal) return;
+
+      const group = groups.find(g => g.versions.some(v => v.id === id));
+      if (group && group.hasMultipleVersions && group.mainVersion.id === id) {
+        // This is the main version - unarchive ALL versions in the group (cascade unarchive)
+        await Promise.all(group.versions.map(v => unarchiveMutation.mutateAsync(v.id)));
+        toast.success(`Restored ${group.versions.length} version${group.versions.length > 1 ? 's' : ''}`);
+      } else {
+        await unarchiveMutation.mutateAsync(id);
+        toast.success('Proposal restored');
+      }
     } catch {
       toast.error('Failed to restore proposal');
     }

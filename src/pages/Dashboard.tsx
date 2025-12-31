@@ -15,7 +15,6 @@ import {
   BellRinging,
   Plus,
   Clock,
-  UploadSimple,
   FileText,
   DotsThreeVertical
 } from '@phosphor-icons/react';
@@ -705,23 +704,23 @@ const Dashboard = () => {
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-coral hover:bg-coral-dark text-white"
                 >
                   <Plus className="w-5 h-5" />
-                  <span className="font-medium">Create New Quote</span>
+                  <span className="font-medium">Create New Proposal</span>
                 </Button>
 
                 <Button
-                  disabled
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                  onClick={() => navigate('/tasks')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
+                >
+                  <Clock className="w-5 h-5" />
+                  <span className="font-medium">Create New Task</span>
+                </Button>
+
+                <Button
+                  onClick={() => navigate('/forms/new')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
                 >
                   <FileText className="w-5 h-5" />
-                  <span className="font-medium">Use Template</span>
-                </Button>
-
-                <Button
-                  disabled
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                >
-                  <UploadSimple className="w-5 h-5" />
-                  <span className="font-medium">Import from Form</span>
+                  <span className="font-medium">Create Form</span>
                 </Button>
               </div>
             )}

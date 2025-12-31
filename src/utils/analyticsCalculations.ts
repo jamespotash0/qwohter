@@ -66,6 +66,37 @@ export interface ProductModelMetrics {
   revenue: number;
 }
 
+export interface CategoryOfWorkMetrics {
+  category: string;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+  conversionRate: number;
+}
+
+export interface ProjectTypeMetrics {
+  projectType: string;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+  conversionRate: number;
+}
+
+export interface LocationTypeMetrics {
+  locationType: string;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+}
+
+export interface WorkClassificationMetrics {
+  isUnion: boolean;
+  isPrevailingWage: boolean;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+}
+
 export interface RevenueVsQuotedData {
   date: string;
   revenue: number; // Won proposals total
@@ -109,6 +140,11 @@ export interface AnalyticsSummary {
   revenueVsQuoted: RevenueVsQuotedData[];
   averagesOverTime: AveragesOverTimeData[];
   totalsOverTime: TotalsOverTimeData[];
+  // New InfoTab field analytics
+  categoryOfWorkMetrics: CategoryOfWorkMetrics[];
+  projectTypeMetrics: ProjectTypeMetrics[];
+  locationTypeMetrics: LocationTypeMetrics[];
+  workClassificationMetrics: WorkClassificationMetrics[];
 }
 
 /**
@@ -494,6 +530,7 @@ export const calculateUserMetrics = (proposals: Proposal[]): UserProposalMetrics
 /**
  * Calculate product metrics by product type
  * Note: Counts all products in all proposals (if a proposal has 2 products, both are counted)
+ * Extracts productType from multiple possible locations (rawData.productType, rawData.productDomain, direct field)
  */
 export const calculateProductMetrics = (proposals: Proposal[]): ProductMetrics[] => {
   const productMap = new Map<string, ProductMetrics>();
@@ -502,7 +539,13 @@ export const calculateProductMetrics = (proposals: Proposal[]): ProductMetrics[]
     // Get all products from form_data.products
     const products = proposal.form_data?.products?.items || [];
     products.forEach((product: any) => {
-      const productType = product.productType || product.type || 'Other';
+      // Extract product type from various possible locations
+      const productType =
+        product.rawData?.productDomain ||
+        product.rawData?.productType ||
+        product.productType ||
+        product.type ||
+        'Other';
 
       if (!productMap.has(productType)) {
         productMap.set(productType, {
@@ -528,6 +571,7 @@ export const calculateProductMetrics = (proposals: Proposal[]): ProductMetrics[]
 /**
  * Calculate product metrics broken down by model
  * Note: Counts all products in all proposals (if a proposal has 2 products, both are counted)
+ * Extracts productType and model from multiple possible locations (rawData fields, direct fields)
  */
 export const calculateProductModelMetrics = (proposals: Proposal[]): ProductModelMetrics[] => {
   const modelMap = new Map<string, ProductModelMetrics>();
@@ -536,10 +580,19 @@ export const calculateProductModelMetrics = (proposals: Proposal[]): ProductMode
     // Get all products from form_data.products
     const products = proposal.form_data?.products?.items || [];
     products.forEach((product: any) => {
-      const productType = product.productType || product.type || 'Other';
+      // Extract product type from various possible locations
+      const productType =
+        product.rawData?.productDomain ||
+        product.rawData?.productType ||
+        product.productType ||
+        product.type ||
+        'Other';
 
-      // Get model for all product types
-      const model = product.model || 'Other';
+      // Get model from rawData or direct field
+      const model =
+        product.rawData?.model ||
+        product.model ||
+        'Other';
 
       // Create unique key combining product type and model
       const key = `${productType}|${model}`;
@@ -1046,6 +1099,191 @@ export const makeWonRejectedCumulative = (data: WonRejectedOverTimeData[]): WonR
 };
 
 /**
+ * Calculate category of work metrics
+ * Extracts categoryOfWork from form_data.info
+ */
+export const calculateCategoryOfWorkMetrics = (proposals: Proposal[]): CategoryOfWorkMetrics[] => {
+  const categoryMap = new Map<string, {
+    category: string;
+    proposalCount: number;
+    revenue: number;
+    wonCount: number;
+    totalDecided: number;
+  }>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const category = proposal.form_data?.info?.categoryOfWork || 'Other';
+
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, {
+        category,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+        totalDecided: 0,
+      });
+    }
+
+    const metrics = categoryMap.get(category)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+      metrics.totalDecided++;
+    } else if (proposal.status === 'Rejected') {
+      metrics.totalDecided++;
+    }
+  });
+
+  return Array.from(categoryMap.values()).map(m => ({
+    category: m.category,
+    proposalCount: m.proposalCount,
+    revenue: m.revenue,
+    wonCount: m.wonCount,
+    conversionRate: m.totalDecided > 0 ? (m.wonCount / m.totalDecided) * 100 : 0,
+  })).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Calculate project type metrics
+ * Extracts projectType from form_data.info
+ */
+export const calculateProjectTypeMetrics = (proposals: Proposal[]): ProjectTypeMetrics[] => {
+  const typeMap = new Map<string, {
+    projectType: string;
+    proposalCount: number;
+    revenue: number;
+    wonCount: number;
+    totalDecided: number;
+  }>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const projectType = proposal.form_data?.info?.projectType || 'Other';
+
+    if (!typeMap.has(projectType)) {
+      typeMap.set(projectType, {
+        projectType,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+        totalDecided: 0,
+      });
+    }
+
+    const metrics = typeMap.get(projectType)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+      metrics.totalDecided++;
+    } else if (proposal.status === 'Rejected') {
+      metrics.totalDecided++;
+    }
+  });
+
+  return Array.from(typeMap.values()).map(m => ({
+    projectType: m.projectType,
+    proposalCount: m.proposalCount,
+    revenue: m.revenue,
+    wonCount: m.wonCount,
+    conversionRate: m.totalDecided > 0 ? (m.wonCount / m.totalDecided) * 100 : 0,
+  })).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Calculate location type metrics
+ * Extracts locationType from form_data.info
+ */
+export const calculateLocationTypeMetrics = (proposals: Proposal[]): LocationTypeMetrics[] => {
+  const locationMap = new Map<string, LocationTypeMetrics>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const locationType = proposal.form_data?.info?.locationType || 'Other';
+
+    if (!locationMap.has(locationType)) {
+      locationMap.set(locationType, {
+        locationType,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+      });
+    }
+
+    const metrics = locationMap.get(locationType)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+    }
+  });
+
+  return Array.from(locationMap.values()).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Calculate work classification metrics (Union / Prevailing Wage)
+ * Extracts isUnion and isPrevailingWage from form_data.info
+ */
+export const calculateWorkClassificationMetrics = (proposals: Proposal[]): WorkClassificationMetrics[] => {
+  const classificationMap = new Map<string, WorkClassificationMetrics>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const isUnion = proposal.form_data?.info?.isUnion === true;
+    const isPrevailingWage = proposal.form_data?.info?.isPrevailingWage === true;
+
+    // Create a key for the combination
+    const key = `${isUnion}-${isPrevailingWage}`;
+
+    if (!classificationMap.has(key)) {
+      classificationMap.set(key, {
+        isUnion,
+        isPrevailingWage,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+      });
+    }
+
+    const metrics = classificationMap.get(key)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+    }
+  });
+
+  return Array.from(classificationMap.values()).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
  * Filter proposals to only include main versions
  * This prevents counting the same proposal multiple times across versions
  */
@@ -1099,5 +1337,10 @@ export const generateAnalyticsSummary = (
     revenueVsQuoted: calculateRevenueVsQuoted(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
     averagesOverTime: calculateAveragesOverTime(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
     totalsOverTime: calculateTotalsOverTime(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
+    // New InfoTab field analytics
+    categoryOfWorkMetrics: calculateCategoryOfWorkMetrics(mainVersionProposals),
+    projectTypeMetrics: calculateProjectTypeMetrics(mainVersionProposals),
+    locationTypeMetrics: calculateLocationTypeMetrics(mainVersionProposals),
+    workClassificationMetrics: calculateWorkClassificationMetrics(mainVersionProposals),
   };
 };

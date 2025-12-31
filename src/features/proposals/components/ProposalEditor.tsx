@@ -7,10 +7,9 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FloppyDisk, Check, Info, CloudCheck, CloudArrowUp, Warning } from '@phosphor-icons/react';
+import { Info, CloudCheck, CloudArrowUp, Warning } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Tooltip,
@@ -417,10 +416,15 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     selectedGoogleDocId,
   ]);
 
-  // Auto-save effect - debounced save when data changes
+  // Auto-save effect - debounced save when data changes (works for both builder and filler modes)
   useEffect(() => {
-    // Only auto-save in filler mode with an existing proposal
-    if (isBuilderMode || !proposalId || !proposalData) return;
+    // For filler mode: need existing proposal
+    // For builder mode: need existing form OR valid org to create new
+    const canAutoSave = isBuilderMode
+      ? (formId && formData) || currentOrganization?.id // Builder: existing form or can create
+      : (proposalId && proposalData); // Filler: existing proposal
+
+    if (!canAutoSave) return;
 
     // Don't auto-save if nothing is dirty
     if (!combinedIsDirty) return;
@@ -444,7 +448,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [combinedIsDirty, isBuilderMode, proposalId, proposalData, isSaving, handleSave]);
+  }, [combinedIsDirty, isBuilderMode, proposalId, proposalData, formId, formData, currentOrganization?.id, isSaving, handleSave]);
 
   // Render a single tab's content
   const renderTabContent = (tab: typeof TABS[number]) => {
@@ -517,162 +521,138 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex flex-col">
-      {/* Premium Header */}
+      {/* Compact Header */}
       <header className="flex-shrink-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800">
-        <div className="flex items-center justify-between px-8 py-5">
-          {/* Left: Back button and editable title */}
-          <div className="flex items-center gap-5">
-            <button
-              onClick={handleClose}
-              className="p-2.5 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 transition-all duration-200 group"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors" />
-            </button>
-
-            <div className="flex items-center gap-2">
-              {/* Builder Mode Info Tooltip */}
-              {isBuilderMode && (
-                <TooltipProvider delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <Info className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 shadow-xl">
-                      <p className="font-medium">Form Structure Preview</p>
-                      <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                        Define field names and layout here. Values will be entered when creating proposals.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
-              {/* Builder Mode: Editable Form Name | Filler Mode: Proposal Number */}
+        <div className="flex items-center justify-between px-6 py-2.5">
+          {/* Left: Breadcrumb navigation and tabs */}
+          <div className="flex items-center gap-4">
+            {/* Breadcrumb Navigation */}
+            <nav className="flex items-center gap-1.5 text-sm">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+              >
+                Dashboard
+              </button>
+              <span className="text-gray-300 dark:text-gray-600">/</span>
+              <button
+                onClick={handleClose}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+              >
+                {isBuilderMode ? 'Forms' : 'Proposals'}
+              </button>
+              <span className="text-gray-300 dark:text-gray-600">/</span>
               {isBuilderMode ? (
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="text-xl font-semibold bg-transparent border-0 border-b-2 border-transparent hover:border-gray-200 focus:border-coral rounded-none px-0 h-auto py-1 focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-                  placeholder="Form name..."
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="text-sm font-medium bg-transparent border-0 border-b border-transparent hover:border-gray-300 focus:border-coral rounded-none px-0 h-auto py-0 focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 w-48"
+                    placeholder="Form name..."
+                  />
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                          <Info className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 shadow-xl">
+                        <p className="font-medium">Form Structure Preview</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                          Define field names and layout here. Values will be entered when creating proposals.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               ) : (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
-                    #{proposalData?.proposal_number || 'Loading...'}
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    #{proposalData?.proposal_number || '...'}
                   </span>
                   {proposalData?.created_at && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 space-x-2">
-                      <span>Created: {new Date(proposalData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      {proposalData?.created_by_name && (
-                        <span>• By: {proposalData.created_by_name}</span>
-                      )}
-                    </div>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {new Date(proposalData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {proposalData?.created_by_name && ` • ${proposalData.created_by_name}`}
+                    </span>
                   )}
                 </div>
               )}
-            </div>
+            </nav>
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+
+            {/* Tab Navigation - Inline with header */}
+            <nav className="flex items-center gap-1 p-0.5 bg-gray-100/80 dark:bg-gray-800/50 rounded-lg">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'px-3 py-1 text-xs font-medium whitespace-nowrap transition-all duration-200 rounded-md',
+                    activeTab === tab.id
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-3">
-            {/* Auto-save status indicator (filler mode) */}
-            {!isBuilderMode && (
-              <div className="flex items-center gap-2 text-sm">
-                {saveStatus === 'saving' && (
-                  <motion.div
-                    className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <CloudArrowUp className="w-4 h-4" />
-                    </motion.div>
-                    <span>Saving...</span>
-                  </motion.div>
-                )}
-                {saveStatus === 'saved' && (
-                  <motion.div
-                    className="flex items-center gap-1.5 text-green-600 dark:text-green-400"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                  >
-                    <CloudCheck className="w-4 h-4" />
-                    <span>Saved</span>
-                  </motion.div>
-                )}
-                {saveStatus === 'error' && (
-                  <motion.div
-                    className="flex items-center gap-1.5 text-red-500"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
-                    <Warning className="w-4 h-4" />
-                    <span>Save failed</span>
-                  </motion.div>
-                )}
-                {saveStatus === 'idle' && combinedIsDirty && (
-                  <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
-                    <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    <span>Unsaved</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Manual save button (builder mode only, or as fallback) */}
-            {isBuilderMode && (
-              <Button
-                onClick={() => handleSave(false)}
-                disabled={isSaving || !combinedIsDirty}
-                className="rounded-xl px-4 h-11 bg-[#ee6c4d] hover:bg-[#e05a3a] text-white shadow-sm transition-all duration-200"
+          {/* Right: Auto-save status indicator (both modes) */}
+          <div className="flex items-center gap-2 text-sm">
+            {saveStatus === 'saving' && (
+              <motion.div
+                className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
               >
-                {isSaving ? (
-                  <div className="flex items-center gap-2">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <FloppyDisk className="w-4 h-4" />
-                    </motion.div>
-                    <span>Saving...</span>
-                  </div>
-                ) : (
-                  <span>Save</span>
-                )}
-              </Button>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                >
+                  <CloudArrowUp className="w-4 h-4" />
+                </motion.div>
+                <span>Saving...</span>
+              </motion.div>
+            )}
+            {saveStatus === 'saved' && (
+              <motion.div
+                className="flex items-center gap-1.5 text-green-600 dark:text-green-400"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <CloudCheck className="w-4 h-4" />
+                <span>Saved</span>
+              </motion.div>
+            )}
+            {saveStatus === 'error' && (
+              <motion.div
+                className="flex items-center gap-1.5 text-red-500"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <Warning className="w-4 h-4" />
+                <span>Save failed</span>
+              </motion.div>
+            )}
+            {saveStatus === 'idle' && combinedIsDirty && (
+              <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>Unsaved</span>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Tab Navigation - Compact Pill Style */}
-        <nav className="px-8 pb-3">
-          <div className="flex items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-800/50 rounded-xl w-fit">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'px-4 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-200 rounded-lg',
-                  activeTab === tab.id
-                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </nav>
       </header>
 
       {/* Content Area - All tabs stay mounted, only active one is visible */}
       <main className="flex-1 overflow-auto">
-        <div className="px-8 py-6">
+        <div className="px-6 py-4">
           {TABS.map((tab) => (
             <div
               key={tab.id}

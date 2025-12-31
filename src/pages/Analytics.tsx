@@ -549,114 +549,7 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Row 2: Product Charts */}
-              {/* Product Breakdown */}
-              <EnhancedChartCard
-                title="Most Proposed Products"
-                subtitle="Product type distribution"
-                onExport={() => handleExport('products')}
-                onExpand={() => handleEnlarge('products')}
-              >
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="productType"
-                      stroke="#6B7280"
-                      fontSize={10}
-                      tickLine={false}
-                      angle={-45}
-                      textAnchor="end"
-                      height={120}
-                    />
-                    <YAxis
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
-                      {analytics.productMetrics.map((entry, index) => {
-                        const productColors: Record<string, string> = {
-                          'Operable Wall': COLORS.blue,
-                          'Glass Wall': COLORS.green,
-                          'Accordion Partition': COLORS.purple,
-                        };
-                        const color = productColors[entry.productType] || COLORS.orange;
-                        return <Cell key={`cell-${index}`} fill={color} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Product Model Breakdown */}
-              <EnhancedChartCard
-                title="Product Breakdown by Model"
-                subtitle="Detailed breakdown by model for all product types"
-                onExport={() => handleExport('product-models')}
-                onExpand={() => handleEnlarge('product-models')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="model"
-                      stroke="#6B7280"
-                      fontSize={11}
-                      tickLine={false}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value: number, name: string) => {
-                        if (name === 'Proposals') return [value, 'Proposal Count'];
-                        return [value, name];
-                      }}
-                      labelFormatter={(label, payload) => {
-                        if (payload && payload.length > 0) {
-                          const item = payload[0]!.payload;
-                          return `${item.productType} - ${label}`;
-                        }
-                        return label;
-                      }}
-                    />
-                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
-                      {analytics.productModelMetrics.map((_, index) => {
-                        const modelColors = [
-                          COLORS.blue,
-                          COLORS.green,
-                          COLORS.purple,
-                          COLORS.orange,
-                          COLORS.teal,
-                          COLORS.primary,
-                          '#F59E0B',
-                          '#EC4899',
-                          '#6366F1',
-                          '#14B8A6',
-                        ];
-                        const color = modelColors[index % modelColors.length];
-                        return <Cell key={`cell-${index}`} fill={color} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Row 3: Won/Rejected and Team Member Charts */}
+              {/* Row 2: Won/Rejected and Team Member Charts */}
               {/* Won vs Rejected Over Time */}
               <EnhancedChartCard
                 title="Won vs Rejected Proposals"
@@ -926,6 +819,306 @@ const Analytics = () => {
                     </div>
                   )}
                 </div>
+              </EnhancedChartCard>
+
+              {/* Row 5: Category of Work and Project Type */}
+              {/* Category of Work */}
+              <EnhancedChartCard
+                title="Category of Work"
+                subtitle="Proposals by work category"
+                onExport={() => handleExport('category-of-work')}
+                onExpand={() => handleEnlarge('category-of-work')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.categoryOfWorkMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="category"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Won') return [value, 'Won'];
+                        if (name === 'Proposals') return [value, 'Total Proposals'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Proposals" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Project Type */}
+              <EnhancedChartCard
+                title="Project Type"
+                subtitle="Proposals by project type"
+                onExport={() => handleExport('project-type')}
+                onExpand={() => handleEnlarge('project-type')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.projectTypeMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="projectType"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Won') return [value, 'Won'];
+                        if (name === 'Proposals') return [value, 'Total Proposals'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="proposalCount" fill={COLORS.purple} name="Proposals" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 6: Location Type and Work Classification */}
+              {/* Location Type */}
+              <EnhancedChartCard
+                title="Location Type"
+                subtitle="Proposals by location type"
+                onExport={() => handleExport('location-type')}
+                onExpand={() => handleEnlarge('location-type')}
+              >
+                <div className="h-[300px] flex items-center">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={analytics.locationTypeMetrics.filter(l => l.proposalCount > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={90}
+                        fill="#8884d8"
+                        dataKey="proposalCount"
+                        nameKey="locationType"
+                      >
+                        {analytics.locationTypeMetrics.filter(l => l.proposalCount > 0).map((_, index) => {
+                          const pieColors = [COLORS.blue, COLORS.green, COLORS.purple, COLORS.orange, COLORS.teal, COLORS.primary];
+                          return <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />;
+                        })}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [value, name]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="middle"
+                        align="right"
+                        layout="vertical"
+                        formatter={(value, entry: any) => {
+                          const total = analytics.locationTypeMetrics.reduce((sum, l) => sum + l.proposalCount, 0);
+                          const itemValue = entry.payload?.proposalCount || 0;
+                          const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
+                          return `${value}: ${itemValue} (${percent}%)`;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+
+              {/* Work Classification (Union / Prevailing Wage) */}
+              <EnhancedChartCard
+                title="Work Classification"
+                subtitle="Union and prevailing wage breakdown"
+                onExport={() => handleExport('work-classification')}
+                onExpand={() => handleEnlarge('work-classification')}
+              >
+                <div className="h-[300px] flex flex-col">
+                  {analytics.workClassificationMetrics.length > 0 ? (
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Classification</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Won</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Revenue</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {analytics.workClassificationMetrics.map((item, idx) => {
+                            const label = item.isUnion && item.isPrevailingWage
+                              ? 'Union + Prevailing Wage'
+                              : item.isUnion
+                              ? 'Union'
+                              : item.isPrevailingWage
+                              ? 'Prevailing Wage'
+                              : 'Standard';
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                  <span className={`inline-flex items-center gap-2 ${
+                                    item.isUnion || item.isPrevailingWage ? 'text-amber-600 dark:text-amber-400' : ''
+                                  }`}>
+                                    {label}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{item.proposalCount}</td>
+                                <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{item.wonCount}</td>
+                                <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(item.revenue)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                      No work classification data available
+                    </div>
+                  )}
+                </div>
+              </EnhancedChartCard>
+
+              {/* Row 7: Product Charts (moved down) */}
+              {/* Product Breakdown */}
+              <EnhancedChartCard
+                title="Most Proposed Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                onExpand={() => handleEnlarge('products')}
+              >
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="productType"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={120}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((entry, index) => {
+                        const productColors: Record<string, string> = {
+                          'Operable Wall': COLORS.blue,
+                          'Glass Wall': COLORS.green,
+                          'Accordion Partition': COLORS.purple,
+                        };
+                        const color = productColors[entry.productType] || COLORS.orange;
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Product Model Breakdown */}
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed breakdown by model for all product types"
+                onExport={() => handleExport('product-models')}
+                onExpand={() => handleEnlarge('product-models')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Proposals') return [value, 'Proposal Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0]!.payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((_, index) => {
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B',
+                          '#EC4899',
+                          '#6366F1',
+                          '#14B8A6',
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </EnhancedChartCard>
             </div>
           ) : (
