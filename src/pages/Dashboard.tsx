@@ -708,7 +708,7 @@ const Dashboard = () => {
                 </Button>
 
                 <Button
-                  onClick={() => navigate('/tasks')}
+                  onClick={() => navigate('/task-board')}
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
                 >
                   <Clock className="w-5 h-5" />
