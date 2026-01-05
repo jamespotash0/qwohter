@@ -67,15 +67,28 @@ export function subscribeToTableChanges(
   let debounceTimeout: NodeJS.Timeout | null = null;
   let channel: RealtimeChannel | null = null;
 
-  const invalidateCache = () => {
+  const invalidateCache = (deletedId?: string) => {
     // Debounce to avoid excessive invalidations
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
     }
 
     debounceTimeout = setTimeout(() => {
-      console.log(`🔄 Realtime: Invalidating cache for`, queryKey);
-      queryClient.invalidateQueries({ queryKey });
+      console.log(`🔄 Realtime: Updating cache for`, queryKey, deletedId ? `(deleted: ${deletedId})` : '');
+
+      // If we have a deleted ID, remove it from cache immediately
+      if (deletedId) {
+        queryClient.setQueriesData(
+          { queryKey },
+          (old: any[] | undefined) => {
+            if (!old || !Array.isArray(old)) return old;
+            return old.filter((item: any) => item.id !== deletedId);
+          }
+        );
+      }
+
+      // Also refetch to ensure we're in sync with server
+      queryClient.refetchQueries({ queryKey });
     }, debounceMs);
   };
 
@@ -85,7 +98,12 @@ export function subscribeToTableChanges(
   // Subscribe to changes
   channel = supabase.channel(channelName);
 
-  events.forEach((event) => {
+  // Separate filtered events (INSERT, UPDATE) from unfiltered (DELETE)
+  const filteredEvents = events.filter(e => e !== 'DELETE');
+  const hasDelete = events.includes('DELETE');
+
+  // Add filtered event listeners (INSERT, UPDATE use the filter)
+  filteredEvents.forEach((event) => {
     const config: any = {
       event,
       schema: 'public',
@@ -101,6 +119,23 @@ export function subscribeToTableChanges(
       invalidateCache();
     });
   });
+
+  // Add DELETE listener WITHOUT filter
+  // IMPORTANT: Supabase DELETE payloads only include the primary key (id), not other columns
+  // So filters like organization_id=eq.xxx will never match DELETE events
+  if (hasDelete) {
+    channel!.on('postgres_changes', {
+      event: 'DELETE',
+      schema: 'public',
+      table,
+    }, (payload) => {
+      // Extract the deleted record's ID from payload.old
+      const deletedId = payload.old?.id as string | undefined;
+      console.log(`🔔 Realtime DELETE on ${table}:`, payload, `deletedId: ${deletedId}`);
+      // Pass the ID so we can remove it from cache immediately
+      invalidateCache(deletedId);
+    });
+  }
 
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {

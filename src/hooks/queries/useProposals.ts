@@ -177,7 +177,36 @@ export function useDeleteProposal() {
 
   return useMutation({
     mutationFn: deleteProposal,
-    onSuccess: () => {
+    // Optimistic update for instant UI feedback
+    onMutate: async (proposalId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: proposalQueryKeys.lists() });
+
+      // Snapshot the previous value
+      const previousLists = queryClient.getQueriesData({ queryKey: proposalQueryKeys.lists() });
+
+      // Optimistically remove the proposal from all lists
+      queryClient.setQueriesData(
+        { queryKey: proposalQueryKeys.lists() },
+        (old: Proposal[] | undefined) => {
+          if (!old) return old;
+          return old.filter((proposal) => proposal.id !== proposalId);
+        }
+      );
+
+      // Return context with the snapshotted value
+      return { previousLists };
+    },
+    // If mutation fails, roll back to the previous value
+    onError: (_err, _variables, context) => {
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    // Always refetch after error or success to ensure server state
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.lists(),
       });

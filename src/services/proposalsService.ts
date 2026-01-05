@@ -453,6 +453,10 @@ export async function createProposal(
 
   const organizationName = proposalData.organization_name || orgData?.name || null;
 
+  // Fetch user profile to get the creator's name
+  const userProfile = await fetchUserProfile(session.user.id);
+  const createdByName = userProfile?.full_name || null;
+
   // Use provided proposal number or generate the next one (document-type aware)
   const proposalNumber = proposalData.proposal_number ||
     await generateNextProposalNumber(membershipData.organization_id, documentType);
@@ -465,6 +469,7 @@ export async function createProposal(
   const insertData: Record<string, any> = {
     organization_id: membershipData.organization_id,
     created_by: session.user.id,
+    created_by_name: createdByName,
     form_id: proposalData.form_id,
     proposal_number: proposalNumber,
     form_data: proposalData.form_data || {},
