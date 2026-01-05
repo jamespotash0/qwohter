@@ -402,7 +402,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Phone Number</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Primary contact phone number
+                  Primary Phone Number
                 </p>
               </div>
               <div className="flex items-center gap-3 min-w-[480px] justify-end">
@@ -464,7 +464,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Fax Number</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Optional fax number
+                  Fax number
                 </p>
               </div>
               <div className="flex items-center gap-3 min-w-[480px] justify-end">
