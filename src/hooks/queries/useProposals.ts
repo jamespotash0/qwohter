@@ -29,6 +29,7 @@ import {
   type CreateProposalData,
   type UpdateProposalData,
 } from '@/services/proposalsService';
+import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 // ============================================================================
 // Query Keys
@@ -55,8 +56,18 @@ export function useProposals(
   filters?: { status?: string; form_id?: string },
   enabled: boolean = true
 ) {
+  const queryKey = proposalQueryKeys.list(organizationId || '__no_org__', filters);
+
+  // Set up realtime subscription for proposals
+  useRealtimeSubscription(
+    'proposals',
+    queryKey,
+    { filter: organizationId ? `organization_id=eq.${organizationId}` : undefined },
+    !!organizationId && enabled
+  );
+
   return useQuery({
-    queryKey: proposalQueryKeys.list(organizationId || '__no_org__', filters),
+    queryKey,
     queryFn: () => {
       if (!organizationId) return [];
       return fetchProposals(organizationId, filters);
@@ -70,8 +81,18 @@ export function useProposals(
  * Hook: Fetch a single proposal by ID
  */
 export function useProposal(proposalId: string | undefined, enabled: boolean = true) {
+  const queryKey = proposalQueryKeys.detail(proposalId || '__no_id__');
+
+  // Set up realtime subscription for this specific proposal
+  useRealtimeSubscription(
+    'proposals',
+    queryKey,
+    { filter: proposalId ? `id=eq.${proposalId}` : undefined },
+    !!proposalId && enabled
+  );
+
   return useQuery({
-    queryKey: proposalQueryKeys.detail(proposalId || '__no_id__'),
+    queryKey,
     queryFn: () => {
       if (!proposalId) return null;
       return fetchProposalById(proposalId);
