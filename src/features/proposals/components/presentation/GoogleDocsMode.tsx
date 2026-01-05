@@ -7,7 +7,7 @@
  * - Embedded Google Doc with variable panel
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   GoogleLogo,
   FilePlus,
@@ -21,6 +21,7 @@ import {
   ArrowSquareOut,
   BracketsCurly,
   Trash,
+  Info,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,6 +57,7 @@ import type { FormBuilderData, DocumentTemplate } from '../../context/FormBuilde
 import type { GeneratedDocVersion } from '@/services/googleDocsService';
 import { useGenerateGoogleDoc } from '@/hooks/queries/useGenerateGoogleDoc';
 import { useGoogleConnection } from '@/hooks/queries/useGoogleConnection';
+import { useCheckGoogleDoc } from '@/hooks/queries/useCheckGoogleDoc';
 import { useConnectedIntegrations } from '@/hooks/useIntegrations';
 import { cn } from '@/lib/utils';
 
@@ -110,6 +112,8 @@ interface GoogleDocsModeProps {
   onUnlinkDocument?: () => void;
   /** Whether the user can edit (has Google auth) */
   canEdit?: boolean;
+  /** Callback to save current form state before generation - ensures latest data is used */
+  onBeforeGenerate?: () => Promise<void>;
 }
 
 export function GoogleDocsMode({
@@ -124,13 +128,29 @@ export function GoogleDocsMode({
   onRegenerate,
   onUnlinkDocument,
   canEdit = false,
+  onBeforeGenerate,
 }: GoogleDocsModeProps) {
   const [showVariables, setShowVariables] = useState(false);
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    templates.find(t => t.is_default)?.id || templates[0]?.id || ''
-  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [showVersionDialog, setShowVersionDialog] = useState(false);
+
+  // Update selected template when templates change (handles async loading and template list changes)
+  useEffect(() => {
+    if (templates.length > 0) {
+      // Check if current selection is still valid
+      const currentSelectionValid = templates.some(t => t.id === selectedTemplateId);
+
+      if (!currentSelectionValid) {
+        // Select default or first template
+        const defaultTemplate = templates.find(t => t.is_default) || templates[0];
+        if (defaultTemplate) {
+          console.log('[GoogleDocsMode] Setting template:', defaultTemplate.name, defaultTemplate.google_doc_id);
+          setSelectedTemplateId(defaultTemplate.id);
+        }
+      }
+    }
+  }, [templates, selectedTemplateId]);
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [showLinkExisting, setShowLinkExisting] = useState(false);
   const [selectedExistingDoc, setSelectedExistingDoc] = useState<DriveFile | null>(null);
@@ -155,13 +175,28 @@ export function GoogleDocsMode({
   const generateMutation = useGenerateGoogleDoc();
   const isGenerating = generateMutation.isPending;
 
+  // Check if linked document still exists (auto-unlink if deleted)
+  const { data: docCheck } = useCheckGoogleDoc(googleDocId, organizationId);
+
+  // Auto-unlink when document is deleted/inaccessible
+  useEffect(() => {
+    if (googleDocId && docCheck && !docCheck.exists && !docCheck.accessible) {
+      // Document no longer exists - auto unlink
+      onUnlinkDocument?.();
+      toast.info('Document automatically unlinked', {
+        description: docCheck.error || 'The linked document is no longer accessible',
+      });
+    }
+  }, [googleDocId, docCheck, onUnlinkDocument]);
+
   // Get all available variables
   const variables = useMemo(() => getAllFormVariables(formData), [formData]);
 
   // Get version information from proposal data
   const generatedDocs = proposalData?.form_data?.generated_docs || [];
   const currentVersion = proposalData?.form_data?.current_doc_version || 1;
-  const hasExistingDoc = !!googleDocId && generatedDocs.length > 0;
+  // A document exists if we have a googleDocId - don't require generated_docs history
+  const hasExistingDoc = !!googleDocId;
 
   // Get selected template
   const selectedTemplate = useMemo(
@@ -187,6 +222,19 @@ export function GoogleDocsMode({
     existingDocId?: string;
     version?: number;
   }) => {
+    // Save current form state first to ensure we have the latest data
+    // This fixes the issue where regenerating uses stale info values
+    if (onBeforeGenerate) {
+      try {
+        await onBeforeGenerate();
+        // Small delay to allow React Query to refetch with updated data
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('Failed to save before generation:', error);
+        // Continue anyway - the user can retry if needed
+      }
+    }
+
     // Validate Google connection
     if (!isGoogleConnected) {
       toast.error('Google not connected', {
@@ -226,6 +274,14 @@ export function GoogleDocsMode({
 
     // Determine version number
     const version = options?.version ?? 1;
+
+    // Log which template is being used
+    console.log('[GoogleDocsMode] Generating with template:', {
+      templateName: selectedTemplate.name,
+      templateId: selectedTemplate.id,
+      googleDocId: selectedTemplate.google_doc_id,
+      availableTemplates: templates.map(t => ({ name: t.name, id: t.id, google_doc_id: t.google_doc_id })),
+    });
 
     try {
       const result = await generateMutation.mutateAsync({
@@ -267,7 +323,7 @@ export function GoogleDocsMode({
         });
       }
     }
-  }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected]);
+  }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected, onBeforeGenerate]);
 
   // Handle regeneration - show version dialog if document exists
   const handleRegenerate = useCallback(() => {
@@ -420,9 +476,36 @@ export function GoogleDocsMode({
               <GoogleLogo className="w-10 h-10 text-blue-500" weight="bold" />
             </div>
 
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              {showLinkExisting ? 'Link Existing Document' : 'Create with Google Docs'}
-            </h3>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                {showLinkExisting ? 'Link Existing Document' : 'Create with Google Docs'}
+              </h3>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center transition-transform hover:scale-125"
+                    >
+                      <Info className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs p-3">
+                    <p className="font-medium mb-1">How it works</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      Generate a professional proposal document using your template.
+                      The document is created in your team's Google Drive with all proposal data filled in.
+                    </p>
+                    <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1 list-disc list-inside">
+                      <li>Select a template to use</li>
+                      <li>Click "Generate" to create the doc</li>
+                      <li>Edit directly in Google Docs</li>
+                      <li>Regenerate anytime with updated data</li>
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
 
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               {showLinkExisting
@@ -594,8 +677,8 @@ export function GoogleDocsMode({
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        {/* Left side - Google logo, title, and version */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        {/* Left side - Google logo, title, version, and help */}
         <div className="flex items-center gap-2">
           <GoogleLogo className="w-5 h-5 text-blue-500" weight="bold" />
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -606,22 +689,42 @@ export function GoogleDocsMode({
               v{currentVersion}
             </span>
           )}
+          {/* Help info tooltip */}
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="ml-1 flex items-center justify-center transition-transform hover:scale-125"
+                >
+                  <Info className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs p-3">
+                <p className="font-medium mb-1">Presentation Document</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This Google Doc was generated from your proposal data. Edit directly in the document,
+                  or use the regenerate button to update with the latest proposal information.
+                  Changes made in Google Docs are saved automatically.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Right side - Icon buttons */}
         <TooltipProvider delayDuration={300}>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             {/* Variables Panel Toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant={showVariables ? 'secondary' : 'ghost'}
-                  size="icon"
+                <button
+                  type="button"
                   onClick={() => setShowVariables(!showVariables)}
-                  className="h-8 w-8"
+                  className="transition-transform hover:scale-125"
                 >
-                  <BracketsCurly className="w-4 h-4" />
-                </Button>
+                  <BracketsCurly className={cn('w-4 h-4', showVariables ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400')} />
+                </button>
               </TooltipTrigger>
               <TooltipContent>Variables</TooltipContent>
             </Tooltip>
@@ -629,15 +732,14 @@ export function GoogleDocsMode({
             {/* Regenerate */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
+                  type="button"
                   onClick={handleRegenerate}
                   disabled={isGenerating}
-                  className="h-8 w-8"
+                  className="transition-transform hover:scale-125 disabled:opacity-50"
                 >
-                  <ArrowClockwise className={cn('w-4 h-4', isGenerating && 'animate-spin')} />
-                </Button>
+                  <ArrowClockwise className={cn('w-4 h-4 text-gray-500 dark:text-gray-400', isGenerating && 'animate-spin')} />
+                </button>
               </TooltipTrigger>
               <TooltipContent>Regenerate</TooltipContent>
             </Tooltip>
@@ -645,14 +747,13 @@ export function GoogleDocsMode({
             {/* Copy Link */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
+                  type="button"
                   onClick={handleCopyLink}
-                  className="h-8 w-8"
+                  className="transition-transform hover:scale-125"
                 >
-                  <LinkSimple className="w-4 h-4" />
-                </Button>
+                  <LinkSimple className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
               </TooltipTrigger>
               <TooltipContent>Copy Link</TooltipContent>
             </Tooltip>
@@ -660,14 +761,13 @@ export function GoogleDocsMode({
             {/* Open in New Tab */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
+                  type="button"
                   onClick={handleOpenInNewTab}
-                  className="h-8 w-8"
+                  className="transition-transform hover:scale-125"
                 >
-                  <ArrowSquareOut className="w-4 h-4" />
-                </Button>
+                  <ArrowSquareOut className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
               </TooltipTrigger>
               <TooltipContent>Open in New Tab</TooltipContent>
             </Tooltip>
@@ -676,14 +776,13 @@ export function GoogleDocsMode({
             {onUnlinkDocument && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                  <button
+                    type="button"
                     onClick={() => setShowUnlinkDialog(true)}
-                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="transition-transform hover:scale-125"
                   >
-                    <Trash className="w-4 h-4" />
-                  </Button>
+                    <Trash className="w-4 h-4 text-red-400 hover:text-red-500" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>Unlink Document</TooltipContent>
               </Tooltip>
@@ -701,6 +800,13 @@ export function GoogleDocsMode({
             canEdit={canEdit}
             title={proposalInfo?.projectName || 'Proposal'}
             isGenerating={isGenerating}
+            onUnlink={() => {
+              // Auto-unlink when document is not accessible
+              onUnlinkDocument?.();
+              toast.info('Document unlinked', {
+                description: 'The document was not accessible and has been unlinked',
+              });
+            }}
           />
         </div>
 

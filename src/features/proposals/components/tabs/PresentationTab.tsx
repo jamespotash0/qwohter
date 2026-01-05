@@ -53,6 +53,8 @@ interface PresentationTabProps {
   hasGoogleAuth?: boolean;
   /** Google Docs templates from form metadata (for filler mode) */
   formTemplates?: DocumentTemplate[];
+  /** Callback to save current form state before generation */
+  onBeforeGenerate?: () => Promise<void>;
 }
 
 export function PresentationTab({
@@ -65,6 +67,7 @@ export function PresentationTab({
   onGoogleDocUnlinked,
   hasGoogleAuth = false,
   formTemplates,
+  onBeforeGenerate,
 }: PresentationTabProps) {
   const isBuilderMode = mode === 'builder';
   const { data } = useFormBuilder();
@@ -89,9 +92,9 @@ export function PresentationTab({
     return <PresentationBuilderConfig />;
   }
 
-  // Google Docs mode only
+  // Google Docs mode only - extend to fill available space
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)] min-h-[600px] -mx-6 -mt-6">
+    <div className="flex flex-col h-[calc(100vh-56px)] min-h-[500px] -mx-6 -mt-6 -mb-6">
       <GoogleDocsMode
         googleDocId={proposalData?.google_doc_id}
         formData={data}
@@ -107,6 +110,7 @@ export function PresentationTab({
         onDocGenerated={handleGoogleDocGenerated}
         onUnlinkDocument={handleGoogleDocUnlinked}
         canEdit={hasGoogleAuth}
+        onBeforeGenerate={onBeforeGenerate}
       />
     </div>
   );

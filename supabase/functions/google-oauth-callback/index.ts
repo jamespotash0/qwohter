@@ -116,6 +116,24 @@ serve(async (req) => {
 
     const tokens: GoogleTokenResponse = await tokenResponse.json();
 
+    // DEBUG: Log what tokens we received (critical for troubleshooting)
+    console.log('[google-oauth-callback] Tokens received:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      refreshTokenLength: tokens.refresh_token?.length || 0,
+      expiresIn: tokens.expires_in,
+      tokenType: tokens.token_type,
+      scope: tokens.scope,
+    });
+
+    // IMPORTANT: refresh_token is ONLY provided on first authorization
+    // or when prompt=consent is used. If missing, user won't be able to refresh!
+    if (!tokens.refresh_token) {
+      console.warn('[google-oauth-callback] WARNING: No refresh token received! ' +
+        'User will need to reconnect when access token expires. ' +
+        'Ensure access_type=offline and prompt=consent are in the auth URL.');
+    }
+
     // Get user info from Google
     const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -136,31 +154,43 @@ serve(async (req) => {
     );
 
     // Store tokens at org level (one token per org)
+    // IMPORTANT: Store null (not empty string) if no refresh token - makes debugging easier
+    const tokenDataToStore = {
+      organization_id: organizationId,
+      connected_by_user_id: user.id, // Track who connected
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || null, // null, not empty string!
+      token_expires_at: tokenExpiresAt,
+      scopes: tokens.scope.split(' '),
+      google_email: googleUserInfo?.email || null,
+      google_name: googleUserInfo?.name || null,
+      drive_folder_id: driveFolderId || null, // Store folder ID
+      is_valid: true,
+      last_used_at: new Date().toISOString(),
+    };
+
+    console.log('[google-oauth-callback] Storing token data:', {
+      organization_id: organizationId,
+      hasRefreshToken: !!tokenDataToStore.refresh_token,
+      google_email: tokenDataToStore.google_email,
+      drive_folder_id: tokenDataToStore.drive_folder_id,
+    });
+
     const { error: insertError } = await supabaseAdmin
       .from('google_oauth_tokens')
-      .upsert({
-        organization_id: organizationId,
-        connected_by_user_id: user.id, // Track who connected
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || '',
-        token_expires_at: tokenExpiresAt,
-        scopes: tokens.scope.split(' '),
-        google_email: googleUserInfo?.email || null,
-        google_name: googleUserInfo?.name || null,
-        drive_folder_id: driveFolderId || null, // Store folder ID
-        is_valid: true,
-        last_used_at: new Date().toISOString(),
-      }, {
+      .upsert(tokenDataToStore, {
         onConflict: 'organization_id', // One token per org
       });
 
     if (insertError) {
-      console.error('Failed to store tokens:', insertError);
+      console.error('[google-oauth-callback] Failed to store tokens:', insertError);
       return new Response(JSON.stringify({ error: 'Failed to store authentication' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('[google-oauth-callback] Tokens stored successfully for org:', organizationId);
 
     // Update integration status in integrations table
     const { error: integrationError } = await supabaseAdmin

@@ -25,6 +25,10 @@ interface GoogleDocsEmbedProps {
   title?: string;
   /** Additional class names */
   className?: string;
+  /** Callback when document can't be loaded (deleted, no access, etc.) */
+  onDocumentError?: () => void;
+  /** Callback to unlink the document */
+  onUnlink?: () => void;
 }
 
 export function GoogleDocsEmbed({
@@ -33,6 +37,8 @@ export function GoogleDocsEmbed({
   isGenerating = false,
   title,
   className,
+  onDocumentError,
+  onUnlink,
 }: GoogleDocsEmbedProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -53,7 +59,8 @@ export function GoogleDocsEmbed({
   const handleError = useCallback(() => {
     setIsLoading(false);
     setHasError(true);
-  }, []);
+    onDocumentError?.();
+  }, [onDocumentError]);
 
   // Open in new tab
   const handleOpenInNewTab = useCallback(() => {
@@ -80,15 +87,22 @@ export function GoogleDocsEmbed({
             <div className="text-center max-w-md p-6">
               <Warning className="w-12 h-12 mx-auto mb-3 text-amber-500" />
               <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Unable to load document
+                Document Not Available
               </p>
               <p className="text-sm text-gray-500 mb-4">
-                This could be due to permissions or network issues.
+                This document may have been deleted, moved, or you no longer have access.
               </p>
-              <Button onClick={handleOpenInNewTab} variant="outline">
-                <ArrowSquareOut className="w-4 h-4 mr-2" />
-                Open in Google Docs
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleOpenInNewTab} variant="outline">
+                  <ArrowSquareOut className="w-4 h-4 mr-2" />
+                  Try Opening
+                </Button>
+                {onUnlink && (
+                  <Button onClick={onUnlink} variant="destructive">
+                    Unlink Document
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}

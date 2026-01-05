@@ -84,6 +84,14 @@ export function CascadingProductSelector({
     fetchDomains();
   }, [fetchDomains]);
 
+  // Auto-select domain if there's only one (or first available)
+  useEffect(() => {
+    if (!initialValues && !selectedDomain && domains.length > 0 && !loading.domains) {
+      // Auto-select the first domain
+      selectDomain(domains[0]);
+    }
+  }, [initialValues, selectedDomain, domains, loading.domains, selectDomain]);
+
   // Auto-select hierarchy dropdowns when editing (initialValues provided)
   // Step 1: Select domain
   useEffect(() => {
@@ -223,7 +231,7 @@ export function CascadingProductSelector({
   };
 
   // Filter allowed values by category based on parent selection
-  // e.g., when finish_style="Vinyl", filter finish_color to show only values with category containing "Vinyl"
+  // e.g., when finish_style="Vinyl", filter finish_color to show only values where category="Vinyl"
   const filterValuesByCategory = useCallback((
     allowedValues: AllowedValue[],
     optionSlug: string
@@ -243,13 +251,55 @@ export function CascadingProductSelector({
       return allowedValues; // No parent selected, show all
     }
 
-    // Filter values where category contains the parent value
-    // e.g., category="Standard Vinyl" matches parentValue="Vinyl"
-    return allowedValues.filter((av) => {
+    // Normalize the parent value for comparison
+    const normalizedParent = parentValue.toLowerCase().trim();
+
+    // Debug: log the values to see what we're working with
+    console.log('[FilterValuesByCategory] Parent slug:', parentSlug, 'Parent value:', parentValue);
+    console.log('[FilterValuesByCategory] Allowed values:', allowedValues.map(av => ({
+      value: av.option_value?.value,
+      label: av.option_value?.label,
+      category: av.option_value?.category,
+      raw: av
+    })));
+
+    // Filter values where category matches the parent value
+    // The category could be on option_value.category, option_value.label, or on the av object itself
+    const filtered = allowedValues.filter((av) => {
+      // Check pc_option_values.category (primary source)
       const category = av.option_value?.category;
-      if (!category) return false;
-      return category.includes(parentValue);
+      if (category) {
+        const normalizedCategory = category.toLowerCase().trim();
+        // Exact match
+        if (normalizedCategory === normalizedParent) return true;
+        // Contains match (for compound categories like "Standard Vinyl")
+        if (normalizedCategory.includes(normalizedParent)) return true;
+      }
+
+      // Check if category is stored directly on pc_model_allowed_values (av object)
+      const avCategory = (av as any).category;
+      if (avCategory) {
+        const normalizedAvCategory = avCategory.toLowerCase().trim();
+        if (normalizedAvCategory === normalizedParent) return true;
+        if (normalizedAvCategory.includes(normalizedParent)) return true;
+      }
+
+      // Check if the label contains category info
+      const label = av.option_value?.label;
+      if (label) {
+        const normalizedLabel = label.toLowerCase().trim();
+        // Check if label starts with or contains the parent value
+        if (normalizedLabel.startsWith(normalizedParent + ' ') ||
+            normalizedLabel.startsWith(normalizedParent + '-')) return true;
+      }
+
+      return false;
     });
+
+    console.log('[FilterValuesByCategory] Filtered count:', filtered.length, 'of', allowedValues.length);
+
+    // If filtering resulted in no matches, return all values (fallback for data without categories)
+    return filtered.length > 0 ? filtered : allowedValues;
   }, [configValues]);
 
   // Get lists for dropdowns
@@ -394,11 +444,25 @@ export function CascadingProductSelector({
   };
 
   // Group model options by display_group
+  // Separate out finish_style and finish_color for special rendering
   const groupedModelOptions = useMemo(() => {
-    const primary = currentModelOptions.filter(o => o.display_group === 'primary');
-    const secondary = currentModelOptions.filter(o => o.display_group === 'secondary' || !o.display_group);
-    const advanced = currentModelOptions.filter(o => o.display_group === 'advanced');
-    return { primary, secondary, advanced };
+    const finishSlugs = ['finish_style', 'finish_color'];
+    const finishOptions = currentModelOptions.filter(o =>
+      finishSlugs.includes(o.option_group?.slug || '')
+    );
+    const otherOptions = currentModelOptions.filter(o =>
+      !finishSlugs.includes(o.option_group?.slug || '')
+    );
+
+    const primary = otherOptions.filter(o => o.display_group === 'primary');
+    const secondary = otherOptions.filter(o => o.display_group === 'secondary' || !o.display_group);
+    const advanced = otherOptions.filter(o => o.display_group === 'advanced');
+
+    // Get finish options in correct order (style first, then color)
+    const finishStyle = finishOptions.find(o => o.option_group?.slug === 'finish_style');
+    const finishColor = finishOptions.find(o => o.option_group?.slug === 'finish_color');
+
+    return { primary, secondary, advanced, finishStyle, finishColor };
   }, [currentModelOptions]);
 
   const handleConfigChange = (key: string, value: any) => {
@@ -407,6 +471,12 @@ export function CascadingProductSelector({
 
   const handleAddProduct = () => {
     if (!selectedModel) return;
+
+    // Apply fallback logic: finish_color defaults to finish_style if not set
+    const finalConfigValues = { ...configValues };
+    if (!finalConfigValues.finish_color && finalConfigValues.finish_style) {
+      finalConfigValues.finish_color = finalConfigValues.finish_style;
+    }
 
     const selection: ProductSelection = {
       product_model_id: selectedModel.id,
@@ -424,7 +494,7 @@ export function CascadingProductSelector({
         variant: selectedVariant?.name || null,
         variant_id: selectedVariant?.id || null,
       },
-      specifications: configValues,
+      specifications: finalConfigValues,
       pricing: {
         unit_price: 0,
         quantity: 1,
@@ -711,41 +781,8 @@ export function CascadingProductSelector({
         </div>
       )}
 
-      {/* Dropdown Selects - Hierarchy: Domain → Manufacturer → Product Line → Series → Model */}
+      {/* Dropdown Selects - Hierarchy: Manufacturer → Product Line → Series → Model */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Product Domain (top level) */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Product Domain
-          </label>
-          <Select
-            value={selectedDomain?.id || ''}
-            onValueChange={(id) => {
-              const domain = domains.find((d) => d.id === id);
-              selectDomain(domain || null);
-            }}
-            disabled={loading.domains || isEditMode}
-          >
-            <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
-              {loading.domains ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder="Select domain..." />
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {domains.map((domain) => (
-                <SelectItem key={domain.id} value={domain.id}>
-                  {domain.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Manufacturer */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -917,10 +954,69 @@ export function CascadingProductSelector({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Finish Style - shown when model has this option */}
+        {selectedModel && groupedModelOptions.finishStyle && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Finish Style
+            </label>
+            <Select
+              value={configValues.finish_style?.toString() || ''}
+              onValueChange={(value) => {
+                handleConfigChange('finish_style', value);
+                // Clear finish_color when style changes
+                handleConfigChange('finish_color', undefined);
+              }}
+              disabled={isEditMode}
+            >
+              <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
+                <SelectValue placeholder="Select finish style..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(groupedModelOptions.finishStyle.allowed_values || []).map((av) => (
+                  <SelectItem key={av.id} value={av.option_value?.value || ''}>
+                    {av.option_value?.label || av.option_value?.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Finish Color - shown when model has this option, filtered by Finish Style */}
+        {selectedModel && groupedModelOptions.finishColor && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Finish Color
+              {configValues.finish_style && (
+                <span className="text-gray-400 font-normal ml-1">
+                  ({configValues.finish_style})
+                </span>
+              )}
+            </label>
+            <Select
+              value={configValues.finish_color?.toString() || ''}
+              onValueChange={(value) => handleConfigChange('finish_color', value)}
+              disabled={isEditMode}
+            >
+              <SelectTrigger className={`w-full ${isEditMode ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70' : ''}`}>
+                <SelectValue placeholder="Select finish color..." />
+              </SelectTrigger>
+              <SelectContent>
+                {filterValuesByCategory(groupedModelOptions.finishColor.allowed_values || [], 'finish_color').map((av) => (
+                  <SelectItem key={av.id} value={av.option_value?.value || ''}>
+                    {av.option_value?.label || av.option_value?.value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
-      {/* Dynamic Model Options (from pc_* tables) - Show when model has options configured */}
-      {selectedModel && currentModelOptions.length > 0 && (
+      {/* Dynamic Model Options (from pc_* tables) - Show when model has other options besides finish */}
+      {selectedModel && (groupedModelOptions.primary.length > 0 || groupedModelOptions.secondary.length > 0 || groupedModelOptions.advanced.length > 0) && (
         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
             Configuration Options

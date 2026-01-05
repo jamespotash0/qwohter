@@ -532,6 +532,10 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           onGoogleDocGenerated={handleGoogleDocGenerated}
           onGoogleDocUnlinked={handleGoogleDocUnlinked}
           formTemplates={formTemplates}
+          // Force save before generation to ensure latest data is used
+          onBeforeGenerate={async () => {
+            await handleSave(false); // false = not auto-save, so it shows toast
+          }}
         />
       );
     }

@@ -38,7 +38,9 @@ const App = () => {
             <AppRouter />
           </TooltipProvider>
           {/* React Query DevTools - only in development */}
-          <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+          {import.meta.env.DEV && (
+            <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+          )}
         </AuthProvider>
       </QueryClientProvider>
       {/* Vercel Analytics - tracks page views and Web Vitals */}

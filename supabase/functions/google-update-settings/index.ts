@@ -18,6 +18,8 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  console.log('[google-update-settings] Request received');
+
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -66,6 +68,8 @@ serve(async (req) => {
     );
 
     // Verify the organization has a valid Google connection
+    console.log(`[google-update-settings] Looking for token for org: ${organizationId}`);
+
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('google_oauth_tokens')
       .select('id')
@@ -73,8 +77,19 @@ serve(async (req) => {
       .eq('is_valid', true)
       .single();
 
+    console.log(`[google-update-settings] Token lookup - error: ${tokenError?.message || 'none'}, found: ${!!tokenData}`);
+
     if (tokenError || !tokenData) {
-      return new Response(JSON.stringify({ error: 'Google not connected' }), {
+      // Check if there's any token (even invalid)
+      const { data: anyToken } = await supabaseAdmin
+        .from('google_oauth_tokens')
+        .select('id, is_valid')
+        .eq('organization_id', organizationId)
+        .single();
+
+      console.log(`[google-update-settings] Any token found: ${!!anyToken}, is_valid: ${anyToken?.is_valid}`);
+
+      return new Response(JSON.stringify({ error: 'Google not connected. Please reconnect in Settings → Integrations.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

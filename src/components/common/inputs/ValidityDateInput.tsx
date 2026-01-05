@@ -152,10 +152,10 @@ export function ValidityDateInput({
     if (date) {
       const newCustomDate = formatToIso(date);
       setCustomDate(newCustomDate);
-      if (days > 0) {
-        const newDate = addDays(newCustomDate, days);
-        onChange(newDate);
-      }
+      // If days is 0, use the custom date directly as the validity date
+      // Otherwise, add days to the custom reference date
+      const newDate = days > 0 ? addDays(newCustomDate, days) : newCustomDate;
+      onChange(newDate);
       setShowCalendar(false);
     }
   };

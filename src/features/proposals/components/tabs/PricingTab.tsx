@@ -1457,32 +1457,34 @@ export function PricingTab({ mode }: PricingTabProps) {
 
               {/* Tax Row - State/City dropdown merged with Tax label */}
               <div className="flex items-center">
-                <Select value={selectedTaxState} onValueChange={handleStateSelect}>
-                  <SelectTrigger className="h-6 w-42 text-xs px-0 border-0 bg-transparent shadow-none gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 [&>svg]:w-3 [&>svg]:h-3 [&>span]:ml-0 whitespace-nowrap">
-                    <SelectValue placeholder="Select Tax">
-                      {selectedTaxLabel
-                        ? `${selectedTaxLabel} Tax (${formatTaxRate(salesTaxPercent)}%)`
-                        : 'Select Tax'
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="max-h-80 w-64">
-                    {/* States section */}
-                    <div className="px-2 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">States</div>
-                    {stateOptions.filter(opt => !opt.isCity).map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                    {/* Cities section */}
-                    <div className="px-2 py-1 mt-1 border-t text-[10px] font-medium text-gray-400 uppercase tracking-wider">Cities</div>
-                    {stateOptions.filter(opt => opt.isCity).map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="w-[180px]">
+                  <Select value={selectedTaxState} onValueChange={handleStateSelect}>
+                    <SelectTrigger className="h-6 w-full text-xs px-0 border-0 bg-transparent shadow-none gap-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 [&>svg]:w-3 [&>svg]:h-3 [&>span]:ml-0">
+                      <SelectValue placeholder="Select Tax">
+                        {selectedTaxLabel
+                          ? `${selectedTaxLabel} Tax (${formatTaxRate(salesTaxPercent)}%)`
+                          : 'Select Tax'
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="max-h-80 w-64">
+                      {/* States section */}
+                      <div className="px-2 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">States</div>
+                      {stateOptions.filter(opt => !opt.isCity).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                      {/* Cities section */}
+                      <div className="px-2 py-1 mt-1 border-t text-[10px] font-medium text-gray-400 uppercase tracking-wider">Cities</div>
+                      {stateOptions.filter(opt => opt.isCity).map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Popover>
                   <PopoverTrigger asChild>
                     <button

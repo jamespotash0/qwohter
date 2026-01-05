@@ -119,12 +119,12 @@ export const AVAILABLE_VARIABLES: VariableDefinition[] = [
   // ============================================================================
   // Organization (from organizations table)
   // ============================================================================
-  { key: 'org.name', label: 'Company Name', category: 'Organization', description: 'Your company name' },
-  { key: 'org.phone', label: 'Company Phone', category: 'Organization', description: 'Your company phone number' },
-  { key: 'org.fax', label: 'Company Fax', category: 'Organization', description: 'Your company fax number' },
-  { key: 'org.address', label: 'Company Address', category: 'Organization', description: 'Your company address' },
-  { key: 'org.website', label: 'Company Website', category: 'Organization', description: 'Your company website URL' },
-  { key: 'org.industry', label: 'Industry', category: 'Organization', description: 'Your company industry' },
+  { key: 'org.name', label: 'Organization Name', category: 'Organization', description: 'Your organization name' },
+  { key: 'org.phone', label: 'Organization Phone', category: 'Organization', description: 'Your organization phone number' },
+  { key: 'org.fax', label: 'Organization Fax', category: 'Organization', description: 'Your organization fax number' },
+  { key: 'org.address', label: 'Organization Address', category: 'Organization', description: 'Your organization address' },
+  { key: 'org.website', label: 'Organization Website', category: 'Organization', description: 'Your organization website URL' },
+  { key: 'org.industry', label: 'Industry', category: 'Organization', description: 'Your organization industry' },
 
   // ============================================================================
   // Products (static - dynamic ones generated from form data)
@@ -311,14 +311,53 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
   const finalTaxAmount = summary?.totalTax ?? 0;
   const finalGrandTotal = summary?.grandTotal ?? round2(subtotal + finalTaxAmount);
 
+  // Calculate cost and profit metrics
+  const totalCost = summary?.totalCost ?? round2(pricing.sections.reduce((total, section) =>
+    total + section.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0), 0));
+  const grossProfit = summary?.grossProfit ?? round2(finalSubtotal - totalCost);
+  const grossMarginPercent = summary?.grossProfitPercent ?? (finalSubtotal > 0 ? round2((grossProfit / finalSubtotal) * 100) : 0);
+  const markupPercent = totalCost > 0 ? round2((grossProfit / totalCost) * 100) : 0;
+
   // Summary variables (always show if there are items)
   if (itemCount > 0) {
+    // Total Cost (before markup)
+    vars.push({
+      key: 'pricing.totalCost',
+      label: 'Total Cost',
+      category: 'Pricing Totals',
+      description: `$${totalCost.toFixed(2)} - Cost before markup`,
+    });
+
     // Total Without Tax (includes markup & discounts, before tax)
     vars.push({
       key: 'pricing.totalWithoutTax',
       label: 'Total Without Tax',
       category: 'Pricing Totals',
       description: `$${finalSubtotal.toFixed(2)} - Before tax (includes markup & discounts)`,
+    });
+
+    // Gross Profit
+    vars.push({
+      key: 'pricing.grossProfit',
+      label: 'Gross Profit',
+      category: 'Pricing Totals',
+      description: `$${grossProfit.toFixed(2)} - Profit (Sell - Cost)`,
+    });
+
+    // Gross Margin % (profit as % of sell price)
+    vars.push({
+      key: 'pricing.grossMargin',
+      label: 'Gross Margin %',
+      category: 'Pricing Totals',
+      description: `${grossMarginPercent.toFixed(1)}% - Profit / Sell Price`,
+    });
+
+    // Markup % (profit as % of cost)
+    vars.push({
+      key: 'pricing.markup',
+      label: 'Markup %',
+      category: 'Pricing Totals',
+      description: `${markupPercent.toFixed(1)}% - Profit / Cost`,
     });
   }
 
@@ -352,19 +391,36 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
 }
 
 /**
+ * Convert a phase name to a camelCase key
+ * e.g., "Track Installation" -> "trackInstallation", "Panel Delivery" -> "panelDelivery"
+ */
+function toCamelCaseKey(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+    .split(/\s+/)
+    .map((word, idx) => idx === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+}
+
+/**
  * Generate variables from Lead Times tab data
+ * Uses simple format: {{leadtimes.panelDelivery.duration}}
  */
 export function getLeadTimesVariables(data: FormBuilderData): VariableDefinition[] {
   const vars: VariableDefinition[] = [];
   const leadTimes = data.leadTimes;
 
-  leadTimes.sections.forEach((section, sectionIdx) => {
-    const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_') || `section${sectionIdx + 1}`;
-
+  leadTimes.sections.forEach((section) => {
     if (section.phases.length > 0) {
-      // Individual phases
+      // Individual phases - use phase name directly as key (camelCase)
       section.phases.forEach((phase, phaseIdx) => {
-        const phaseKey = `${sectionKey}_phase${phaseIdx + 1}`;
+        // Use phase name as key if available, fallback to phase index
+        const phaseKey = phase.phaseName
+          ? toCamelCaseKey(phase.phaseName)
+          : `phase${phaseIdx + 1}`;
+
         vars.push({
           key: `leadtimes.${phaseKey}.name`,
           label: phase.phaseName || `Phase ${phaseIdx + 1}`,
