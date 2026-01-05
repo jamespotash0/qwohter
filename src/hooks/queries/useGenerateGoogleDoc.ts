@@ -47,7 +47,7 @@ interface GenerateGoogleDocParams {
   proposalData: ProposalData;
   formData: FormBuilderData;
   outputTitle?: string;
-  mode?: 'create' | 'overwrite';
+  mode?: 'create' | 'overwrite' | 'update';
   existingDocId?: string;
   version?: number;
 }

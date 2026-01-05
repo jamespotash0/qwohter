@@ -924,6 +924,318 @@ async function replaceVariables(
   const result = await response.json();
   console.log('[replaceVariables] batchUpdate successful, replies:', result.replies?.length || 0);
 }
+
+/**
+ * Replace variables AND create named ranges for future updates
+ * This enables "update mode" which preserves comments
+ *
+ * Process:
+ * 1. Read document to find all {{...}} patterns with their positions
+ * 2. Process in reverse order (to avoid index shifting)
+ * 3. For each pattern: delete it, insert replacement, create named range
+ */
+async function replaceVariablesWithNamedRanges(
+  accessToken: string,
+  docId: string,
+  variables: Record<string, string>
+): Promise<void> {
+  console.log('[replaceWithRanges] Starting variable replacement with named ranges...');
+
+  // Read the full document structure to get text positions
+  const docResponse = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!docResponse.ok) {
+    throw new Error('Failed to read document for named range creation');
+  }
+
+  const doc = await docResponse.json();
+
+  // Find all {{...}} patterns with their positions in the document body
+  const patterns: Array<{ pattern: string; varKey: string; startIndex: number; endIndex: number }> = [];
+
+  function extractPatterns(content: any) {
+    if (!content) return;
+
+    if (content.paragraph) {
+      for (const element of content.paragraph.elements || []) {
+        if (element.textRun?.content) {
+          const text = element.textRun.content;
+          const startIdx = element.startIndex;
+
+          // Find all {{...}} in this text run
+          const regex = /\{\{[^}]+\}\}/g;
+          let match;
+          while ((match = regex.exec(text)) !== null) {
+            const pattern = match[0];
+            const rawInner = pattern.slice(2, -2);
+            const inner = normalizeVariableExpr(rawInner);
+
+            patterns.push({
+              pattern,
+              varKey: inner,
+              startIndex: startIdx + match.index,
+              endIndex: startIdx + match.index + pattern.length,
+            });
+          }
+        }
+      }
+    }
+
+    if (content.table) {
+      for (const row of content.table.tableRows || []) {
+        for (const cell of row.tableCells || []) {
+          for (const cellContent of cell.content || []) {
+            extractPatterns(cellContent);
+          }
+        }
+      }
+    }
+  }
+
+  // Process document body
+  for (const element of doc.body?.content || []) {
+    extractPatterns(element);
+  }
+
+  console.log(`[replaceWithRanges] Found ${patterns.length} patterns to replace`);
+
+  if (patterns.length === 0) {
+    return;
+  }
+
+  // Sort by position descending (process from end to start to avoid index shifting)
+  patterns.sort((a, b) => b.startIndex - a.startIndex);
+
+  // Build requests for each pattern
+  const requests: any[] = [];
+
+  for (const { pattern, varKey, startIndex, endIndex } of patterns) {
+    // Resolve the variable value
+    let replacement: string;
+
+    if (hasFallbackOperator(varKey)) {
+      replacement = resolveVariableWithFallback(varKey, variables);
+    } else if (/[+\-*/()]/.test(varKey)) {
+      replacement = evaluateExpression(varKey, variables);
+    } else {
+      replacement = lookupVariable(varKey, variables) ?? '';
+    }
+
+    // Skip empty replacements (leave placeholder in doc)
+    if (replacement === '') {
+      continue;
+    }
+
+    // Create a safe range name (Google Docs has restrictions)
+    const rangeName = `var_${varKey.replace(/[^a-zA-Z0-9_.]/g, '_')}`;
+
+    // Delete the placeholder text
+    requests.push({
+      deleteContentRange: {
+        range: {
+          startIndex,
+          endIndex,
+        },
+      },
+    });
+
+    // Insert the replacement text
+    requests.push({
+      insertText: {
+        location: { index: startIndex },
+        text: replacement,
+      },
+    });
+
+    // Create named range spanning the inserted text
+    requests.push({
+      createNamedRange: {
+        name: rangeName,
+        range: {
+          startIndex,
+          endIndex: startIndex + replacement.length,
+        },
+      },
+    });
+  }
+
+  if (requests.length === 0) {
+    console.log('[replaceWithRanges] No replacements to make');
+    return;
+  }
+
+  console.log(`[replaceWithRanges] Sending ${requests.length} requests...`);
+
+  const response = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[replaceWithRanges] batchUpdate failed:', error);
+    throw new Error(`Failed to replace variables with ranges: ${error}`);
+  }
+
+  console.log('[replaceWithRanges] Completed successfully');
+}
+
+/**
+ * Update variables in a document using existing named ranges
+ * This preserves comments and manual edits outside variable positions
+ *
+ * Process:
+ * 1. Read document to get all named ranges
+ * 2. For each variable, compute expected range name and find it
+ * 3. Delete the old text at that range position
+ * 4. Insert the new value
+ * 5. Recreate the named range to span the new text
+ */
+async function updateVariablesViaNamedRanges(
+  accessToken: string,
+  docId: string,
+  variables: Record<string, string>
+): Promise<{ updated: number; notFound: string[] }> {
+  console.log('[updateViaRanges] Starting update via named ranges...');
+  console.log(`[updateViaRanges] Variables to update: ${Object.keys(variables).length}`);
+
+  // Read the document to get named ranges
+  const docResponse = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!docResponse.ok) {
+    throw new Error('Failed to read document for update');
+  }
+
+  const doc = await docResponse.json();
+  const namedRanges = doc.namedRanges || {};
+
+  console.log(`[updateViaRanges] Document has ${Object.keys(namedRanges).length} named ranges`);
+
+  // Build list of updates by iterating through variables and finding their ranges
+  const updates: Array<{
+    varKey: string;
+    rangeName: string;
+    namedRangeId: string;
+    startIndex: number;
+    endIndex: number;
+    newValue: string;
+  }> = [];
+  const notFound: string[] = [];
+
+  for (const [varKey, newValue] of Object.entries(variables)) {
+    // Skip empty values
+    if (!newValue) continue;
+
+    // Compute the expected range name (same logic as when creating)
+    const expectedRangeName = `var_${varKey.replace(/[^a-zA-Z0-9_.]/g, '_')}`;
+
+    // Look for this range in the document
+    const rangeData = namedRanges[expectedRangeName] as any;
+    if (!rangeData?.namedRanges?.[0]?.ranges?.[0]) {
+      // Range not found - this variable wasn't in the original doc or doc is old
+      continue;
+    }
+
+    const range = rangeData.namedRanges[0];
+    const rangePosition = range.ranges[0];
+
+    updates.push({
+      varKey,
+      rangeName: expectedRangeName,
+      namedRangeId: range.namedRangeId,
+      startIndex: rangePosition.startIndex,
+      endIndex: rangePosition.endIndex,
+      newValue,
+    });
+  }
+
+  console.log(`[updateViaRanges] Found ${updates.length} variables with matching named ranges`);
+
+  if (updates.length === 0) {
+    return { updated: 0, notFound };
+  }
+
+  // Sort by position descending (process from end to start to avoid index shifting)
+  updates.sort((a, b) => b.startIndex - a.startIndex);
+
+  const requests: any[] = [];
+
+  for (const { rangeName, namedRangeId, startIndex, endIndex, newValue } of updates) {
+    // Delete the existing named range first
+    requests.push({
+      deleteNamedRange: {
+        namedRangeId,
+      },
+    });
+
+    // Delete the old text
+    requests.push({
+      deleteContentRange: {
+        range: { startIndex, endIndex },
+      },
+    });
+
+    // Insert the new value
+    requests.push({
+      insertText: {
+        location: { index: startIndex },
+        text: newValue,
+      },
+    });
+
+    // Recreate the named range for the new text
+    requests.push({
+      createNamedRange: {
+        name: rangeName,
+        range: {
+          startIndex,
+          endIndex: startIndex + newValue.length,
+        },
+      },
+    });
+  }
+
+  console.log(`[updateViaRanges] Sending ${requests.length} update requests...`);
+
+  const response = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[updateViaRanges] batchUpdate failed:', error);
+    throw new Error(`Failed to update variables via ranges: ${error}`);
+  }
+
+  console.log(`[updateViaRanges] Updated ${updates.length} variables`);
+  return { updated: updates.length, notFound };
+}
+
 //@ts-ignore
 serve(async (req) => {
   console.log('[generate-google-doc] Request received');
@@ -980,10 +1292,13 @@ serve(async (req) => {
       variables,
       tableData,
       outputTitle,
-      mode = 'create',
+      mode: modeInput = 'create',
       existingDocId,
       version = 1,
     } = body;
+
+    // Type the mode to include all supported values
+    const mode = modeInput as 'create' | 'overwrite' | 'update';
 
     if (!templateDocId) {
       return new Response(JSON.stringify({ error: 'templateDocId is required' }), {
@@ -1016,6 +1331,39 @@ serve(async (req) => {
       await deleteDocument(accessToken, existingDocId);
     }
 
+    // UPDATE MODE: Update variables in existing doc (preserves comments)
+    if (mode === 'update' && existingDocId) {
+      console.log(`Update mode: updating variables in existing document ${existingDocId}...`);
+
+      if (variables && Object.keys(variables).length > 0) {
+        const { updated, notFound } = await updateVariablesViaNamedRanges(
+          accessToken,
+          existingDocId,
+          variables
+        );
+
+        if (notFound.length > 0) {
+          console.warn(`[update] Variables not found in named ranges: ${notFound.join(', ')}`);
+        }
+
+        console.log(`Update completed: ${updated} variables updated`);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          docId: existingDocId,
+          docUrl: `https://docs.google.com/document/d/${existingDocId}/edit`,
+          version,
+          mode: 'update',
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // Generate document title with version
     // Format: "{title}_v{version}" e.g., "P-001_v1" or "Project ABC_v2"
     const baseTitle = outputTitle || `Proposal-${proposalId || 'Draft'}`;
@@ -1039,14 +1387,18 @@ serve(async (req) => {
       }
     }
 
-    // Replace variables (formatting like bold/italic is preserved)
+    // Replace variables with named ranges (enables future "Update Values" mode)
     if (variables && Object.keys(variables).length > 0) {
-      console.log(`Replacing ${Object.keys(variables).length} variables...`);
-      console.log('[DEBUG] Variables object type:', typeof variables);
-      console.log('[DEBUG] Variables is array:', Array.isArray(variables));
-      console.log('[DEBUG] Variables keys sample:', Object.keys(variables).slice(0, 10));
-      await replaceVariables(accessToken, newDocId, variables);
-      console.log('Variable replacement completed');
+      console.log(`Replacing ${Object.keys(variables).length} variables with named ranges...`);
+      try {
+        await replaceVariablesWithNamedRanges(accessToken, newDocId, variables);
+        console.log('Variable replacement with named ranges completed');
+      } catch (rangeError) {
+        // Fallback to simple replacement if named ranges fail
+        console.warn('Named range replacement failed, falling back to simple replacement:', rangeError);
+        await replaceVariables(accessToken, newDocId, variables);
+        console.log('Variable replacement (fallback) completed');
+      }
     }
 
     // Update the proposal with the new doc ID and version info

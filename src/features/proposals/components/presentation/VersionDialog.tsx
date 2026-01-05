@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@phosphor-icons/react';
 
-export type VersionMode = 'create' | 'overwrite';
+export type VersionMode = 'create' | 'overwrite' | 'update';
 
 interface VersionDialogProps {
   /** Whether the dialog is open */
@@ -65,6 +65,7 @@ export function VersionDialog({
         </DialogHeader>
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
+          {/* Overwrite - creates fresh copy from template */}
           <Button
             onClick={() => handleSelect('overwrite')}
             disabled={isLoading}
@@ -73,8 +74,10 @@ export function VersionDialog({
             {isLoading && selectedMode === 'overwrite' ? (
               <Spinner className="w-4 h-4 animate-spin mr-2" />
             ) : null}
-            Replace v{currentVersion}
+            Overwrite v{currentVersion}
           </Button>
+
+          {/* Create new version */}
           <Button
             variant="outline"
             onClick={() => handleSelect('create')}
@@ -86,6 +89,7 @@ export function VersionDialog({
             ) : null}
             Create v{nextVersion}
           </Button>
+
           <Button
             variant="ghost"
             onClick={onClose}

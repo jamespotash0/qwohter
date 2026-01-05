@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
   ArrowClockwise,
+  ArrowsClockwise,
   FileDoc,
   LinkSimple,
   Warning,
@@ -324,9 +325,27 @@ export function GoogleDocsMode({
     handleGenerate();
   }, [hasExistingDoc, handleGenerate]);
 
+  // Handle direct update values (preserves comments)
+  const handleUpdateValues = useCallback(async () => {
+    if (!googleDocId) return;
+
+    await handleGenerate({
+      mode: 'update',
+      existingDocId: googleDocId,
+      version: currentVersion,
+    });
+  }, [handleGenerate, googleDocId, currentVersion]);
+
   // Handle version mode selection from dialog
   const handleVersionSelect = useCallback(async (mode: VersionMode) => {
-    if (mode === 'overwrite') {
+    if (mode === 'update') {
+      // Update: update values in existing doc (preserves comments)
+      await handleGenerate({
+        mode: 'update',
+        existingDocId: googleDocId || undefined,
+        version: currentVersion,
+      });
+    } else if (mode === 'overwrite') {
       // Overwrite: delete old doc and create new with same version
       await handleGenerate({
         mode: 'overwrite',
@@ -714,6 +733,21 @@ export function GoogleDocsMode({
                 </button>
               </TooltipTrigger>
               <TooltipContent>Variables</TooltipContent>
+            </Tooltip>
+
+            {/* Update Values (preserves comments) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleUpdateValues}
+                  disabled={isGenerating}
+                  className="transition-transform hover:scale-125 disabled:opacity-50"
+                >
+                  <ArrowsClockwise className={cn('w-4 h-4 text-gray-500 dark:text-gray-400', isGenerating && 'animate-spin')} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Update Values</TooltipContent>
             </Tooltip>
 
             {/* Regenerate */}

@@ -11,6 +11,39 @@ import { LogoUploadResult } from "@/services/LogoUploadService";
 import { useUser } from "@/auth";
 import { DocumentNumberingSection } from "./DocumentNumberingSection";
 
+/**
+ * Format a phone number as (xxx) xxx-xxxx
+ * Accepts any input and extracts only digits, then formats
+ */
+function formatPhoneNumber(value: string): string {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '');
+
+  // Limit to 10 digits
+  const limited = digits.slice(0, 10);
+
+  // Format based on length
+  if (limited.length === 0) return '';
+  if (limited.length <= 3) return `(${limited}`;
+  if (limited.length <= 6) return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+  return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+}
+
+/**
+ * Check if a phone number has exactly 10 digits
+ */
+function isValidPhoneNumber(value: string): boolean {
+  const digits = value.replace(/\D/g, '');
+  return digits.length === 10;
+}
+
+/**
+ * Get raw digits from formatted phone number
+ */
+function getPhoneDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
 interface OrganizationTabProps {
   organization: any;
   userRole: string;
@@ -375,16 +408,22 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               <div className="flex items-center gap-3 min-w-[480px] justify-end">
                 {isEditingPhone ? (
                   <>
-                    <Input
-                      value={editedPhone}
-                      onChange={(e) => setEditedPhone(e.target.value)}
-                      placeholder="Enter your phone number (e.g., +1 555-123-4567)"
-                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="flex-1 flex flex-col">
+                      <Input
+                        value={editedPhone}
+                        onChange={(e) => setEditedPhone(formatPhoneNumber(e.target.value))}
+                        placeholder="(555) 123-4567"
+                        className="h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                        maxLength={14}
+                      />
+                      {editedPhone && !isValidPhoneNumber(editedPhone) && (
+                        <span className="text-xs text-amber-600 mt-1">Enter 10 digits</span>
+                      )}
+                    </div>
                     <Button
                       size="sm"
                       onClick={() => handleUpdateField('phone_number', editedPhone, setIsUpdatingPhone, setIsEditingPhone)}
-                      disabled={isUpdatingPhone}
+                      disabled={isUpdatingPhone || (editedPhone !== '' && !isValidPhoneNumber(editedPhone))}
                       className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                     >
                       {isUpdatingPhone ? 'Saving...' : 'Save'}
@@ -431,16 +470,22 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               <div className="flex items-center gap-3 min-w-[480px] justify-end">
                 {isEditingFax ? (
                   <>
-                    <Input
-                      value={editedFax}
-                      onChange={(e) => setEditedFax(e.target.value)}
-                      placeholder="Enter fax number if applicable"
-                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="flex-1 flex flex-col">
+                      <Input
+                        value={editedFax}
+                        onChange={(e) => setEditedFax(formatPhoneNumber(e.target.value))}
+                        placeholder="(555) 123-4567"
+                        className="h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                        maxLength={14}
+                      />
+                      {editedFax && !isValidPhoneNumber(editedFax) && (
+                        <span className="text-xs text-amber-600 mt-1">Enter 10 digits</span>
+                      )}
+                    </div>
                     <Button
                       size="sm"
                       onClick={() => handleUpdateField('fax_number', editedFax || null, setIsUpdatingFax, setIsEditingFax)}
-                      disabled={isUpdatingFax}
+                      disabled={isUpdatingFax || (editedFax !== '' && !isValidPhoneNumber(editedFax))}
                       className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                     >
                       {isUpdatingFax ? 'Saving...' : 'Save'}

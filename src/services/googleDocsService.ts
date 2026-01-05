@@ -23,7 +23,7 @@ export interface GenerateDocRequest {
   /** Optional table data for row duplication */
   tableData?: TableRowData[];
   outputTitle?: string;
-  mode?: 'create' | 'overwrite';
+  mode?: 'create' | 'overwrite' | 'update';
   existingDocId?: string;
   version?: number;
 }
@@ -407,7 +407,7 @@ export interface GenerateProposalDocOptions {
   proposalData: Parameters<typeof buildProposalVariables>[0];
   formData: FormBuilderData;
   outputTitle?: string;
-  mode?: 'create' | 'overwrite';
+  mode?: 'create' | 'overwrite' | 'update';
   existingDocId?: string;
   version?: number;
 }
@@ -520,7 +520,7 @@ export async function generateProposalDoc(
   proposalData: Parameters<typeof buildProposalVariables>[0],
   formData: FormBuilderData,
   outputTitle?: string,
-  options?: { mode?: 'create' | 'overwrite'; existingDocId?: string; version?: number }
+  options?: { mode?: 'create' | 'overwrite' | 'update'; existingDocId?: string; version?: number }
 ): Promise<GenerateDocResponse> {
   const variables = buildProposalVariables(proposalData, formData);
   const tableData = buildTableData(formData);
