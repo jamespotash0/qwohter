@@ -421,7 +421,7 @@ persistQueryClient({
   queryClient,
   persister,
   maxAge: 5 * 60 * 1000, // 5 minutes - balance between speed and freshness
-  buster: 'v3.0.1-workflow-columns-fix', // Clear cache on version change (update this when breaking changes)
+  buster: 'v3.0.2-proposals-no-persist', // Clear cache on version change (update this when breaking changes)
   dehydrateOptions: {
     // Control what gets persisted
     shouldDehydrateQuery: (query) => {
@@ -429,6 +429,12 @@ persistQueryClient({
 
       // Don't persist user sessions (security - prevent session fixation)
       if (queryKey === 'user' && query.queryKey[1] === 'session') {
+        return false;
+      }
+
+      // Don't persist proposals - they change frequently and need realtime updates
+      // This prevents deleted items from reappearing after refresh
+      if (queryKey === 'proposals') {
         return false;
       }
 

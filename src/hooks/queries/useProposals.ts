@@ -73,7 +73,7 @@ export function useProposals(
       return fetchProposals(organizationId, filters);
     },
     enabled: !!organizationId && enabled,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0, // Always fetch fresh data - realtime handles cache updates
   });
 }
 
