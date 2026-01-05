@@ -51,10 +51,15 @@ export function buildProposalVariables(
   proposalData: {
     proposal_number?: string;
     project_name?: string;
+    // Direct organization fields (stored on proposal)
+    organization_name?: string;
     form_data?: {
       info?: {
         projectName?: string;
         proposalDate?: string;
+        estimatedDueDate?: string;
+        proposalSource?: string;
+        jobNotes?: string;
         // Contact (internal contact person)
         contactName?: string;
         contactEmail?: string;
@@ -64,7 +69,11 @@ export function buildProposalVariables(
         clientEmail?: string;
         clientPhone?: string;
         clientAddress?: string;
+        // Job location
         jobLocation?: string;
+        jobLocationName?: string;
+        jobFloor?: string;
+        locationType?: string;
         // Work details
         isUnion?: boolean;
         isPrevailingWage?: boolean;
@@ -88,14 +97,9 @@ export function buildProposalVariables(
   const pricing = formData?.pricing;
   const summary = pricing?.summary;
 
-  // Debug logging
-  console.log('[buildProposalVariables] proposalData:', proposalData);
-  console.log('[buildProposalVariables] proposalData.form_data:', proposalData?.form_data);
-  console.log('[buildProposalVariables] proposalData.form_data.info:', proposalData?.form_data?.info);
-  console.log('[buildProposalVariables] info variable:', info);
-  console.log('[buildProposalVariables] info.clientName:', info.clientName);
-  console.log('[buildProposalVariables] info.contactName:', info.contactName);
-  console.log('[buildProposalVariables] org:', org);
+  // Organization name: check direct field first, then nested organization
+  const orgName = proposalData?.organization_name || org.name || '';
+
 
   // Format currency helper
   const formatCurrency = (amount: number | undefined) => {
@@ -128,7 +132,14 @@ export function buildProposalVariables(
 
     // Project info
     'project.name': info.projectName || proposalData?.project_name || '',
+    'project.date': formatDate(info.proposalDate) || formatDate(new Date().toISOString()), // Alias for proposal.date
+    'project.dueDate': formatDate(info.estimatedDueDate) || '',
+    'project.source': info.proposalSource || '',
+    'project.notes': info.jobNotes || '',
     'project.location': info.jobLocation || '',
+    'project.locationName': info.jobLocationName || '',
+    'project.floor': info.jobFloor || '',
+    'project.locationType': info.locationType || '',
     'project.type': info.projectType || '',
     'project.workType': info.categoryOfWork || '',
 
@@ -147,32 +158,16 @@ export function buildProposalVariables(
     'client.phone': info.clientPhone || '',
     'client.address': info.clientAddress || '',
 
-    // Organization info
-    'org.name': org.name || '',
+    // Organization info (check direct proposal fields first, then nested org object)
+    'org.name': orgName,
     'org.phone': org.phone_number || '',
     'org.fax': org.fax_number || '',
     'org.address': org.company_address || '',
     'org.website': org.website || '',
 
     // ============ PRICING TOTALS ============
-    // Total Cost (before markup)
-    'pricing.totalCost': formatCurrency(summary?.totalCost),
-
-    // Total Without Tax (before tax, includes markup & discounts)
-    'pricing.totalWithoutTax': formatCurrency(summary?.subtotal),
-
-    // Gross Profit (Sell - Cost)
-    'pricing.grossProfit': formatCurrency(summary?.grossProfit),
-
-    // Gross Margin % (Profit / Sell Price * 100)
-    'pricing.grossMargin': summary?.grossProfitPercent
-      ? `${summary.grossProfitPercent.toFixed(1)}%`
-      : '0%',
-
-    // Markup % (Profit / Cost * 100)
-    'pricing.markup': (summary?.totalCost && summary?.grossProfit)
-      ? `${((summary.grossProfit / summary.totalCost) * 100).toFixed(1)}%`
-      : '0%',
+    // Total Selling Price (sum of all sections, excluding tax)
+    'pricing.totalSellingPrice': formatCurrency(summary?.subtotal),
 
     // Tax
     'pricing.tax': formatCurrency(summary?.totalTax),
@@ -180,33 +175,44 @@ export function buildProposalVariables(
       ? `${pricing.salesTaxPercent}%`
       : '',
 
-    // Grand Total (with tax) - the final total
+    // Grand Total (sum of all sections including tax)
     'pricing.grandTotal': formatCurrency(summary?.grandTotal),
   };
 
   // ============ PRICING SECTION TOTALS ============
-  // Each section (e.g., "Materials", "Labor", "Equipment") gets its own total
+  // Each section (e.g., "Materials", "Labor", "Equipment") gets its own totals
   if (pricing?.sections) {
     pricing.sections.forEach((section, index) => {
       const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_');
 
-      // Calculate section sell total (what customer sees)
-      let sectionTotal = 0;
+      // Calculate section totals
+      let sectionSellTotal = 0; // Total Selling Price (what customer pays)
+
       section.lineItems.forEach((item) => {
-        sectionTotal += item.sellPrice || 0;
+        sectionSellTotal += item.sellPrice || 0;
       });
 
-      // Section totals by name (e.g., pricing.materials.total)
-      variables[`pricing.${sectionKey}.total`] = formatCurrency(sectionTotal);
-      variables[`pricing.${sectionKey}.items`] = section.lineItems
-        .map((item) => item.name)
-        .filter(Boolean)
-        .join(', ');
-      variables[`pricing.${sectionKey}.quantity`] = section.lineItems.length.toString();
+      // Section totals by name (e.g., pricing.materials.sellingPrice)
+      variables[`pricing.${sectionKey}.sellingPrice`] = formatCurrency(sectionSellTotal);
 
-      // Also add by index for predictable ordering (e.g., pricing.section1.total)
+      // Also add by index for predictable ordering (e.g., pricing.section1.sellingPrice)
       variables[`pricing.section${index + 1}.name`] = section.name;
-      variables[`pricing.section${index + 1}.total`] = formatCurrency(sectionTotal);
+      variables[`pricing.section${index + 1}.sellingPrice`] = formatCurrency(sectionSellTotal);
+
+      // ============ LINE ITEM VARIABLES ============
+      // Each line item gets its own variables using the item name as key
+      // e.g., pricing.materials.track_installation.quantity
+      section.lineItems.forEach((item) => {
+        if (!item.name) return; // Skip items without names
+
+        const itemKey = item.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        const prefix = `pricing.${sectionKey}.${itemKey}`;
+
+        variables[`${prefix}.name`] = item.name;
+        variables[`${prefix}.quantity`] = item.quantity?.toString() || '0';
+        variables[`${prefix}.unitCost`] = formatCurrency(item.unitCost);
+        variables[`${prefix}.sellPrice`] = formatCurrency(item.sellPrice);
+      });
     });
   }
 
@@ -324,9 +330,15 @@ export function buildProposalVariables(
     });
     variables['products.table'] = productRows.join('\n');
     variables['products.count'] = formData.products.items.length.toString();
+    // Comma-separated list of product names
+    variables['products.list'] = formData.products.items
+      .map((p) => p.name)
+      .filter(Boolean)
+      .join(', ');
   } else {
     variables['products.table'] = '';
     variables['products.count'] = '0';
+    variables['products.list'] = '';
   }
 
   // Pricing items table - all line items across all sections
@@ -364,17 +376,6 @@ export function buildProposalVariables(
     variables['pricing.itemsCount'] = '0';
   }
 
-  // Log the built variables (key ones for debugging)
-  console.log('[buildProposalVariables] Built variables:', {
-    'client.name': variables['client.name'],
-    'client.company': variables['client.company'],
-    'client.email': variables['client.email'],
-    'project.name': variables['project.name'],
-    'project.location': variables['project.location'],
-    'org.name': variables['org.name'],
-    'proposal.number': variables['proposal.number'],
-  });
-
   return variables;
 }
 
@@ -384,14 +385,6 @@ export function buildProposalVariables(
 export async function generateGoogleDoc(
   request: GenerateDocRequest
 ): Promise<GenerateDocResponse> {
-  console.log('[generateGoogleDoc] Sending request to edge function:', {
-    templateDocId: request.templateDocId,
-    proposalId: request.proposalId,
-    variablesCount: Object.keys(request.variables).length,
-    variables: request.variables, // Full variables for debugging
-    tableDataCount: request.tableData?.length || 0,
-  });
-
   const { data, error } = await supabase.functions.invoke('generate-google-doc', {
     body: request,
   });

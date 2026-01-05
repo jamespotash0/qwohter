@@ -222,19 +222,6 @@ export function GoogleDocsMode({
     existingDocId?: string;
     version?: number;
   }) => {
-    // Save current form state first to ensure we have the latest data
-    // This fixes the issue where regenerating uses stale info values
-    if (onBeforeGenerate) {
-      try {
-        await onBeforeGenerate();
-        // Small delay to allow React Query to refetch with updated data
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error('Failed to save before generation:', error);
-        // Continue anyway - the user can retry if needed
-      }
-    }
-
     // Validate Google connection
     if (!isGoogleConnected) {
       toast.error('Google not connected', {
@@ -323,7 +310,7 @@ export function GoogleDocsMode({
         });
       }
     }
-  }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected, onBeforeGenerate]);
+  }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected]);
 
   // Handle regeneration - show version dialog if document exists
   const handleRegenerate = useCallback(() => {

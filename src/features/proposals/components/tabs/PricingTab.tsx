@@ -1412,9 +1412,9 @@ export function PricingTab({ mode }: PricingTabProps) {
 
             {/* Right: Clean calculation */}
             <div className="text-xs space-y-1">
-              {/* Subtotal - Clickable with breakdown */}
+              {/* Total Selling Price - Clickable with breakdown */}
               <div className="flex items-center">
-                <span className="text-gray-500 dark:text-gray-400 w-[180px]">Subtotal</span>
+                <span className="text-gray-500 dark:text-gray-400 w-[180px]">Total Selling Price</span>
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
@@ -1426,7 +1426,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                   <PopoverContent align="end" className="w-56 p-3">
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                        Breakdown
+                        Selling Price Breakdown
                       </p>
                       {sectionBreakdown.length === 0 ? (
                         <p className="text-xs text-gray-400">No items yet</p>
@@ -1443,7 +1443,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                             </div>
                           ))}
                           <div className="flex justify-between text-xs pt-1 border-t border-gray-200 dark:border-gray-600">
-                            <span className="font-medium text-gray-700 dark:text-gray-200">Total</span>
+                            <span className="font-medium text-gray-700 dark:text-gray-200">Total Selling Price</span>
                             <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
                               {formatCurrency(subtotal)}
                             </span>

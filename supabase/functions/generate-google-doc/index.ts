@@ -60,6 +60,8 @@ async function getOrgAccessToken(
   supabaseAdmin: ReturnType<typeof createClient>,
   organizationId: string
 ): Promise<{ accessToken: string; folderId: string | null }> {
+  console.log(`[getOrgAccessToken] Looking up token for org: ${organizationId}`);
+
   // Get org-level token from database
   const { data: tokenData, error: tokenError } = await supabaseAdmin
     .from('google_oauth_tokens')
@@ -68,7 +70,22 @@ async function getOrgAccessToken(
     .eq('is_valid', true)
     .single();
 
+  console.log(`[getOrgAccessToken] Query result - error: ${tokenError?.message || 'none'}, hasData: ${!!tokenData}`);
+
   if (tokenError || !tokenData) {
+    // Try to find ANY token for this org to see if it's just invalid
+    const { data: anyToken } = await supabaseAdmin
+      .from('google_oauth_tokens')
+      .select('id, is_valid, token_expires_at')
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (anyToken) {
+      console.log(`[getOrgAccessToken] Found token but is_valid=${anyToken.is_valid}, expires_at=${anyToken.token_expires_at}`);
+    } else {
+      console.log(`[getOrgAccessToken] No token found for organization at all`);
+    }
+
     throw new Error('Google Docs not configured. An admin needs to connect Google in Settings → Integrations.');
   }
 
@@ -107,29 +124,72 @@ async function getOrgAccessToken(
     throw new Error('Google connection expired. An admin needs to reconnect in Settings → Integrations.');
   }
 
-  // Refresh the token
-  const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: tokenData.refresh_token,
-      grant_type: 'refresh_token',
-    }),
-  });
+  // Refresh the token with retry logic (industry standard)
+  console.log('[getOrgAccessToken] Token expired, attempting refresh...');
 
-  if (!refreshResponse.ok) {
-    const error = await refreshResponse.text();
-    console.error('Token refresh failed:', error);
+  let refreshResponse: Response | null = null;
+  let lastError = '';
 
-    // Mark token as invalid
-    await supabaseAdmin
-      .from('google_oauth_tokens')
-      .update({ is_valid: false })
-      .eq('id', tokenData.id);
+  // Retry up to 3 times with exponential backoff
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: tokenData.refresh_token,
+          grant_type: 'refresh_token',
+        }),
+      });
 
-    throw new Error('Google connection expired. An admin needs to reconnect in Settings → Integrations.');
+      if (refreshResponse.ok) {
+        console.log(`[getOrgAccessToken] Token refresh succeeded on attempt ${attempt}`);
+        break;
+      }
+
+      lastError = await refreshResponse.text();
+      console.warn(`[getOrgAccessToken] Refresh attempt ${attempt} failed: ${lastError}`);
+
+      // Check if error is permanent (user revoked access)
+      if (lastError.includes('invalid_grant') || lastError.includes('Token has been revoked')) {
+        console.error('[getOrgAccessToken] Refresh token permanently invalid - user must reconnect');
+        break; // Don't retry, this is permanent
+      }
+
+      // Wait before retry (exponential backoff: 1s, 2s, 4s)
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+      }
+    } catch (networkError) {
+      lastError = networkError instanceof Error ? networkError.message : 'Network error';
+      console.warn(`[getOrgAccessToken] Network error on attempt ${attempt}: ${lastError}`);
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+      }
+    }
+  }
+
+  if (!refreshResponse?.ok) {
+    console.error('[getOrgAccessToken] All refresh attempts failed:', lastError);
+
+    // Only mark as invalid if it's a permanent failure (not network issues)
+    const isPermanentFailure = lastError.includes('invalid_grant') ||
+                               lastError.includes('Token has been revoked') ||
+                               lastError.includes('unauthorized_client');
+
+    if (isPermanentFailure) {
+      await supabaseAdmin
+        .from('google_oauth_tokens')
+        .update({ is_valid: false })
+        .eq('id', tokenData.id);
+
+      throw new Error('Google connection expired. An admin needs to reconnect in Settings → Integrations.');
+    }
+
+    // For transient errors, don't mark as invalid - just fail this request
+    throw new Error('Failed to refresh Google token. Please try again.');
   }
 
   const newTokens: GoogleTokenResponse = await refreshResponse.json();
@@ -413,16 +473,26 @@ function evaluateExpression(
   let resolved = expr;
 
   // Find all variable references (words with dots, like "pricing.total")
-  const varPattern = /[a-zA-Z_][a-zA-Z0-9_.]+/g;
+  // Include & for section names like "delivery_&_installation"
+  const varPattern = /[a-zA-Z_][a-zA-Z0-9_.&]+/g;
   const matches = expr.match(varPattern) || [];
 
   for (const varName of matches) {
-    const value = variables[varName];
-    if (value !== undefined) {
+    const value = lookupVariable(varName, variables);
+    let numValue: number;
+
+    if (value !== undefined && value !== '') {
       // Parse the value as a number (handle currency formatting)
-      const numValue = parseCurrency(value);
-      resolved = resolved.replace(new RegExp(varName.replace(/\./g, '\\.'), 'g'), numValue.toString());
+      numValue = parseCurrency(value);
+    } else if (varName.startsWith('pricing.')) {
+      // Missing pricing variables default to 0 (prevents NaN in calculations)
+      numValue = 0;
+    } else {
+      // Non-pricing variables: skip replacement (will cause NaN if used in math)
+      continue;
     }
+
+    resolved = resolved.replace(new RegExp(varName.replace(/\./g, '\\.'), 'g'), numValue.toString());
   }
 
   // Now tokenize and evaluate
@@ -441,21 +511,6 @@ function evaluateExpression(
 }
 
 /**
- * Process all expressions in the variables
- * Finds {{expr}} patterns that contain operators and evaluates them
- */
-function processExpressions(variables: Record<string, string>): Record<string, string> {
-  const processed: Record<string, string> = { ...variables };
-
-  // Also add expression-evaluated versions
-  // These will be used for patterns like {{pricing.a + pricing.b}}
-  // The replaceVariables function will handle simple replacements first,
-  // then we need to handle expressions separately in the document
-
-  return processed;
-}
-
-/**
  * Process dynamic table rows in a Google Doc
  * Finds markers like {{#ROW:pricing}} and duplicates rows for each item
  *
@@ -470,7 +525,12 @@ async function processTableRows(
   docId: string,
   tableData: TableRowData[]
 ): Promise<void> {
-  if (!tableData || tableData.length === 0) return;
+  console.log('[processTableRows] Starting with tableData:', JSON.stringify(tableData).slice(0, 500));
+
+  if (!tableData || tableData.length === 0) {
+    console.log('[processTableRows] No table data to process');
+    return;
+  }
 
   // Get the document structure
   const docResponse = await fetch(
@@ -682,15 +742,18 @@ function resolveVariableWithFallback(
   variables: Record<string, string>
 ): string {
   // Split by || or ?? (fallback operators)
-  const parts = expr.split(/\s*(\|\||\\?\\?)\s*/);
+  const parts = expr.split(/\s*(\|\||\?\?)\s*/);
 
   // Filter out the operators, keep only variable names
   const varNames = parts.filter((_, idx) => idx % 2 === 0).map(v => v.trim());
 
   // Return the first variable that has a non-empty value
   for (const varName of varNames) {
-    const value = variables[varName];
-    if (value !== undefined && value !== null && value.trim() !== '') {
+    // Use lookupVariable for consistent fuzzy matching
+    const value = lookupVariable(varName, variables);
+    const hasValue = value !== undefined && value !== null && value.trim() !== '';
+
+    if (hasValue) {
       return value;
     }
   }
@@ -703,7 +766,50 @@ function resolveVariableWithFallback(
  * Check if expression contains fallback operators (|| or ??)
  */
 function hasFallbackOperator(expr: string): boolean {
-  return /\|\||\\?\\?/.test(expr);
+  return /\|\||\?\?/.test(expr);
+}
+
+/**
+ * Normalize a variable expression by:
+ * - Trimming whitespace
+ * - Converting to consistent case for lookup
+ * - Removing hidden Unicode characters
+ */
+function normalizeVariableExpr(expr: string): string {
+  return expr
+    // Remove zero-width characters and other invisible Unicode
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '')
+    // Replace curly/smart quotes with straight ones (Google Docs converts these)
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    // Trim whitespace
+    .trim();
+}
+
+/**
+ * Look up a variable with fallback to case-insensitive match
+ */
+function lookupVariable(varName: string, variables: Record<string, string>): string | undefined {
+  // Try exact match first
+  if (variables[varName] !== undefined) {
+    return variables[varName];
+  }
+
+  // Try case-insensitive match
+  const lowerVarName = varName.toLowerCase();
+  const matchingKey = Object.keys(variables).find(k => k.toLowerCase() === lowerVarName);
+  if (matchingKey) {
+    return variables[matchingKey];
+  }
+
+  // Try trimmed match (in case of extra spaces in variable name)
+  const trimmedVarName = varName.replace(/\s+/g, '');
+  const trimmedMatch = Object.keys(variables).find(k => k.replace(/\s+/g, '') === trimmedVarName);
+  if (trimmedMatch) {
+    return variables[trimmedMatch];
+  }
+
+  return undefined;
 }
 
 /**
@@ -719,6 +825,9 @@ async function replaceVariables(
   docId: string,
   variables: Record<string, string>
 ): Promise<void> {
+  console.log('[replaceVariables] Starting variable replacement...');
+  console.log('[replaceVariables] Variables received - count:', Object.keys(variables).length);
+
   // First, get the document content to find expressions
   const docResponse = await fetch(
     `https://docs.googleapis.com/v1/documents/${docId}`,
@@ -728,6 +837,8 @@ async function replaceVariables(
   );
 
   if (!docResponse.ok) {
+    const errorText = await docResponse.text();
+    console.error('[replaceVariables] Failed to read document:', errorText);
     throw new Error('Failed to read document for expression processing');
   }
 
@@ -738,14 +849,18 @@ async function replaceVariables(
   const allPatterns = docContent.match(/\{\{[^}]+\}\}/g) || [];
   const uniquePatterns = [...new Set(allPatterns)];
 
+  console.log(`[replaceVariables] Found ${uniquePatterns.length} unique patterns in document`);
+
   // Build replacement requests
   const requests: any[] = [];
 
   for (const pattern of uniquePatterns) {
-    // Extract the content inside {{ }}
-    const inner = pattern.slice(2, -2).trim();
+    // Extract the content inside {{ }} and normalize it
+    const rawInner = pattern.slice(2, -2);
+    const inner = normalizeVariableExpr(rawInner);
 
     let replacement: string;
+
 
     // Check for fallback operator (|| or ??) first
     if (hasFallbackOperator(inner)) {
@@ -755,8 +870,18 @@ async function replaceVariables(
       // Math expression
       replacement = evaluateExpression(inner, variables);
     } else {
-      // Simple variable lookup
-      replacement = variables[inner] ?? '';
+      // Simple variable lookup with fuzzy matching
+      const value = lookupVariable(inner, variables);
+      replacement = value ?? '';
+
+      if (value === undefined) {
+        console.log(`  Variable "${inner}" not found in variables`);
+      }
+    }
+
+    // Only log when pattern wasn't replaced (helps debug)
+    if (replacement === '' && uniquePatterns.indexOf(pattern) < 5) {
+      console.log(`[replaceVariables] Pattern "${pattern}" -> inner "${inner}" -> replacement "${replacement?.substring(0, 50) || '(empty)'}"`)
     }
 
     requests.push({
@@ -770,8 +895,14 @@ async function replaceVariables(
     });
   }
 
-  if (requests.length === 0) return;
+  console.log(`[replaceVariables] Created ${requests.length} replacement requests`);
 
+  if (requests.length === 0) {
+    console.log('[replaceVariables] No replacement requests to process');
+    return;
+  }
+
+  console.log('[replaceVariables] Sending batchUpdate to Google Docs API...');
   const response = await fetch(
     `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
     {
@@ -786,11 +917,17 @@ async function replaceVariables(
 
   if (!response.ok) {
     const error = await response.text();
+    console.error('[replaceVariables] batchUpdate failed:', error);
     throw new Error(`Failed to replace variables: ${error}`);
   }
+
+  const result = await response.json();
+  console.log('[replaceVariables] batchUpdate successful, replies:', result.replies?.length || 0);
 }
 //@ts-ignore
 serve(async (req) => {
+  console.log('[generate-google-doc] Request received');
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -824,6 +961,18 @@ serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
+
+    // DEBUG: Log the raw body structure
+    console.log('[generate-google-doc] Body received:', {
+      templateDocId: body.templateDocId,
+      proposalId: body.proposalId,
+      organizationId: body.organizationId,
+      variablesType: typeof body.variables,
+      variablesIsObject: body.variables !== null && typeof body.variables === 'object',
+      variablesKeys: body.variables ? Object.keys(body.variables).length : 0,
+      tableDataLength: body.tableData?.length || 0,
+    });
+
     const {
       templateDocId,
       proposalId,
@@ -878,15 +1027,26 @@ serve(async (req) => {
     console.log(`Created new document: ${newDocId} (version ${version})`);
 
     // Process dynamic table rows first (if any)
+    // Wrapped in try-catch so table errors don't block variable replacement
     if (tableData && tableData.length > 0) {
-      console.log(`Processing ${tableData.length} dynamic tables...`);
-      await processTableRows(accessToken, newDocId, tableData);
+      try {
+        console.log(`Processing ${tableData.length} dynamic tables...`);
+        await processTableRows(accessToken, newDocId, tableData);
+        console.log('Table processing completed successfully');
+      } catch (tableError) {
+        console.error('Table processing failed (continuing with variable replacement):', tableError);
+        // Don't throw - continue with variable replacement
+      }
     }
 
     // Replace variables (formatting like bold/italic is preserved)
     if (variables && Object.keys(variables).length > 0) {
       console.log(`Replacing ${Object.keys(variables).length} variables...`);
+      console.log('[DEBUG] Variables object type:', typeof variables);
+      console.log('[DEBUG] Variables is array:', Array.isArray(variables));
+      console.log('[DEBUG] Variables keys sample:', Object.keys(variables).slice(0, 10));
       await replaceVariables(accessToken, newDocId, variables);
+      console.log('Variable replacement completed');
     }
 
     // Update the proposal with the new doc ID and version info
