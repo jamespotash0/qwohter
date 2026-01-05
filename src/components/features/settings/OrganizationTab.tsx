@@ -224,7 +224,9 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             {/* Organization Name */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Organization Name</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">
+                  Organization Name <span className="text-red-500">*</span>
+                </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
                   The name of your organization
                 </p>
@@ -232,16 +234,21 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               <div className="flex items-center gap-3 min-w-[480px] justify-end">
                 {isEditingName ? (
                   <>
-                    <Input
-                      value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
-                      placeholder="Enter your organization name"
-                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="flex-1 flex flex-col">
+                      <Input
+                        value={editedName}
+                        onChange={(e) => setEditedName(e.target.value)}
+                        placeholder="Enter your organization name"
+                        className="h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                      />
+                      {editedName.trim() === '' && (
+                        <span className="text-xs text-red-500 mt-1">Organization name is required</span>
+                      )}
+                    </div>
                     <Button
                       size="sm"
-                      onClick={() => handleUpdateField('name', editedName, setIsUpdatingName, setIsEditingName)}
-                      disabled={isUpdatingName}
+                      onClick={() => handleUpdateField('name', editedName.trim(), setIsUpdatingName, setIsEditingName)}
+                      disabled={isUpdatingName || editedName.trim() === ''}
                       className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                     >
                       {isUpdatingName ? 'Saving...' : 'Save'}
@@ -261,7 +268,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 ) : (
                   <>
                     <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
-                      {organization?.name || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                      {organization?.name || <span className="text-red-400">Required</span>}
                     </span>
                     <Button
                       size="sm"
