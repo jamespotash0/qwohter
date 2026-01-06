@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsWithSummary, type ExtractedProduct, type ExtractionResult } from '@/services/productExtraction';
-import { useFormBuilder, type Product, type PricingSection } from '../../context/FormBuilderContext';
+import { useFormBuilder, type Product, type PricingSection, type PricingLineItem } from '../../context/FormBuilderContext';
 import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { ExtractionProgressDialog } from './ExtractionProgressDialog';
 import { ExtractedProductEditor } from './ExtractedProductEditor';
@@ -139,14 +139,50 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     onDirtyChange?.(true);
   }, [products, setProductsData, onDirtyChange]);
 
-  // Update product
+  // Update product and cascade relevant changes to linked pricing items
   const updateProduct = useCallback((id: string, updates: Partial<Product>) => {
     const updatedProducts = products.map(product =>
       product.id === id ? { ...product, ...updates } : product
     );
     setProductsData({ items: updatedProducts });
+
+    // Cascade updates to linked pricing line items
+    // Only cascade: unitCost, quantity, name, discountPercent
+    const pricingUpdates: Partial<PricingLineItem> = {};
+    if ('unitCost' in updates) pricingUpdates.unitCost = updates.unitCost || 0;
+    if ('quantity' in updates) pricingUpdates.quantity = updates.quantity || 0;
+    if ('name' in updates) pricingUpdates.name = updates.name || '';
+    if ('discountPercent' in updates) {
+      pricingUpdates.discountValue = updates.discountPercent || 0;
+      pricingUpdates.discountType = 'percent';
+    }
+
+    // Only update pricing if there are relevant changes
+    if (Object.keys(pricingUpdates).length > 0) {
+      const updatedPricingSections = pricingSections.map(section => ({
+        ...section,
+        lineItems: section.lineItems.map(item =>
+          item.sourceProductId === id
+            ? { ...item, ...pricingUpdates }
+            : item
+        ),
+      }));
+
+      // Check if any pricing item was actually linked to this product
+      const hasLinkedItem = pricingSections.some(section =>
+        section.lineItems.some(item => item.sourceProductId === id)
+      );
+
+      if (hasLinkedItem) {
+        setPricingData({
+          ...data.pricing,
+          sections: updatedPricingSections,
+        });
+      }
+    }
+
     onDirtyChange?.(true);
-  }, [products, setProductsData, onDirtyChange]);
+  }, [products, setProductsData, pricingSections, data.pricing, setPricingData, onDirtyChange]);
 
   // Remove product and cascade delete from pricing
   const removeProduct = useCallback((id: string) => {

@@ -586,6 +586,154 @@ export function PricingTab({ mode }: PricingTabProps) {
     }
   }, [formData.pricing]);
 
+  // Detect and sync externally-added/removed/updated line items (e.g., from ProductsTab)
+  // All comparison logic is inside setSections to use the latest state and avoid race conditions
+  useEffect(() => {
+    // Only run after initial load - this handles external changes
+    if (!hasLoadedInitialData.current || !canSync.current) return;
+
+    const contextSections = formData.pricing?.sections;
+    if (!contextSections) return;
+
+    // Use functional update to compare against truly current local state
+    setSections(prev => {
+      // Build map of local items by sourceProductId for quick lookup
+      const localItemsBySourceId = new Map<string, PricingLineItem>();
+      prev.forEach(section => {
+        section.lineItems.forEach(item => {
+          if (item.sourceProductId) {
+            localItemsBySourceId.set(item.sourceProductId, item);
+          }
+        });
+      });
+
+      // Build map of context items by sourceProductId
+      const contextItemsBySourceId = new Map<string, PricingLineItem>();
+      contextSections.forEach(section => {
+        section.lineItems.forEach(item => {
+          if (item.sourceProductId) {
+            contextItemsBySourceId.set(item.sourceProductId, item);
+          }
+        });
+      });
+
+      // Find items to add (in context but not in local)
+      const newItemsBySection = new Map<string, PricingLineItem[]>();
+      contextSections.forEach(contextSection => {
+        const newItems = contextSection.lineItems.filter(item =>
+          item.sourceProductId && !localItemsBySourceId.has(item.sourceProductId)
+        );
+        if (newItems.length > 0) {
+          newItemsBySection.set(contextSection.id, newItems);
+        }
+      });
+
+      // Find items to remove (in local but not in context - cascade deleted)
+      const idsToRemove = new Set<string>();
+      localItemsBySourceId.forEach((_, id) => {
+        if (!contextItemsBySourceId.has(id)) {
+          idsToRemove.add(id);
+        }
+      });
+
+      // Find items to update (properties changed in context)
+      // Only sync: unitCost, quantity, name, discountValue, discountType
+      const itemUpdates = new Map<string, Partial<PricingLineItem>>();
+      localItemsBySourceId.forEach((localItem, sourceId) => {
+        const contextItem = contextItemsBySourceId.get(sourceId);
+        if (!contextItem) return;
+
+        const updates: Partial<PricingLineItem> = {};
+        if (localItem.unitCost !== contextItem.unitCost) updates.unitCost = contextItem.unitCost;
+        if (localItem.quantity !== contextItem.quantity) updates.quantity = contextItem.quantity;
+        if (localItem.name !== contextItem.name) updates.name = contextItem.name;
+        if (localItem.discountValue !== contextItem.discountValue) updates.discountValue = contextItem.discountValue;
+        if (localItem.discountType !== contextItem.discountType) updates.discountType = contextItem.discountType;
+
+        if (Object.keys(updates).length > 0) {
+          itemUpdates.set(sourceId, updates);
+        }
+      });
+
+      // Check for new sections
+      const localSectionIds = new Set(prev.map(s => s.id));
+      const newSections = contextSections.filter(s => !localSectionIds.has(s.id));
+
+      // If no changes needed, return same reference to avoid re-render
+      if (newItemsBySection.size === 0 && idsToRemove.size === 0 && newSections.length === 0 && itemUpdates.size === 0) {
+        return prev;
+      }
+
+      // Mark that we're updating from context to prevent sync-back loop
+      isUpdatingFromContext.current = true;
+
+      // Apply changes
+      let updated = prev.map(section => {
+        let lineItems = section.lineItems;
+        let hasChanges = false;
+
+        // Remove deleted items
+        if (idsToRemove.size > 0) {
+          const filtered = lineItems.filter(item =>
+            !item.sourceProductId || !idsToRemove.has(item.sourceProductId)
+          );
+          if (filtered.length !== lineItems.length) {
+            lineItems = filtered;
+            hasChanges = true;
+          }
+        }
+
+        // Update existing items
+        if (itemUpdates.size > 0) {
+          lineItems = lineItems.map(item => {
+            if (!item.sourceProductId) return item;
+            const updates = itemUpdates.get(item.sourceProductId);
+            if (updates) {
+              hasChanges = true;
+              return { ...item, ...updates };
+            }
+            return item;
+          });
+        }
+
+        // Add new items
+        const newItems = newItemsBySection.get(section.id);
+        if (newItems) {
+          lineItems = [
+            ...lineItems,
+            ...newItems.map(item => ({
+              ...item,
+              isTaxable: item.isTaxable ?? false,
+            })),
+          ];
+          hasChanges = true;
+        }
+
+        // Only create new object if changes were made
+        if (hasChanges) {
+          return { ...section, lineItems };
+        }
+        return section;
+      });
+
+      // Add new sections from context
+      if (newSections.length > 0) {
+        updated = [
+          ...updated,
+          ...newSections.map(s => ({
+            ...s,
+            lineItems: s.lineItems.map(item => ({
+              ...item,
+              isTaxable: item.isTaxable ?? false,
+            })),
+          })),
+        ];
+      }
+
+      return updated;
+    });
+  }, [formData.pricing?.sections]); // Removed `sections` - we use `prev` inside setSections
+
   // Enable syncing after a brief delay to allow initial data to load
   // This prevents overwriting saved data with defaults on mount
   useEffect(() => {
