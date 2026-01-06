@@ -342,36 +342,65 @@ export function buildProposalVariables(
   }
 
   // Pricing items table - all line items across all sections
+  // pricing.list outputs a formatted table with: Name, Qty, Unit Price, Discount, Line Total
   if (pricing?.sections && pricing.sections.length > 0) {
     const allLineItems: Array<{
-      section: string;
       name: string;
       quantity: number;
-      sellPrice: number;
+      unitSellPrice: number;
+      discount: string;
+      lineTotal: number;
     }> = [];
 
     pricing.sections.forEach((section) => {
       section.lineItems.forEach((item) => {
+        // Calculate per-unit sell price (unit cost + markup)
+        const baseCost = item.unitCost || 0;
+        let unitSellPrice: number;
+        if (item.markupType === 'dollar') {
+          unitSellPrice = baseCost + ((item.markupValue || 0) / (item.quantity || 1));
+        } else {
+          unitSellPrice = baseCost * (1 + (item.markupValue || 0) / 100);
+        }
+
+        // Format discount
+        let discount = '';
+        if (item.discountValue) {
+          discount = item.discountType === 'percent'
+            ? `${item.discountValue}%`
+            : formatCurrency(item.discountValue);
+        }
+
         allLineItems.push({
-          section: section.name,
           name: item.name,
           quantity: item.quantity,
-          sellPrice: item.sellPrice || 0,
+          unitSellPrice,
+          discount,
+          lineTotal: item.sellPrice || 0,
         });
       });
     });
 
     if (allLineItems.length > 0) {
+      // Format as tab-separated table rows: Name | Qty | Unit Price | Discount | Line Total
       const pricingRows = allLineItems.map((item) => {
-        return `${item.name}\t${item.quantity}\t${formatCurrency(item.sellPrice)}`;
+        return `${item.name}\t${item.quantity}\t${formatCurrency(item.unitSellPrice)}\t${item.discount}\t${formatCurrency(item.lineTotal)}`;
       });
-      variables['pricing.itemsTable'] = pricingRows.join('\n');
+
+      // Add total row
+      const grandTotal = summary?.grandTotal || allLineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+      pricingRows.push(`\t\t\tTOTAL:\t${formatCurrency(grandTotal)}`);
+
+      variables['pricing.list'] = pricingRows.join('\n');
+      variables['pricing.itemsTable'] = pricingRows.join('\n'); // Alias
       variables['pricing.itemsCount'] = allLineItems.length.toString();
     } else {
+      variables['pricing.list'] = '';
       variables['pricing.itemsTable'] = '';
       variables['pricing.itemsCount'] = '0';
     }
   } else {
+    variables['pricing.list'] = '';
     variables['pricing.itemsTable'] = '';
     variables['pricing.itemsCount'] = '0';
   }
@@ -410,6 +439,67 @@ export interface GenerateProposalDocOptions {
   mode?: 'create' | 'overwrite' | 'update';
   existingDocId?: string;
   version?: number;
+}
+
+/**
+ * Format dimensions into a readable string (e.g., "32'-4" L x 8'-6" H")
+ */
+function formatDimensions(dims: {
+  height?: string | null;
+  width?: string | null;
+  length?: string | null;
+  thickness?: string | null;
+}): string {
+  const parts: string[] = [];
+
+  // Check for length x height format (common for walls)
+  if (dims.length && dims.height) {
+    return `${dims.length} L x ${dims.height} H`;
+  }
+
+  // Check for width x height format
+  if (dims.width && dims.height) {
+    return `${dims.width} W x ${dims.height} H`;
+  }
+
+  // Fall back to listing available dimensions
+  if (dims.length) parts.push(`${dims.length} L`);
+  if (dims.width) parts.push(`${dims.width} W`);
+  if (dims.height) parts.push(`${dims.height} H`);
+  if (dims.thickness) parts.push(`${dims.thickness} T`);
+
+  return parts.join(' x ') || '';
+}
+
+/**
+ * Calculate per-unit sell price (unit cost + markup, before quantity multiplication)
+ */
+function calculateUnitSellPrice(item: {
+  unitCost: number;
+  quantity: number;
+  markupValue: number;
+  markupType?: 'percent' | 'dollar';
+}): number {
+  const baseCost = item.unitCost || 0;
+  if (item.markupType === 'dollar') {
+    // Dollar markup is a total amount, distribute per unit
+    return baseCost + ((item.markupValue || 0) / (item.quantity || 1));
+  }
+  // Percentage markup (default)
+  return baseCost * (1 + (item.markupValue || 0) / 100);
+}
+
+/**
+ * Format discount for display
+ */
+function formatDiscountValue(
+  value: number | undefined,
+  type: string | undefined,
+  formatCurrency: (amount: number | undefined) => string
+): string {
+  if (!value) return '';
+  if (type === 'percent') return `${value}%`;
+  return formatCurrency(value);
 }
 
 /**
@@ -476,6 +566,59 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
         };
       }),
     });
+
+    // Specifications table - designed for wall/product specs tables
+    // Uses product data with additional fields from rawData.specifications
+    tables.push({
+      tableId: 'specifications',
+      rows: formData.products.items.map((product, idx) => {
+        const rawData = product.rawData || {};
+        const dims = rawData.dimensions || {};
+        const perf = rawData.performanceRatings || {};
+        const appearance = rawData.appearance || {};
+        const specs = (rawData.specifications || {}) as Record<string, unknown>;
+
+        // Format finish - use color if available, otherwise finish style
+        const finishDisplay = appearance.color || appearance.finish || '';
+
+        return {
+          index: idx + 1,
+          // Wall name/alias (e.g., "Operable A", "Glass A")
+          wall: product.alias || product.name || '',
+          name: product.name || '',
+          alias: product.alias || '',
+          // Formatted dimensions string
+          dimensions: formatDimensions(dims),
+          // Individual dimension fields
+          height: dims.height || '',
+          width: dims.width || '',
+          length: dims.length || '',
+          thickness: dims.thickness || '',
+          // Performance
+          stc: perf.stc?.toString() || '',
+          fireRating: perf.fireRating || '',
+          acousticRating: perf.acousticRating || '',
+          // Appearance
+          finish: finishDisplay,
+          color: appearance.color || '',
+          finishStyle: appearance.finish || '',
+          trim: appearance.trim || '',
+          // Door specifications from rawData.specifications
+          pocketDoors: String(specs.pocketDoors || specs.pocket_doors || ''),
+          passDoors: String(specs.passDoors || specs.pass_doors || ''),
+          // Count and quantity
+          count: String(specs.count || specs.panelCount || specs.panel_count || ''),
+          qty: product.quantity?.toString() || '',
+          quantity: product.quantity?.toString() || '',
+          // Additional spec fields that might be useful
+          manufacturer: rawData.manufacturer || '',
+          model: rawData.model || '',
+          series: rawData.series || '',
+          productType: rawData.productType || '',
+          productCategory: rawData.productCategory || '',
+        };
+      }),
+    });
   }
 
   // Pricing items table - all line items across all sections
@@ -485,6 +628,8 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
 
     formData.pricing.sections.forEach((section) => {
       section.lineItems.forEach((item) => {
+        const unitSellPriceValue = calculateUnitSellPrice(item);
+
         allItems.push({
           index: itemIndex++,
           section: section.name,
@@ -495,6 +640,21 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           // Raw numeric values for calculations
           unitCostRaw: item.unitCost || 0,
           sellPriceRaw: item.sellPrice || 0,
+
+          // Per-unit sell price (after markup, before quantity)
+          unitSellPrice: formatCurrency(unitSellPriceValue),
+          unitSellPriceRaw: unitSellPriceValue,
+
+          // Discount fields
+          discount: formatDiscountValue(item.discountValue, item.discountType, formatCurrency),
+          discountValue: item.discountValue || 0,
+          discountType: item.discountType || '',
+          // Always show percentage format (0% if no discount)
+          discountPercent: `${item.discountValue || 0}%`,
+
+          // Line total alias (same as sellPrice, clearer naming for templates)
+          lineTotal: formatCurrency(item.sellPrice),
+          lineTotalRaw: item.sellPrice || 0,
         });
       });
     });
@@ -524,6 +684,19 @@ export async function generateProposalDoc(
 ): Promise<GenerateDocResponse> {
   const variables = buildProposalVariables(proposalData, formData);
   const tableData = buildTableData(formData);
+
+  // Debug logging
+  console.log('[generateProposalDoc] Pricing sections:', formData?.pricing?.sections?.length || 0);
+  formData?.pricing?.sections?.forEach((section, idx) => {
+    console.log(`[generateProposalDoc] Section ${idx} "${section.name}": ${section.lineItems?.length || 0} items`);
+  });
+  const pricingTable = tableData.find(t => t.tableId === 'pricing');
+  console.log('[generateProposalDoc] Pricing table rows:', pricingTable?.rows?.length || 0);
+  if (pricingTable?.rows) {
+    pricingTable.rows.forEach((row, idx) => {
+      console.log(`[generateProposalDoc] Row ${idx}: ${row.name}`);
+    });
+  }
 
   return generateGoogleDoc({
     templateDocId,

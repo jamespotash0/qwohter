@@ -516,9 +516,14 @@ function evaluateExpression(
  *
  * Template format in Google Docs:
  * Create a table with a header row and a template row containing:
- * {{#ROW:pricing}} in the first cell
+ * {{#ROW:pricing}} in the first cell (marker to identify the template row)
  * {{row.name}}, {{row.quantity}}, {{row.sellPrice}} in other cells
- * {{/ROW}} in the last cell (optional, auto-detected)
+ * {{/ROW}} in the last cell (optional end marker)
+ *
+ * The system will:
+ * 1. Find the template row with the marker
+ * 2. Duplicate it for each data row
+ * 3. Replace {{row.field}} in each row with that row's specific data
  */
 async function processTableRows(
   accessToken: string,
@@ -532,6 +537,29 @@ async function processTableRows(
     return;
   }
 
+  // Process each table definition one at a time
+  for (const tableDef of tableData) {
+    await processOneTable(accessToken, docId, tableDef);
+  }
+}
+
+/**
+ * Process a single table definition
+ *
+ * New approach: Instead of inserting empty rows, we:
+ * 1. Replace {{row.xxx}} in the FIRST row with first data row values (using replaceAllText)
+ * 2. For additional rows, duplicate the template row and populate with data
+ */
+async function processOneTable(
+  accessToken: string,
+  docId: string,
+  tableDef: TableRowData
+): Promise<void> {
+  const marker = `{{#ROW:${tableDef.tableId}}}`;
+  const endMarker = '{{/ROW}}';
+
+  console.log(`[processOneTable] Processing table: ${tableDef.tableId} with ${tableDef.rows.length} rows`);
+
   // Get the document structure
   const docResponse = await fetch(
     `https://docs.googleapis.com/v1/documents/${docId}`,
@@ -541,114 +569,198 @@ async function processTableRows(
   );
 
   if (!docResponse.ok) {
-    console.error('Failed to read document for table processing');
+    console.error('[processOneTable] Failed to read document');
     return;
   }
 
   const docData = await docResponse.json();
   const content = docData.body?.content || [];
 
-  // Process each table definition
-  for (const tableDef of tableData) {
-    const marker = `{{#ROW:${tableDef.tableId}}}`;
-    const endMarker = '{{/ROW}}';
+  // Find the table containing our marker
+  let targetTable: any = null;
+  let templateRowIndex = -1;
+  let tableStartIndex = -1;
 
-    // Find the table containing our marker
-    let targetTable: any = null;
-    let templateRowIndex = -1;
-    let tableStartIndex = -1;
+  for (const element of content) {
+    if (element.table) {
+      const table = element.table;
+      tableStartIndex = element.startIndex;
 
-    for (const element of content) {
-      if (element.table) {
-        const table = element.table;
-        tableStartIndex = element.startIndex;
-
-        // Search for marker in table rows
-        for (let rowIdx = 0; rowIdx < table.tableRows.length; rowIdx++) {
-          const row = table.tableRows[rowIdx];
-          for (const cell of row.tableCells) {
-            const cellContent = JSON.stringify(cell);
-            if (cellContent.includes(marker)) {
-              targetTable = table;
-              templateRowIndex = rowIdx;
-              break;
-            }
-          }
-          if (targetTable) break;
-        }
-      }
-      if (targetTable) break;
-    }
-
-    if (!targetTable || templateRowIndex === -1) {
-      console.log(`No table found with marker ${marker}`);
-      continue;
-    }
-
-    if (tableDef.rows.length === 0) {
-      // No rows - just remove the template row markers
-      continue;
-    }
-
-    const requests: any[] = [];
-    const templateRow = targetTable.tableRows[templateRowIndex];
-
-    // Build cell content template from the template row
-    const cellTemplates: string[] = [];
-    for (const cell of templateRow.tableCells) {
-      let cellText = '';
-      if (cell.content) {
-        for (const para of cell.content) {
-          if (para.paragraph?.elements) {
-            for (const elem of para.paragraph.elements) {
-              if (elem.textRun?.content) {
-                cellText += elem.textRun.content;
-              }
-            }
+      // Search for marker in table rows
+      for (let rowIdx = 0; rowIdx < table.tableRows.length; rowIdx++) {
+        const row = table.tableRows[rowIdx];
+        for (const cell of row.tableCells) {
+          const cellContent = JSON.stringify(cell);
+          if (cellContent.includes(marker)) {
+            targetTable = table;
+            templateRowIndex = rowIdx;
+            break;
           }
         }
+        if (targetTable) break;
       }
-      // Remove the markers from template
-      cellText = cellText.replace(marker, '').replace(endMarker, '').trim();
-      cellTemplates.push(cellText);
     }
+    if (targetTable) break;
+  }
 
-    // First, remove the start/end markers
-    requests.push({
+  if (!targetTable || templateRowIndex === -1) {
+    console.log(`[processOneTable] No table found with marker ${marker}`);
+    return;
+  }
+
+  if (tableDef.rows.length === 0) {
+    // No data rows - remove the template row entirely
+    console.log('[processOneTable] No data rows, removing template row');
+    await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            deleteTableRow: {
+              tableCellLocation: {
+                tableStartLocation: { index: tableStartIndex + 1 },
+                rowIndex: templateRowIndex,
+                columnIndex: 0,
+              },
+            },
+          }],
+        }),
+      }
+    );
+    return;
+  }
+
+  // Extract cell templates from the template row
+  const templateRow = targetTable.tableRows[templateRowIndex];
+  const cellTemplates: string[] = [];
+
+  for (const cell of templateRow.tableCells) {
+    let cellText = '';
+    if (cell.content) {
+      for (const para of cell.content) {
+        if (para.paragraph?.elements) {
+          for (const elem of para.paragraph.elements) {
+            if (elem.textRun?.content) {
+              cellText += elem.textRun.content;
+            }
+          }
+        }
+      }
+    }
+    // Remove the markers from template, keep the variable placeholders
+    cellText = cellText.replace(marker, '').replace(endMarker, '').trim();
+    cellTemplates.push(cellText);
+  }
+
+  console.log('[processOneTable] Cell templates:', cellTemplates);
+
+  // Step 1: Remove the markers first
+  const markerRequests = [
+    {
       replaceAllText: {
         containsText: { text: marker, matchCase: false },
         replaceText: '',
       },
-    });
-    requests.push({
+    },
+    {
       replaceAllText: {
         containsText: { text: endMarker, matchCase: false },
         replaceText: '',
       },
-    });
+    },
+  ];
 
-    // For each data row (except first which uses template row), insert new rows
-    // We'll duplicate by inserting rows after the template row
-    if (tableDef.rows.length > 1) {
-      // Insert additional rows after template row
-      const rowsToInsert = tableDef.rows.length - 1;
-      for (let i = 0; i < rowsToInsert; i++) {
-        requests.push({
-          insertTableRow: {
-            tableCellLocation: {
-              tableStartLocation: { index: tableStartIndex + 1 },
-              rowIndex: templateRowIndex,
-              columnIndex: 0,
-            },
-            insertBelow: true,
-          },
-        });
-      }
+  await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requests: markerRequests }),
     }
+  );
 
-    // Apply first batch (markers + row insertions)
-    if (requests.length > 0) {
-      const response = await fetch(
+  // Step 2: Replace the FIRST row's variables using replaceAllText
+  // Since {{row.xxx}} only exists once in the template, this will work for the first row
+  const firstRowData = tableDef.rows[0];
+  const firstRowRequests: any[] = [];
+
+  for (const [key, value] of Object.entries(firstRowData)) {
+    // Replace {{row.field}} patterns
+    firstRowRequests.push({
+      replaceAllText: {
+        containsText: { text: `{{row.${key}}}`, matchCase: false },
+        replaceText: String(value),
+      },
+    });
+    // Also handle {{item.field}} patterns
+    firstRowRequests.push({
+      replaceAllText: {
+        containsText: { text: `{{item.${key}}}`, matchCase: false },
+        replaceText: String(value),
+      },
+    });
+  }
+
+  if (firstRowRequests.length > 0) {
+    await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requests: firstRowRequests }),
+      }
+    );
+  }
+
+  console.log('[processOneTable] Replaced first row variables');
+
+  // Step 3: For additional rows, insert new rows and populate them
+  if (tableDef.rows.length > 1) {
+    const additionalRows = tableDef.rows.slice(1);
+    console.log(`[processOneTable] Adding ${additionalRows.length} additional rows`);
+
+    for (let i = 0; i < additionalRows.length; i++) {
+      const rowData = additionalRows[i];
+
+      // Re-read document to get current table structure
+      const currentDoc = await fetch(
+        `https://docs.googleapis.com/v1/documents/${docId}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const currentData = await currentDoc.json();
+
+      // Find the table again
+      let currentTableStart = -1;
+      let currentTable: any = null;
+
+      for (const element of currentData.body?.content || []) {
+        if (element.table && element.table.tableRows.length > templateRowIndex) {
+          // This is likely our table if it has enough rows
+          currentTableStart = element.startIndex;
+          currentTable = element.table;
+          break;
+        }
+      }
+
+      if (currentTableStart === -1 || !currentTable) {
+        console.warn('[processOneTable] Could not find table for row insertion');
+        continue;
+      }
+
+      // Insert a new row below the last data row
+      const insertRowIndex = templateRowIndex + i; // Insert after previous rows
+      const insertResponse = await fetch(
         `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
         {
           method: 'POST',
@@ -656,67 +768,193 @@ async function processTableRows(
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ requests }),
+          body: JSON.stringify({
+            requests: [{
+              insertTableRow: {
+                tableCellLocation: {
+                  tableStartLocation: { index: currentTableStart + 1 },
+                  rowIndex: insertRowIndex,
+                  columnIndex: 0,
+                },
+                insertBelow: true,
+              },
+            }],
+          }),
         }
       );
 
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('Failed to insert table rows:', error);
+      if (!insertResponse.ok) {
+        const error = await insertResponse.text();
+        console.error('[processOneTable] Failed to insert row:', error);
         continue;
       }
-    }
 
-    // Now replace row variables for all rows
-    // Each row gets {{row.X}} replaced with its values
-    const replaceRequests: any[] = [];
+      // Re-read document to get the new row's cell positions
+      const updatedDoc = await fetch(
+        `https://docs.googleapis.com/v1/documents/${docId}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const updatedData = await updatedDoc.json();
 
-    // Replace {{row.field}} patterns for each row's data
-    // Since we can't target specific rows with replaceAllText,
-    // we'll use indexed patterns: {{row.1.name}}, {{row.2.name}}, etc.
-    // But for simpler usage, we use the sequential replacement approach
+      // Find the newly inserted row (it's at insertRowIndex + 1 now)
+      let updatedTable: any = null;
+      for (const element of updatedData.body?.content || []) {
+        if (element.table && element.table.tableRows.length > insertRowIndex + 1) {
+          updatedTable = element.table;
+          break;
+        }
+      }
 
-    for (let rowIdx = 0; rowIdx < tableDef.rows.length; rowIdx++) {
-      const rowData = tableDef.rows[rowIdx];
+      if (!updatedTable) {
+        console.warn('[processOneTable] Could not find updated table');
+        continue;
+      }
 
-      // For each cell template, create the replacement text
-      for (let cellIdx = 0; cellIdx < cellTemplates.length; cellIdx++) {
-        let cellText = cellTemplates[cellIdx];
+      const newRow = updatedTable.tableRows[insertRowIndex + 1];
+      if (!newRow) {
+        console.warn('[processOneTable] Could not find new row at index', insertRowIndex + 1);
+        continue;
+      }
 
-        // Replace {{row.field}} with actual values
+      // Insert text into each cell of the new row
+      // Process cells in reverse order to avoid index shifting
+      const cellInserts: any[] = [];
+      const numCells = Math.min(newRow.tableCells.length, cellTemplates.length);
+
+      for (let cellIdx = numCells - 1; cellIdx >= 0; cellIdx--) {
+        const cell = newRow.tableCells[cellIdx];
+        const template = cellTemplates[cellIdx];
+
+        if (!template || !cell.content?.[0]?.paragraph?.elements?.[0]) continue;
+
+        // Get the insertion point (start of the cell content)
+        const insertIndex = cell.content[0].startIndex;
+
+        // Replace template placeholders with actual values
+        let cellContent = template;
         for (const [key, value] of Object.entries(rowData)) {
-          const pattern = `{{row.${key}}}`;
-          cellText = cellText.replace(new RegExp(pattern.replace(/[{}]/g, '\\$&'), 'g'), String(value));
+          const rowPattern = new RegExp(`\\{\\{row\\.${key}\\}\\}`, 'gi');
+          const itemPattern = new RegExp(`\\{\\{item\\.${key}\\}\\}`, 'gi');
+          cellContent = cellContent.replace(rowPattern, String(value));
+          cellContent = cellContent.replace(itemPattern, String(value));
         }
 
-        // Also support {{item.field}} as alias
-        for (const [key, value] of Object.entries(rowData)) {
-          const pattern = `{{item.${key}}}`;
-          cellText = cellText.replace(new RegExp(pattern.replace(/[{}]/g, '\\$&'), 'g'), String(value));
+        if (cellContent) {
+          cellInserts.push({
+            insertText: {
+              location: { index: insertIndex },
+              text: cellContent,
+            },
+          });
+        }
+      }
+
+      // Apply cell content inserts
+      if (cellInserts.length > 0) {
+        const insertTextResponse = await fetch(
+          `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ requests: cellInserts }),
+          }
+        );
+
+        if (!insertTextResponse.ok) {
+          const error = await insertTextResponse.text();
+          console.error('[processOneTable] Failed to insert cell text:', error);
         }
       }
     }
+  }
 
-    // Use a different approach: replace all {{row.field}} patterns globally
-    // This works because after row duplication, each row has the same template
-    // We'll replace with indexed values using numbered patterns
-    const firstRow = tableDef.rows[0];
-    for (const [key, value] of Object.entries(firstRow)) {
-      replaceRequests.push({
-        replaceAllText: {
-          containsText: { text: `{{row.${key}}}`, matchCase: false },
-          replaceText: String(value),
-        },
-      });
-      replaceRequests.push({
-        replaceAllText: {
-          containsText: { text: `{{item.${key}}}`, matchCase: false },
-          replaceText: String(value),
-        },
-      });
+  console.log(`[processOneTable] Completed processing table: ${tableDef.tableId}`);
+}
+
+/**
+ * Process {{#TABLE:tableId}} markers - creates complete tables from scratch
+ *
+ * Usage in template: Just put {{#TABLE:pricing}} where you want the table
+ * The system will create a complete table with headers and all data rows
+ */
+async function processTableMarkers(
+  accessToken: string,
+  docId: string,
+  tableData: TableRowData[]
+): Promise<void> {
+  console.log('[processTableMarkers] Starting table marker processing');
+
+  if (!tableData || tableData.length === 0) {
+    console.log('[processTableMarkers] No table data to process');
+    return;
+  }
+
+  for (const tableDef of tableData) {
+    const marker = `{{#TABLE:${tableDef.tableId}}}`;
+    console.log(`[processTableMarkers] Looking for marker: ${marker}`);
+
+    // Read document to find the marker
+    const docResponse = await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const docData = await docResponse.json();
+
+    // Find the marker position
+    let markerStart = -1;
+    let markerEnd = -1;
+
+    for (const element of docData.body?.content || []) {
+      if (element.paragraph) {
+        for (const textElement of element.paragraph.elements || []) {
+          const textRun = textElement.textRun;
+          if (textRun?.content?.includes(marker)) {
+            const text = textRun.content;
+            const idx = text.indexOf(marker);
+            markerStart = textElement.startIndex + idx;
+            markerEnd = markerStart + marker.length;
+            break;
+          }
+        }
+      }
+      if (markerStart !== -1) break;
     }
 
-    if (replaceRequests.length > 0) {
+    if (markerStart === -1) {
+      console.log(`[processTableMarkers] Marker ${marker} not found, skipping`);
+      continue;
+    }
+
+    console.log(`[processTableMarkers] Found marker at position ${markerStart}-${markerEnd}`);
+
+    // Define table structure based on tableId
+    let headers: string[] = [];
+    let rowKeys: string[] = [];
+
+    if (tableDef.tableId === 'pricing') {
+      headers = ['Qty', 'Description', 'Unit Price', 'Disc (%)', 'Extended'];
+      rowKeys = ['quantity', 'name', 'unitSellPrice', 'discountPercent', 'lineTotal'];
+    } else if (tableDef.tableId === 'products') {
+      headers = ['#', 'Product', 'Qty', 'Unit'];
+      rowKeys = ['index', 'name', 'quantity', 'unit'];
+    } else if (tableDef.tableId === 'specifications') {
+      headers = ['Wall', 'Dimensions', 'STC', 'Finish'];
+      rowKeys = ['wall', 'dimensions', 'stc', 'finish'];
+    } else {
+      // Generic table - use first row's keys as headers
+      if (tableDef.rows.length > 0) {
+        const firstRow = tableDef.rows[0];
+        headers = Object.keys(firstRow).filter(k => !k.endsWith('Raw'));
+        rowKeys = headers;
+      }
+    }
+
+    if (headers.length === 0 || tableDef.rows.length === 0) {
+      console.log(`[processTableMarkers] No data for table ${tableDef.tableId}, removing marker`);
+      // Just delete the marker
       await fetch(
         `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
         {
@@ -725,10 +963,400 @@ async function processTableRows(
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ requests: replaceRequests }),
+          body: JSON.stringify({
+            requests: [{
+              deleteContentRange: {
+                range: { startIndex: markerStart, endIndex: markerEnd }
+              }
+            }]
+          }),
         }
       );
+      continue;
     }
+
+    // Calculate table dimensions
+    // +1 for header row, +1 for total row (for pricing)
+    const numCols = headers.length;
+    const numRows = tableDef.rows.length + 1 + (tableDef.tableId === 'pricing' ? 1 : 0);
+
+    console.log(`[processTableMarkers] Creating ${numRows}x${numCols} table`);
+
+    // Step 1: Delete the marker text
+    await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            deleteContentRange: {
+              range: { startIndex: markerStart, endIndex: markerEnd }
+            }
+          }]
+        }),
+      }
+    );
+
+    // Step 2: Insert the table at the marker position
+    const insertTableResponse = await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            insertTable: {
+              rows: numRows,
+              columns: numCols,
+              location: { index: markerStart }
+            }
+          }]
+        }),
+      }
+    );
+
+    if (!insertTableResponse.ok) {
+      const error = await insertTableResponse.text();
+      console.error('[processTableMarkers] Failed to insert table:', error);
+      continue;
+    }
+
+    console.log('[processTableMarkers] Table inserted, now populating cells');
+
+    // Step 3: Re-read document to get the new table structure
+    const updatedDocResponse = await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const updatedDocData = await updatedDocResponse.json();
+
+    // Find the newly inserted table (should be near markerStart)
+    let table: any = null;
+    for (const element of updatedDocData.body?.content || []) {
+      if (element.table && element.startIndex >= markerStart - 5) {
+        table = element.table;
+        break;
+      }
+    }
+
+    if (!table) {
+      console.error('[processTableMarkers] Could not find inserted table');
+      continue;
+    }
+
+    // Debug: Log table structure
+    console.log('[processTableMarkers] Table rows:', table.tableRows?.length);
+    if (table.tableRows?.[0]) {
+      console.log('[processTableMarkers] First row cells:', table.tableRows[0].tableCells?.length);
+      const firstCell = table.tableRows[0].tableCells?.[0];
+      console.log('[processTableMarkers] First cell structure:', JSON.stringify(firstCell, null, 2).slice(0, 500));
+    }
+
+    // Step 4: Populate cells in reverse order (to avoid index shifting)
+    const cellInserts: any[] = [];
+
+    // Helper to get cell insert index - properly handle 0 as valid
+    const getCellIndex = (rowIdx: number, colIdx: number): number => {
+      const row = table.tableRows?.[rowIdx];
+      if (!row) {
+        console.log(`[processTableMarkers] No row at index ${rowIdx}`);
+        return -1;
+      }
+      const cell = row.tableCells?.[colIdx];
+      if (!cell) {
+        console.log(`[processTableMarkers] No cell at row ${rowIdx}, col ${colIdx}`);
+        return -1;
+      }
+      // Get the startIndex from the paragraph inside the cell
+      const startIndex = cell.content?.[0]?.startIndex;
+      if (startIndex === undefined || startIndex === null) {
+        console.log(`[processTableMarkers] No startIndex for cell at row ${rowIdx}, col ${colIdx}. Cell content:`, JSON.stringify(cell.content).slice(0, 200));
+        return -1;
+      }
+      return startIndex;
+    };
+
+    // Build all cell content first
+    const allCells: Array<{ rowIdx: number; colIdx: number; text: string }> = [];
+
+    // Header row
+    for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+      allCells.push({ rowIdx: 0, colIdx, text: headers[colIdx] });
+    }
+
+    // Data rows
+    for (let dataIdx = 0; dataIdx < tableDef.rows.length; dataIdx++) {
+      const rowData = tableDef.rows[dataIdx];
+      const rowIdx = dataIdx + 1; // +1 because header is row 0
+
+      for (let colIdx = 0; colIdx < rowKeys.length; colIdx++) {
+        const key = rowKeys[colIdx];
+        const value = String(rowData[key] ?? '');
+        allCells.push({ rowIdx, colIdx, text: value });
+      }
+    }
+
+    // Total row (for pricing only)
+    if (tableDef.tableId === 'pricing') {
+      const totalRowIdx = tableDef.rows.length + 1;
+      // Empty cells until the second-to-last column
+      for (let colIdx = 0; colIdx < headers.length - 2; colIdx++) {
+        allCells.push({ rowIdx: totalRowIdx, colIdx, text: '' });
+      }
+      // "TOTAL:" label
+      allCells.push({ rowIdx: totalRowIdx, colIdx: headers.length - 2, text: 'TOTAL:' });
+      // Calculate grand total
+      let grandTotal = 0;
+      for (const row of tableDef.rows) {
+        grandTotal += Number(row.lineTotalRaw) || Number(row.sellPriceRaw) || 0;
+      }
+      const formattedTotal = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }).format(grandTotal);
+      allCells.push({ rowIdx: totalRowIdx, colIdx: headers.length - 1, text: formattedTotal });
+    }
+
+    // Sort cells in reverse order (bottom-right to top-left) for insertion
+    allCells.sort((a, b) => {
+      if (b.rowIdx !== a.rowIdx) return b.rowIdx - a.rowIdx;
+      return b.colIdx - a.colIdx;
+    });
+
+    // Insert text into each cell
+    let skippedCells = 0;
+    for (const cell of allCells) {
+      const insertIdx = getCellIndex(cell.rowIdx, cell.colIdx);
+      if (insertIdx === -1) {
+        skippedCells++;
+        continue;
+      }
+
+      // Skip empty text to avoid unnecessary inserts
+      if (!cell.text) continue;
+
+      cellInserts.push({
+        insertText: {
+          location: { index: insertIdx },
+          text: cell.text,
+        },
+      });
+    }
+
+    console.log(`[processTableMarkers] Built ${cellInserts.length} cell inserts, skipped ${skippedCells} cells`);
+
+    if (cellInserts.length > 0) {
+      const populateResponse = await fetch(
+        `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests: cellInserts }),
+        }
+      );
+
+      if (!populateResponse.ok) {
+        const error = await populateResponse.text();
+        console.error('[processTableMarkers] Failed to populate cells:', error);
+      } else {
+        console.log(`[processTableMarkers] Populated ${cellInserts.length} cells`);
+      }
+    }
+
+    // Step 5: Style the header row with orange background
+    // Re-read document to get current table structure for styling
+    const styledDocResponse = await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const styledDocData = await styledDocResponse.json();
+
+    // Find the table again for styling
+    let styledTable: any = null;
+    let styledTableStart = -1;
+    for (const element of styledDocData.body?.content || []) {
+      if (element.table && element.startIndex >= markerStart - 10) {
+        styledTable = element.table;
+        styledTableStart = element.startIndex;
+        break;
+      }
+    }
+
+    if (styledTable && styledTableStart !== -1) {
+      // Build style requests for header row (row 0) and total row
+      const styleRequests: any[] = [];
+
+      // Peach/tan color for header (RGB: 252, 228, 207 = #FCE4CF)
+      const headerBgColor = {
+        color: {
+          rgbColor: {
+            red: 0.988,
+            green: 0.894,
+            blue: 0.812,
+          },
+        },
+      };
+
+      // Light green color for total row (RGB: 226, 239, 218 = #E2EFDA)
+      const totalBgColor = {
+        color: {
+          rgbColor: {
+            red: 0.886,
+            green: 0.937,
+            blue: 0.855,
+          },
+        },
+      };
+
+      // Style each cell in the header row with background color
+      for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+        styleRequests.push({
+          updateTableCellStyle: {
+            tableStartLocation: { index: styledTableStart + 1 },
+            tableRange: {
+              tableCellLocation: {
+                tableStartLocation: { index: styledTableStart + 1 },
+                rowIndex: 0,
+                columnIndex: colIdx,
+              },
+              rowSpan: 1,
+              columnSpan: 1,
+            },
+            tableCellStyle: {
+              backgroundColor: headerBgColor,
+            },
+            fields: 'backgroundColor',
+          },
+        });
+      }
+
+      // Style total row cells (last two columns) with light green background
+      if (tableDef.tableId === 'pricing') {
+        const totalRowIdx = tableDef.rows.length + 1;
+        // "Total:" label cell
+        styleRequests.push({
+          updateTableCellStyle: {
+            tableStartLocation: { index: styledTableStart + 1 },
+            tableRange: {
+              tableCellLocation: {
+                tableStartLocation: { index: styledTableStart + 1 },
+                rowIndex: totalRowIdx,
+                columnIndex: headers.length - 2,
+              },
+              rowSpan: 1,
+              columnSpan: 1,
+            },
+            tableCellStyle: {
+              backgroundColor: totalBgColor,
+            },
+            fields: 'backgroundColor',
+          },
+        });
+        // Total amount cell
+        styleRequests.push({
+          updateTableCellStyle: {
+            tableStartLocation: { index: styledTableStart + 1 },
+            tableRange: {
+              tableCellLocation: {
+                tableStartLocation: { index: styledTableStart + 1 },
+                rowIndex: totalRowIdx,
+                columnIndex: headers.length - 1,
+              },
+              rowSpan: 1,
+              columnSpan: 1,
+            },
+            tableCellStyle: {
+              backgroundColor: totalBgColor,
+            },
+            fields: 'backgroundColor',
+          },
+        });
+      }
+
+      if (styleRequests.length > 0) {
+        const styleResponse = await fetch(
+          `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ requests: styleRequests }),
+          }
+        );
+
+        if (!styleResponse.ok) {
+          const error = await styleResponse.text();
+          console.error('[processTableMarkers] Failed to style cells:', error);
+        } else {
+          console.log('[processTableMarkers] Applied cell styling');
+        }
+      }
+
+      // Step 6: Make header text bold
+      // Get the text range for header row and apply bold formatting
+      const headerRow = styledTable.tableRows?.[0];
+      if (headerRow) {
+        const textStyleRequests: any[] = [];
+
+        for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+          const cell = headerRow.tableCells?.[colIdx];
+          if (cell?.content?.[0]) {
+            const startIdx = cell.content[0].startIndex;
+            const endIdx = cell.content[0].endIndex - 1; // -1 to exclude newline
+
+            if (startIdx !== undefined && endIdx !== undefined && endIdx > startIdx) {
+              textStyleRequests.push({
+                updateTextStyle: {
+                  range: {
+                    startIndex: startIdx,
+                    endIndex: endIdx,
+                  },
+                  textStyle: {
+                    bold: true,
+                  },
+                  fields: 'bold',
+                },
+              });
+            }
+          }
+        }
+
+        if (textStyleRequests.length > 0) {
+          const boldResponse = await fetch(
+            `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ requests: textStyleRequests }),
+            }
+          );
+
+          if (!boldResponse.ok) {
+            const error = await boldResponse.text();
+            console.error('[processTableMarkers] Failed to bold header:', error);
+          } else {
+            console.log('[processTableMarkers] Applied bold header text');
+          }
+        }
+      }
+    }
+
+    console.log(`[processTableMarkers] Completed table: ${tableDef.tableId}`);
   }
 }
 
@@ -1374,15 +2002,25 @@ serve(async (req) => {
     const newDocId = await copyDocument(accessToken, templateDocId, title, folderId);
     console.log(`Created new document: ${newDocId} (version ${version})`);
 
-    // Process dynamic table rows first (if any)
+    // Process dynamic table rows first (if any) - {{#ROW:tableId}} syntax
     // Wrapped in try-catch so table errors don't block variable replacement
     if (tableData && tableData.length > 0) {
       try {
         console.log(`Processing ${tableData.length} dynamic tables...`);
         await processTableRows(accessToken, newDocId, tableData);
-        console.log('Table processing completed successfully');
+        console.log('Table row processing completed successfully');
       } catch (tableError) {
-        console.error('Table processing failed (continuing with variable replacement):', tableError);
+        console.error('Table row processing failed (continuing with variable replacement):', tableError);
+        // Don't throw - continue with variable replacement
+      }
+
+      // Process table markers - {{#TABLE:tableId}} syntax (creates complete tables)
+      try {
+        console.log('Processing table markers...');
+        await processTableMarkers(accessToken, newDocId, tableData);
+        console.log('Table marker processing completed successfully');
+      } catch (tableError) {
+        console.error('Table marker processing failed (continuing with variable replacement):', tableError);
         // Don't throw - continue with variable replacement
       }
     }

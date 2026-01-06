@@ -346,6 +346,67 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
       category: 'Pricing Totals',
       description: `$${finalGrandTotal.toFixed(2)} - Final total (with tax)`,
     });
+
+    // Line items table - formatted text block with all items
+    vars.push({
+      key: 'pricing.list',
+      label: 'Line Items Table (Text)',
+      category: 'Pricing Totals',
+      description: `Tab-separated text: Name, Qty, Unit Price, Discount, Line Total (${itemCount} items)`,
+    });
+
+    // Auto-generated table - creates a complete bordered table
+    vars.push({
+      key: '#TABLE:pricing',
+      label: 'Pricing Table (Auto)',
+      category: 'Auto Tables (Google Docs)',
+      description: `Creates complete table with headers, ${itemCount} rows, and total`,
+    });
+
+    // Dynamic table row variables (for Google Docs templates)
+    // These use {{#ROW:pricing}} ... {{/ROW}} syntax in templates
+    vars.push({
+      key: '#ROW:pricing',
+      label: 'Start Row Loop',
+      category: 'Template Tables (Google Docs)',
+      description: 'Duplicate existing table row for each line item',
+    });
+    vars.push({
+      key: 'row.name',
+      label: 'Item Name',
+      category: 'Template Tables (Google Docs)',
+      description: 'Line item name (use inside {{#ROW:pricing}})',
+    });
+    vars.push({
+      key: 'row.quantity',
+      label: 'Quantity',
+      category: 'Template Tables (Google Docs)',
+      description: 'Line item quantity',
+    });
+    vars.push({
+      key: 'row.unitSellPrice',
+      label: 'Unit Sell Price',
+      category: 'Template Tables (Google Docs)',
+      description: 'Per-unit price after markup',
+    });
+    vars.push({
+      key: 'row.discount',
+      label: 'Discount',
+      category: 'Template Tables (Google Docs)',
+      description: 'Discount (% or $)',
+    });
+    vars.push({
+      key: 'row.lineTotal',
+      label: 'Line Total',
+      category: 'Template Tables (Google Docs)',
+      description: 'Total for this line item',
+    });
+    vars.push({
+      key: '/ROW',
+      label: 'End Row Loop',
+      category: 'Template Tables (Google Docs)',
+      description: 'Place at end of template row',
+    });
   }
 
   return vars;
