@@ -6,8 +6,8 @@
  * Supports both static variables and dynamic product-based variables.
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import { X, MagnifyingGlass, CaretRight, Package, ListBullets, CurrencyDollar, Clock, TextAa, FileText, Buildings, User, AddressBook, Briefcase } from '@phosphor-icons/react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { X, MagnifyingGlass, CaretRight, CaretDown, Package, ListBullets, CurrencyDollar, Clock, TextAa, FileText, Buildings, User, AddressBook, Briefcase } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getAllFormVariables, type VariableDefinition } from './VariableExtension';
 import { useFormBuilder } from '../../context/FormBuilderContext';
@@ -143,12 +143,37 @@ export function VariablePanel({ isOpen, onClose, onSelect }: VariablePanelProps)
   );
   const categories = useMemo(() => Object.keys(variablesByCategory), [variablesByCategory]);
 
-  // Initialize all categories as expanded
-  useMemo(() => {
-    const initial: Record<string, boolean> = {};
-    categories.forEach(cat => { initial[cat] = true; });
-    setExpandedCategories(initial);
+  // Initialize categories as collapsed by default (only expand when searching)
+  useEffect(() => {
+    // Don't reset if we already have state (prevents losing user's expand/collapse choices)
+    if (Object.keys(expandedCategories).length === 0) {
+      const initial: Record<string, boolean> = {};
+      categories.forEach(cat => { initial[cat] = false; });
+      setExpandedCategories(initial);
+    }
   }, [categories]);
+
+  // Expand/collapse all
+  const expandAll = useCallback(() => {
+    const expanded: Record<string, boolean> = {};
+    categories.forEach(cat => { expanded[cat] = true; });
+    setExpandedCategories(expanded);
+  }, [categories]);
+
+  const collapseAll = useCallback(() => {
+    const collapsed: Record<string, boolean> = {};
+    categories.forEach(cat => { collapsed[cat] = false; });
+    setExpandedCategories(collapsed);
+  }, [categories]);
+
+  const allExpanded = useMemo(
+    () => categories.length > 0 && categories.every(cat => expandedCategories[cat]),
+    [categories, expandedCategories]
+  );
+  const allCollapsed = useMemo(
+    () => categories.length > 0 && categories.every(cat => !expandedCategories[cat]),
+    [categories, expandedCategories]
+  );
 
   // Filter variables based on search
   const filteredVariables = useMemo(() => {
@@ -170,6 +195,21 @@ export function VariablePanel({ isOpen, onClose, onSelect }: VariablePanelProps)
 
     return filtered;
   }, [search, variablesByCategory]);
+
+  // Auto-expand categories that have search matches
+  useEffect(() => {
+    if (search.trim()) {
+      // When searching, expand all categories with matches
+      const matchingCategories = Object.keys(filteredVariables);
+      if (matchingCategories.length > 0) {
+        setExpandedCategories(prev => {
+          const updated = { ...prev };
+          matchingCategories.forEach(cat => { updated[cat] = true; });
+          return updated;
+        });
+      }
+    }
+  }, [search, filteredVariables]);
 
   const toggleCategory = useCallback((category: string) => {
     setExpandedCategories(prev => ({
@@ -197,12 +237,26 @@ export function VariablePanel({ isOpen, onClose, onSelect }: VariablePanelProps)
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           Variables
         </h3>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-        >
-          <X className="w-4 h-4 text-gray-500" />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Expand/Collapse All Toggle */}
+          <button
+            onClick={allExpanded ? collapseAll : expandAll}
+            className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            title={allExpanded ? 'Collapse all' : 'Expand all'}
+          >
+            {allExpanded ? (
+              <CaretDown className="w-4 h-4 text-gray-500" />
+            ) : (
+              <CaretRight className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -241,22 +295,22 @@ export function VariablePanel({ isOpen, onClose, onSelect }: VariablePanelProps)
               <button
                 onClick={() => toggleCategory(category)}
                 className={cn(
-                  'w-full flex items-center gap-2 px-3 py-1.5',
+                  'w-full flex items-center gap-2 px-3 py-2',
                   'text-xs font-semibold uppercase tracking-wider',
                   'hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
+                  'rounded-md mx-1',
                   colors.header
                 )}
               >
-                <CaretRight
-                  className={cn(
-                    'w-3 h-3 transition-transform',
-                    expandedCategories[category] && 'rotate-90'
-                  )}
-                />
+                {expandedCategories[category] ? (
+                  <CaretDown weight="bold" className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <CaretRight weight="bold" className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                )}
                 {icon}
-                {category}
+                <span className="truncate">{category}</span>
                 <span className={cn(
-                  'ml-auto font-normal normal-case',
+                  'ml-auto font-normal normal-case flex-shrink-0',
                   colors.count
                 )}>
                   {variables.length}

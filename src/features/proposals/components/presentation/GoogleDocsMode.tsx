@@ -23,6 +23,8 @@ import {
   BracketsCurly,
   Trash,
   Info,
+  CaretRight,
+  CaretDown,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -135,6 +137,7 @@ export function GoogleDocsMode({
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   // Update selected template when templates change (handles async loading and template list changes)
   useEffect(() => {
@@ -843,35 +846,58 @@ export function GoogleDocsMode({
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto p-2">
               {Object.entries(variables).map(([category, vars]) => (
-                <div key={category} className="mb-4">
-                  <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                    {category}
-                  </h4>
-                  <div className="space-y-1">
-                    {vars.map((variable) => (
-                      <button
-                        key={variable.key}
-                        onClick={() => handleVariableSelect(variable.key, variable.label)}
-                        className={cn(
-                          'w-full text-left px-2 py-1.5 rounded text-xs',
-                          'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                          'flex items-center justify-between group',
-                          copiedVariable === variable.key && 'bg-green-50 dark:bg-green-900/20'
-                        )}
-                      >
-                        <span className="text-gray-700 dark:text-gray-300">
-                          {variable.label}
-                        </span>
-                        {copiedVariable === variable.key ? (
-                          <Check className="w-3.5 h-3.5 text-green-500" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                <div key={category} className="mb-1">
+                  {/* Collapsible Category Header */}
+                  <button
+                    onClick={() => setExpandedCategories(prev => ({
+                      ...prev,
+                      [category]: !prev[category],
+                    }))}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-2 py-2',
+                      'text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide',
+                      'hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
+                    )}
+                  >
+                    {expandedCategories[category] ? (
+                      <CaretDown weight="bold" className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                    ) : (
+                      <CaretRight weight="bold" className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                    )}
+                    <span className="truncate">{category}</span>
+                    <span className="ml-auto text-gray-400 font-normal normal-case">
+                      {vars.length}
+                    </span>
+                  </button>
+
+                  {/* Variables (only shown when expanded) */}
+                  {expandedCategories[category] && (
+                    <div className="space-y-0.5 ml-2">
+                      {vars.map((variable) => (
+                        <button
+                          key={variable.key}
+                          onClick={() => handleVariableSelect(variable.key, variable.label)}
+                          className={cn(
+                            'w-full text-left px-2 py-1.5 rounded text-xs',
+                            'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
+                            'flex items-center justify-between group',
+                            copiedVariable === variable.key && 'bg-green-50 dark:bg-green-900/20'
+                          )}
+                        >
+                          <span className="text-gray-700 dark:text-gray-300">
+                            {variable.label}
+                          </span>
+                          {copiedVariable === variable.key ? (
+                            <Check className="w-3.5 h-3.5 text-green-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

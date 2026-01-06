@@ -32,7 +32,6 @@ export {
 } from './toolbar';
 export { EditorToolbar } from './EditorToolbar';
 export { VariableInserter } from './VariableInserter';
-export { VariablePanel } from './VariablePanel';
 export { PresentationToolbar } from './PresentationToolbar';
 export {
   VariableExtension,
