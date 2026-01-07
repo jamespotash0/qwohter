@@ -1354,6 +1354,52 @@ async function processTableMarkers(
           }
         }
       }
+
+      // Step 7: Set column widths (Qty small, Description wide, others small)
+      if (tableDef.tableId === 'pricing') {
+        // Column widths in points (pt) - total ~468pt for letter size with 1" margins
+        // Qty: 45pt, Description: 225pt, Unit Price: 70pt, Disc: 50pt, Extended: 78pt
+        const columnWidths = [45, 225, 70, 50, 78]; // in points
+        const columnWidthRequests: any[] = [];
+
+        for (let colIdx = 0; colIdx < columnWidths.length; colIdx++) {
+          columnWidthRequests.push({
+            updateTableColumnProperties: {
+              tableStartLocation: { index: styledTableStart + 1 },
+              columnIndices: [colIdx],
+              tableColumnProperties: {
+                widthType: 'FIXED_WIDTH',
+                width: {
+                  magnitude: columnWidths[colIdx],
+                  unit: 'PT',
+                },
+              },
+              fields: 'widthType,width',
+            },
+          });
+        }
+
+        if (columnWidthRequests.length > 0) {
+          const widthResponse = await fetch(
+            `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ requests: columnWidthRequests }),
+            }
+          );
+
+          if (!widthResponse.ok) {
+            const error = await widthResponse.text();
+            console.error('[processTableMarkers] Failed to set column widths:', error);
+          } else {
+            console.log('[processTableMarkers] Applied column widths');
+          }
+        }
+      }
     }
 
     console.log(`[processTableMarkers] Completed table: ${tableDef.tableId}`);
