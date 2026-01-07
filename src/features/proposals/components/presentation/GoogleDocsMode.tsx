@@ -138,6 +138,7 @@ export function GoogleDocsMode({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [showVersionDialog, setShowVersionDialog] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [activeAction, setActiveAction] = useState<'update' | 'regenerate' | null>(null);
 
   // Update selected template when templates change (handles async loading and template list changes)
   useEffect(() => {
@@ -178,6 +179,13 @@ export function GoogleDocsMode({
   // Get the generate mutation
   const generateMutation = useGenerateGoogleDoc();
   const isGenerating = generateMutation.isPending;
+
+  // Clear active action when generation completes
+  useEffect(() => {
+    if (!isGenerating) {
+      setActiveAction(null);
+    }
+  }, [isGenerating]);
 
   // Check if linked document still exists (auto-unlink if deleted)
   const { data: docCheck } = useCheckGoogleDoc(googleDocId, organizationId);
@@ -320,11 +328,13 @@ export function GoogleDocsMode({
   const handleRegenerate = useCallback(() => {
     // If there's an existing document, show the version dialog
     if (hasExistingDoc) {
+      setActiveAction('regenerate');
       setShowVersionDialog(true);
       return;
     }
 
     // No existing doc, just generate (shouldn't happen but handle it)
+    setActiveAction('regenerate');
     handleGenerate();
   }, [hasExistingDoc, handleGenerate]);
 
@@ -332,6 +342,7 @@ export function GoogleDocsMode({
   const handleUpdateValues = useCallback(async () => {
     if (!googleDocId) return;
 
+    setActiveAction('update');
     await handleGenerate({
       mode: 'update',
       existingDocId: googleDocId,
@@ -747,7 +758,7 @@ export function GoogleDocsMode({
                   disabled={isGenerating}
                   className="transition-transform hover:scale-125 disabled:opacity-50"
                 >
-                  <ArrowsClockwise className={cn('w-4 h-4 text-gray-500 dark:text-gray-400', isGenerating && 'animate-spin')} />
+                  <ArrowsClockwise className={cn('w-4 h-4 text-gray-500 dark:text-gray-400', isGenerating && activeAction === 'update' && 'animate-spin')} />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Update Values</TooltipContent>
@@ -762,7 +773,7 @@ export function GoogleDocsMode({
                   disabled={isGenerating}
                   className="transition-transform hover:scale-125 disabled:opacity-50"
                 >
-                  <ArrowClockwise className={cn('w-4 h-4 text-gray-500 dark:text-gray-400', isGenerating && 'animate-spin')} />
+                  <ArrowClockwise className={cn('w-4 h-4 text-gray-500 dark:text-gray-400', isGenerating && activeAction === 'regenerate' && 'animate-spin')} />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Regenerate</TooltipContent>
@@ -908,7 +919,10 @@ export function GoogleDocsMode({
       {/* Version Dialog for regeneration */}
       <VersionDialog
         isOpen={showVersionDialog}
-        onClose={() => setShowVersionDialog(false)}
+        onClose={() => {
+          setShowVersionDialog(false);
+          setActiveAction(null);
+        }}
         onSelect={handleVersionSelect}
         currentVersion={currentVersion}
         isLoading={isGenerating}

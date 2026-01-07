@@ -376,33 +376,48 @@ function resolvePricingVariable(parts: string[], data: FormBuilderData): string 
   return `{pricing.${parts.join('.')}}`;
 }
 
+/**
+ * Convert a phase name to a camelCase key (matches VariableExtension.ts)
+ */
+function toCamelCaseKey(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .map((word, idx) => idx === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+}
+
 function resolveLeadTimesVariable(parts: string[], data: FormBuilderData): string {
   const leadTimes = data.leadTimes;
+  const targetPhaseKey = parts[0]; // e.g., "trackDelivery"
+  const fieldKey = parts[1]; // e.g., "duration", "name", "completion"
 
+  // Search all sections for a phase matching the camelCase key
   for (const section of leadTimes.sections) {
-    const sectionKey = section.name.toLowerCase().replace(/\s+/g, '_');
+    for (const phase of section.phases) {
+      const phaseKey = toCamelCaseKey(phase.phaseName);
 
-    if (parts[0] === sectionKey || parts[0]?.startsWith(sectionKey)) {
-      if (parts[1] === 'phases') {
-        return section.phases
-          .map(p => `${p.phaseName}: ${p.duration}`)
-          .join('\n');
-      }
-
-      const phaseMatch = parts[0].match(/_phase(\d+)$/);
-      if (phaseMatch) {
-        const phaseIdx = parseInt(phaseMatch[1], 10) - 1;
-        const phase = section.phases[phaseIdx];
-        if (phase) {
-          if (parts[1] === 'name') return phase.phaseName;
-          if (parts[1] === 'duration') return phase.duration;
-          if (parts[1] === 'completion') return phase.estCompletionDate;
+      if (phaseKey === targetPhaseKey) {
+        switch (fieldKey) {
+          case 'name':
+            return phase.phaseName || '';
+          case 'duration':
+            // Combine duration value with unit (e.g., "2 weeks", "3 days")
+            if (!phase.duration) return '';
+            return phase.durationUnit
+              ? `${phase.duration} ${phase.durationUnit}`
+              : phase.duration;
+          case 'completion':
+            return phase.estCompletionDate || '';
         }
       }
     }
   }
 
-  return `{leadtimes.${parts.join('.')}}`;
+  // Variable not found - return empty string instead of placeholder
+  return '';
 }
 
 function resolveMiscVariable(parts: string[], data: FormBuilderData): string {

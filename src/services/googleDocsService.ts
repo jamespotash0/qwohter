@@ -218,6 +218,8 @@ export function buildProposalVariables(
 
   // Add lead times - use phase name as key (camelCase)
   // Format: {{leadtimes.panelDelivery.duration}} instead of {{leadtimes.project_timeline_panelDelivery.duration}}
+  // IMPORTANT: Only include variables with actual values so empty placeholders stay in the doc
+  // This allows users to add data later and use "Update Values" to fill them in
   if (formData?.leadTimes?.sections) {
     formData.leadTimes.sections.forEach((section) => {
       section.phases.forEach((phase, index) => {
@@ -231,9 +233,20 @@ export function buildProposalVariables(
               .join('')
           : `phase${index + 1}`;
 
-        variables[`leadtimes.${phaseKey}.name`] = phase.phaseName || '';
-        variables[`leadtimes.${phaseKey}.duration`] = phase.duration || '';
-        variables[`leadtimes.${phaseKey}.completion`] = phase.estCompletionDate || '';
+        // Only add variables with actual values - leave placeholders for empty values
+        if (phase.phaseName) {
+          variables[`leadtimes.${phaseKey}.name`] = phase.phaseName;
+        }
+        if (phase.duration) {
+          // Combine duration value with unit (e.g., "2 weeks", "3 days")
+          const durationWithUnit = phase.durationUnit
+            ? `${phase.duration} ${phase.durationUnit}`
+            : phase.duration;
+          variables[`leadtimes.${phaseKey}.duration`] = durationWithUnit;
+        }
+        if (phase.estCompletionDate) {
+          variables[`leadtimes.${phaseKey}.completion`] = phase.estCompletionDate;
+        }
       });
     });
   }

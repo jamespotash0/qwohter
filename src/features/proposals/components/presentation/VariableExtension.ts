@@ -443,28 +443,29 @@ export function getLeadTimesVariables(data: FormBuilderData): VariableDefinition
           ? toCamelCaseKey(phase.phaseName)
           : `phase${phaseIdx + 1}`;
 
+        const phaseName = phase.phaseName || `Phase ${phaseIdx + 1}`;
+
+        // Always show all variables - display "UNENTERED" when empty
         vars.push({
           key: `leadtimes.${phaseKey}.name`,
-          label: phase.phaseName || `Phase ${phaseIdx + 1}`,
+          label: `${phaseName} Name`,
           category: 'Lead Times',
-          description: phase.phaseName,
+          description: phase.phaseName || 'UNENTERED',
         });
-        if (phase.duration) {
-          vars.push({
-            key: `leadtimes.${phaseKey}.duration`,
-            label: `${phase.phaseName} Duration`,
-            category: 'Lead Times',
-            description: phase.duration,
-          });
-        }
-        if (phase.estCompletionDate) {
-          vars.push({
-            key: `leadtimes.${phaseKey}.completion`,
-            label: `${phase.phaseName} Completion`,
-            category: 'Lead Times',
-            description: phase.estCompletionDate,
-          });
-        }
+        vars.push({
+          key: `leadtimes.${phaseKey}.duration`,
+          label: `${phaseName} Duration`,
+          category: 'Lead Times',
+          description: phase.duration
+            ? (phase.durationUnit ? `${phase.duration} ${phase.durationUnit}` : phase.duration)
+            : 'UNENTERED',
+        });
+        vars.push({
+          key: `leadtimes.${phaseKey}.completion`,
+          label: `${phaseName} Completion`,
+          category: 'Lead Times',
+          description: phase.estCompletionDate || 'UNENTERED',
+        });
       });
     }
   });

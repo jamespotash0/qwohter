@@ -48,6 +48,7 @@ import { useFormBuilder } from '../../context/FormBuilderContext';
 // Duration unit options
 const DURATION_UNITS = [
   { value: 'days', label: 'Days' },
+  { value: 'working days', label: 'Working Days' },
   { value: 'weeks', label: 'Weeks' },
   { value: 'months', label: 'Months' },
 ];
@@ -397,8 +398,8 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
           {/* Table Header */}
           <div className="grid grid-cols-12 gap-3 px-4 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-1"></div>
-            <div className="col-span-5">Phase Name</div>
-            <div className="col-span-3">Duration</div>
+            <div className="col-span-4">Phase Name</div>
+            <div className="col-span-4">Duration</div>
             <div className="col-span-2">Est. Completion</div>
             <div className="col-span-1"></div>
           </div>
@@ -524,8 +525,9 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-          <div className="col-span-5">Phase Name</div>
-          <div className="col-span-3">Duration</div>
+          <div className="col-span-4">Phase Name</div>
+          <div className="col-span-2">Duration</div>
+          <div className="col-span-2">Unit</div>
           <div className="col-span-3">Est. Completion</div>
           <div className="col-span-1"></div>
         </div>
@@ -550,7 +552,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                   className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                 >
                   {/* Phase Name */}
-                  <div className="col-span-5">
+                  <div className="col-span-4">
                     <Input
                       value={phase.phaseName}
                       onChange={(e) =>
@@ -561,8 +563,8 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                     />
                   </div>
 
-                  {/* Duration - Value + Unit */}
-                  <div className="col-span-3 flex gap-1">
+                  {/* Duration Value */}
+                  <div className="col-span-2">
                     <Input
                       type="text"
                       value={phase.duration}
@@ -570,15 +572,19 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                         updatePhase(section.id, phase.id, { duration: e.target.value })
                       }
                       placeholder="1-2"
-                      className={cn(inputClassName, 'w-16 text-center')}
+                      className={cn(inputClassName, 'text-center')}
                     />
+                  </div>
+
+                  {/* Duration Unit */}
+                  <div className="col-span-2">
                     <Select
                       value={phase.durationUnit || 'weeks'}
                       onValueChange={(v) =>
                         updatePhase(section.id, phase.id, { durationUnit: v })
                       }
                     >
-                      <SelectTrigger className={cn(inputClassName, 'flex-1')}>
+                      <SelectTrigger className={inputClassName}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
