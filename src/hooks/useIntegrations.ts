@@ -27,8 +27,8 @@ export function useAvailableIntegrations(organizationPlan?: string) {
   return useQuery({
     queryKey: queryKeys.integrations.available(organizationPlan),
     queryFn: () => getAvailableIntegrations(organizationPlan),
-    staleTime: 5 * 60 * 1000, // 5 minutes - integrations catalog changes rarely
-    gcTime: 10 * 60 * 1000, // 10 minutes - keep cached longer
+    staleTime: 30 * 1000, // 30 seconds - faster updates for admin changes
+    gcTime: 60 * 1000, // 1 minute cache
   });
 }
 

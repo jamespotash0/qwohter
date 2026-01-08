@@ -280,6 +280,86 @@ async function deleteDocument(
   }
 }
 
+/**
+ * Get or create a proposal-specific folder in Google Drive
+ * Folder name format: "{proposal_number}_{project_name}" or just "{proposal_number}"
+ */
+async function getOrCreateProposalFolder(
+  accessToken: string,
+  parentFolderId: string | null,
+  proposalNumber: string,
+  projectName: string | null
+): Promise<string | null> {
+  // Build folder name: "P-001_Project Name" or just "P-001"
+  const sanitizedProject = projectName
+    ? projectName.replace(/[<>:"/\\|?*]/g, '').trim().substring(0, 50)
+    : null;
+  const folderName = sanitizedProject
+    ? `${proposalNumber}_${sanitizedProject}`
+    : proposalNumber;
+
+  console.log(`[getOrCreateProposalFolder] Looking for folder: ${folderName}`);
+
+  try {
+    // Search for existing folder with this name in parent
+    const searchQuery = parentFolderId
+      ? `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      : `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name)`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.files && searchData.files.length > 0) {
+        console.log(`[getOrCreateProposalFolder] Found existing folder: ${searchData.files[0].id}`);
+        return searchData.files[0].id;
+      }
+    }
+
+    // Folder doesn't exist, create it
+    console.log(`[getOrCreateProposalFolder] Creating new folder: ${folderName}`);
+
+    const metadata: { name: string; mimeType: string; parents?: string[] } = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+    };
+
+    if (parentFolderId) {
+      metadata.parents = [parentFolderId];
+    }
+
+    const createResponse = await fetch(
+      'https://www.googleapis.com/drive/v3/files?fields=id',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(metadata),
+      }
+    );
+
+    if (!createResponse.ok) {
+      const error = await createResponse.text();
+      console.error('[getOrCreateProposalFolder] Failed to create folder:', error);
+      return null;
+    }
+
+    const createData = await createResponse.json();
+    console.log(`[getOrCreateProposalFolder] Created folder: ${createData.id}`);
+    return createData.id;
+  } catch (error) {
+    console.error('[getOrCreateProposalFolder] Error:', error);
+    return null;
+  }
+}
+
 // ============ EXPRESSION EVALUATOR ============
 // Supports: +, -, *, /, parentheses, PEMDAS order of operations
 // Example: {{pricing.materials + pricing.labor}} or {{(subtotal + tax) * 1.1}}
@@ -2083,9 +2163,37 @@ serve(async (req) => {
     const baseTitle = outputTitle || `Proposal-${proposalId || 'Draft'}`;
     const title = `${baseTitle}_v${version}`;
 
-    // Copy the template to the org's shared folder
-    console.log(`Copying template ${templateDocId} to folder ${folderId || 'root'}...`);
-    const newDocId = await copyDocument(accessToken, templateDocId, title, folderId);
+    // Get proposal details for folder naming
+    let proposalNumber = baseTitle;
+    let projectName: string | null = null;
+
+    if (proposalId) {
+      const { data: proposalInfo } = await supabaseAdmin
+        .from('proposals')
+        .select('proposal_number, project_name')
+        .eq('id', proposalId)
+        .single();
+
+      if (proposalInfo) {
+        proposalNumber = proposalInfo.proposal_number || baseTitle;
+        projectName = proposalInfo.project_name || null;
+      }
+    }
+
+    // Get or create proposal-specific folder (e.g., "P-001_Project Name")
+    const proposalFolderId = await getOrCreateProposalFolder(
+      accessToken,
+      folderId,
+      proposalNumber,
+      projectName
+    );
+
+    // Use proposal folder if created, otherwise fall back to root folder
+    const targetFolderId = proposalFolderId || folderId;
+
+    // Copy the template to the proposal's folder
+    console.log(`Copying template ${templateDocId} to folder ${targetFolderId || 'root'}...`);
+    const newDocId = await copyDocument(accessToken, templateDocId, title, targetFolderId);
     console.log(`Created new document: ${newDocId} (version ${version})`);
 
     // Process dynamic table rows first (if any) - {{#ROW:tableId}} syntax
