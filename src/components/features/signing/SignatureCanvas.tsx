@@ -211,20 +211,20 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   };
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-2', className)}>
       <Tabs value={mode} onValueChange={handleModeChange}>
-        <TabsList className="grid w-full grid-cols-2 bg-white border">
-          <TabsTrigger value="draw" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white">
-            <PencilSimple className="w-4 h-4" />
+        <TabsList className="grid w-full grid-cols-2 bg-white border h-8">
+          <TabsTrigger value="draw" className="flex items-center gap-1.5 text-xs data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+            <PencilSimple className="w-3.5 h-3.5" />
             Draw
           </TabsTrigger>
-          <TabsTrigger value="type" className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white">
-            <TextT className="w-4 h-4" />
+          <TabsTrigger value="type" className="flex items-center gap-1.5 text-xs data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+            <TextT className="w-3.5 h-3.5" />
             Type
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="draw" className="space-y-2">
+        <TabsContent value="draw" className="space-y-1 mt-2">
           {/* Canvas */}
           <div className="relative border rounded-lg overflow-hidden bg-white">
             <canvas
@@ -249,69 +249,54 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
           </div>
 
           {/* Clear button */}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              disabled={!hasSignature}
-              className="text-gray-500"
-            >
-              <Eraser className="w-4 h-4 mr-1" />
-              Clear
-            </Button>
-          </div>
+          {hasSignature && (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClear}
+                className="text-gray-500 h-7 text-xs"
+              >
+                <Eraser className="w-3.5 h-3.5 mr-1" />
+                Clear
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="type" className="space-y-3">
+        <TabsContent value="type" className="space-y-2 mt-2">
           {/* Name input */}
           <Input
             placeholder="Type your full name"
             value={typedName}
             onChange={(e) => setTypedName(e.target.value)}
-            className="text-lg"
+            className="h-9"
           />
 
-          {/* Font selection */}
-          <div className="space-y-2">
-            <p className="text-sm text-gray-500">Select a signature style:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {SIGNATURE_FONTS.map((font) => (
-                <button
-                  key={font.name}
-                  type="button"
-                  onClick={() => setSelectedFont(font)}
-                  className={cn(
-                    'p-3 border rounded-lg text-center transition-colors',
-                    selectedFont.name === font.name
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 hover:border-gray-300'
-                  )}
-                >
-                  <span
-                    style={{ fontFamily: font.style }}
-                    className="text-2xl text-gray-800 dark:text-gray-200"
-                  >
-                    {typedName || 'Your Name'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Preview */}
-          {typedName && (
-            <div className="border rounded-lg p-4 bg-white">
-              <p className="text-xs text-gray-500 mb-2">Preview:</p>
-              <div
-                className="text-center py-4"
-                style={{ fontFamily: selectedFont.style }}
+          {/* Font selection - compact 2x2 grid */}
+          <div className="grid grid-cols-2 gap-1.5">
+            {SIGNATURE_FONTS.map((font) => (
+              <button
+                key={font.name}
+                type="button"
+                onClick={() => setSelectedFont(font)}
+                className={cn(
+                  'p-2 border rounded text-center transition-colors truncate',
+                  selectedFont.name === font.name
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                )}
               >
-                <span className="text-4xl text-gray-800">{typedName}</span>
-              </div>
-            </div>
-          )}
+                <span
+                  style={{ fontFamily: font.style }}
+                  className="text-lg text-gray-800"
+                >
+                  {typedName || 'Name'}
+                </span>
+              </button>
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
 

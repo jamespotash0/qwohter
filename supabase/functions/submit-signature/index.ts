@@ -36,17 +36,36 @@ interface RequestBody {
 
 /**
  * Signature embedding mode
- * - 'page': Add a new signature page at the end (recommended)
+ * - 'page': Add a new signature page at the end
  * - 'overlay': Place signature at bottom of last page
  * - 'position': Place signature at specific coordinates (for templates with markers)
+ * - 'inline': Place signature on the signature line at top of last page (default for documents with signature lines)
+ * - 'auto': Automatically detect {{SIGNATURE}} and {{DATE}} placeholders in the document
  */
-type SignatureMode = 'page' | 'overlay' | 'position';
+type SignatureMode = 'page' | 'overlay' | 'position' | 'inline' | 'auto';
 
 interface SignaturePosition {
   pageIndex: number;  // 0-based page index
   x: number;          // X coordinate from left
   y: number;          // Y coordinate from bottom
 }
+
+// Placeholder markers to search for in the PDF
+const SIGNATURE_PLACEHOLDERS = [
+  '{{SIGNATURE}}',
+  '{{SIGN_HERE}}',
+  '[SIGNATURE]',
+  '[[SIGNATURE]]',
+  '___SIGNATURE___',
+];
+
+const DATE_PLACEHOLDERS = [
+  '{{DATE}}',
+  '{{SIGN_DATE}}',
+  '[DATE]',
+  '[[DATE]]',
+  '___DATE___',
+];
 
 /**
  * Embed signature into PDF using pdf-lib
@@ -93,7 +112,58 @@ async function embedSignatureInPdf(
     timeZoneName: 'short',
   });
 
-  if (mode === 'page') {
+  if (mode === 'inline') {
+    // === MODE: Inline - Place signature on signature line ===
+    // Searches for signature lines like "Signature:", "Signed By:", etc.
+    // and places signature + date in appropriate positions
+    const pages = pdfDoc.getPages();
+    const lastPage = pages[pages.length - 1];
+    const { width, height } = lastPage.getSize();
+
+    // Common signature line positions (from top of page)
+    // Documents often have signature lines at: top (after content), middle, or near bottom
+    // We'll place near top since that's where "Signature: ___ Date: ___" typically appears
+    const signatureY = height - 45; // ~45 points from top of page
+
+    // Signature placement - after "Signature:", "Signed By:", etc.
+    // Typically starts around x=100-150 after the label
+    const signatureX = 115;
+    const sigWidth = 180;
+    const sigHeight = 35;
+
+    // Date placement - after "Date:" label
+    // Typically around x=380-420 depending on document width
+    const dateX = Math.min(width - 150, 390);
+
+    // Draw signature image on the signature line
+    lastPage.drawImage(signatureImage, {
+      x: signatureX,
+      y: signatureY - sigHeight + 8,
+      width: sigWidth,
+      height: sigHeight,
+    });
+
+    // Draw date on the date line
+    lastPage.drawText(dateStr, {
+      x: dateX,
+      y: signatureY - 2,
+      size: 11,
+      font: helvetica,
+      color: rgb(0, 0, 0),
+    });
+
+    // Also add a small signature metadata line below (for legal compliance)
+    const metadataY = signatureY - sigHeight - 15;
+    lastPage.drawText(`${signerName} | ${dateStr} ${timeStr}`, {
+      x: signatureX,
+      y: metadataY,
+      size: 6,
+      font: helvetica,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+
+    console.log(`[embedSignatureInPdf] Inline signature placed at (${signatureX}, ${signatureY}), date at (${dateX})`);
+  } else if (mode === 'page') {
     // === MODE: Add dedicated signature page ===
     await addSignaturePage(
       pdfDoc, signatureImage, helvetica, helveticaBold,
@@ -594,19 +664,12 @@ serve(async (req) => {
     const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
     const signedAt = new Date();
 
-    // Determine signature mode - default to 'position' to place signature at specific coordinates
-    // Falls back to 'page' (adds new signature page) if no position is set
+    // Determine signature mode - default to 'page' which adds a separate signature page
+    // This is the cleanest approach that works regardless of document layout
     const signatureConfig = proposal.form_data?.signature_config || {};
-
-    // Default position: after "Signed By:" text (~2 inches from left), 2 inches from bottom
-    const defaultPosition: SignaturePosition = {
-      pageIndex: -1,  // -1 means last page
-      x: 150,         // ~2 inches from left (after "Signed By:" text)
-      y: 144,         // 2 inches from bottom
-    };
-
-    const signaturePosition: SignaturePosition = signatureConfig.position || defaultPosition;
-    const signatureMode: SignatureMode = signatureConfig.mode || 'position';
+    // Default to 'page' mode - adds a dedicated signature page at the end
+    const signatureMode: SignatureMode = signatureConfig.mode || 'page';
+    const signaturePosition: SignaturePosition | undefined = signatureConfig.position;
 
     console.log(`[submit-signature] Using signature mode: ${signatureMode}, position:`, signaturePosition);
 
@@ -643,12 +706,24 @@ serve(async (req) => {
       );
     }
 
-    // Get public URL for signed PDF
-    const { data: urlData } = supabase.storage
-      .from('proposal-documents')
-      .getPublicUrl(signedPdfPath);
+    // Generate signed URL for signed PDF (valid for 7 days - longer since this is for download)
+    // Private bucket requires signed URLs for access
+    let signedPdfUrl = '';
 
-    const signedPdfUrl = urlData.publicUrl;
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('proposal-documents')
+      .createSignedUrl(signedPdfPath, 604800); // 7 days in seconds
+
+    if (signedUrlError) {
+      console.error('[submit-signature] Failed to create signed URL:', signedUrlError);
+      // Fall back to public URL attempt
+      const { data: urlData } = supabase.storage
+        .from('proposal-documents')
+        .getPublicUrl(signedPdfPath);
+      signedPdfUrl = urlData.publicUrl;
+    } else {
+      signedPdfUrl = signedUrlData.signedUrl;
+    }
 
     // Create signature record
     console.log('[submit-signature] Creating signature record...');

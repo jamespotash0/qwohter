@@ -4,10 +4,11 @@
  * File upload and management for proposals:
  * - Builder Mode: Disabled (no functionality)
  * - Filler Mode: Upload and view documents stored in Supabase
+ * - Shows signed PDFs from e-signatures
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner } from '@phosphor-icons/react';
+import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner, Signature, CheckCircle } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
@@ -19,6 +20,10 @@ import {
   getFileCategory,
   type ProposalDocument,
 } from '@/services/proposalDocumentsService';
+import {
+  getProposalSignaturesWithUrls,
+  type ProposalSignature,
+} from '@/services/proposalSigningService';
 
 interface DocumentsTabProps {
   mode: EditorMode;
@@ -52,14 +57,16 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [documents, setDocuments] = useState<ProposalDocument[]>([]);
+  const [signatures, setSignatures] = useState<ProposalSignature[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Load documents on mount (filler mode only)
+  // Load documents and signatures on mount (filler mode only)
   useEffect(() => {
     if (!isBuilderMode && proposalId) {
       loadDocuments();
+      loadSignatures();
     }
   }, [isBuilderMode, proposalId]);
 
@@ -74,6 +81,17 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       toast.error('Failed to load documents');
     } finally {
       setIsLoading(false);
+    }
+  }, [proposalId]);
+
+  const loadSignatures = useCallback(async () => {
+    if (!proposalId) return;
+    try {
+      const sigs = await getProposalSignaturesWithUrls(proposalId);
+      setSignatures(sigs);
+    } catch (error) {
+      console.error('Failed to load signatures:', error);
+      // Don't show error toast - signatures are supplementary
     }
   }, [proposalId]);
 
@@ -175,46 +193,101 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
 
   // Filler mode: Compact file list with add button
   return (
-    <div className="space-y-4">
-      {/* Header with Add File button */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Documents
-        </h3>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {documents.length} {documents.length === 1 ? 'file' : 'files'}
-          </span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv"
-            disabled={isUploading}
-          />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            size="sm"
-            className="bg-coral hover:bg-coral-hover text-white"
-          >
-            {isUploading ? (
-              <>
-                <Spinner className="w-4 h-4 mr-1 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4 mr-1" />
-                Add File
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Signed Documents Section */}
+      {signatures.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-600" weight="fill" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Signed Documents
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {signatures.map((sig) => (
+              <div
+                key={sig.id}
+                className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Signature Icon */}
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                      <Signature className="w-5 h-5 text-green-600 dark:text-green-400" weight="fill" />
+                    </div>
+                  </div>
 
-      {/* Documents List */}
+                  {/* Signature Info */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Signed Proposal PDF
+                    </h4>
+                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      <span>Signed by {sig.signer_name}</span>
+                      <span>•</span>
+                      <span>{formatDate(sig.signed_at)}</span>
+                    </div>
+                  </div>
+
+                  {/* Download Action */}
+                  <div className="flex-shrink-0">
+                    <button
+                      onClick={() => sig.signed_pdf_url && window.open(sig.signed_pdf_url, '_blank')}
+                      disabled={!sig.signed_pdf_url}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Uploaded Documents Section */}
+      <div className="space-y-3">
+        {/* Header with Add File button */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {signatures.length > 0 ? 'Other Documents' : 'Documents'}
+          </h3>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {documents.length} {documents.length === 1 ? 'file' : 'files'}
+            </span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv"
+              disabled={isUploading}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              size="sm"
+              className="bg-coral hover:bg-coral-hover text-white"
+            >
+              {isUploading ? (
+                <>
+                  <Spinner className="w-4 h-4 mr-1 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add File
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Documents List */}
       {documents.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600">
           <FileIcon className="w-10 h-10 mx-auto mb-2 text-gray-400" />
@@ -275,6 +348,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

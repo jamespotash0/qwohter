@@ -343,6 +343,40 @@ export async function getProposalSignatures(proposalId: string): Promise<Proposa
   return (data || []) as ProposalSignature[];
 }
 
+/**
+ * Get all signatures for a proposal with fresh signed URLs
+ * Use this when displaying signed PDFs - the stored URLs may have expired
+ */
+export async function getProposalSignaturesWithUrls(proposalId: string): Promise<ProposalSignature[]> {
+  const signatures = await getProposalSignatures(proposalId);
+
+  // Generate fresh signed URLs for each signature's PDF
+  const signaturesWithUrls = await Promise.all(
+    signatures.map(async (sig) => {
+      if (!sig.signed_pdf_path) {
+        return sig;
+      }
+
+      // Generate fresh signed URL (valid for 1 hour)
+      const { data: signedUrlData, error: urlError } = await supabase.storage
+        .from('proposal-documents')
+        .createSignedUrl(sig.signed_pdf_path, 3600);
+
+      if (urlError) {
+        console.error('[getProposalSignaturesWithUrls] Error creating signed URL:', urlError);
+        return sig;
+      }
+
+      return {
+        ...sig,
+        signed_pdf_url: signedUrlData.signedUrl,
+      };
+    })
+  );
+
+  return signaturesWithUrls;
+}
+
 // ============================================================================
 // Activity Log (Authenticated)
 // ============================================================================

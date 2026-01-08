@@ -145,6 +145,26 @@ serve(async (req) => {
       };
     }
 
+    // Generate signed URL for PDF (valid for 1 hour)
+    // The bucket is private, so we need a signed URL for access
+    let pdfUrl = signingToken.unsigned_pdf_url;
+
+    if (signingToken.unsigned_pdf_path) {
+      console.log('[get-signing-data] Generating signed URL for PDF...');
+
+      const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+        .from('proposal-documents')
+        .createSignedUrl(signingToken.unsigned_pdf_path, 3600); // 1 hour
+
+      if (signedUrlError) {
+        console.error('[get-signing-data] Failed to create signed URL:', signedUrlError);
+        // Fall back to stored URL if signed URL fails (might work if bucket is public)
+      } else if (signedUrlData?.signedUrl) {
+        pdfUrl = signedUrlData.signedUrl;
+        console.log('[get-signing-data] Generated signed URL successfully');
+      }
+    }
+
     console.log('[get-signing-data] Success - returning data');
 
     return new Response(
@@ -163,7 +183,7 @@ serve(async (req) => {
           status: signingToken.status,
           expires_at: signingToken.expires_at,
         },
-        pdfUrl: signingToken.unsigned_pdf_url,
+        pdfUrl,
       }),
       {
         status: 200,

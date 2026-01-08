@@ -290,7 +290,7 @@ Please review the proposal and sign electronically by clicking the button below.
             <textarea
               value={emailBody}
               onChange={(e) => setEmailBody(e.target.value)}
-              rows={12}
+              rows={10}
               className="w-full resize-none border border-gray-200 dark:border-gray-700 rounded-lg p-4 focus:ring-1 focus:ring-blue-500 focus:outline-none text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 leading-relaxed"
             />
 
@@ -304,6 +304,14 @@ Please review the proposal and sign electronically by clicking the button below.
 
             <p className="text-xs text-gray-400 mt-3">
               Footer: This is an automated message from Qwohter. If you have questions, please contact {organizationName} directly.
+            </p>
+          </div>
+
+          {/* Info box explaining what happens */}
+          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-100 dark:border-blue-800">
+            <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+              <strong>What happens next:</strong> Your proposal will be converted to PDF. The client will review and sign electronically.
+              A signature page will be added to the final document with their signature, name, date, and IP address for legal compliance.
             </p>
           </div>
         </div>

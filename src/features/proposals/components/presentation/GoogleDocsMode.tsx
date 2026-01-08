@@ -26,6 +26,7 @@ import {
   CaretRight,
   CaretDown,
   PaperPlaneTilt,
+  DownloadSimple,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,6 +52,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
 import { getAllFormVariables } from './VariableExtension';
@@ -400,6 +407,33 @@ export function GoogleDocsMode({
       window.open(googleDocUrl, '_blank');
     }
   }, [googleDocUrl]);
+
+  // Handle download (must be defined before early return)
+  const handleDownload = useCallback((format: 'pdf' | 'docx') => {
+    if (googleDocId) {
+      // Google Docs export URL format
+      const exportUrl = `https://docs.google.com/document/d/${googleDocId}/export?format=${format}`;
+
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = exportUrl;
+      link.target = '_blank';
+      // Set download attribute with filename
+      const baseName = proposalInfo?.proposalNumber
+        ? proposalInfo.proposalNumber
+        : proposalInfo?.projectName
+          ? proposalInfo.projectName
+          : 'proposal';
+      link.download = `${baseName}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`${format.toUpperCase()} download started`, {
+        description: 'Check your downloads folder',
+      });
+    }
+  }, [googleDocId, proposalInfo]);
 
   // Handle unlink confirmation
   const handleUnlinkConfirm = useCallback(() => {
@@ -828,6 +862,31 @@ export function GoogleDocsMode({
               </TooltipTrigger>
               <TooltipContent>Open in New Tab</TooltipContent>
             </Tooltip>
+
+            {/* Download Menu */}
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="transition-transform hover:scale-125"
+                    >
+                      <DownloadSimple className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Download</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownload('pdf')}>
+                  Download as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('docx')}>
+                  Download as DOCX
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Send for Signature */}
             {proposalId && organizationId && (

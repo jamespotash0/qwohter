@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { FileText, CheckCircle, Warning, Spinner, User, Envelope, Buildings } from '@phosphor-icons/react';
+import { FileText, CheckCircle, Warning, Spinner, PenNib, X, Signature } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ export function ProposalSigningPage() {
   const [signatureData, setSignatureData] = useState<{ type: 'draw' | 'type'; data: string; font?: string } | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   // Load signing data
   useEffect(() => {
@@ -83,17 +84,21 @@ export function ProposalSigningPage() {
 
   // Handle signature submission
   const handleSubmit = async () => {
-    if (!token || !signatureData || !signerName.trim() || !signerEmail.trim()) {
+    // Email comes from token, only name and signature required from user
+    if (!token || !signatureData || !signerName.trim()) {
       return;
     }
 
     setPageState('submitting');
 
     try {
+      // Use email from token if user hasn't changed it
+      const emailToUse = signerEmail.trim() || signingData?.signingToken.client_email || '';
+
       const result = await submitSignature({
         accessToken: token,
         signerName: signerName.trim(),
-        signerEmail: signerEmail.trim(),
+        signerEmail: emailToUse,
         signerCompany: signerCompany.trim() || undefined,
         signatureType: signatureData.type,
         signatureData: signatureData.data,
@@ -174,180 +179,161 @@ export function ProposalSigningPage() {
     );
   }
 
-  // Ready / Signing state
-  const isValid = signerName.trim() && signerEmail.trim() && signatureData && agreedToTerms;
+  // Ready / Signing state - only name and signature required (email comes from token)
+  const isValid = signerName.trim() && signatureData && agreedToTerms;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {signingData?.organization.logo_url ? (
-              <img
-                src={signingData.organization.logo_url}
-                alt={signingData.organization.name}
-                className="h-8 w-auto"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                <FileText className="w-5 h-5 text-blue-600" />
+    <div className="h-screen bg-gray-100 flex flex-col lg:flex-row overflow-hidden">
+      {/* PDF Preview - Takes most space, letter aspect ratio */}
+      <div className="flex-1 flex items-center justify-center p-2 lg:p-4 min-h-0">
+        <div className="h-full w-full max-w-[calc(100vh*8.5/11)] bg-white rounded shadow-lg overflow-hidden">
+          {signingData?.pdfUrl ? (
+            <iframe
+              src={`${signingData.pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+              className="w-full h-full"
+              title="Proposal PDF"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Document preview not available</p>
               </div>
-            )}
-            <div>
-              <p className="font-medium text-gray-900">{signingData?.organization.name}</p>
-              <p className="text-xs text-gray-500">{signingData?.proposal.proposal_number}</p>
             </div>
-          </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* PDF Preview */}
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <div className="p-4 border-b bg-gray-50">
-              <h2 className="font-medium text-gray-900 flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                {signingData?.proposal.project_name || 'Proposal'}
-              </h2>
-            </div>
-            <div className="aspect-[8.5/11] bg-gray-100">
-              {signingData?.pdfUrl ? (
-                <iframe
-                  src={`${signingData.pdfUrl}#toolbar=0`}
-                  className="w-full h-full"
-                  title="Proposal PDF"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  PDF not available
-                </div>
-              )}
-            </div>
-            {signingData?.pdfUrl && (
-              <div className="p-3 border-t bg-gray-50 text-center">
-                <a
-                  href={signingData.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  Open PDF in new tab
-                </a>
-              </div>
-            )}
+      {/* Signature Panel - Right side on desktop, bottom on mobile */}
+      <div className="lg:w-72 bg-white border-t lg:border-t-0 lg:border-l shadow-lg flex-shrink-0">
+        <div className="p-4 space-y-3">
+          {/* Header */}
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <PenNib className="w-4 h-4 text-blue-600" weight="fill" />
+            <h2 className="font-semibold text-gray-900">Sign Document</h2>
           </div>
 
-          {/* Signature Form */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Sign Document</h2>
+          {/* Signer Name */}
+          <div className="space-y-1">
+            <Label htmlFor="signerName" className="text-xs font-medium text-gray-600">
+              Your Name
+            </Label>
+            <Input
+              id="signerName"
+              placeholder="Enter your full name"
+              value={signerName}
+              onChange={(e) => setSignerName(e.target.value)}
+              className="h-9"
+            />
+          </div>
 
-              <div className="space-y-4">
-                {/* Signer Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="signerName" className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Full Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="signerName"
-                    placeholder="Enter your full name"
-                    value={signerName}
-                    onChange={(e) => setSignerName(e.target.value)}
-                  />
-                </div>
-
-                {/* Signer Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="signerEmail" className="flex items-center gap-2">
-                    <Envelope className="w-4 h-4" />
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="signerEmail"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={signerEmail}
-                    onChange={(e) => setSignerEmail(e.target.value)}
-                  />
-                </div>
-
-                {/* Signer Company */}
-                <div className="space-y-2">
-                  <Label htmlFor="signerCompany" className="flex items-center gap-2">
-                    <Buildings className="w-4 h-4" />
-                    Company
-                  </Label>
-                  <Input
-                    id="signerCompany"
-                    placeholder="Company name (optional)"
-                    value={signerCompany}
-                    onChange={(e) => setSignerCompany(e.target.value)}
-                  />
-                </div>
-
-                {/* Signature */}
-                <div className="space-y-2">
-                  <Label>Your Signature <span className="text-red-500">*</span></Label>
-                  <SignatureCanvas
-                    onChange={setSignatureData}
-                    width={400}
-                    height={150}
-                    defaultName={signerName}
-                  />
-                </div>
-
-                {/* Terms agreement */}
-                <div className="flex items-start gap-2 pt-2">
-                  <Checkbox
-                    id="terms"
-                    checked={agreedToTerms}
-                    onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-                  />
-                  <label htmlFor="terms" className="text-sm text-gray-600 leading-tight">
-                    I agree that this electronic signature is the legal equivalent of my handwritten signature
-                    and I have reviewed the proposal.
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmit}
-              disabled={!isValid || pageState === 'submitting'}
-              className="w-full h-12 text-base"
-              size="lg"
+          {/* Signature Button */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-gray-600">
+              Your Signature
+            </Label>
+            <button
+              type="button"
+              onClick={() => setShowSignatureModal(true)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center gap-2 text-left"
             >
-              {pageState === 'submitting' ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Signing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Sign & Submit
-                </>
-              )}
-            </Button>
+              <Signature className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              <span className="text-sm text-gray-600">
+                {signatureData ? 'Change signature' : 'Add signature'}
+              </span>
+            </button>
 
-            {/* Security note */}
-            <p className="text-xs text-gray-500 text-center">
-              Your signature is secured and legally binding. By signing, you accept the terms of this proposal.
-            </p>
+            {/* Signature Preview */}
+            {signatureData && (
+              <div className="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                <img
+                  src={signatureData.data}
+                  alt="Your signature"
+                  className="h-10 w-auto mx-auto object-contain"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Terms agreement */}
+          <div className="flex items-start gap-2 p-2 bg-gray-50 rounded">
+            <Checkbox
+              id="terms"
+              checked={agreedToTerms}
+              onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+              className="mt-0.5"
+            />
+            <label htmlFor="terms" className="text-xs text-gray-600 leading-snug cursor-pointer">
+              I confirm this is my legal signature and I accept the proposal terms.
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleSubmit}
+            disabled={!isValid || pageState === 'submitting'}
+            className="w-full h-10"
+          >
+            {pageState === 'submitting' ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Signing...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Sign & Submit
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-gray-900">Add Your Signature</h3>
+              <button
+                onClick={() => setShowSignatureModal(false)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4">
+              <SignatureCanvas
+                onChange={setSignatureData}
+                width={360}
+                height={120}
+                defaultName={signerName}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-2 p-4 border-t bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={() => setShowSignatureModal(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => setShowSignatureModal(false)}
+                disabled={!signatureData}
+                className="flex-1"
+              >
+                Done
+              </Button>
+            </div>
           </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t bg-white mt-12">
-        <div className="max-w-5xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-          Powered by Qwohter • Secure e-signature
-        </div>
-      </footer>
+      )}
     </div>
   );
 }
