@@ -103,19 +103,21 @@ async function embedSignatureInPdf(
   } else if (mode === 'overlay') {
     // === MODE: Overlay on last page ===
     // This overlays on the {{SIGNATURE_BLOCK}} placeholder that was inserted
-    // during document generation. The placeholder is ~130pt tall, so we
-    // position the signature to cover it from bottom-up.
+    // during document generation. Position at bottom portion of page where
+    // signature boxes are typically located.
     const pages = pdfDoc.getPages();
     const lastPage = pages[pages.length - 1];
     await drawSignatureBlock(
       lastPage, signatureImage, helvetica, helveticaBold,
       signerName, dateStr, timeStr, ipAddress,
-      72, 72  // 1 inch from left, 1 inch from bottom (covers placeholder area)
+      72, 144  // 1 inch from left, 2 inches from bottom
     );
   } else if (mode === 'position' && position) {
-    // === MODE: Exact position (for template markers) ===
+    // === MODE: Exact position (default - places signature at specific coordinates) ===
     const pages = pdfDoc.getPages();
-    const targetPage = pages[position.pageIndex] || pages[pages.length - 1];
+    // pageIndex -1 means last page, otherwise use the specified index
+    const pageIdx = position.pageIndex < 0 ? pages.length - 1 : position.pageIndex;
+    const targetPage = pages[pageIdx] || pages[pages.length - 1];
     await drawSignatureBlock(
       targetPage, signatureImage, helvetica, helveticaBold,
       signerName, dateStr, timeStr, ipAddress,
@@ -314,21 +316,17 @@ async function addSignaturePage(
 }
 
 /**
- * Draw signature block at a specific position on a page
- * Used for overlay mode or position mode
+ * Draw signature at a specific position on a page
+ * Used for position mode - places signature directly on existing "Signed By:_____" line
  *
- * In overlay mode, this overlays on top of the {{SIGNATURE_BLOCK}} placeholder
- * that was inserted during document generation. The placeholder looks like:
- *
- * Signature: ____________________________    Date: ______________
- *
- * We overlay the actual signature image and fill in the date inline.
+ * The x,y coordinates should point to where the signature should start
+ * (typically after the "Signed By:" text, on the underline)
  */
 async function drawSignatureBlock(
   page: any,
   signatureImage: any,
   helvetica: any,
-  _helveticaBold: any,  // Kept for API compatibility with addSignaturePage
+  _helveticaBold: any,  // Kept for API compatibility
   signerName: string,
   dateStr: string,
   timeStr: string,
@@ -336,50 +334,24 @@ async function drawSignatureBlock(
   x: number,
   y: number
 ): Promise<void> {
-  // Draw white background to cover the placeholder line (single line ~20pt tall)
-  page.drawRectangle({
-    x: x - 5,
-    y: y - 5,
-    width: 450,
-    height: 50,
-    color: rgb(1, 1, 1),  // White background to cover placeholder
-  });
-
-  // "Signature:" label
-  page.drawText('Signature:', {
-    x,
-    y: y + 15,
-    size: 10,
-    font: helvetica,
-    color: rgb(0.1, 0.1, 0.1),
-  });
-
-  // Draw signature image (inline, after "Signature:" label)
-  const sigWidth = 150;
-  const sigHeight = 40;
+  // Draw signature image directly at the specified position
+  // No background - preserves existing "Signed By:" or "Signature:" text
+  const sigWidth = 180;
+  const sigHeight = 50;
   page.drawImage(signatureImage, {
-    x: x + 60,
-    y: y + 5,
+    x,
+    y: y - 10,  // Slight offset down to sit on the line
     width: sigWidth,
     height: sigHeight,
   });
 
-  // Date field (inline, to the right of signature)
-  page.drawText(`Date: ${dateStr}`, {
-    x: x + 250,
-    y: y + 15,
-    size: 10,
-    font: helvetica,
-    color: rgb(0.1, 0.1, 0.1),
-  });
-
-  // Compliance footer (small, below the line)
-  page.drawText(`Signed by ${signerName} | ${timeStr} | ${ipAddress}`, {
+  // Small compliance text below signature (nearly invisible but legally useful)
+  page.drawText(`${signerName} | ${dateStr} ${timeStr} | ${ipAddress}`, {
     x,
-    y: y - 3,
-    size: 6,
+    y: y - 18,
+    size: 5,
     font: helvetica,
-    color: rgb(0.6, 0.6, 0.6),
+    color: rgb(0.7, 0.7, 0.7),
   });
 }
 
@@ -622,13 +594,21 @@ serve(async (req) => {
     const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
     const signedAt = new Date();
 
-    // Determine signature mode from proposal's form_data.signature_config
-    // Falls back to 'page' mode if not configured
-    const signatureConfig = proposal.form_data?.signature_config || { mode: 'page' };
-    const signatureMode: SignatureMode = signatureConfig.mode || 'page';
-    const signaturePosition: SignaturePosition | undefined = signatureConfig.position;
+    // Determine signature mode - default to 'position' to place signature at specific coordinates
+    // Falls back to 'page' (adds new signature page) if no position is set
+    const signatureConfig = proposal.form_data?.signature_config || {};
 
-    console.log(`[submit-signature] Using signature mode: ${signatureMode}`);
+    // Default position: after "Signed By:" text (~2 inches from left), 2 inches from bottom
+    const defaultPosition: SignaturePosition = {
+      pageIndex: -1,  // -1 means last page
+      x: 150,         // ~2 inches from left (after "Signed By:" text)
+      y: 144,         // 2 inches from bottom
+    };
+
+    const signaturePosition: SignaturePosition = signatureConfig.position || defaultPosition;
+    const signatureMode: SignatureMode = signatureConfig.mode || 'position';
+
+    console.log(`[submit-signature] Using signature mode: ${signatureMode}, position:`, signaturePosition);
 
     // Embed signature into PDF
     const signedPdfBytes = await embedSignatureInPdf(
