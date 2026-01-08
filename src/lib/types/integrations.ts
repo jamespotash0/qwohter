@@ -8,7 +8,9 @@
 // Integration Types
 // ============================================================================
 
-export type IntegrationType = 'quickbooks_online' | 'quickbooks_desktop' | 'google_docs';
+export type IntegrationType = 'quickbooks_online' | 'quickbooks_desktop' | 'google_docs' | 'dropbox';
+
+export type StorageProvider = 'google_drive' | 'dropbox';
 
 export type ConnectionStatus = 'Connected' | 'Disconnected' | 'Error' | 'Connecting';
 

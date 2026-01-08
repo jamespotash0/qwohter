@@ -155,6 +155,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       quickbooks_online: 'QuickBooks Online',
       quickbooks_desktop: 'QuickBooks Desktop',
       google_docs: 'Google Docs',
+      dropbox: 'Dropbox',
     };
     return names[type] || 'this integration';
   };
