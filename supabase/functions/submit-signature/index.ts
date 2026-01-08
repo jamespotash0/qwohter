@@ -36,13 +36,11 @@ interface RequestBody {
 
 /**
  * Signature embedding mode
- * - 'page': Add a new signature page at the end
+ * - 'page': Add a new signature page at the end (default - cleanest approach)
  * - 'overlay': Place signature at bottom of last page
- * - 'position': Place signature at specific coordinates (for templates with markers)
- * - 'inline': Place signature on the signature line at top of last page (default for documents with signature lines)
- * - 'auto': Automatically detect {{SIGNATURE}} and {{DATE}} placeholders in the document
+ * - 'position': Place signature at specific coordinates
  */
-type SignatureMode = 'page' | 'overlay' | 'position' | 'inline' | 'auto';
+type SignatureMode = 'page' | 'overlay' | 'position';
 
 interface SignaturePosition {
   pageIndex: number;  // 0-based page index
@@ -50,22 +48,259 @@ interface SignaturePosition {
   y: number;          // Y coordinate from bottom
 }
 
-// Placeholder markers to search for in the PDF
-const SIGNATURE_PLACEHOLDERS = [
-  '{{SIGNATURE}}',
-  '{{SIGN_HERE}}',
-  '[SIGNATURE]',
-  '[[SIGNATURE]]',
-  '___SIGNATURE___',
-];
+// ============================================================================
+// Google Drive Integration
+// ============================================================================
 
-const DATE_PLACEHOLDERS = [
-  '{{DATE}}',
-  '{{SIGN_DATE}}',
-  '[DATE]',
-  '[[DATE]]',
-  '___DATE___',
-];
+interface GoogleTokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+/**
+ * Get a valid Google access token for the organization
+ * Refreshes the token if expired
+ */
+async function getOrgGoogleAccessToken(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  organizationId: string
+): Promise<{ accessToken: string; folderId: string | null } | null> {
+  console.log(`[getOrgGoogleAccessToken] Looking up token for org: ${organizationId}`);
+
+  // Get org-level token from database
+  const { data: tokenData, error: tokenError } = await supabaseAdmin
+    .from('google_oauth_tokens')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .eq('is_valid', true)
+    .single();
+
+  if (tokenError || !tokenData) {
+    console.log('[getOrgGoogleAccessToken] No valid Google token found for organization');
+    return null;
+  }
+
+  const folderId = tokenData.drive_folder_id;
+
+  // Check if token is expired (with 5 minute buffer)
+  const expiresAt = new Date(tokenData.token_expires_at);
+  const now = new Date();
+  const bufferMs = 5 * 60 * 1000; // 5 minutes
+
+  if (expiresAt.getTime() - bufferMs > now.getTime()) {
+    // Token is still valid
+    await supabaseAdmin
+      .from('google_oauth_tokens')
+      .update({ last_used_at: now.toISOString() })
+      .eq('id', tokenData.id);
+
+    return { accessToken: tokenData.access_token, folderId };
+  }
+
+  // Token expired, need to refresh
+  //@ts-ignore
+  const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
+  //@ts-ignore
+  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
+
+  if (!clientId || !clientSecret || !tokenData.refresh_token) {
+    console.log('[getOrgGoogleAccessToken] Cannot refresh token - missing credentials or refresh token');
+    return null;
+  }
+
+  console.log('[getOrgGoogleAccessToken] Token expired, attempting refresh...');
+
+  try {
+    const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: tokenData.refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!refreshResponse.ok) {
+      const error = await refreshResponse.text();
+      console.error('[getOrgGoogleAccessToken] Token refresh failed:', error);
+      return null;
+    }
+
+    const newTokens: GoogleTokenResponse = await refreshResponse.json();
+    const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
+
+    // Update tokens in database
+    await supabaseAdmin
+      .from('google_oauth_tokens')
+      .update({
+        access_token: newTokens.access_token,
+        token_expires_at: newExpiresAt,
+        last_used_at: new Date().toISOString(),
+      })
+      .eq('id', tokenData.id);
+
+    return { accessToken: newTokens.access_token, folderId };
+  } catch (error) {
+    console.error('[getOrgGoogleAccessToken] Token refresh error:', error);
+    return null;
+  }
+}
+
+/**
+ * Get or create a proposal-specific folder in Google Drive
+ * Folder name format: "{proposal_number}_{project_name}" or just "{proposal_number}"
+ */
+async function getOrCreateProposalFolder(
+  accessToken: string,
+  parentFolderId: string | null,
+  proposalNumber: string,
+  projectName: string | null
+): Promise<string | null> {
+  // Build folder name: "P-001_Project Name" or just "P-001"
+  const sanitizedProject = projectName
+    ? projectName.replace(/[<>:"/\\|?*]/g, '').trim().substring(0, 50)
+    : null;
+  const folderName = sanitizedProject
+    ? `${proposalNumber}_${sanitizedProject}`
+    : proposalNumber;
+
+  console.log(`[getOrCreateProposalFolder] Looking for folder: ${folderName}`);
+
+  try {
+    // Search for existing folder with this name in parent
+    const searchQuery = parentFolderId
+      ? `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      : `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name)`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.files && searchData.files.length > 0) {
+        console.log(`[getOrCreateProposalFolder] Found existing folder: ${searchData.files[0].id}`);
+        return searchData.files[0].id;
+      }
+    }
+
+    // Folder doesn't exist, create it
+    console.log(`[getOrCreateProposalFolder] Creating new folder: ${folderName}`);
+
+    const metadata: { name: string; mimeType: string; parents?: string[] } = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+    };
+
+    if (parentFolderId) {
+      metadata.parents = [parentFolderId];
+    }
+
+    const createResponse = await fetch(
+      'https://www.googleapis.com/drive/v3/files?fields=id',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(metadata),
+      }
+    );
+
+    if (!createResponse.ok) {
+      const error = await createResponse.text();
+      console.error('[getOrCreateProposalFolder] Failed to create folder:', error);
+      return null;
+    }
+
+    const createData = await createResponse.json();
+    console.log(`[getOrCreateProposalFolder] Created folder: ${createData.id}`);
+    return createData.id;
+  } catch (error) {
+    console.error('[getOrCreateProposalFolder] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Upload a PDF file to Google Drive
+ * Returns the Drive file URL if successful, null otherwise
+ */
+async function uploadSignedPdfToDrive(
+  accessToken: string,
+  folderId: string | null,
+  pdfBytes: Uint8Array,
+  fileName: string
+): Promise<{ fileId: string; webViewLink: string } | null> {
+  console.log(`[uploadSignedPdfToDrive] Uploading ${fileName} to Google Drive...`);
+
+  try {
+    // Create multipart upload with metadata and file content
+    const boundary = '-------314159265358979323846';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    // File metadata
+    const metadata: { name: string; mimeType: string; parents?: string[] } = {
+      name: fileName,
+      mimeType: 'application/pdf',
+    };
+
+    if (folderId) {
+      metadata.parents = [folderId];
+    }
+
+    // Build multipart body
+    const metadataStr = JSON.stringify(metadata);
+    const base64Data = btoa(String.fromCharCode(...pdfBytes));
+
+    const requestBody =
+      delimiter +
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+      metadataStr +
+      delimiter +
+      'Content-Type: application/pdf\r\n' +
+      'Content-Transfer-Encoding: base64\r\n\r\n' +
+      base64Data +
+      closeDelimiter;
+
+    const response = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary="${boundary}"`,
+        },
+        body: requestBody,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[uploadSignedPdfToDrive] Upload failed:', error);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`[uploadSignedPdfToDrive] Uploaded successfully: ${data.webViewLink}`);
+
+    return {
+      fileId: data.id,
+      webViewLink: data.webViewLink,
+    };
+  } catch (error) {
+    console.error('[uploadSignedPdfToDrive] Error:', error);
+    return null;
+  }
+}
 
 /**
  * Embed signature into PDF using pdf-lib
@@ -112,58 +347,7 @@ async function embedSignatureInPdf(
     timeZoneName: 'short',
   });
 
-  if (mode === 'inline') {
-    // === MODE: Inline - Place signature on signature line ===
-    // Searches for signature lines like "Signature:", "Signed By:", etc.
-    // and places signature + date in appropriate positions
-    const pages = pdfDoc.getPages();
-    const lastPage = pages[pages.length - 1];
-    const { width, height } = lastPage.getSize();
-
-    // Common signature line positions (from top of page)
-    // Documents often have signature lines at: top (after content), middle, or near bottom
-    // We'll place near top since that's where "Signature: ___ Date: ___" typically appears
-    const signatureY = height - 45; // ~45 points from top of page
-
-    // Signature placement - after "Signature:", "Signed By:", etc.
-    // Typically starts around x=100-150 after the label
-    const signatureX = 115;
-    const sigWidth = 180;
-    const sigHeight = 35;
-
-    // Date placement - after "Date:" label
-    // Typically around x=380-420 depending on document width
-    const dateX = Math.min(width - 150, 390);
-
-    // Draw signature image on the signature line
-    lastPage.drawImage(signatureImage, {
-      x: signatureX,
-      y: signatureY - sigHeight + 8,
-      width: sigWidth,
-      height: sigHeight,
-    });
-
-    // Draw date on the date line
-    lastPage.drawText(dateStr, {
-      x: dateX,
-      y: signatureY - 2,
-      size: 11,
-      font: helvetica,
-      color: rgb(0, 0, 0),
-    });
-
-    // Also add a small signature metadata line below (for legal compliance)
-    const metadataY = signatureY - sigHeight - 15;
-    lastPage.drawText(`${signerName} | ${dateStr} ${timeStr}`, {
-      x: signatureX,
-      y: metadataY,
-      size: 6,
-      font: helvetica,
-      color: rgb(0.6, 0.6, 0.6),
-    });
-
-    console.log(`[embedSignatureInPdf] Inline signature placed at (${signatureX}, ${signatureY}), date at (${dateX})`);
-  } else if (mode === 'page') {
+  if (mode === 'page') {
     // === MODE: Add dedicated signature page ===
     await addSignaturePage(
       pdfDoc, signatureImage, helvetica, helveticaBold,
@@ -725,6 +909,50 @@ serve(async (req) => {
       signedPdfUrl = signedUrlData.signedUrl;
     }
 
+    // Upload to Google Drive if organization has Google connected
+    let googleDriveUrl: string | null = null;
+    let googleDriveFileId: string | null = null;
+
+    try {
+      const googleAuth = await getOrgGoogleAccessToken(supabase, organizationId);
+
+      if (googleAuth) {
+        console.log('[submit-signature] Google Drive connected, uploading signed PDF...');
+
+        // Get or create proposal-specific folder (e.g., "P-001_Project Name")
+        const proposalFolderId = await getOrCreateProposalFolder(
+          googleAuth.accessToken,
+          googleAuth.folderId,
+          proposal.proposal_number || 'Proposal',
+          proposal.project_name
+        );
+
+        // Use proposal folder if created, otherwise fall back to root folder
+        const targetFolderId = proposalFolderId || googleAuth.folderId;
+
+        // Create filename: "{ProposalNumber}_Signed.pdf" (simpler since folder has context)
+        const driveFileName = `${proposal.proposal_number || 'Proposal'}_Signed.pdf`;
+
+        const driveResult = await uploadSignedPdfToDrive(
+          googleAuth.accessToken,
+          targetFolderId,
+          signedPdfBytes,
+          driveFileName
+        );
+
+        if (driveResult) {
+          googleDriveUrl = driveResult.webViewLink;
+          googleDriveFileId = driveResult.fileId;
+          console.log(`[submit-signature] Uploaded to Google Drive: ${googleDriveUrl}`);
+        }
+      } else {
+        console.log('[submit-signature] Google Drive not connected, skipping Drive upload');
+      }
+    } catch (driveError) {
+      // Don't fail the signature if Drive upload fails
+      console.error('[submit-signature] Google Drive upload failed (non-blocking):', driveError);
+    }
+
     // Create signature record
     console.log('[submit-signature] Creating signature record...');
     const { error: signatureError } = await supabase
@@ -759,13 +987,29 @@ serve(async (req) => {
       })
       .eq('id', signingToken.id);
 
-    // Update proposal status to "Won"
+    // Update proposal status to "Won" and store Google Drive URL if available
     console.log('[submit-signature] Updating proposal status...');
+
+    // Build form_data update with signed document info
+    const signedDocInfo = {
+      ...proposal.form_data,
+      signed_document: {
+        signed_at: signedAt.toISOString(),
+        signer_name: signerName,
+        signer_email: signerEmail,
+        ...(googleDriveUrl && {
+          google_drive_url: googleDriveUrl,
+          google_drive_file_id: googleDriveFileId,
+        }),
+      },
+    };
+
     await supabase
       .from('proposals')
       .update({
         status: 'Won',
         updated_at: signedAt.toISOString(),
+        form_data: signedDocInfo,
       })
       .eq('id', proposal.id);
 
@@ -813,6 +1057,7 @@ serve(async (req) => {
         signedPdfUrl,
         proposalNumber: proposal.proposal_number,
         message: 'Proposal signed successfully',
+        ...(googleDriveUrl && { googleDriveUrl }),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
