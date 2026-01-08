@@ -159,3 +159,32 @@ export const useDeleteContact = (organizationId: string) => {
     },
   });
 };
+
+/**
+ * Bulk delete multiple contacts
+ */
+export const useBulkDeleteContacts = (organizationId: string) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (contactIds: string[]) =>
+      contactsService.bulkDeleteContacts(contactIds),
+    onSuccess: (_, contactIds) => {
+      // Invalidate contacts query to refetch
+      queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
+
+      toast({
+        title: 'Contacts Deleted',
+        description: `${contactIds.length} contact${contactIds.length === 1 ? '' : 's'} have been removed.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error Deleting Contacts',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};

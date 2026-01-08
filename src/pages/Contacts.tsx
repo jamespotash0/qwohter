@@ -5,15 +5,6 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,24 +18,17 @@ import {
 import { PageContent } from '@/components/common/layout';
 import { ContactsTable } from '@/components/features/contacts/ContactsTable';
 import { ContactDialog } from '@/components/features/contacts/ContactDialog';
-import { useContacts, useDeleteContact } from '@/hooks/useContacts';
+import { useContacts, useDeleteContact, useBulkDeleteContacts } from '@/hooks/useContacts';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import type { Contact } from '@/lib/types/contacts';
-import { CONTACT_TYPES } from '@/lib/types/contacts';
-import {
-  UserPlus,
-  Search,
-  Filter,
-  Download,
-  X,
-} from 'lucide-react';
 
 export default function ContactsPage() {
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id);
   const { data: contacts = [], isLoading } = useContacts(organization?.id);
   const deleteContact = useDeleteContact(organization?.id || '');
+  const bulkDeleteContacts = useBulkDeleteContacts(organization?.id || '');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -52,6 +36,7 @@ export default function ContactsPage() {
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | undefined>(undefined);
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
 
   // Filter and search contacts
   const filteredContacts = useMemo(() => {
@@ -83,6 +68,10 @@ export default function ContactsPage() {
     setDeletingContactId(contactId);
   };
 
+  const handleBulkDelete = (contactIds: string[]) => {
+    setBulkDeleteIds(contactIds);
+  };
+
   const confirmDelete = async () => {
     if (deletingContactId) {
       await deleteContact.mutateAsync(deletingContactId);
@@ -90,42 +79,12 @@ export default function ContactsPage() {
     }
   };
 
-  const handleExportContacts = () => {
-    if (filteredContacts.length === 0) return;
-
-    // Create CSV content
-    const headers = ['Name', 'Emails', 'Phones', 'Company', 'Type', 'Addresses', 'Notes'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredContacts.map(contact => [
-        `"${contact.full_name}"`,
-        `"${contact.emails.join('; ')}"`,
-        `"${contact.phones?.join('; ') || ''}"`,
-        `"${contact.company_name || ''}"`,
-        `"${contact.contact_type || ''}"`,
-        `"${contact.addresses?.join('; ') || ''}"`,
-        `"${contact.notes || ''}"`,
-      ].join(','))
-    ].join('\n');
-
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+  const confirmBulkDelete = async () => {
+    if (bulkDeleteIds.length > 0) {
+      await bulkDeleteContacts.mutateAsync(bulkDeleteIds);
+      setBulkDeleteIds([]);
+    }
   };
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setFilterType('all');
-  };
-
-  const hasActiveFilters = searchQuery !== '' || filterType !== 'all';
 
   if (!organization) {
     return (
@@ -141,75 +100,19 @@ export default function ContactsPage() {
       subtitle="Manage your customer and prospect contacts"
       showPageHeader={true}
     >
-      {/* Search and Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or company..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Type Filter */}
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {CONTACT_TYPES.map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Export */}
-          <Button
-            variant="outline"
-            onClick={handleExportContacts}
-            disabled={filteredContacts.length === 0}
-            className="w-full md:w-auto"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-
-          {/* Add Contact */}
-          <Button
-            onClick={handleAddContact}
-            className="w-full md:w-auto bg-[#EE6C4D] hover:bg-[#d85d3f]"
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Contact
-          </Button>
-        </div>
-
-        {/* Clear Filters */}
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearFilters}
-            className="text-muted-foreground"
-          >
-            <X className="w-4 h-4 mr-2" />
-            Clear Filters
-          </Button>
-        )}
-      </div>
-
-      {/* Contacts Table */}
+      {/* Contacts Table with integrated search/toolbar */}
       <ContactsTable
         contacts={filteredContacts}
         onEdit={handleEditContact}
         onDelete={handleDeleteContact}
+        onBulkDelete={handleBulkDelete}
+        onAddContact={handleAddContact}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filterType={filterType}
+        onFilterChange={setFilterType}
         isLoading={isLoading}
+        isDeletingBulk={bulkDeleteContacts.isPending}
       />
 
       {/* Contact Dialog */}
@@ -240,6 +143,31 @@ export default function ContactsPage() {
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog
+        open={bulkDeleteIds.length > 0}
+        onOpenChange={(open) => !open && setBulkDeleteIds([])}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {bulkDeleteIds.length} Contact{bulkDeleteIds.length === 1 ? '' : 's'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {bulkDeleteIds.length} selected contact{bulkDeleteIds.length === 1 ? '' : 's'}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={bulkDeleteContacts.isPending}
+            >
+              {bulkDeleteContacts.isPending ? 'Deleting...' : `Delete ${bulkDeleteIds.length} Contact${bulkDeleteIds.length === 1 ? '' : 's'}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
