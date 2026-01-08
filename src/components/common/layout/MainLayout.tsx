@@ -45,6 +45,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   const [checkingMembership, setCheckingMembership] = useState(false);
 
   // Check if current route should show sidebar
+  // Public routes that don't require authentication
   const shouldShowSidebar = ![
     '/',
     '/sign-in',
@@ -57,7 +58,8 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/demo',
     '/contact-us'
   ].includes(location.pathname) &&
-    !location.pathname.startsWith('/editor/');
+    !location.pathname.startsWith('/editor/') &&
+    !location.pathname.startsWith('/sign/'); // E-signature signing page is public
 
   // Check membership status for protected routes
   useEffect(() => {
@@ -283,6 +285,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
 
   // Check if current route should show sidebar
+  // Public routes that don't require authentication
   const shouldShowSidebar = ![
     '/',
     '/sign-in',
@@ -295,7 +298,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/demo',
     '/contact-us'
   ].includes(location.pathname) &&
-    !location.pathname.startsWith('/editor/');
+    !location.pathname.startsWith('/editor/') &&
+    !location.pathname.startsWith('/sign/'); // E-signature signing page is public
 
   // Wrap with SidebarProvider only for protected routes
   if (shouldShowSidebar) {
@@ -306,6 +310,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     );
   }
 
-  // Public routes render without SidebarProvider
-  return <MainLayoutContent>{children}</MainLayoutContent>;
+  // Public routes (like /sign/:token) bypass MainLayoutContent entirely
+  // MainLayoutContent has auth redirects, so public pages must not use it
+  return <>{children}</>;
 };

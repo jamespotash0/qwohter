@@ -25,6 +25,7 @@ import {
   Info,
   CaretRight,
   CaretDown,
+  PaperPlaneTilt,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +64,8 @@ import { useGoogleConnection } from '@/hooks/queries/useGoogleConnection';
 import { useCheckGoogleDoc } from '@/hooks/queries/useCheckGoogleDoc';
 import { useConnectedIntegrations } from '@/hooks/useIntegrations';
 import { cn } from '@/lib/utils';
+import { TemplateVariablesReference } from '@/components/features/settings/TemplateVariablesReference';
+import { SendForSignatureDialog } from '@/components/features/signing/SendForSignatureDialog';
 
 interface GoogleDocsModeProps {
   /** Google Doc ID if one exists */
@@ -159,6 +162,8 @@ export function GoogleDocsMode({
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [showLinkExisting, setShowLinkExisting] = useState(false);
   const [selectedExistingDoc, setSelectedExistingDoc] = useState<DriveFile | null>(null);
+  const [showVariablesRef, setShowVariablesRef] = useState(false);
+  const [showSignatureDialog, setShowSignatureDialog] = useState(false);
 
   // Check if user has connected Google - check BOTH sources
   // 1. google_oauth_tokens table (has actual tokens for API calls)
@@ -627,7 +632,7 @@ export function GoogleDocsMode({
                 )}
 
                 {/* What will be included */}
-                <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
+                <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                     Document will include:
                   </p>
@@ -650,6 +655,17 @@ export function GoogleDocsMode({
                     </li>
                   </ul>
                 </div>
+
+                {/* Template Variables Reference */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowVariablesRef(true)}
+                  className="w-full mb-4 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                >
+                  <BracketsCurly className="w-4 h-4 mr-2" />
+                  View Template Variables Reference
+                </Button>
 
                 <Button
                   size="lg"
@@ -689,6 +705,12 @@ export function GoogleDocsMode({
             )}
           </div>
         </div>
+
+        {/* Template Variables Reference Dialog */}
+        <TemplateVariablesReference
+          open={showVariablesRef}
+          onOpenChange={setShowVariablesRef}
+        />
       </div>
     );
   }
@@ -806,6 +828,22 @@ export function GoogleDocsMode({
               </TooltipTrigger>
               <TooltipContent>Open in New Tab</TooltipContent>
             </Tooltip>
+
+            {/* Send for Signature */}
+            {proposalId && organizationId && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowSignatureDialog(true)}
+                    className="transition-transform hover:scale-125"
+                  >
+                    <PaperPlaneTilt className="w-4 h-4 text-green-500 hover:text-green-600" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Send for Signature</TooltipContent>
+              </Tooltip>
+            )}
 
             {/* Unlink Document */}
             {onUnlinkDocument && (
@@ -958,6 +996,28 @@ export function GoogleDocsMode({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Template Variables Reference Dialog */}
+      <TemplateVariablesReference
+        open={showVariablesRef}
+        onOpenChange={setShowVariablesRef}
+      />
+
+      {/* Send for Signature Dialog */}
+      {proposalId && organizationId && (
+        <SendForSignatureDialog
+          isOpen={showSignatureDialog}
+          onClose={() => setShowSignatureDialog(false)}
+          proposalId={proposalId}
+          organizationId={organizationId}
+          organizationName={proposalData?.organization?.name}
+          proposalNumber={proposalInfo?.proposalNumber}
+          projectName={proposalInfo?.projectName}
+          defaultClientEmail={proposalData?.form_data?.info?.clientEmail}
+          defaultClientName={proposalData?.form_data?.info?.clientName}
+          defaultClientCompany={proposalData?.form_data?.info?.clientCompany}
+        />
+      )}
     </div>
   );
 }

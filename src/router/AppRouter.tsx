@@ -66,6 +66,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 const Landing = lazy(() => import("@/pages/LandingPage"));
 const Demo = lazy(() => import("@/pages/Demo"));
 const ContactUs = lazy(() => import("@/pages/ContactUs"));
+const ProposalSigningPage = lazy(() => import("@/pages/ProposalSigningPage"));
 
 // Authentication pages
 const Auth = lazy(() => import("@/pages/Auth"));
@@ -149,6 +150,9 @@ export const AppRouter = () => (
           {/* Contact us page (public) */}
           <Route path="/contact-us" element={<ContactUs />} />
 
+          {/* E-signature signing page (public - accessed via token) */}
+          <Route path="/sign/:token" element={<ProposalSigningPage />} />
+
           {/* Authentication routes - redirect to dashboard if already logged in */}
           <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -191,7 +195,7 @@ export const AppRouter = () => (
           </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}
-          <Route path="/*" element={
+          <Route path="*" element={
             <MainLayout>
               <Routes>
                 <Route path="/dashboard" element={<Dashboard />} />

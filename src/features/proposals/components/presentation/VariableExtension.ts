@@ -129,6 +129,11 @@ export const AVAILABLE_VARIABLES: VariableDefinition[] = [
   // Products (static - dynamic ones generated from form data)
   // ============================================================================
   { key: 'products.list', label: 'Product List', category: 'Products', description: 'Comma-separated list of products' },
+
+  // ============================================================================
+  // Special Markers (Google Docs Templates)
+  // ============================================================================
+  { key: 'SIGNATURE_BLOCK', label: 'Signature Block', category: 'Special Markers', description: 'Adds signature & date fields for e-signature' },
 ];
 
 // Group variables by category
@@ -359,8 +364,8 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
     vars.push({
       key: '#TABLE:pricing',
       label: 'Pricing Table (Auto)',
-      category: 'Auto Tables (Google Docs)',
-      description: `Creates complete table with headers, ${itemCount} rows, and total`,
+      category: 'Tables & Loops',
+      description: `Auto-creates table with headers, ${itemCount} rows, and total`,
     });
 
     // Dynamic table row variables (for Google Docs templates)
@@ -368,43 +373,43 @@ export function getPricingVariables(data: FormBuilderData): VariableDefinition[]
     vars.push({
       key: '#ROW:pricing',
       label: 'Start Row Loop',
-      category: 'Template Tables (Google Docs)',
-      description: 'Duplicate existing table row for each line item',
+      category: 'Tables & Loops',
+      description: 'Duplicates row for each line item (place in first cell)',
     });
     vars.push({
       key: 'row.name',
-      label: 'Item Name',
-      category: 'Template Tables (Google Docs)',
-      description: 'Line item name (use inside {{#ROW:pricing}})',
+      label: 'Row: Item Name',
+      category: 'Tables & Loops',
+      description: 'Line item name (use inside row loop)',
     });
     vars.push({
       key: 'row.quantity',
-      label: 'Quantity',
-      category: 'Template Tables (Google Docs)',
+      label: 'Row: Quantity',
+      category: 'Tables & Loops',
       description: 'Line item quantity',
     });
     vars.push({
       key: 'row.unitSellPrice',
-      label: 'Unit Sell Price',
-      category: 'Template Tables (Google Docs)',
+      label: 'Row: Unit Price',
+      category: 'Tables & Loops',
       description: 'Per-unit price after markup',
     });
     vars.push({
-      key: 'row.discount',
-      label: 'Discount',
-      category: 'Template Tables (Google Docs)',
-      description: 'Discount (% or $)',
+      key: 'row.discountPercent',
+      label: 'Row: Discount %',
+      category: 'Tables & Loops',
+      description: 'Discount percentage',
     });
     vars.push({
       key: 'row.lineTotal',
-      label: 'Line Total',
-      category: 'Template Tables (Google Docs)',
+      label: 'Row: Line Total',
+      category: 'Tables & Loops',
       description: 'Total for this line item',
     });
     vars.push({
       key: '/ROW',
       label: 'End Row Loop',
-      category: 'Template Tables (Google Docs)',
+      category: 'Tables & Loops',
       description: 'Place at end of template row',
     });
   }
@@ -522,6 +527,7 @@ export function getAllFormVariables(data: FormBuilderData): Record<string, Varia
     const pricingTotals = pricingVars.filter(v => v.category === 'Pricing Totals');
     const pricingSections = pricingVars.filter(v => v.category === 'Pricing Sections');
     const pricingItems = pricingVars.filter(v => v.category === 'Pricing Items');
+    const tablesLoops = pricingVars.filter(v => v.category === 'Tables & Loops');
 
     if (pricingTotals.length > 0) {
       result['Pricing Totals'] = pricingTotals;
@@ -531,6 +537,9 @@ export function getAllFormVariables(data: FormBuilderData): Record<string, Varia
     }
     if (pricingItems.length > 0) {
       result['Pricing Line Items'] = pricingItems;
+    }
+    if (tablesLoops.length > 0) {
+      result['Tables & Loops'] = tablesLoops;
     }
   }
 

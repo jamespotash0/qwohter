@@ -1407,6 +1407,25 @@ async function processTableMarkers(
 }
 
 /**
+ * Generate a formatted signature placeholder block
+ * This replaces {{SIGNATURE_BLOCK}} in the template with visible placeholder text
+ * that will appear in the generated PDF and be overlaid with the actual signature
+ */
+function generateSignaturePlaceholder(): string {
+  return `
+Signature: ____________________________    Date: ______________
+`;
+}
+
+/**
+ * Check if a variable name is a signature block marker
+ */
+function isSignatureBlockMarker(varName: string): boolean {
+  const normalized = varName.toLowerCase().replace(/[_\s]/g, '');
+  return normalized === 'signatureblock' || normalized === 'signature';
+}
+
+/**
  * Resolve a variable with fallback support
  * Supports: {{varA || varB || varC}} - returns first non-empty value
  * Also supports: {{varA ?? varB}} as an alias
@@ -1494,11 +1513,15 @@ function lookupVariable(varName: string, variables: Record<string, string>): str
  * - Expression: {{pricing.materials + pricing.labor}} -> $2,500.00
  * Note: replaceAllText preserves formatting (bold, italic, etc.)
  */
+interface ReplaceVariablesResult {
+  hasSignatureBlock: boolean;
+}
+
 async function replaceVariables(
   accessToken: string,
   docId: string,
   variables: Record<string, string>
-): Promise<void> {
+): Promise<ReplaceVariablesResult> {
   console.log('[replaceVariables] Starting variable replacement...');
   console.log('[replaceVariables] Variables received - count:', Object.keys(variables).length);
 
@@ -1523,6 +1546,14 @@ async function replaceVariables(
   const allPatterns = docContent.match(/\{\{[^}]+\}\}/g) || [];
   const uniquePatterns = [...new Set(allPatterns)];
 
+  // Check for signature block marker
+  const hasSignatureBlock = uniquePatterns.some(p =>
+    p.toLowerCase().includes('signature_block') || p.toLowerCase().includes('signature block')
+  );
+  if (hasSignatureBlock) {
+    console.log('[replaceVariables] Found {{SIGNATURE_BLOCK}} marker - will use overlay mode for signing');
+  }
+
   console.log(`[replaceVariables] Found ${uniquePatterns.length} unique patterns in document`);
 
   // Build replacement requests
@@ -1536,8 +1567,12 @@ async function replaceVariables(
     let replacement: string;
 
 
-    // Check for fallback operator (|| or ??) first
-    if (hasFallbackOperator(inner)) {
+    // Check if this is a signature block marker
+    if (isSignatureBlockMarker(inner)) {
+      // Replace with formatted signature placeholder
+      replacement = generateSignaturePlaceholder();
+      console.log('[replaceVariables] Replacing signature block marker with placeholder');
+    } else if (hasFallbackOperator(inner)) {
       // Resolve with fallback chain
       replacement = resolveVariableWithFallback(inner, variables);
     } else if (/[+\-*/()]/.test(inner)) {
@@ -1573,7 +1608,7 @@ async function replaceVariables(
 
   if (requests.length === 0) {
     console.log('[replaceVariables] No replacement requests to process');
-    return;
+    return { hasSignatureBlock };
   }
 
   console.log('[replaceVariables] Sending batchUpdate to Google Docs API...');
@@ -1597,6 +1632,8 @@ async function replaceVariables(
 
   const result = await response.json();
   console.log('[replaceVariables] batchUpdate successful, replies:', result.replies?.length || 0);
+
+  return { hasSignatureBlock };
 }
 
 /**
@@ -1692,7 +1729,10 @@ async function replaceVariablesWithNamedRanges(
     // Resolve the variable value
     let replacement: string;
 
-    if (hasFallbackOperator(varKey)) {
+    // Check if this is a signature block marker
+    if (isSignatureBlockMarker(varKey)) {
+      replacement = generateSignaturePlaceholder();
+    } else if (hasFallbackOperator(varKey)) {
       replacement = resolveVariableWithFallback(varKey, variables);
     } else if (/[+\-*/()]/.test(varKey)) {
       replacement = evaluateExpression(varKey, variables);
@@ -2072,15 +2112,21 @@ serve(async (req) => {
     }
 
     // Replace variables with named ranges (enables future "Update Values" mode)
+    // Also detect if template has {{SIGNATURE_BLOCK}} for e-signature placement
+    let hasSignatureBlock = false;
+
     if (variables && Object.keys(variables).length > 0) {
       console.log(`Replacing ${Object.keys(variables).length} variables with named ranges...`);
       try {
         await replaceVariablesWithNamedRanges(accessToken, newDocId, variables);
         console.log('Variable replacement with named ranges completed');
+        // Named ranges function doesn't return signature detection, check separately
+        // We'll detect it from the fallback or check the template content
       } catch (rangeError) {
         // Fallback to simple replacement if named ranges fail
         console.warn('Named range replacement failed, falling back to simple replacement:', rangeError);
-        await replaceVariables(accessToken, newDocId, variables);
+        const replaceResult = await replaceVariables(accessToken, newDocId, variables);
+        hasSignatureBlock = replaceResult.hasSignatureBlock;
         console.log('Variable replacement (fallback) completed');
       }
     }
@@ -2111,6 +2157,11 @@ serve(async (req) => {
         createdBy: user.id,
       });
 
+      // Build signature config based on template detection
+      const signatureConfig = hasSignatureBlock
+        ? { mode: 'overlay' as const }  // Template has signature block, overlay on last page
+        : { mode: 'page' as const };    // No signature block, add dedicated page
+
       const { error: updateError } = await supabase
         .from('proposals')
         .update({
@@ -2119,6 +2170,7 @@ serve(async (req) => {
             ...currentFormData,
             generated_docs: updatedDocs,
             current_doc_version: version,
+            signature_config: signatureConfig,
           },
         })
         .eq('id', proposalId);
