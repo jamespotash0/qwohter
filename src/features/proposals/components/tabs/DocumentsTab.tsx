@@ -98,8 +98,9 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   // Handle file selection
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || files.length === 0) return;
-    handleFileUpload(files[0]);
+    const file = files?.[0];
+    if (!file) return;
+    handleFileUpload(file);
   }, []);
 
   // Handle file upload
@@ -192,71 +193,20 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   }
 
   // Filler mode: Compact file list with add button
+  const totalFiles = documents.length + signatures.length;
+
   return (
     <div className="space-y-6">
-      {/* Signed Documents Section */}
-      {signatures.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-600" weight="fill" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Signed Documents
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {signatures.map((sig) => (
-              <div
-                key={sig.id}
-                className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800"
-              >
-                <div className="flex items-center gap-3">
-                  {/* Signature Icon */}
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center">
-                      <Signature className="w-5 h-5 text-green-600 dark:text-green-400" weight="fill" />
-                    </div>
-                  </div>
-
-                  {/* Signature Info */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Signed Proposal PDF
-                    </h4>
-                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                      <span>Signed by {sig.signer_name}</span>
-                      <span>•</span>
-                      <span>{formatDate(sig.signed_at)}</span>
-                    </div>
-                  </div>
-
-                  {/* Download Action */}
-                  <div className="flex-shrink-0">
-                    <button
-                      onClick={() => sig.signed_pdf_url && window.open(sig.signed_pdf_url, '_blank')}
-                      disabled={!sig.signed_pdf_url}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Uploaded Documents Section */}
+      {/* Documents Section */}
       <div className="space-y-3">
         {/* Header with Add File button */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {signatures.length > 0 ? 'Other Documents' : 'Documents'}
+            Documents
           </h3>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {documents.length} {documents.length === 1 ? 'file' : 'files'}
+              {totalFiles} {totalFiles === 1 ? 'file' : 'files'}
             </span>
             <input
               ref={fileInputRef}
@@ -288,7 +238,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
         </div>
 
         {/* Documents List */}
-      {documents.length === 0 ? (
+      {totalFiles === 0 ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600">
           <FileIcon className="w-10 h-10 mx-auto mb-2 text-gray-400" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -297,6 +247,61 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
         </div>
       ) : (
         <div className="space-y-2">
+          {/* Signed Documents (shown first with signature badge) */}
+          {signatures.map((sig) => {
+            // Extract filename from path, or use default
+            const fileName = sig.signed_pdf_path
+              ? sig.signed_pdf_path.split('/').pop() || 'signed-document.pdf'
+              : 'signed-document.pdf';
+
+            return (
+              <div
+                key={`sig-${sig.id}`}
+                className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-green-200 dark:border-green-800 hover:border-green-400 dark:hover:border-green-600 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  {/* PDF Icon with signature badge */}
+                  <div className="flex-shrink-0 relative">
+                    <FilePdf className="w-5 h-5 text-red-500" />
+                    <CheckCircle
+                      className="w-3 h-3 text-green-600 absolute -bottom-0.5 -right-0.5"
+                      weight="fill"
+                    />
+                  </div>
+
+                  {/* File Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {fileName}
+                      </h4>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                        <Signature className="w-3 h-3" weight="fill" />
+                        Signed
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatDate(sig.signed_at)}
+                    </div>
+                  </div>
+
+                  {/* Download Action */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => sig.signed_pdf_url && window.open(sig.signed_pdf_url, '_blank')}
+                      disabled={!sig.signed_pdf_url}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors disabled:opacity-50"
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Regular uploaded documents */}
           {documents.map((doc) => (
             <div
               key={doc.id}
