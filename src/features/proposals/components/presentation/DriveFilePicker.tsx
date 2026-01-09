@@ -5,8 +5,8 @@
  * Used in the template picker to select templates without manually entering URLs.
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { Check, ChevronsUpDown, FileText, Loader2, Search, FolderOpen, ExternalLink } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Check, ChevronsUpDown, FileText, Loader2, Search, FolderOpen, ExternalLink, RefreshCw } from 'lucide-react';
 import { GoogleLogo } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useDriveFiles, type DriveFile } from '@/hooks/queries/useDriveFiles';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface DriveFilePickerProps {
   organizationId: string | undefined;
@@ -47,7 +48,9 @@ export function DriveFilePicker({
 }: DriveFilePickerProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const queryClient = useQueryClient();
 
   // Build search query - prepend [TEMPLATE] filter if templateOnly is true
   const effectiveSearch = templateOnly
@@ -55,11 +58,20 @@ export function DriveFilePicker({
     : debouncedSearch;
 
   // Fetch files from Drive
-  const { data, isLoading, error } = useDriveFiles({
+  const { data, isLoading, error, refetch } = useDriveFiles({
     organizationId,
     searchQuery: effectiveSearch,
     enabled: open && !!organizationId,
   });
+
+  // Force refresh the file list
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    // Invalidate all drive-files queries to ensure fresh data
+    await queryClient.invalidateQueries({ queryKey: ['drive-files'] });
+    await refetch();
+    setIsRefreshing(false);
+  }, [queryClient, refetch]);
 
   // Filter out templates if excludeTemplates is true (client-side filter)
   const allFiles = data?.files || [];
@@ -131,9 +143,9 @@ export function DriveFilePicker({
           </div>
         </div>
 
-        {/* Folder indicator */}
-        {folderId && (
-          <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+        {/* Folder indicator with refresh button */}
+        <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <FolderOpen className="h-3.5 w-3.5" />
               <span>
@@ -141,11 +153,22 @@ export function DriveFilePicker({
                   ? 'Searching for [TEMPLATE] files'
                   : excludeTemplates
                     ? 'Showing proposal documents (excluding templates)'
-                    : 'Searching in connected folder'}
+                    : folderId
+                      ? 'Searching in connected folder'
+                      : 'Searching all accessible docs'}
               </span>
             </div>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isLoading}
+              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              title="Refresh file list"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5 text-gray-500', (isRefreshing || isLoading) && 'animate-spin')} />
+            </button>
           </div>
-        )}
+        </div>
 
         {/* File list */}
         <div className="max-h-[300px] overflow-y-auto">

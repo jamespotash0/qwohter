@@ -16,7 +16,6 @@ import {
   Check,
   ArrowClockwise,
   ArrowsClockwise,
-  FileDoc,
   LinkSimple,
   Warning,
   ArrowSquareOut,
@@ -29,13 +28,6 @@ import {
   DownloadSimple,
 } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -145,27 +137,10 @@ export function GoogleDocsMode({
 }: GoogleDocsModeProps) {
   const [showVariables, setShowVariables] = useState(false);
   const [copiedVariable, setCopiedVariable] = useState<string | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [selectedTemplateFile, setSelectedTemplateFile] = useState<DriveFile | null>(null);
   const [showVersionDialog, setShowVersionDialog] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [activeAction, setActiveAction] = useState<'update' | 'regenerate' | null>(null);
-
-  // Update selected template when templates change (handles async loading and template list changes)
-  useEffect(() => {
-    if (templates.length > 0) {
-      // Check if current selection is still valid
-      const currentSelectionValid = templates.some(t => t.id === selectedTemplateId);
-
-      if (!currentSelectionValid) {
-        // Select default or first template
-        const defaultTemplate = templates.find(t => t.is_default) || templates[0];
-        if (defaultTemplate) {
-          console.log('[GoogleDocsMode] Setting template:', defaultTemplate.name, defaultTemplate.google_doc_id);
-          setSelectedTemplateId(defaultTemplate.id);
-        }
-      }
-    }
-  }, [templates, selectedTemplateId]);
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [showLinkExisting, setShowLinkExisting] = useState(false);
   const [selectedExistingDoc, setSelectedExistingDoc] = useState<DriveFile | null>(null);
@@ -222,11 +197,15 @@ export function GoogleDocsMode({
   // A document exists if we have a googleDocId - don't require generated_docs history
   const hasExistingDoc = !!googleDocId;
 
-  // Get selected template
-  const selectedTemplate = useMemo(
-    () => templates.find(t => t.id === selectedTemplateId),
-    [templates, selectedTemplateId]
-  );
+  // Convert selected DriveFile to template-like object for generation
+  const selectedTemplate = useMemo(() => {
+    if (!selectedTemplateFile) return null;
+    return {
+      id: selectedTemplateFile.id,
+      name: selectedTemplateFile.name,
+      google_doc_id: selectedTemplateFile.id, // DriveFile.id IS the google doc ID
+    };
+  }, [selectedTemplateFile]);
 
   // Handle variable selection - copy to clipboard for Google Docs
   const handleVariableSelect = useCallback((variableKey: string, _variableLabel: string) => {
@@ -627,67 +606,23 @@ export function GoogleDocsMode({
             ) : (
               /* Generate from Template UI */
               <>
-                {/* Template Selection */}
-                {hasTemplates ? (
-                  <div className="text-left mb-6">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Select Template
-                    </label>
-                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose a template">
-                          {selectedTemplate && (
-                            <div className="flex items-center gap-2">
-                              <FileDoc className="w-4 h-4 text-blue-500" />
-                              <span>{selectedTemplate.name}</span>
-                            </div>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {templates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div className="flex items-center gap-2">
-                              <FileDoc className="w-4 h-4 text-blue-500" />
-                              <span>{template.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm p-4 rounded-lg mb-6 text-left">
-                    <p className="font-medium mb-1">No templates configured</p>
-                    <p className="text-xs">
-                      Add Google Docs templates in the Form Builder to enable document generation.
+                {/* Template Selection - searches Drive for [TEMPLATE] files */}
+                <div className="text-left mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Template
+                  </label>
+                  <DriveFilePicker
+                    organizationId={organizationId}
+                    value={selectedTemplateFile?.id}
+                    onSelect={setSelectedTemplateFile}
+                    placeholder="Search for templates..."
+                    templateOnly
+                  />
+                  {selectedTemplateFile && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1.5">
+                      Selected: {selectedTemplateFile.name}
                     </p>
-                  </div>
-                )}
-
-                {/* What will be included */}
-                <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                    Document will include:
-                  </p>
-                  <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
-                      Client & project information
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
-                      All products with specifications
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
-                      Pricing breakdown & totals
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
-                      Lead times & phases
-                    </li>
-                  </ul>
+                  )}
                 </div>
 
                 {/* Template Variables Reference */}
@@ -704,7 +639,7 @@ export function GoogleDocsMode({
                 <Button
                   size="lg"
                   onClick={() => handleGenerate()}
-                  disabled={isGenerating || !hasTemplates || !selectedTemplate}
+                  disabled={isGenerating || !selectedTemplate}
                   className="w-full"
                 >
                   {isGenerating ? (
