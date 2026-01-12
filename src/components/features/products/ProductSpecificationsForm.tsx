@@ -408,7 +408,7 @@ export function ProductSpecificationsForm({
                 type="submit"
                 className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
               >
-                Add to Quote
+                Add to Proposal
               </Button>
             </div>
           </form>

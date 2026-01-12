@@ -25,7 +25,6 @@ class OrganizationSettingsService {
             fax_number,
             company_address,
             website,
-            quote_start_number,
             logo_data,
             created_at,
             updated_at
@@ -77,7 +76,7 @@ class OrganizationSettingsService {
       // Now get the organization data
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('id, name, industry, found_via, phone_number, fax_number, company_address, website, quote_start_number, logo_data, created_at, updated_at')
+        .select('id, name, industry, found_via, phone_number, fax_number, company_address, website, logo_data, created_at, updated_at')
         .eq('id', organizationId)
         .single();
 
@@ -105,7 +104,6 @@ class OrganizationSettingsService {
         fax_number: companyData.fax_number || org.fax_number,
         company_address: companyData.company_address || org.company_address,
         website: companyData.website || org.website,
-        quote_start_number: companyData.quote_start_number || org.quote_start_number,
         industry: companyData.industry || org.industry,
         found_via: companyData.found_via || org.found_via,
         logo_data: logoData,
@@ -131,7 +129,6 @@ class OrganizationSettingsService {
           fax_number,
           company_address,
           website,
-          quote_start_number,
           logo_data,
           created_at,
           updated_at

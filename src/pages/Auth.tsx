@@ -540,14 +540,12 @@ const Auth = () => {
       companyFax: companyInfo.companyFax,
       companyAddress: companyInfo.companyAddress,
       companyWebsite: companyInfo.companyWebsite,
-      quoteStartingPoint: companyInfo.quoteStartingPoint,
       industry: formState.industry,
       foundVia: formState.foundVia,
       setLoading: authFlow.setLoading,
       toast,
       clearAuthState,
       redirectAfterAuth: () => redirectAfterAuth(navigate),
-      // setStep: authFlow.setStep,
       navigate,
     });
   };
@@ -596,7 +594,7 @@ const Auth = () => {
         </div>
       </header>
 
-      {/* Background pattern with quote checkerboard design */}
+      {/* Background pattern with proposal checkerboard design */}
       <div className="absolute inset-0">
         {/* Repeating quotation marks in checkerboard pattern */}
         <div
@@ -631,7 +629,11 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" : "max-w-lg"
+            authFlow.step === "auth" && !authFlow.isSignUp
+              ? "max-w-md"
+              : authFlow.step === "company-info"
+                ? "max-w-2xl"
+                : "max-w-lg"
           }`}>
             {/* Main form card for all steps */}
             <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
@@ -727,7 +729,6 @@ const Auth = () => {
                 fax={companyInfo.companyFax}
                 address={companyInfo.companyAddress}
                 website={companyInfo.companyWebsite}
-                quoteStartingPoint={companyInfo.quoteStartingPoint}
                 industry={formState.industry}
                 foundVia={formState.foundVia}
                 loading={authFlow.loading}
@@ -737,7 +738,6 @@ const Auth = () => {
                 onFaxChange={companyInfo.setCompanyFax}
                 onAddressChange={companyInfo.setCompanyAddress}
                 onWebsiteChange={companyInfo.setCompanyWebsite}
-                onQuoteStartingPointChange={companyInfo.setQuoteStartingPoint}
                 onIndustryChange={formState.setIndustry}
                 onFoundViaChange={formState.setFoundVia}
                 onLogoUpload={onLogoUpload}

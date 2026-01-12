@@ -238,7 +238,7 @@ export interface Form {
   created_at: string;
   updated_at: string;
   is_archived: boolean;
-  is_default?: boolean; // Marks this as the default form for quote creation
+  is_default?: boolean; // Marks this as the default form proposal creation
   is_template?: boolean; // True for system templates
   copied_from_form_id?: string | null; // Template lineage tracking
   document_type?: DocumentType; // Type of document this form creates (Proposal, Invoice, Service_Request)

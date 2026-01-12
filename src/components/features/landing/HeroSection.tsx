@@ -237,7 +237,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
               } as React.CSSProperties}
             >
               Move away from scattered docs and spreadsheets—automatically design,
-              generate, track, and manage quotes with ease, all from a single
+              generate, track, and manage proposals with ease, all from a single
               platform.
             </p>
           </div>

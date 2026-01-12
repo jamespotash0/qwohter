@@ -463,7 +463,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                     <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
                       <li>• Your account will be marked as Inactive</li>
                       <li>• You'll lose access to all organizations</li>
-                      <li>• Your quotes and data will show as "Deactivated User"</li>
+                      <li>• Your proposals and data will show as "Deactivated User"</li>
                       <li>• You can contact support to reactivate your account</li>
                     </ul>
                   </div>

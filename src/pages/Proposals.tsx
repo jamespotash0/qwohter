@@ -1,6 +1,5 @@
 /**
  * Proposals Page
- * Enhanced table view matching the Quotes page design
  */
 
 import { useState, useMemo } from 'react';
@@ -204,7 +203,7 @@ export default function Proposals() {
   };
 
   const handleExportCSV = (data: Proposal[]) => {
-    // Helper to escape CSV fields with commas, quotes, or newlines
+    // Helper to escape CSV fields with commas, proposals, or newlines
     const escapeCsvField = (field: string | number | null | undefined): string => {
       const str = String(field ?? '');
       if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {

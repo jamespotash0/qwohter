@@ -16,14 +16,13 @@ import * as Sentry from '@sentry/react';
 export interface Organization {
   id: string;
   name: string;
-  
+
   phone_number?: string;
   fax_number?: string;
   company_address?: string;
   website?: string;
   industry?: string;
   found_via?: string;
-  quote_start_number?: string;
   logo_data?: LogoData;
   created_at: string;
   updated_at: string;
@@ -71,7 +70,6 @@ export interface UpdateOrganizationData {
   website?: string;
   industry?: string;
   logo_data?: LogoData;
-  quote_start_number?: string;
 }
 
 // ============================================================================
@@ -112,7 +110,7 @@ export async function fetchOrganizationById(organizationId: string): Promise<Org
  * Update organization
  *
  * Why instrumented: Organization settings affect all users in the org.
- * If logo upload or company info updates fail, it impacts branding on all quotes.
+ * If logo upload or company info updates fail, it impacts branding on all proposals.
  *
  * What we track:
  * - Update success/failure rate
@@ -317,7 +315,6 @@ export async function switchOrganization(
           website,
           industry,
           found_via,
-          quote_start_number,
           logo_data
         )
       `)

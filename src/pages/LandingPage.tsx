@@ -101,7 +101,7 @@ const LandingPage = () => {
               fontWeight: 400,
             }}
           >
-            See your projects and quotes in one place with full visibility. <span className="text-[#171717]/30">Turn actionable insights into faster, more efficient selling.</span>
+            See your projects and proposals in one place with full visibility. <span className="text-[#171717]/30">Turn actionable insights into faster, more efficient selling.</span>
           </h2>
         </div>
       </section>

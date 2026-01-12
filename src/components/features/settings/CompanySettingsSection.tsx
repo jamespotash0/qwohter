@@ -117,12 +117,6 @@ export function CompanySettingsSection() {
                     <p>{companyData.fax_number}</p>
                   </div>
                 )}
-                <div>
-                  <span className="font-medium text-muted-foreground">Proposal Starting Number:</span>
-                  <p className="font-mono text-lg font-semibold text-blue-700">
-                    {companyData?.quote_start_number || 'Not set'}
-                  </p>
-                </div>
               </div>
               
               {/* Right Side - Website and Address */}

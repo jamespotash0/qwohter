@@ -165,7 +165,7 @@ function formatStoredPhone(value: string): string {
 export interface InfoTabData {
   projectName: string;
   proposalDate: string;
-  validUntil: string;         // Quote validity expiration date
+  validUntil: string;         // Proposal validity expiration date
   contactName: string;        // Display name (resolved from contact/member)
   contactNameId?: string;     // Reference ID for maintaining relationship
   contactEmail: string;
@@ -811,7 +811,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
               </Field>
             </div>
             <div className="col-span-4">
-              <Field label="Valid Until" tooltip="Quote validity expiration date - click to set days from proposal date">
+              <Field label="Valid Until" tooltip="Proposal validity expiration date - click to set days from proposal date">
                 {isBuilderMode ? (
                   <Input
                     type="date"

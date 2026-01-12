@@ -2,86 +2,6 @@
 export interface Database {
   public: {
     Tables: {
-      quotes: {
-        Row: {
-          id: string;
-          proposal_number: string;
-          project_name?: string;
-          quote_details: any;
-          job_details: any;
-          wall_details: any;
-          price_details: any;
-          delivery_details: any;
-          labor_details: any;
-          status: string;
-          quote_source?: string;
-          created_by: string;
-          date_last_downloaded?: string;
-          document_version: number;
-          created_at: string;
-          updated_at: string;
-          organization_id: string;
-          customization?: any;
-          archived?: boolean;
-          is_main_version?: boolean;
-          total_value?: number | null;
-          subtotal?: number | null;
-          margin_percentage?: number | null;
-          won_at?: string;
-          submitted_at?: string;
-          rejected_at?: string;
-        };
-        Insert: {
-          id?: string;
-          proposal_number: string;
-          project_name?: string;
-          quote_details: any;
-          job_details: any;
-          wall_details: any;
-          price_details: any;
-          delivery_details: any;
-          labor_details: any;
-          status?: string;
-          quote_source?: string;
-          created_by?: string;
-          date_last_downloaded?: string;
-          document_version?: number;
-          created_at?: string;
-          updated_at?: string;
-          organization_id: string;
-          customization?: any;
-          archived?: boolean;
-          is_main_version?: boolean;
-          won_at?: string;
-          submitted_at?: string;
-          rejected_at?: string;
-        };
-        Update: {
-          id?: string;
-          proposal_number?: string;
-          project_name?: string;
-          quote_details?: any;
-          job_details?: any;
-          wall_details?: any;
-          price_details?: any;
-          delivery_details?: any;
-          labor_details?: any;
-          status?: string;
-          quote_source?: string;
-          created_by?: string;
-          date_last_downloaded?: string;
-          document_version?: number;
-          created_at?: string;
-          updated_at?: string;
-          organization_id?: string;
-          customization?: any;
-          archived?: boolean;
-          is_main_version?: boolean;
-          won_at?: string;
-          submitted_at?: string;
-          rejected_at?: string;
-        };
-      };
       profiles: {
         Row: {
           id: string;
@@ -116,7 +36,6 @@ export interface Database {
           website: string;
           logo_data: any;
           industry: string;
-          quote_starting_point: string;
           created_at: string;
           updated_at: string;
         };
@@ -130,7 +49,6 @@ export interface Database {
           website: string;
           logo_data?: any;
           industry: string;
-          quote_starting_point: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -144,7 +62,6 @@ export interface Database {
           website?: string;
           logo_data?: any;
           industry?: string;
-          quote_starting_point?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -408,7 +325,6 @@ export interface Database {
       projects: {
         Row: {
           id: string;
-          quote_id: string | null; // Nullable - either quote_id or proposal_id should be set
           proposal_id: string | null; // Links to proposal if created from a proposal
           workflow_status: string;
           board_order: number | null;
@@ -420,7 +336,6 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          quote_id?: string | null; // Nullable - either quote_id or proposal_id should be set
           proposal_id?: string | null; // Links to proposal if created from a proposal
           workflow_status: string;
           board_order?: number | null;
@@ -432,7 +347,6 @@ export interface Database {
         };
         Update: {
           id?: string;
-          quote_id?: string | null;
           proposal_id?: string | null;
           workflow_status?: string;
           board_order?: number | null;
@@ -478,7 +392,6 @@ export interface Database {
       reminders: {
         Row: {
           id: string;
-          quote_id: string;
           organization_id: string;
           title: string;
           description: string | null;
@@ -493,7 +406,6 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          quote_id: string;
           organization_id: string;
           title: string;
           description?: string | null;
@@ -508,7 +420,6 @@ export interface Database {
         };
         Update: {
           id?: string;
-          quote_id?: string;
           organization_id?: string;
           title?: string;
           description?: string | null;
@@ -610,7 +521,6 @@ export interface Database {
       };
       /**
        * Proposals table - New form-builder system
-       * Replaces the quotes table for the form-builder based workflow
        */
       proposals: {
         Row: {
@@ -712,48 +622,6 @@ export interface Database {
           rejected_at?: string | null;
           created_at?: string;
           updated_at?: string;
-        };
-      };
-      /**
-       * Proposal Activities table - Activity log for proposals
-       * Replaces quote_activities for the form-builder based workflow
-       */
-      proposal_activities: {
-        Row: {
-          id: string;
-          proposal_id: string | null;
-          proposal_number: string;
-          project_name: string | null;
-          user_id: string | null;
-          user_name: string;
-          activity_type: string;
-          activity_details: Record<string, any> | null;
-          organization_id: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          proposal_id?: string | null;
-          proposal_number: string;
-          project_name?: string | null;
-          user_id?: string | null;
-          user_name: string;
-          activity_type: string;
-          activity_details?: Record<string, any> | null;
-          organization_id: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          proposal_id?: string | null;
-          proposal_number?: string;
-          project_name?: string | null;
-          user_id?: string | null;
-          user_name?: string;
-          activity_type?: string;
-          activity_details?: Record<string, any> | null;
-          organization_id?: string;
-          created_at?: string;
         };
       };
       /**

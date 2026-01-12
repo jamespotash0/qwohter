@@ -252,7 +252,7 @@ const ResetPassword = () => {
         </div>
       </header>
 
-      {/* Background pattern with quote checkerboard design */}
+      {/* Background pattern with proposal checkerboard design */}
       <div className="absolute inset-0">
         {/* Repeating quotation marks in checkerboard pattern */}
         <div

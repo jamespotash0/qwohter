@@ -23,7 +23,7 @@ const problemItems = [
     number: "3",
     title: "Inconsistent:",
     description:
-      "Quotes lack a standardized look and feel, reducing brand professionalism.",
+      "Proposals lack a standardized look and feel, reducing brand professionalism.",
     image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-18.png",
     alignment: "left",
   },
@@ -31,7 +31,7 @@ const problemItems = [
     number: "4",
     title: "Unscalable:",
     description:
-      "As businesses grow, it becomes harder to manage pipelines, track quote status, and gain insights into team performance.",
+      "As businesses grow, it becomes harder to manage pipelines, track proposal status, and gain insights into team performance.",
     image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-19.png",
     alignment: "right",
   },
@@ -40,9 +40,9 @@ const problemItems = [
 const solutionItems = [
   {
     number: "1",
-    title: "Create accurate quotes faster:",
+    title: "Create accurate proposals faster:",
     description:
-      "Automated calculations, built-in product libraries, and intelligent templates reduce quote creation time by up to 70%.",
+      "Automated calculations, built-in product libraries, and intelligent templates reduce proposal creation time by up to 70%.",
     image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-16.png",
     alignment: "left",
   },
@@ -50,7 +50,7 @@ const solutionItems = [
     number: "2",
     title: "Eliminate errors with smart validation:",
     description:
-      "Real-time validation, pricing rule engines, and automatic updates ensure every quote is accurate and professional.",
+      "Real-time validation, pricing rule engines, and automatic updates ensure every proposal is accurate and professional.",
     image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-17.png",
     alignment: "right",
   },
@@ -58,7 +58,7 @@ const solutionItems = [
     number: "3",
     title: "Professional, branded documents:",
     description:
-      "Customizable templates and automated formatting deliver consistent, polished quotes that strengthen your brand.",
+      "Customizable templates and automated formatting deliver consistent, polished proposals that strengthen your brand.",
     image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-18.png",
     alignment: "left",
   },
@@ -66,7 +66,7 @@ const solutionItems = [
     number: "4",
     title: "Scale with confidence:",
     description:
-      "Track every quote, analyze team performance, and gain pipeline visibility—all from a centralized platform built to grow with your business.",
+      "Track every proposal, analyze team performance, and gain pipeline visibility—all from a centralized platform built to grow with your business.",
     image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-19.png",
     alignment: "right",
   },
@@ -112,7 +112,7 @@ export const ProblemSolutionSection = (): JSX.Element => {
 
             <p className="w-full [font-family:'Urbanist',Helvetica] font-normal text-[#343432] text-base md:text-lg lg:text-xl text-center tracking-[0] leading-relaxed lg:leading-[30px]">
               {activeTab === "problem"
-                ? "Many small businesses rely on Google Docs, spreadsheets, or other manual tools to create quotes and proposals. This process is:"
+                ? "Many small businesses rely on Google Docs, spreadsheets, or other manual tools to create proposals and proposals. This process is:"
                 : "Qwohter streamlines the quoting process with powerful automation, customization, and collaboration tools. Our platform helps you:"
               }
             </p>

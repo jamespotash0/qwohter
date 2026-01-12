@@ -10,13 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CompanyInfoFormData } from "@/lib/types/companySettings";
 import { LogoUploadResult } from "@/services/LogoUploadService";
-import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyInfoDialogProps {
   isOpen: boolean;
@@ -41,12 +40,9 @@ export function CompanyInfoDialog({
     fax_number: "",
     company_address: "",
     website: "",
-    quote_start_number: "",
   });
 
   const [includeFax, setIncludeFax] = useState(false);
-  const [hasExistingProposals, setHasExistingProposals] = useState(false);
-
   const [errors, setErrors] = useState<Partial<CompanyInfoFormData>>({});
 
   // Phone number formatting function
@@ -59,36 +55,6 @@ export function CompanyInfoDialog({
     if (phoneNumber.length <= 3) return `(${phoneNumber}`;
     if (phoneNumber.length <= 6) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
     return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
-  };
-
-  // Quote starting point formatting function
-  const formatQuoteStartingPoint = (value: string): string => {
-    // Remove spaces and convert to uppercase
-    const cleanValue = value.replace(/\s/g, '').toUpperCase();
-
-    // Allow alphanumeric characters and hyphens
-    const allowedChars = cleanValue.replace(/[^A-Z0-9-]/g, '');
-
-    return allowedChars;
-  };
-
-  // Check if there are existing proposals
-  const checkForExistingProposals = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('proposals')
-        .select('id')
-        .limit(1);
-
-      if (error) {
-        console.error('Error checking for existing proposals:', error);
-        return;
-      }
-
-      setHasExistingProposals(data && data.length > 0);
-    } catch (error) {
-      console.error('Error checking for existing proposals:', error);
-    }
   };
 
   // Handle logo upload
@@ -114,17 +80,12 @@ export function CompanyInfoDialog({
   };
 
   useEffect(() => {
-    if (isOpen) {
-      checkForExistingProposals();
-    }
-    
     if (initialData) {
       setFormData({
         phone_number: initialData.phone_number || "",
         fax_number: initialData.fax_number || "",
         company_address: initialData.company_address || "",
         website: initialData.website || "",
-        quote_start_number: initialData.quote_start_number || "",
         logo_data: initialData.logo_data || undefined,
       });
       setIncludeFax(Boolean(initialData.fax_number));
@@ -134,7 +95,6 @@ export function CompanyInfoDialog({
         fax_number: "",
         company_address: "",
         website: "",
-        quote_start_number: "",
         logo_data: undefined,
       });
       setIncludeFax(false);
@@ -161,10 +121,6 @@ export function CompanyInfoDialog({
       newErrors.website = "Website is required";
     }
 
-    if (!hasExistingProposals && !formData.quote_start_number.trim()) {
-      newErrors.quote_start_number = "Quote starting point is required";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -187,17 +143,12 @@ export function CompanyInfoDialog({
 
   const handleChange = (field: keyof CompanyInfoFormData, value: string) => {
     let formattedValue = value;
-    
+
     // Apply phone number formatting for phone and fax fields
     if (field === 'phone_number' || field === 'fax_number') {
       formattedValue = formatPhoneNumber(value);
     }
 
-    // Apply quote starting point formatting
-    if (field === 'quote_start_number') {
-      formattedValue = formatQuoteStartingPoint(value);
-    }
-    
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
     // Clear error for this field when user starts typing
     if (errors[field]) {
@@ -215,7 +166,7 @@ export function CompanyInfoDialog({
           <DialogDescription>
             {initialData 
               ? `Make changes to ${organizationName || 'your organization'}'s contact details and business information.`
-              : `Enter ${organizationName || 'your organization'}'s contact details to get started with professional quote generation.`
+              : `Enter ${organizationName || 'your organization'}'s contact details to get started with professional proposal generation.`
             }
           </DialogDescription>
         </DialogHeader>
@@ -309,44 +260,6 @@ export function CompanyInfoDialog({
                 </Label>
               </div>
             </div>
-          </div>
-
-          {/* Quote Starting Point Section */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label htmlFor="quoteStartingPoint" className="flex items-center gap-2">
-                Quote Starting Number 
-                {!hasExistingProposals && <span className="text-red-500">*</span>}
-                {hasExistingProposals && <Lock className="w-4 h-4 text-muted-foreground" />}
-              </Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>
-                      {hasExistingProposals 
-                        ? "Cannot be changed - quotes already exist with this numbering system"
-                        : "Starting point for your quote numbering system"
-                      }
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <Input
-              id="quoteStartingPoint"
-              type="text"
-              value={formData.quote_start_number}
-              onChange={(e) => handleChange("quote_start_number", e.target.value)}
-              placeholder="P10001, 15000, Q-10001"
-              disabled={hasExistingProposals}
-              className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_start_number ? "border-destructive" : ""} ${hasExistingProposals ? "bg-muted cursor-not-allowed" : ""}`}
-            />
-            {errors.quote_start_number && (
-              <p className="text-sm text-destructive">{errors.quote_start_number}</p>
-            )}
           </div>
 
           {/* Address and Website Section */}

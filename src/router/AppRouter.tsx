@@ -133,7 +133,7 @@ const PageLoader = () => (
  * - Lazy loading for better performance
  * - Nested route structure for better organization
  * - Protected routes with authentication checks
- * - Error boundaries for quote-related operations
+ * - Error boundaries for proposal-related operations
  * - SEO-friendly URLs that match business logic
  */
 export const AppRouter = () => (

@@ -1,11 +1,11 @@
 import { CheckCircle2Icon, XCircleIcon } from "lucide-react";
-import React from "react";
+import React, { JSX } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 
 const mainFeatures = [
-  "Unlimited quotes",
+  "Unlimited proposals",
   "Custom form creation",
   "Template designer",
   "Advanced analytics",

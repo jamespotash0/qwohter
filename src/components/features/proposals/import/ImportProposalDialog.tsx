@@ -1,7 +1,7 @@
 /**
  * Import Proposal Dialog
  * Multi-step wizard for importing proposals from files
- * Reuses quote import logic but creates proposals instead
+ * Reuses q_import logic but creates proposals instead
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -36,7 +36,7 @@ import { useUser } from '@/auth';
 import { invalidateQueries } from '@/lib/queryClient';
 import type {
   ImportFileType,
-  ExtractedQuoteData,
+  ExtractedProposalData,
 } from '@/lib/types/proposalImport';
 import { EMPTY_EXTRACTED_DATA } from '@/lib/types/proposalImport';
 
@@ -48,7 +48,7 @@ interface ImportProposalState {
   file: File | null;
   fileType: ImportFileType | null;
   extractionResult: { text: string; base64Data?: string } | null;
-  extractedData: ExtractedQuoteData;
+  extractedData: ExtractedProposalData;
   manual: {
     projectName: string;
     status: ImportProposalStatus;
@@ -312,7 +312,7 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
       const newProposal = await createProposal(proposalData);
 
       // Invalidate the proposals cache
-      await invalidateQueries.allQuotes();
+      await invalidateQueries.allProposals();
 
       toast({
         title: 'Proposal Imported',

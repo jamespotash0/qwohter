@@ -1,5 +1,5 @@
 /**
- * Types for bulk quote import feature
+ * Types for bulk proposal import feature
  * Supports PDF, DOCX, CSV, and TXT file imports
  */
 
@@ -28,7 +28,7 @@ export interface TextExtractionResult {
   mimeType?: string;
 }
 
-// Client/contact information extracted from quote
+// Client/contact information extracted from proposal
 export interface ExtractedClient {
   name: string | null;
   company: string | null;
@@ -37,14 +37,14 @@ export interface ExtractedClient {
   address: string | null;
 }
 
-// Job/project information extracted from quote
+// Job/project information extracted from proposal
 export interface ExtractedJob {
   proposalNumber: string | null;
   date: string | null;
   location: string | null;
 }
 
-// Line item from quote
+// Line item from proposal
 export interface ExtractedLineItem {
   description: string;
   quantity?: number;
@@ -52,7 +52,7 @@ export interface ExtractedLineItem {
   amount: number;
 }
 
-// Pricing information extracted from quote
+// Pricing information extracted from proposal
 export interface ExtractedPricing {
   total: number | null;
   subtotal: number | null;
@@ -62,7 +62,7 @@ export interface ExtractedPricing {
   lineItems: ExtractedLineItem[];
 }
 
-// Project/job specifications extracted from quote (generic for any project type)
+// Project/job specifications extracted from proposal (generic for any project type)
 export interface ExtractedSpecifications {
   // Common measurements
   dimensions: string | null;      // e.g., "10ft x 25ft", "500 sq ft"
@@ -119,8 +119,8 @@ export interface ExtractedProducts {
   items: ExtractedProductSpec[];
 }
 
-// Complete extracted quote data from AI
-export interface ExtractedQuoteData {
+// Complete extracted proposal data from AI
+export interface ExtractedProposalData {
   client: ExtractedClient;
   job: ExtractedJob;
   pricing: ExtractedPricing;
@@ -132,7 +132,7 @@ export interface ExtractedQuoteData {
 }
 
 // Default empty extracted data
-export const EMPTY_EXTRACTED_DATA: ExtractedQuoteData = {
+export const EMPTY_EXTRACTED_DATA: ExtractedProposalData = {
   client: {
     name: null,
     company: null,
@@ -170,23 +170,23 @@ export const EMPTY_EXTRACTED_DATA: ExtractedQuoteData = {
 // Wizard step for import dialog
 export type ImportWizardStep = 'upload' | 'processing' | 'review';
 
-// Quote status options
-export type ImportQuoteStatus = 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+// Proposal status options
+export type ImportProposalStatus = 'Draft' | 'Submitted' | 'Won' | 'Rejected';
 
 // Complete import state
-export interface ImportQuoteState {
+export interface ImportProposalState {
   step: ImportWizardStep;
   file: File | null;
   fileType: ImportFileType | null;
   extractionResult: TextExtractionResult | null;
-  extractedData: ExtractedQuoteData;
+  extractedData: ExtractedProposalData;
 
   // Manual fields (user must fill these)
   manual: {
     projectName: string;
-    status: ImportQuoteStatus;
+    status: ImportProposalStatus;
     proposalNumber: string;
-    quoteDate: string;
+    proposalDate: string;
   };
 
   // Processing state
@@ -196,7 +196,7 @@ export interface ImportQuoteState {
 }
 
 // Initial import state
-export const INITIAL_IMPORT_STATE: ImportQuoteState = {
+export const INITIAL_IMPORT_STATE: ImportProposalState = {
   step: 'upload',
   file: null,
   fileType: null,
@@ -206,23 +206,23 @@ export const INITIAL_IMPORT_STATE: ImportQuoteState = {
     projectName: '',
     status: 'Draft',
     proposalNumber: '',
-    quoteDate: new Date().toISOString().split('T')[0] || '',
+    proposalDate: new Date().toISOString().split('T')[0] || '',
   },
   isExtracting: false,
   isParsing: false,
   error: null,
 };
 
-// Parse quote API request
-export interface ParseQuoteRequest {
+// Parse proposal API request
+export interface ParseProposalRequest {
   documentText: string;
   fileName?: string;
   fileType?: ImportFileType;
 }
 
-// Parse quote API response
-export interface ParseQuoteResponse {
+// Parse proposal API response
+export interface ParseProposalResponse {
   success: boolean;
-  data?: ExtractedQuoteData;
+  data?: ExtractedProposalData;
   error?: string;
 }

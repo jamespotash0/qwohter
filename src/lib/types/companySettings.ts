@@ -55,14 +55,13 @@ export interface OrganizationInfo {
 export interface OrganizationWithCompanyInfo {
   id: string;
   name: string;
-  
+
   industry?: string;
   found_via?: string;
   phone_number?: string;
   fax_number?: string;
   company_address?: string;
   website?: string;
-  quote_start_number?: string;
   logo_data?: LogoData;
   created_at: string;
   updated_at: string;
@@ -73,7 +72,6 @@ export interface CompanyInfoFormData {
   fax_number: string;
   company_address: string;
   website: string;
-  quote_start_number: string;
   industry?: string;
   found_via?: string;
   logo_data?: LogoData;
@@ -97,7 +95,6 @@ export const extractCompanyInfoForForm = (org?: OrganizationWithCompanyInfo): Co
     fax_number: org?.fax_number || '',
     company_address: org?.company_address || '',
     website: org?.website || '',
-    quote_start_number: org?.quote_start_number || '',
     logo_data: org?.logo_data || undefined,
   };
 };

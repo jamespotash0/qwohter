@@ -1,6 +1,5 @@
 /**
  * Enhanced Proposals Table
- * Feature-rich table matching the EnhancedQuotesTable styling
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';

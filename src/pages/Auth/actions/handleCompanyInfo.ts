@@ -16,7 +16,6 @@ interface HandleCompanyInfoSubmitParams {
   companyFax: string;
   companyAddress: string;
   companyWebsite: string;
-  quoteStartingPoint: string;
   industry: string;
   foundVia: string;
   setLoading: (loading: boolean) => void;
@@ -35,7 +34,6 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     companyFax,
     companyAddress,
     companyWebsite,
-    quoteStartingPoint,
     industry,
     foundVia,
     setLoading,
@@ -44,8 +42,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     navigate,
   } = params;
 
-  // Only quoteStartingPoint and foundVia are required (validated in form)
-  if (!userId || !quoteStartingPoint || !foundVia) return;
+  // Only foundVia is required (validated in form)
+  if (!userId || !foundVia) return;
 
   console.log('=== Company Info Submit ===');
   console.log('Industry:', industry);
@@ -66,7 +64,6 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       fax_number: companyFax,
       company_address: companyAddress,
       website: companyWebsite,
-      quote_start_number: quoteStartingPoint,
       industry: industry,
       found_via: foundVia,
     });

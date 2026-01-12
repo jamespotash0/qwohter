@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { JSX, useEffect, useRef } from "react";
 
 export const FeatureSection = (): JSX.Element => {
   const feature1Ref = useRef<HTMLDivElement>(null);
@@ -78,7 +78,7 @@ export const FeatureSection = (): JSX.Element => {
                 <div className="absolute top-[80px] left-[80px] right-0 bottom-0">
                   <img
                     className="w-[600px] h-[441px] object-cover rounded-tl-[30px] rounded-br-[30px]"
-                    alt="Design beautiful quotes"
+                    alt="Design beautiful proposals"
                     src="/images/landing/design_image.svg"
                   />
                 </div>
@@ -95,7 +95,7 @@ export const FeatureSection = (): JSX.Element => {
                   fontWeight: 600,
                 }}
               >
-                Design beautiful quotes that win deals
+                Design beautiful proposals that win deals
               </h2>
 
               <p
@@ -105,12 +105,12 @@ export const FeatureSection = (): JSX.Element => {
                   fontWeight: 400,
                 }}
               >
-                Build smart forms to capture the right information, then turn that data into stunning, branded quote templates. Drag, drop, and customize both the form and the final quote layout with instant live preview.
+                Build smart forms to capture the right information, then turn that data into stunning, branded proposal templates. Drag, drop, and customize both the form and the final proposal layout with instant live preview.
               </p>
             </div>
 
             <div className="flex flex-col items-start gap-3 md:gap-[15px] w-full">
-              {["Form builder to define fields and structure", "Drag-and-drop quote template designer", "Instant live preview and branding"].map((point, index) => (
+              {["Form builder to define fields and structure", "Drag-and-drop proposal template designer", "Instant live preview and branding"].map((point, index) => (
                 <div key={index} className="flex items-center gap-2.5 w-full">
                   <svg className="w-5 h-5 md:w-6 md:h-6 text-[#ee6c4d] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
@@ -174,8 +174,8 @@ export const FeatureSection = (): JSX.Element => {
               <div className="absolute top-20 left-0 right-20 bottom-0">
                 <img
                   className="w-[520px] h-[441px] object-cover rounded-tr-[30px] rounded-bl-[30px]"
-                  alt="Generate quotes in seconds"
-                  src="/images/landing/generate_quotes_image.png"
+                  alt="Generate proposals in seconds"
+                  src="/images/landing/generate_proposals_image.png"
                 />
               </div>
             </div>
@@ -190,7 +190,7 @@ export const FeatureSection = (): JSX.Element => {
                   fontWeight: 600,
                 }}
               >
-                Generate quotes in seconds, not hours
+                Generate proposals in seconds, not hours
               </h2>
 
               <p
@@ -200,7 +200,7 @@ export const FeatureSection = (): JSX.Element => {
                   fontWeight: 400,
                 }}
               >
-                Our intelligent quote engine automatically calculates pricing, applies discounts, and formats everything perfectly. Just fill in the details and go.
+                Our intelligent proposal engine automatically calculates pricing, applies discounts, and formats everything perfectly. Just fill in the details and go.
               </p>
             </div>
 

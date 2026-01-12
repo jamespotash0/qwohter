@@ -211,7 +211,7 @@ export async function exportToDocx(
   // Create the document
   const doc = new Document({
     title,
-    creator: 'WallQu Form Builder',
+    creator: 'Qwohter Form Builder',
     sections: [
       {
         properties: {},
@@ -438,7 +438,7 @@ function createTextRun(
 ): TextRun {
   let bold = false;
   let italic = false;
-  let underline: { type: UnderlineType } | undefined;
+  let underline: { type: typeof UnderlineType } | undefined;
   let strike = false;
   let color: string | undefined;
   let highlight: string | undefined;

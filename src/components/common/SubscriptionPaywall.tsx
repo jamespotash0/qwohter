@@ -196,7 +196,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
                   <ul className="space-y-1 text-sm text-gray-700">
                     <li className="flex items-center gap-2">
                       <span className="text-green-600">✓</span>
-                      All your proposals and quotes
+                      All your proposals
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-green-600">✓</span>

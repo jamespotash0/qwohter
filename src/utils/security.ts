@@ -19,7 +19,7 @@ export const sanitizeHTML = {
     return DOMPurify.sanitize(html, {
       ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead'],
       ALLOWED_ATTR: ['class', 'style', 'data-conditional', 'data-deps', 'data-type', 'data-value', 'data-format', 'data-show-if', 'data-user-edited', 'data-original-value'],
-      ALLOW_DATA_ATTR: true,  // Required for semantic markup in quote templates
+      ALLOW_DATA_ATTR: true,  // Required for semantic markup in proposal templates
       FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'textarea', 'select', 'button'],
       KEEP_CONTENT: true
     });
@@ -33,7 +33,7 @@ export const sanitizeHTML = {
     return DOMPurify.sanitize(html, {
       ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead', 'img'],
       ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height', 'data-conditional', 'data-deps', 'data-type', 'data-value', 'data-format', 'data-show-if', 'data-user-edited', 'data-original-value'],
-      ALLOW_DATA_ATTR: true,  // Required for semantic markup in quote templates
+      ALLOW_DATA_ATTR: true,  // Required for semantic markup in proposal templates
       FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'textarea', 'select', 'button', 'link'],
       KEEP_CONTENT: true
     });
@@ -47,7 +47,7 @@ export const sanitizeHTML = {
     element.innerHTML = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead'],
       ALLOWED_ATTR: ['class', 'style', 'data-conditional', 'data-deps', 'data-type', 'data-value', 'data-format', 'data-show-if', 'data-user-edited', 'data-original-value'],
-      ALLOW_DATA_ATTR: true,  // Required for semantic markup in quote templates
+      ALLOW_DATA_ATTR: true,  // Required for semantic markup in proposal templates
       FORBID_TAGS: ['script', 'object', 'embed', 'iframe'],
       KEEP_CONTENT: true
     });

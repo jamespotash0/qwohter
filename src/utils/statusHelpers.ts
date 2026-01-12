@@ -106,63 +106,6 @@ export function isProposalEditable(status: string | null | undefined): boolean {
 }
 
 // ============================================================================
-// QUOTE STATUS HELPERS (Legacy - aligned with ProposalStatus)
-// ============================================================================
-
-export type QuoteStatus = 'Won' | 'Rejected' | 'Submitted' | 'Draft';
-
-/**
- * Check if quote status is Won (case-insensitive)
- */
-export function isQuoteWon(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'won';
-}
-
-/**
- * Check if quote status is Rejected (case-insensitive)
- */
-export function isQuoteRejected(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'rejected';
-}
-
-/**
- * Check if quote status is Submitted (case-insensitive)
- */
-export function isQuoteSubmitted(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'submitted';
-}
-
-/**
- * Check if quote status is Draft (case-insensitive)
- */
-export function isQuoteDraft(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'draft';
-}
-
-/**
- * Check if quote is in a final state (Won or Rejected)
- */
-export function isQuoteFinal(status: string | null | undefined): boolean {
-  const lower = status?.toLowerCase();
-  return lower === 'won' || lower === 'rejected';
-}
-
-/**
- * Check if quote is in progress (Submitted or Draft)
- */
-export function isQuoteInProgress(status: string | null | undefined): boolean {
-  const lower = status?.toLowerCase();
-  return lower === 'submitted' || lower === 'draft';
-}
-
-/**
- * Check if quote can be edited (Draft only)
- */
-export function isQuoteEditable(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'draft';
-}
-
-// ============================================================================
 // SUBSCRIPTION STATUS HELPERS
 // ============================================================================
 
@@ -218,7 +161,7 @@ export function isSubscriptionValid(status: string | null | undefined): boolean 
  * @example
  * ```typescript
  * matchesStatus(member.status, 'Active') // true for 'Active', 'active', 'ACTIVE'
- * matchesStatus(quote.status, ['Won', 'Rejected']) // true if won or rejected
+ * matchesStatus(proposal.status, ['Won', 'Rejected']) // true if won or rejected
  * ```
  */
 export function matchesStatus(
@@ -239,10 +182,7 @@ export function matchesStatus(
  * @param expectedStatus - Status value(s) to filter by
  * @returns Filtered array
  *
- * @example
- * ```typescript
- * const activeMembers = filterByStatus(members, 'Active');
- * const finalQuotes = filterByStatus(quotes, ['Won', 'Rejected']);
+
  * ```
  */
 export function filterByStatus<T extends { status?: string | null }>(

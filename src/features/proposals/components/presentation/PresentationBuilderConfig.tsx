@@ -609,7 +609,7 @@ export function PresentationBuilderConfig() {
               <Label htmlFor="template-name">Template Name</Label>
               <Input
                 id="template-name"
-                placeholder="e.g., Formal Proposal, Quick Quote"
+                placeholder="e.g., Formal Proposal"
                 value={templateName}
                 onChange={e => setTemplateName(e.target.value)}
               />

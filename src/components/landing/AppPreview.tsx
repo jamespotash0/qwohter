@@ -6,7 +6,7 @@ export const AppPreview: React.FC = () => {
 
   const steps = [
     {
-      title: 'Create Quote',
+      title: 'Create Proposal',
       icon: FileText,
       color: 'blue',
       content: (
@@ -37,11 +37,11 @@ export const AppPreview: React.FC = () => {
           <div className="bg-gradient-to-r from-orange-50 to-blue-50 p-4 rounded-lg">
             <div className="flex items-center space-x-2 mb-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">W</span>
+                <span className="text-white font-bold text-sm">Q</span>
               </div>
-              <span className="font-semibold">WallQu</span>
+              <span className="font-semibold">Qwohter</span>
             </div>
-            <div className="text-sm text-gray-600">Professional Quote #1024</div>
+            <div className="text-sm text-gray-600">Professional Proposal #1024</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">$3,892</div>
@@ -63,7 +63,7 @@ export const AppPreview: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">12</div>
-              <div className="text-xs text-gray-500">Active Quotes</div>
+              <div className="text-xs text-gray-500">Active Proposals</div>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -95,7 +95,7 @@ export const AppPreview: React.FC = () => {
               <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
               <div className="w-3 h-3 bg-green-400 rounded-full"></div>
             </div>
-            <div className="text-sm text-gray-600 font-medium">WallQu Dashboard</div>
+            <div className="text-sm text-gray-600 font-medium">Qwohter Dashboard</div>
           </div>
         </div>
 
@@ -143,7 +143,7 @@ export const AppPreview: React.FC = () => {
               steps[activeStep]!.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
               'bg-green-600 hover:bg-green-700'
             }`}>
-              {activeStep === 0 ? 'Generate Quote' :
+              {activeStep === 0 ? 'Generate Proposal' :
                activeStep === 1 ? 'Send Proposal' : 'View Analytics'}
             </button>
           </div>
