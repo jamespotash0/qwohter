@@ -59,7 +59,6 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
 
     // Save current form state before submission
     await onboardingStateHelpers.saveOnboardingProgress(userId, 'organization', {
-      orgChoice: 'create',
       orgName,
       industry,
       foundVia,

@@ -194,17 +194,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Handle SIGNED_OUT event
    *
    * - Clear ALL React Query cache
-   * - Reset all stores (organization, quotes, etc.)
+   * - Reset all stores (organization, proposals, etc.)
    * - Clear localStorage auth data
    */
   async function handleSignedOut() {
     console.log('👋 User signed out');
 
-    // Clear ALL React Query cache (includes user, session, profile, org, quotes, etc.)
+    // Clear ALL React Query cache (includes user, session, profile, org, proposals, etc.)
     queryClient.clear();
 
     // Reset remaining Zustand stores (only appStore remains - others migrated to React Query)
-    // Note: quotesStore, organizationStore, boardStore, and remindersStore
+    // Note: proposalsStore, organizationStore, boardStore, and remindersStore
     //       have all been migrated to React Query and are cleared with queryClient.clear() above
     try {
       // Only appStore remains as a Zustand store for app-level UI state

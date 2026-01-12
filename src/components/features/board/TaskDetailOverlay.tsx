@@ -31,9 +31,10 @@ import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 
 interface ProjectOption {
   id: string;
-  quote?: {
-    project_name?: string;
-    proposal_number?: string;
+  proposal?: {
+    project_name?: string | null;
+    proposal_number?: string | null;
+    [key: string]: unknown; // Allow additional properties from full Proposal type
   } | null;
 }
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
@@ -41,9 +42,10 @@ import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
 
 interface Member {
   user_id: string;
-  full_name: string | null;
+  full_name?: string | null;
   email: string;
   status: string;
+  [key: string]: unknown; // Allow additional properties from OrganizationMember type
 }
 
 interface TaskDetailOverlayProps {
@@ -127,7 +129,7 @@ export function TaskDetailOverlay({
     }
   };
 
-  const proposalNumber = task.project?.quote?.proposal_number;
+  const proposalNumber = task.project?.proposal?.proposal_number;
 
   const handleNavigateToProject = () => {
     if (proposalNumber) {
@@ -353,7 +355,7 @@ export function TaskDetailOverlay({
                   <SelectItem key={project.id} value={project.id}>
                     <div className="flex items-center gap-2">
                       <FolderOpen className="w-3 h-3 text-purple-500" />
-                      {project.quote?.project_name || 'Unnamed Project'}
+                      {project.proposal?.project_name || 'Unnamed Project'}
                     </div>
                   </SelectItem>
                 ))}

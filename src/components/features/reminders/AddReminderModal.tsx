@@ -27,7 +27,7 @@ interface Reminder {
   title: string;
   description?: string;
   due_date: string;
-  quote_id?: string;
+  proposal_id?: string;
   reminder_type: ReminderType;
   organization_id: string;
 }
@@ -40,7 +40,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
 
   const [reminderType, setReminderType] = useState<string>('');
   const [alertName, setAlertName] = useState('');
-  const [quoteReference, setQuoteReference] = useState<string>('none');
+  const [proposalReference, setProposalReference] = useState<string>('none');
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('09:00');
@@ -58,7 +58,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         // Populate form with existing reminder data
         setReminderType(editingReminder.reminder_type);
         setAlertName(editingReminder.title);
-        setQuoteReference(editingReminder.quote_id || 'none');
+        setProposalReference(editingReminder.proposal_id || 'none');
         setNotes(editingReminder.description || '');
 
         // Parse date and time from due_date
@@ -73,7 +73,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         // Reset to empty state for new reminder
         setReminderType('');
         setAlertName('');
-        setQuoteReference('none');
+        setProposalReference('none');
         setNotes('');
         setDate(undefined);
         setTime('09:00');
@@ -141,7 +141,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
           title: alertName.trim(),
           description: notes.trim() || undefined,
           due_date: dueDateTime.toISOString(),
-          quote_id: quoteReference && quoteReference !== 'none' ? quoteReference : undefined,
+          proposal_id: proposalReference && proposalReference !== 'none' ? proposalReference : undefined,
           reminder_type: reminderType as ReminderType,
         });
         error = updateResult.error;
@@ -151,7 +151,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
           title: alertName.trim(),
           description: notes.trim() || undefined,
           due_date: dueDateTime.toISOString(),
-          quote_id: quoteReference && quoteReference !== 'none' ? quoteReference : undefined,
+          proposal_id: proposalReference && proposalReference !== 'none' ? proposalReference : undefined,
           reminder_type: reminderType as ReminderType,
           organization_id: organization.id,
           is_shared: true, // Default to shared with organization
@@ -168,7 +168,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
       // Reset form
       setAlertName('');
       setNotes('');
-      setQuoteReference('none');
+      setProposalReference('none');
       setReminderType('');
       setDate(undefined);
       setTime('09:00');
@@ -262,10 +262,10 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
 
             {/* Optional Proposal Reference */}
             <div className="space-y-2">
-              <Label htmlFor="quoteReference" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="proposalReference" className="text-sm font-medium text-gray-700">
                 Proposal Reference (Optional)
               </Label>
-              <Select value={quoteReference} onValueChange={setQuoteReference}>
+              <Select value={proposalReference} onValueChange={setProposalReference}>
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="No proposal linked" />
                 </SelectTrigger>

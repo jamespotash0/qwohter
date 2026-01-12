@@ -141,7 +141,7 @@ export function CompanySettingsSection() {
             </div>
             <h3 className="font-medium mb-2">Company information not set up</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Set up your organization's contact details to enable professional quote generation
+              Set up your organization's contact details to enable professional proposal generation
             </p>
             {isAdmin && (
               <Button onClick={handleEdit} size="sm">

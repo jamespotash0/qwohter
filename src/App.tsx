@@ -19,7 +19,7 @@ const ProposalSigningPage = lazy(() => import("@/pages/ProposalSigningPage"));
 /**
  * Main App component - Industry Standard Architecture
  * Features:
- * - React Query for ALL server state (auth, quotes, org, etc.)
+ * - React Query for ALL server state (auth, proposals, org, etc.)
  * - Single Supabase auth listener (registered in AuthProvider)
  * - Zero race conditions (mutex-based serialization)
  * - Automatic session restoration and token refresh

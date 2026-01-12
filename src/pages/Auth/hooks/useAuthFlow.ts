@@ -7,7 +7,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 export type AuthStep = 'auth' | 'verify-otp' | 'organization' | 'company-info';
-export type OrgChoice = 'join' | 'create' | null;
 
 interface AuthFlowState {
   // Step management
@@ -23,8 +22,6 @@ interface AuthFlowState {
   // Organization state
   organizationId: string | null;
   setOrganizationId: (id: string | null) => void;
-  orgChoice: OrgChoice;
-  setOrgChoice: (choice: OrgChoice) => void;
 
   // Loading states
   loading: boolean;
@@ -47,7 +44,6 @@ export const useAuthFlow = (): AuthFlowState => {
   const [step, setStep] = useState<AuthStep>('auth');
   const [userId, setUserId] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [orgChoice, setOrgChoice] = useState<OrgChoice>(null);
   const [loading, setLoading] = useState(false);
   const [submissionInProgress, setSubmissionInProgress] = useState(false);
   const [isSignUp, setIsSignUp] = useState(isCreateAccountRoute);
@@ -77,8 +73,6 @@ export const useAuthFlow = (): AuthFlowState => {
     userIdRef,
     organizationId,
     setOrganizationId,
-    orgChoice,
-    setOrgChoice,
     loading,
     setLoading,
     submissionInProgress,

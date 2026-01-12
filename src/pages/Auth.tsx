@@ -199,7 +199,6 @@ const Auth = () => {
           if (savedState.email) formState.setEmail(savedState.email);
           if (savedState.userId) authFlow.setUserId(savedState.userId);
           if (savedState.fullName) formState.setFullName(savedState.fullName);
-          if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
           if (savedState.orgName) formState.setOrgName(savedState.orgName);
 
           if (savedState.step && savedState.step !== 'auth') {
@@ -256,8 +255,11 @@ const Auth = () => {
           .eq('id', session.user.id)
           .maybeSingle();
 
+        // Explicitly type profile to avoid TS error
+        const typedProfile = profile as { full_name?: string } | null;
+
         // If user has completed onboarding (has name and active membership), redirect to dashboard
-        if (profile?.full_name && membership) {
+        if (typedProfile?.full_name && membership) {
           console.log('User has completed onboarding, redirecting to dashboard');
           authFlow.redirectingRef.current = true;
           clearAuthState();

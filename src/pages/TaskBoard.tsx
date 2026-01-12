@@ -192,17 +192,19 @@ export default function TaskBoard() {
     await handleUpdateTask(taskId, { project_id: projectId } as any);
     // Update selected task for UI
     if (selectedTask?.id === taskId) {
-      const linkedProject = projectId ? projects.find(p => p.id === projectId) : null;
+      const linkedProject = projectId ? projects.find(p => p.id === projectId) : undefined;
+      const projectData = linkedProject ? {
+        id: linkedProject.id,
+        proposal: linkedProject.proposal ? {
+          project_name: linkedProject.proposal.project_name ?? undefined,
+          proposal_number: linkedProject.proposal.proposal_number ?? undefined,
+        } : undefined,
+      } : null;
+
       setSelectedTask(prev => prev ? {
         ...prev,
         project_id: projectId,
-        project: linkedProject ? {
-          id: linkedProject.id,
-          quote: linkedProject.quote ? {
-            project_name: linkedProject.quote.project_name,
-            proposal_number: linkedProject.quote.proposal_number,
-          } : undefined,
-        } : null,
+        project: projectData,
       } : null);
     }
   };
@@ -244,7 +246,7 @@ export default function TaskBoard() {
     });
 
     setNewColumnName('');
-    setNewColumnColor(COLUMN_COLORS[0].value);
+    setNewColumnColor(COLUMN_COLORS[0]!.value);
     setIsAddingColumn(false);
   };
 
@@ -352,7 +354,7 @@ export default function TaskBoard() {
 
   const getProjectName = (task: ProjectTask) => {
     if (!task.project_id) return null;
-    return task.project?.quote?.project_name || 'Linked Project';
+    return task.project?.proposal?.project_name || 'Linked Project';
   };
 
   if (isLoading) {
