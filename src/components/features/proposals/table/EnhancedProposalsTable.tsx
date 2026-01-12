@@ -20,7 +20,7 @@ import {
 } from '@tanstack/react-table';
 import {
   ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal,
-  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock
+  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,6 +36,9 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger
 } from "@/components/ui/tooltip";
 import type { Proposal } from "@/services/proposalsService";
+import { sendProposalToProjectBoard, removeProposalFromProjectBoard } from "@/services/proposalsService";
+import { toast } from "sonner";
+import { invalidateQueries } from "@/lib/queryClient";
 import { ProposalsTableToolbar } from './components/ProposalsTableToolbar';
 import { groupProposalsByVersion, getBaseProposalNumber, type ProposalVersionGroup } from '@/utils/proposalVersionGrouping';
 import { formatDateEST } from '@/utils/dateUtils';
@@ -151,6 +154,42 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const columnResizeMode: ColumnResizeMode = 'onChange';
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle sending proposal to project board
+  const handleSendToBoard = useCallback(async (proposalId: string) => {
+    try {
+      const result = await sendProposalToProjectBoard(proposalId);
+      if (result.success) {
+        invalidateQueries.allBoard();
+        toast.success('Sent to Project Board', {
+          description: 'Proposal has been added to the project board',
+        });
+      } else {
+        toast.error('Error', { description: result.error || 'Failed to send proposal to project board' });
+      }
+    } catch (error) {
+      console.error('Exception sending to board:', error);
+      toast.error('Error', { description: 'An unexpected error occurred' });
+    }
+  }, []);
+
+  // Handle removing proposal from project board
+  const handleRemoveFromBoard = useCallback(async (proposalId: string) => {
+    try {
+      const result = await removeProposalFromProjectBoard(proposalId);
+      if (result.success) {
+        invalidateQueries.allBoard();
+        toast.success('Removed from Project Board', {
+          description: 'Proposal has been removed from the project board',
+        });
+      } else {
+        toast.error('Error', { description: result.error || 'Failed to remove proposal from project board' });
+      }
+    } catch (error) {
+      console.error('Exception removing from board:', error);
+      toast.error('Error', { description: 'An unexpected error occurred' });
+    }
+  }, []);
 
   // Debounced search - updates globalFilter after user stops typing
   const handleSearchChange = useCallback((value: string) => {
@@ -523,6 +562,18 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                   <DropdownMenuSeparator />
                 </>
               )}
+              {/* Project Board options - only for Won + main version proposals */}
+              {proposal.status === 'Won' && proposal.is_main_version && (
+                proposal.is_on_board ? (
+                  <DropdownMenuItem onClick={() => handleRemoveFromBoard(proposal.id)}>
+                    <X className="mr-2 h-4 w-4" /> Remove from Board
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => handleSendToBoard(proposal.id)}>
+                    <Kanban className="mr-2 h-4 w-4" /> Send to Project Board
+                  </DropdownMenuItem>
+                )
+              )}
               {isArchived ? (
                 onUnarchiveProposal && (
                   <DropdownMenuItem onClick={() => onUnarchiveProposal(proposal.id)}>
@@ -560,7 +611,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       size: 60,
       enableSorting: false,
     }),
-  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, onStatusChange, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal]);
+  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, onStatusChange, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard]);
 
   const table = useReactTable({
     data: displayProposals,

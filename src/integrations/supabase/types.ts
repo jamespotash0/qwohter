@@ -408,7 +408,8 @@ export interface Database {
       projects: {
         Row: {
           id: string;
-          quote_id: string;
+          quote_id: string | null; // Nullable - either quote_id or proposal_id should be set
+          proposal_id: string | null; // Links to proposal if created from a proposal
           workflow_status: string;
           board_order: number | null;
           priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
@@ -419,7 +420,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          quote_id: string;
+          quote_id?: string | null; // Nullable - either quote_id or proposal_id should be set
+          proposal_id?: string | null; // Links to proposal if created from a proposal
           workflow_status: string;
           board_order?: number | null;
           priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
@@ -430,7 +432,8 @@ export interface Database {
         };
         Update: {
           id?: string;
-          quote_id?: string;
+          quote_id?: string | null;
+          proposal_id?: string | null;
           workflow_status?: string;
           board_order?: number | null;
           priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;

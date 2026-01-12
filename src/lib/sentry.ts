@@ -10,7 +10,7 @@
  *
  * What we DON'T track:
  * - Passwords, payment info, API keys
- * - Personal customer data from quotes
+ * - Personal customer data from proposals
  * - Sensitive business information
  */
 

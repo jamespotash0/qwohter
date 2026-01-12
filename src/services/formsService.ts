@@ -2,7 +2,7 @@
  * Forms Service
  * Handles all form operations with the database
  *
- * This service follows the architecture pattern from quotesService
+ * This service follows the architecture pattern from proposalsService
  * with proper separation of concerns and error handling
  */
 

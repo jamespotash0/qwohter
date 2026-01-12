@@ -14,7 +14,7 @@ import type { TimelineMilestone } from '@/lib/timelineMilestones';
 // ============================================================================
 
 export type Project = Database['public']['Tables']['projects']['Row'] & {
-  quote?: Database['public']['Tables']['quotes']['Row'] | null;
+  proposal?: Database['public']['Tables']['proposals']['Row'] | null;
   timeline_milestones?: TimelineMilestone[];
 };
 
@@ -23,7 +23,7 @@ export type WorkflowColumn = Database['public']['Tables']['project_workflow_colu
 export type ProjectPriority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest';
 
 export interface CreateBoardItemData {
-  quote_id: string;
+  proposal_id: string;
   workflow_status: string;
   board_order?: number;
   priority?: ProjectPriority;
@@ -65,32 +65,39 @@ export async function fetchBoardItems(organizationId: string): Promise<Project[]
     .from('projects')
     .select(`
       *,
-      quotes!inner (
+      proposals (
         id,
         proposal_number,
         project_name,
-        quote_details,
-        job_details,
-        price_details,
-        delivery_details,
-        wall_details,
+        form_data,
         status,
-        is_main_version
+        is_main_version,
+        total_value,
+        client_name,
+        client_company,
+        job_location
       )
     `)
     .eq('organization_id', organizationId)
-    .eq('quotes.is_main_version', true)
-    .eq('quotes.status', 'Won')
     .order('board_order', { ascending: true });
 
   if (error) throw error;
 
-  // Transform the data: Supabase returns 'quotes' as array, we need 'quote' as single object
-  const transformedData = (data || []).map((item: any) => ({
-    ...item,
-    quote: Array.isArray(item.quotes) ? item.quotes[0] : item.quotes,
-    quotes: undefined, // Remove the original quotes array
-  }));
+  // Transform and filter: only include projects linked to main version Won proposals
+  const transformedData = (data || [])
+    .map((item: any) => {
+      const proposal = Array.isArray(item.proposals) ? item.proposals[0] : item.proposals;
+
+      return {
+        ...item,
+        proposal: proposal || null,
+        proposals: undefined,
+      };
+    })
+    .filter((item: any) => {
+      // Include if linked proposal is main version and Won
+      return item.proposal?.is_main_version && item.proposal?.status === 'Won';
+    });
 
   return transformedData as Project[];
 }
@@ -103,17 +110,17 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
     .from('projects')
     .select(`
       *,
-      quotes!inner (
+      proposals (
         id,
         proposal_number,
         project_name,
-        quote_details,
-        job_details,
-        price_details,
-        delivery_details,
-        wall_details,
+        form_data,
         status,
-        is_main_version
+        is_main_version,
+        total_value,
+        client_name,
+        client_company,
+        job_location
       )
     `)
     .eq('id', itemId)
@@ -122,11 +129,12 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
   if (error) throw error;
   if (!data) throw new Error('Project not found');
 
-  // Transform the data: Supabase returns 'quotes' as array, we need 'quote' as single object
+  const proposal = Array.isArray((data as any).proposals) ? (data as any).proposals[0] : (data as any).proposals;
+
   const transformedData = {
     ...data as any,
-    quote: Array.isArray((data as any).quotes) ? (data as any).quotes[0] : (data as any).quotes,
-    quotes: undefined,
+    proposal: proposal || null,
+    proposals: undefined,
   };
 
   return transformedData as Project;
@@ -147,21 +155,30 @@ export async function createBoardItem(
     } as any)
     .select(`
       *,
-      quotes!inner (
+      proposals (
         id,
         proposal_number,
         project_name,
-        quote_details,
-        job_details,
-        price_details,
+        form_data,
         status,
-        is_main_version
+        is_main_version,
+        total_value,
+        client_name,
+        client_company,
+        job_location
       )
     `)
     .single();
 
   if (error) throw error;
-  return data as Project;
+
+  const proposal = Array.isArray((data as any).proposals) ? (data as any).proposals[0] : (data as any).proposals;
+
+  return {
+    ...data as any,
+    proposal: proposal || null,
+    proposals: undefined,
+  } as Project;
 }
 
 /**
@@ -182,21 +199,30 @@ export async function updateBoardItem(
     .eq('id', itemId)
     .select(`
       *,
-      quotes!inner (
+      proposals (
         id,
         proposal_number,
         project_name,
-        quote_details,
-        job_details,
-        price_details,
+        form_data,
         status,
-        is_main_version
+        is_main_version,
+        total_value,
+        client_name,
+        client_company,
+        job_location
       )
     `)
     .single();
 
   if (error) throw error;
-  return data as Project;
+
+  const proposal = Array.isArray((data as any).proposals) ? (data as any).proposals[0] : (data as any).proposals;
+
+  return {
+    ...data as any,
+    proposal: proposal || null,
+    proposals: undefined,
+  } as Project;
 }
 
 /**

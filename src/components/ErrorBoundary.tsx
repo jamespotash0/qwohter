@@ -124,7 +124,7 @@ export const QuoteErrorBoundary: React.FC<{ children: ReactNode }> = ({ children
                   <AlertTriangle className="h-12 w-12 text-red-600 dark:text-red-400" />
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold">Quote Error</CardTitle>
+              <CardTitle className="text-2xl font-bold">Proposal Error</CardTitle>
               <CardDescription className="text-base mt-2">
                 There was an issue loading your quote. Your data has been saved automatically.
               </CardDescription>
@@ -139,12 +139,12 @@ export const QuoteErrorBoundary: React.FC<{ children: ReactNode }> = ({ children
                   Try Again
                 </Button>
                 <Button
-                  onClick={() => window.location.href = '/quotes'}
+                  onClick={() => window.location.href = '/proposals'}
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                 >
                   <Home className="h-4 w-4" />
-                  All Quotes
+                  All Proposals
                 </Button>
               </div>
             </CardContent>

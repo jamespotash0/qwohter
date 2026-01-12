@@ -29,7 +29,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
  * Subscription types (string type for flexibility)
  */
 export type SubscriptionType = string;
-// export type SubscriptionType = 'quotes' | 'members' | 'subscriptions';
+// export type SubscriptionType = 'proposals' | 'members' | 'subscriptions';
 
 /**
  * Payload from Supabase realtime

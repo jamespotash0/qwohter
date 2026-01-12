@@ -6,14 +6,6 @@
  */
 
 import { useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -135,7 +127,7 @@ export const ContactsTable = ({
       (contact.phones || []).map(p => formatPhoneNumber(p)).join('; '),
       contact.company_name || '',
       contact.contact_type || '',
-      contact.address || '',
+      (contact.addresses || []).join('; '),
       contact.notes || '',
     ]);
 
@@ -198,12 +190,12 @@ export const ContactsTable = ({
     const additionalCount = values.length - 1;
 
     if (additionalCount === 0) {
-      return <span>{primaryValue}</span>;
+      return <span className="text-[13px]">{primaryValue}</span>;
     }
 
     return (
-      <div className="flex items-center gap-2">
-        <span>{primaryValue}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-[13px]">{primaryValue}</span>
         <HoverCard openDelay={200}>
           <HoverCardTrigger asChild>
             <Button
@@ -217,7 +209,7 @@ export const ContactsTable = ({
           <HoverCardContent className="w-auto p-3" side="top">
             <div className="space-y-1">
               {values.slice(1).map((value, idx) => (
-                <div key={idx} className="text-sm">
+                <div key={idx} className="text-[13px]">
                   {value}
                 </div>
               ))}
@@ -392,138 +384,153 @@ export const ContactsTable = ({
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <Table className="text-sm">
-            <TableHeader>
-              <TableRow className="h-9 bg-[#EE6C4D]/10 border-b border-[#EE6C4D]/20">
-                <TableHead className="w-10 px-2 align-middle">
-                  <div className="flex items-center justify-center">
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      aria-label="Select all contacts"
-                      className="h-4 w-4 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 align-middle px-3 py-2"
-                  onClick={() => handleSort('full_name')}
-                >
-                  Name {sortField === 'full_name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </TableHead>
-                <TableHead className="align-middle px-3 py-2">
-                  Email
-                </TableHead>
-                <TableHead className="align-middle px-3 py-2">Phone</TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 align-middle px-3 py-2"
-                  onClick={() => handleSort('company_name')}
-                >
-                  Company {sortField === 'company_name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 align-middle px-3 py-2"
-                  onClick={() => handleSort('contact_type')}
-                >
-                  Type {sortField === 'contact_type' && (sortDirection === 'asc' ? '↑' : '↓')}
-                </TableHead>
-                <TableHead className="text-center align-middle px-2 py-2 w-16">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedContacts.map((contact) => (
-                <TableRow
-                  key={contact.id}
-                  className={`h-10 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 ${selectedContacts.has(contact.id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
-                >
-                  {/* Checkbox */}
-                  <TableCell className="px-2 py-1.5 align-middle">
+        <div className="relative">
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth">
+            <table
+              className="w-full border-collapse font-table"
+              style={{ fontFamily: 'var(--font-table)', minWidth: '100%', tableLayout: 'fixed' }}
+            >
+              <thead className="bg-[#EE6C4D]/10 border-b border-[#EE6C4D]/20 sticky top-0 z-10">
+                <tr>
+                  <th className="w-10 px-1 py-1 text-left text-xs font-medium text-gray-500 h-9 border-r border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-center">
                       <input
                         type="checkbox"
-                        checked={selectedContacts.has(contact.id)}
-                        onChange={(e) => handleSelectContact(contact.id, e.target.checked)}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={`Select ${contact.full_name}`}
-                        className="h-4 w-4 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        checked={isAllSelected}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        aria-label="Select all contacts"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                     </div>
-                  </TableCell>
+                  </th>
+                  <th
+                    className="px-3 py-1 text-left text-xs font-medium text-gray-500 h-9 cursor-pointer border-r border-gray-200 dark:border-gray-700"
+                    onClick={() => handleSort('full_name')}
+                  >
+                    Name {sortField === 'full_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 h-9 border-r border-gray-200 dark:border-gray-700">
+                    Email
+                  </th>
+                  <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 h-9 border-r border-gray-200 dark:border-gray-700">
+                    Phone
+                  </th>
+                  <th
+                    className="px-3 py-1 text-left text-xs font-medium text-gray-500 h-9 cursor-pointer border-r border-gray-200 dark:border-gray-700"
+                    onClick={() => handleSort('company_name')}
+                  >
+                    Company {sortField === 'company_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th
+                    className="px-3 py-1 text-left text-xs font-medium text-gray-500 h-9 cursor-pointer border-r border-gray-200 dark:border-gray-700"
+                    onClick={() => handleSort('contact_type')}
+                  >
+                    Type {sortField === 'contact_type' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="w-16 px-2 py-1 text-center text-xs font-medium text-gray-500 h-9">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {sortedContacts.map((contact) => (
+                  <tr
+                    key={contact.id}
+                    className={`group transition-colors h-11 hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)] ${selectedContacts.has(contact.id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+                  >
+                    {/* Checkbox */}
+                    <td className="px-1 py-1.5 text-xs border-r border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedContacts.has(contact.id)}
+                          onChange={(e) => handleSelectContact(contact.id, e.target.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select ${contact.full_name}`}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </div>
+                    </td>
 
-                  {/* Name */}
-                  <TableCell className="font-normal align-middle px-3 py-1.5">
-                    <div className="flex items-center gap-1.5">
-                      {contact.full_name}
-                      {contact.is_in_organization && (
-                        <UserCheck className="w-3 h-3 text-muted-foreground" />
-                      )}
-                    </div>
-                  </TableCell>
+                    {/* Name */}
+                    <td className="px-3 py-1.5 text-xs border-r border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center gap-1.5 text-[13px] text-gray-900 dark:text-gray-100">
+                        {contact.full_name}
+                        {contact.is_in_organization && (
+                          <UserCheck className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </td>
 
-                  {/* Email */}
-                  <TableCell className="align-middle px-3 py-1.5">
-                    {displayArrayField(contact.emails)}
-                  </TableCell>
+                    {/* Email */}
+                    <td className="px-3 py-1.5 text-xs border-r border-gray-100 dark:border-gray-700">
+                      <div className="text-[13px] text-gray-900 dark:text-gray-100">
+                        {displayArrayField(contact.emails)}
+                      </div>
+                    </td>
 
-                  {/* Phone */}
-                  <TableCell className="align-middle px-3 py-1.5">
-                    {contact.phones && contact.phones.length > 0
-                      ? displayArrayField(contact.phones.map(p => formatPhoneNumber(p)))
-                      : <span className="text-muted-foreground">-</span>
-                    }
-                  </TableCell>
+                    {/* Phone */}
+                    <td className="px-3 py-1.5 text-xs border-r border-gray-100 dark:border-gray-700">
+                      <div className="text-[13px] text-gray-900 dark:text-gray-100">
+                        {contact.phones && contact.phones.length > 0
+                          ? displayArrayField(contact.phones.map(p => formatPhoneNumber(p)))
+                          : <span className="text-muted-foreground">-</span>
+                        }
+                      </div>
+                    </td>
 
-                  {/* Company */}
-                  <TableCell className="align-middle px-3 py-1.5">
-                    {contact.company_name || (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
+                    {/* Company */}
+                    <td className="px-3 py-1.5 text-xs border-r border-gray-100 dark:border-gray-700">
+                      <div className="text-[13px] text-gray-900 dark:text-gray-100">
+                        {contact.company_name || (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </td>
 
-                  {/* Type */}
-                  <TableCell className="align-middle px-3 py-1.5">
-                    {contact.contact_type ? (
-                      <Badge
-                        variant="outline"
-                        className={`${getContactTypeColor(contact.contact_type)} text-xs px-1.5 py-0`}
-                      >
-                        {contact.contact_type}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-
-                  {/* Actions */}
-                  <TableCell className="text-center align-middle px-2 py-1.5">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="inline-flex items-center justify-center p-1.5 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors cursor-pointer">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(contact)} className="text-sm">
-                          <Pencil className="w-3.5 h-3.5 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => onDelete(contact.id)}
-                          className="text-red-600 text-sm"
+                    {/* Type */}
+                    <td className="px-3 py-1.5 text-xs border-r border-gray-100 dark:border-gray-700">
+                      {contact.contact_type ? (
+                        <Badge
+                          variant="outline"
+                          className={`${getContactTypeColor(contact.contact_type)} text-xs px-1.5 py-0`}
                         >
-                          <Trash2 className="w-3.5 h-3.5 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                          {contact.contact_type}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-2 py-1.5 text-xs text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-8 w-8 p-0 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg z-50">
+                          <DropdownMenuItem onClick={() => onEdit(contact)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => onDelete(contact.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

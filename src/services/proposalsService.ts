@@ -936,3 +936,172 @@ export async function getVersionGroupInfo(proposalId: string): Promise<{
     versions,
   };
 }
+
+// ============================================================================
+// Project Board Functions
+// ============================================================================
+
+/**
+ * Send a proposal to the project board
+ * Creates a project linked to this proposal
+ *
+ * @param proposalId - UUID of the proposal to send to board
+ * @param targetColumnName - Optional workflow column name (defaults to first column)
+ * @returns Success status and project ID if created
+ */
+export async function sendProposalToProjectBoard(
+  proposalId: string,
+  targetColumnName?: string
+): Promise<{ success: boolean; error?: string; projectId?: string }> {
+  try {
+    // Get current session
+    const session = await authService.getSession();
+    if (!session?.user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Get the proposal
+    const proposal = await fetchProposalById(proposalId);
+
+    if (!proposal) {
+      return { success: false, error: 'Proposal not found' };
+    }
+
+    // Check if proposal is Won
+    if (proposal.status !== 'Won') {
+      return { success: false, error: 'Only Won proposals can be sent to the project board' };
+    }
+
+    // Check if project already exists
+    const { data: existingProject } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('proposal_id', proposalId)
+      .maybeSingle();
+
+    if (existingProject) {
+      return { success: false, error: 'Proposal already has a project on the board' };
+    }
+
+    // Auto-promote to main version if not already
+    if (proposal.is_main_version !== true && proposal.proposal_number) {
+      // Set this proposal as main version (trigger will demote others)
+      await setMainVersion(proposalId, proposal.proposal_number);
+    }
+
+    // Get workflow column - use provided column or first by order
+    let workflowStatus = targetColumnName;
+
+    if (!workflowStatus && proposal.organization_id) {
+      const { data: firstColumn } = await supabase
+        .from('project_workflow_columns')
+        .select('name')
+        .eq('organization_id', proposal.organization_id)
+        .order('column_order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      workflowStatus = firstColumn?.name || 'To Do';
+    }
+
+    if (!workflowStatus) {
+      workflowStatus = 'To Do';
+    }
+
+    // Get next board_order for this column
+    const { data: maxOrderProject } = await supabase
+      .from('projects')
+      .select('board_order')
+      .eq('organization_id', proposal.organization_id!)
+      .eq('workflow_status', workflowStatus)
+      .order('board_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrder = (maxOrderProject?.board_order || 0) + 1;
+
+    // Create project (priority defaults to NULL - user can set it manually)
+    // Note: Using type assertion because proposal_id was added via migration
+    const projectInsert = {
+      proposal_id: proposalId,
+      organization_id: proposal.organization_id!,
+      workflow_status: workflowStatus,
+      board_order: nextOrder,
+      priority: null,
+    };
+    const { data: newProject, error: projectError } = await supabase
+      .from('projects')
+      .insert(projectInsert as Database['public']['Tables']['projects']['Insert'])
+      .select('id')
+      .single();
+
+    if (projectError) {
+      console.error('Failed to create project:', projectError);
+      return { success: false, error: 'Failed to create project on board' };
+    }
+
+    // Update proposal's is_on_board flag
+    await updateProposal(proposalId, { is_on_board: true } as UpdateProposalData);
+
+    return { success: true, projectId: newProject?.id };
+  } catch (error) {
+    console.error('Error in sendProposalToProjectBoard:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Remove a proposal from the project board (delete the project)
+ *
+ * @param proposalId - UUID of the proposal to remove from board
+ * @returns Success status
+ */
+export async function removeProposalFromProjectBoard(
+  proposalId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[removeProposalFromProjectBoard] Starting removal for proposal:', proposalId);
+
+    // Get current session
+    const session = await authService.getSession();
+    if (!session?.user) {
+      console.error('[removeProposalFromProjectBoard] Not authenticated');
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Find the project
+    const { data: project, error: fetchError } = await supabase
+      .from('projects')
+      .select('id, proposal_id, workflow_status')
+      .eq('proposal_id', proposalId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[removeProposalFromProjectBoard] Error fetching project:', fetchError);
+      return { success: false, error: 'Error finding project' };
+    }
+
+    if (!project) {
+      console.warn('[removeProposalFromProjectBoard] No project found for proposal:', proposalId);
+      return { success: false, error: 'No project found for this proposal' };
+    }
+
+    // Delete the project (trigger will update is_on_board to false)
+    const { error: deleteError } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', project.id);
+
+    if (deleteError) {
+      console.error('[removeProposalFromProjectBoard] Failed to delete project:', deleteError);
+      return { success: false, error: 'Failed to remove project from board' };
+    }
+
+    console.log('[removeProposalFromProjectBoard] Successfully removed project');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[removeProposalFromProjectBoard] Exception:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
