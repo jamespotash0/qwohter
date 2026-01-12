@@ -29,9 +29,9 @@ interface UIState {
 
   // Modal and dialog state
   modals: {
-    createQuote: boolean;
-    editQuote: boolean;
-    deleteQuote: boolean;
+    createProposal: boolean;
+    editProposal: boolean;
+    deleteProposal: boolean;
     wallSystemEditor: boolean;
     userProfile: boolean;
   };
@@ -148,9 +148,9 @@ const initialState: UIState = {
   globalLoading: false,
   loadingMessage: null,
   modals: {
-    createQuote: false,
-    editQuote: false,
-    deleteQuote: false,
+    createProposal: false,
+    editProposal: false,
+    deleteProposal: false,
     wallSystemEditor: false,
     userProfile: false,
   },
