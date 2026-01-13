@@ -149,10 +149,34 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   const [versionSelection, setVersionSelection] = useState<Record<string, boolean>>({});
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
   const [deleteInfo, setDeleteInfo] = useState<DeleteInfo | null>(null);
+  const [statusChangeConfirm, setStatusChangeConfirm] = useState<{
+    proposalId: string;
+    proposalNumber: string;
+    currentStatus: string;
+    newStatus: string;
+  } | null>(null);
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
   const [showSuggestions, setShowSuggestions] = useState(false);
   const columnResizeMode: ColumnResizeMode = 'onChange';
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle status change with confirmation for downgrades from Won/Rejected
+  const handleStatusChangeWithConfirm = useCallback((proposal: Proposal, newStatus: string) => {
+    const currentStatus = proposal.status || 'Draft';
+    const isDowngrade = (currentStatus === 'Won' || currentStatus === 'Rejected') &&
+                        (newStatus === 'Draft' || newStatus === 'Submitted');
+
+    if (isDowngrade) {
+      setStatusChangeConfirm({
+        proposalId: proposal.id,
+        proposalNumber: proposal.proposal_number || 'this proposal',
+        currentStatus,
+        newStatus,
+      });
+    } else {
+      onStatusChange(proposal.id, newStatus);
+    }
+  }, [onStatusChange]);
 
   // Handle sending proposal to project board
   const handleSendToBoard = useCallback(async (proposalId: string) => {
@@ -498,7 +522,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
         }
         const status = proposal.status || 'Draft';
         return (
-          <Select value={status} onValueChange={(value) => onStatusChange(proposal.id, value)}>
+          <Select value={status} onValueChange={(value) => handleStatusChangeWithConfirm(proposal, value)}>
             <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[status]}`}>
               <SelectValue />
             </SelectTrigger>
@@ -610,7 +634,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       size: 60,
       enableSorting: false,
     }),
-  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, onStatusChange, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard]);
+  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard]);
 
   const table = useReactTable({
     data: displayProposals,
@@ -945,7 +969,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                               {version.total_value != null ? formatCurrency(version.total_value) : '—'}
                             </td>
                             <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('status')?.getSize() }}>
-                              <Select value={version.status || 'Draft'} onValueChange={(value) => onStatusChange(version.id, value)}>
+                              <Select value={version.status || 'Draft'} onValueChange={(value) => handleStatusChangeWithConfirm(version, value)}>
                                 <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[version.status || 'Draft']}`}>
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1142,6 +1166,37 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
               className="bg-destructive hover:bg-destructive/90"
             >
               {deleteInfo?.type === 'group' ? 'Delete All' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status Change Confirmation (for downgrading from Won/Rejected) */}
+      <AlertDialog open={!!statusChangeConfirm} onOpenChange={() => setStatusChangeConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Status Back to {statusChangeConfirm?.newStatus}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{statusChangeConfirm?.proposalNumber}</strong> is currently marked as <strong>{statusChangeConfirm?.currentStatus}</strong>.
+              {statusChangeConfirm?.currentStatus === 'Won' && (
+                <> Changing it back to {statusChangeConfirm?.newStatus} will affect your Analytics, Projects, and reporting.</>
+              )}
+              {statusChangeConfirm?.currentStatus === 'Rejected' && (
+                <> Are you sure you want to reopen this proposal?</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (statusChangeConfirm) {
+                  onStatusChange(statusChangeConfirm.proposalId, statusChangeConfirm.newStatus);
+                  setStatusChangeConfirm(null);
+                }
+              }}
+            >
+              Yes, Change Status
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
