@@ -67,7 +67,11 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
     return (
       <div className="space-y-2">
         {label && (
-          <Label htmlFor={props.id} className="text-slate-700 font-medium text-sm">
+          <Label
+            htmlFor={props.id}
+            className="text-[#171717] font-medium text-sm"
+            style={{ fontFamily: 'Urbanist, sans-serif' }}
+          >
             {label} {required && <span className="text-red-500">*</span>}
           </Label>
         )}
@@ -82,7 +86,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            "bg-slate-50 border-slate-200 h-12 placeholder:text-gray-400",
+            "bg-[#f7f2e9]/50 border-[#171717]/10 h-12 rounded-full placeholder:text-[#171717]/40 hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70 focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white",
             displayError && "border-red-500 focus:border-red-500",
             className
           )}

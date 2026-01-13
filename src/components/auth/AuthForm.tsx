@@ -1,14 +1,15 @@
 /**
- * Authentication Form Component
- * 
- * Extracted from Auth.tsx - handles sign in and sign up forms
+ * Authentication Form Component - Redesigned
+ *
+ * Clean, refined form styling with subtle interactions
+ * Consistent with the editorial design direction
  */
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { sanitizeInput } from "@/utils/security";
 import { validators } from "@/utils/validation";
 import { useState, useEffect } from "react";
@@ -18,14 +19,12 @@ interface AuthFormProps {
   isSignUp: boolean;
   email: string;
   password: string;
-  confirmPassword?: string;
   firstName?: string;
   lastName?: string;
   showPassword: boolean;
   loading: boolean;
   onEmailChange: (email: string) => void;
   onPasswordChange: (password: string) => void;
-  onConfirmPasswordChange?: (confirmPassword: string) => void;
   onFirstNameChange?: (firstName: string) => void;
   onLastNameChange?: (lastName: string) => void;
   onTogglePasswordVisibility: () => void;
@@ -37,14 +36,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   isSignUp,
   email,
   password,
-  confirmPassword,
   firstName,
   lastName,
   showPassword,
   loading,
   onEmailChange,
   onPasswordChange,
-  onConfirmPasswordChange,
   onFirstNameChange,
   onLastNameChange,
   onTogglePasswordVisibility,
@@ -52,15 +49,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onToggleMode
 }) => {
   const [rememberMe, setRememberMe] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
-  const [confirmPasswordError, setConfirmPasswordError] = useState<string | undefined>();
-  const [touched, setTouched] = useState({ email: false, password: false, confirmPassword: false });
+  const [touched, setTouched] = useState({ email: false, password: false });
   const navigate = useNavigate();
 
-  // Load saved email and remember me preference on component mount
   useEffect(() => {
     const savedEmail = localStorage.getItem('remembered_email');
     const savedRememberMe = localStorage.getItem('remember_me') === 'true';
@@ -71,7 +64,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     }
   }, [onEmailChange]);
 
-  // Save/remove email based on remember me checkbox
   useEffect(() => {
     if (rememberMe && email) {
       localStorage.setItem('remembered_email', email);
@@ -85,52 +77,68 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   const handleRememberMeChange = (checked: boolean) => {
     setRememberMe(checked);
     if (!checked) {
-      // Clear immediately when unchecked
       localStorage.removeItem('remembered_email');
       localStorage.removeItem('remember_me');
     }
   };
 
+  // Shared input classes - matching landing page aesthetic
+  const inputClasses = `
+    w-full h-12 px-4 bg-[#f7f2e9]/50 border border-[#171717]/10 rounded-full
+    text-[#171717] placeholder:text-[#171717]/40
+    transition-all duration-200
+    hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70
+    focus:outline-none focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white
+  `;
+
+  const inputErrorClasses = `
+    border-red-400/50 bg-red-50/30
+    hover:border-red-400
+    focus:ring-red-200 focus:border-red-400
+  `;
+
   return (
-    <>
+    <div className="space-y-4">
       <form onSubmit={onSubmit} className="space-y-4">
+        {/* Name fields for signup */}
         {isSignUp && (
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName" className="text-gray-700 font-medium text-sm">
-                First Name
+              <Label htmlFor="firstName" className="text-sm font-medium text-[#171717]" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+                First name
               </Label>
               <Input
                 id="firstName"
                 type="text"
                 value={firstName || ''}
                 onChange={(e) => onFirstNameChange?.(sanitizeInput.string(e.target.value))}
-                placeholder="First name"
+                placeholder="John"
                 required
-                className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20"
+                className={inputClasses}
                 autoComplete="given-name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName" className="text-gray-700 font-medium text-sm">
-                Last Name
+              <Label htmlFor="lastName" className="text-sm font-medium text-[#171717]" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+                Last name
               </Label>
               <Input
                 id="lastName"
                 type="text"
                 value={lastName || ''}
                 onChange={(e) => onLastNameChange?.(sanitizeInput.string(e.target.value))}
-                placeholder="Last name"
+                placeholder="Doe"
                 required
-                className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20"
+                className={inputClasses}
                 autoComplete="family-name"
               />
             </div>
           </div>
         )}
 
+        {/* Email field */}
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-gray-700 font-medium text-sm">
+          <Label htmlFor="email" className="text-sm font-medium text-[#171717]">
             Email address
           </Label>
           <Input
@@ -140,26 +148,23 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onChange={(e) => {
               const newEmail = sanitizeInput.email(e.target.value);
               onEmailChange(newEmail);
-
-              // Validate email on change
               const validation = validators.email(newEmail);
               setEmailError(validation.isValid ? undefined : validation.error);
             }}
             onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
-            placeholder="Enter your email"
+            placeholder="john@company.com"
             required
-            className={`bg-near-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20 ${
-              touched.email && emailError ? 'border-red-500 focus:border-red-500' : ''
-            }`}
+            className={`${inputClasses} ${touched.email && emailError ? inputErrorClasses : ''}`}
             autoComplete="email"
           />
           {touched.email && emailError && (
-            <div className="text-sm text-red-600 mt-1">{emailError}</div>
+            <p className="text-sm text-red-500 mt-1.5">{emailError}</p>
           )}
         </div>
 
+        {/* Password field */}
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-gray-700 font-medium text-sm">
+          <Label htmlFor="password" className="text-sm font-medium text-[#171717]">
             Password
           </Label>
           <div className="relative">
@@ -171,196 +176,127 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 const newPassword = sanitizeInput.string(e.target.value);
                 onPasswordChange(newPassword);
 
-                // Validate password on change for signup
                 if (isSignUp) {
                   const validation = validators.password(newPassword);
                   setPasswordError(validation.isValid ? undefined : validation.error);
-
-                  // Also check if confirm password still matches
-                  if (confirmPassword && newPassword) {
-                    if (newPassword !== confirmPassword) {
-                      setConfirmPasswordError("Passwords do not match");
-                    } else {
-                      setConfirmPasswordError(undefined);
-                    }
-                  }
                 }
               }}
               onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
-              placeholder={isSignUp ? "Create a password (8+ characters)" : "Enter your password"}
+              placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
               required
-              className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20 ${
-                touched.password && passwordError ? 'border-red-500 focus:border-red-500' : ''
-              }`}
+              className={`${inputClasses} pr-12 ${touched.password && passwordError ? inputErrorClasses : ''}`}
               autoComplete={isSignUp ? "new-password" : "current-password"}
             />
             <button
               type="button"
-              className="absolute right-0 top-0 h-full px-3 hover:opacity-70 transition-opacity"
+              className="absolute right-0 top-0 h-full px-4 flex items-center justify-center text-[#171717]/40 hover:text-[#171717]/60 transition-colors"
               onClick={onTogglePasswordVisibility}
             >
               {showPassword ? (
-                <EyeOff className="h-4 w-4 text-gray-400" />
+                <EyeOff className="h-4 w-4" />
               ) : (
-                <Eye className="h-4 w-4 text-gray-400" />
+                <Eye className="h-4 w-4" />
               )}
             </button>
           </div>
           {touched.password && passwordError && (
-            <div className="text-sm text-red-600 mt-1">{passwordError}</div>
+            <p className="text-sm text-red-500 mt-1.5">{passwordError}</p>
+          )}
+          {isSignUp && !passwordError && (
+            <p className="text-xs text-[#171717]/40 mt-1.5">
+              At least 8 characters with uppercase, lowercase, and numbers
+            </p>
           )}
         </div>
 
-        {isSignUp && (
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-gray-700 font-medium text-sm">
-              Confirm Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword || ''}
-                onChange={(e) => {
-                  const newConfirmPassword = sanitizeInput.string(e.target.value);
-                  onConfirmPasswordChange?.(newConfirmPassword);
-
-                  // Validate password match on every change
-                  if (newConfirmPassword && password) {
-                    if (password !== newConfirmPassword) {
-                      setConfirmPasswordError("Passwords do not match");
-                    } else {
-                      setConfirmPasswordError(undefined);
-                    }
-                  } else if (newConfirmPassword) {
-                    // If confirm password exists but no main password
-                    setConfirmPasswordError("Enter password first");
-                  } else {
-                    setConfirmPasswordError(undefined);
-                  }
-                }}
-                onBlur={() => setTouched(prev => ({ ...prev, confirmPassword: true }))}
-                placeholder="Confirm your password"
-                required
-                className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20 ${
-                  touched.confirmPassword && confirmPasswordError ? 'border-red-500 focus:border-red-500' : ''
-                }`}
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                className="absolute right-0 top-0 h-full px-3 hover:opacity-70 transition-opacity"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
-            {touched.confirmPassword && confirmPasswordError && (
-              <div className="text-sm text-red-600 mt-1">{confirmPasswordError}</div>
-            )}
-          </div>
-        )}
-
-        {isSignUp && (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="acceptTerms"
-              checked={acceptTerms}
-              onCheckedChange={(checked) => setAcceptTerms(Boolean(checked))}
-              className="size-4 !rounded-[4px] border border-gray-300 data-[state=checked]:bg-dark-gray data-[state=checked]:border-dark-gray mt-0.5"
-            />
-            <Label htmlFor="acceptTerms" className="text-[11px] text-gray-600 cursor-pointer leading-tight">
-              By clicking here you accept our{" "}
-              <a
-                href="/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-coral hover:text-coral-dark underline"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-coral hover:text-coral-dark underline"
-              >
-                Privacy Policy
-              </a>
-            </Label>
-          </div>
-        )}
-
+        {/* Remember me and forgot password for sign in */}
         {!isSignUp && (
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Checkbox
                 id="remember-me"
                 checked={rememberMe}
                 onCheckedChange={handleRememberMeChange}
-                className="border-gray-300 data-[state=checked]:bg-dark-gray data-[state=checked]:border-dark-gray"
+                className="h-4 w-4 rounded border-slate-300 data-[state=checked]:bg-[#ee6c4d] data-[state=checked]:border-[#ee6c4d]"
               />
-              <Label htmlFor="remember-me" className="text-sm text-gray-600 cursor-pointer">
+              <Label htmlFor="remember-me" className="text-sm text-[#171717]/60 cursor-pointer">
                 Remember me
               </Label>
             </div>
             <button
               type="button"
               onClick={() => navigate("/forgot-password")}
-              className="text-sm text-coral hover:text-coral-dark transition-colors"
+              className="text-sm text-[#ee6c4d] hover:text-[#d65a3d] font-medium transition-colors"
             >
               Forgot password?
             </button>
           </div>
         )}
 
+        {/* Submit button */}
         <Button
           type="submit"
-          className="w-full bg-coral-dark hover:bg-coral text-white font-semibold h-12 transition-colors"
+          className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200 group"
+          style={{ fontFamily: 'Urbanist, sans-serif' }}
           disabled={
             loading ||
             (isSignUp && (
               !!emailError ||
               !!passwordError ||
-              !!confirmPasswordError ||
-              !confirmPassword ||
-              password !== confirmPassword ||
-              !acceptTerms ||
               !firstName ||
               !lastName
             ))
           }
         >
           {loading ? (
-            "Loading..."
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isSignUp ? "Creating account..." : "Signing in..."}
+            </span>
           ) : (
-            <>
-              {isSignUp ? "Create Account" : "Sign in"}
-            </>
+            <span className="flex items-center justify-center gap-2">
+              {isSignUp ? "Create account" : "Sign in"}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
           )}
         </Button>
+
+        {/* Terms notice for signup */}
+        {isSignUp && (
+          <p className="text-center text-sm text-[#171717]/50" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+            By signing up to Qwohter, you accept our{" "}
+            <a
+              href="/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#171717]/70 underline underline-offset-2 hover:text-[#ee6c4d] transition-colors"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#171717]/70 underline underline-offset-2 hover:text-[#ee6c4d] transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </p>
+        )}
       </form>
 
-      <div className="text-center">
-        <p className="text-sm text-gray-600">
-          {isSignUp
-            ? "Already have an account? "
-            : "Don't have an account? "
-          }
-          <button
-            type="button"
-            onClick={onToggleMode}
-            className="text-coral hover:text-coral-dark font-medium transition-colors"
-          >
-            {isSignUp ? "Sign in" : "Create one"}
-          </button>
-        </p>
-      </div>
-    </>
+      {/* Simple toggle link */}
+      <p className="text-center text-sm text-[#171717]/50" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+        {isSignUp ? "Already have an account? " : "Don't have an account? "}
+        <button
+          type="button"
+          onClick={onToggleMode}
+          className="text-[#171717]/70 underline underline-offset-2 hover:text-[#ee6c4d] transition-colors font-medium"
+        >
+          {isSignUp ? "Log in" : "Sign up"}
+        </button>
+      </p>
+    </div>
   );
 };

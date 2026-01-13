@@ -98,11 +98,17 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
     setShowSuggestions(false);
   };
 
-  const inputBorderClass = value && value.trim() !== '' ? 'border-green-500' : 'border-red-500';
-
   return (
-    <div className="space-y-1 relative">
-      {label && <Label htmlFor={id} className="text-sm font-medium">{label}</Label>}
+    <div className="space-y-2 relative">
+      {label && (
+        <Label
+          htmlFor={id}
+          className="text-[#171717] font-medium text-sm"
+          style={{ fontFamily: 'Urbanist, sans-serif' }}
+        >
+          {label}
+        </Label>
+      )}
       <Input
         ref={inputRef}
         id={id}
@@ -111,18 +117,18 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
         placeholder={placeholder}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         required={required}
-        className={`h-10 rounded-md border ${inputBorderClass} focus:border-blue-500 focus:ring-blue-500 ${className}`}
+        className={className || "bg-[#f7f2e9]/50 border-[#171717]/10 h-12 rounded-full placeholder:text-[#171717]/40 hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70 focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white"}
       />
       
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1 bg-white border border-[#171717]/10 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <div
               key={index}
-              className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+              className="p-3 hover:bg-[#f7f2e9] cursor-pointer border-b border-[#171717]/5 last:border-b-0 first:rounded-t-2xl last:rounded-b-2xl"
               onClick={() => handleSuggestionClick(suggestion)}
             >
-              <div className="text-sm">{suggestion.place_name}</div>
+              <div className="text-sm text-[#171717]">{suggestion.place_name}</div>
             </div>
           ))}
         </div>

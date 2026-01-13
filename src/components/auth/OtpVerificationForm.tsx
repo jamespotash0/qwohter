@@ -1,13 +1,14 @@
 /**
- * OTP Verification Form Component
+ * OTP Verification Form Component - Redesigned
  *
- * Enhanced design with individual digit inputs and countdown timer
+ * Clean, elegant verification with individual digit inputs
+ * Refined animations and clear visual feedback
  */
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, X } from "lucide-react";
+import { Check, X, Loader2, RefreshCw } from "lucide-react";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -19,7 +20,6 @@ interface OtpVerificationFormProps {
   onChangeEmail?: (newEmail: string) => Promise<void>;
 }
 
-
 export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   otpCode,
   email,
@@ -30,7 +30,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   onChangeEmail
 }) => {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(165); // 2:45 in seconds
+  const [timeLeft, setTimeLeft] = useState(165);
   const [showOverlay, setShowOverlay] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -38,13 +38,13 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   const [emailChangeLoading, setEmailChangeLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Initialize digits from otpCode
   useEffect(() => {
-    const newDigits = otpCode.padEnd(6, '').split('').slice(0, 6);
+    // Ensure we always have exactly 6 elements
+    const codeChars = otpCode.split('').slice(0, 6);
+    const newDigits = [...codeChars, ...Array(6 - codeChars.length).fill('')];
     setDigits(newDigits);
   }, [otpCode]);
 
-  // Countdown timer
   useEffect(() => {
     if (timeLeft <= 0) return;
 
@@ -56,13 +56,11 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   }, [timeLeft]);
 
   const handleDigitChange = (index: number, value: string) => {
-    // Only allow digits
     const cleanValue = value.replace(/\D/g, '');
     if (!cleanValue && value !== '') return;
 
     const newDigits = [...digits];
 
-    // If user clears the input
     if (value === '') {
       newDigits[index] = '';
       setDigits(newDigits);
@@ -70,13 +68,11 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       return;
     }
 
-    // Take only the last digit typed (handles replacement)
     const lastDigit = cleanValue.slice(-1);
     newDigits[index] = lastDigit;
     setDigits(newDigits);
     onOtpCodeChange(newDigits.join(''));
 
-    // Auto-advance to next input
     if (index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -101,7 +97,6 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     setDigits(newDigits);
     onOtpCodeChange(newDigits.join(''));
 
-    // Focus the next empty input or the last filled input
     const nextEmptyIndex = newDigits.findIndex(digit => digit === '');
     const focusIndex = nextEmptyIndex === -1 ? 5 : Math.min(nextEmptyIndex, 5);
     inputRefs.current[focusIndex]?.focus();
@@ -118,21 +113,13 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       setResendLoading(true);
       await onResendCode();
 
-      // Clear inputs
       const clearedDigits = ['', '', '', '', '', ''];
       setDigits(clearedDigits);
       onOtpCodeChange('');
-
-      // Reset timer
       setTimeLeft(165);
-
-      // Show success overlay
       setShowOverlay(true);
-
-      // Focus first input
       inputRefs.current[0]?.focus();
 
-      // Hide overlay after 2 seconds
       setTimeout(() => {
         setShowOverlay(false);
       }, 2000);
@@ -154,18 +141,12 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       setEmailChangeLoading(true);
       await onChangeEmail(editedEmail);
 
-      // Clear OTP inputs
       const clearedDigits = ['', '', '', '', '', ''];
       setDigits(clearedDigits);
       onOtpCodeChange('');
-
-      // Reset timer
       setTimeLeft(165);
-
-      // Exit edit mode
       setIsEditingEmail(false);
 
-      // Focus first input
       setTimeout(() => {
         inputRefs.current[0]?.focus();
       }, 100);
@@ -182,24 +163,37 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     setIsEditingEmail(false);
   };
 
+  const isCodeComplete = digits.join('').length === 6;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your inbox!</h1>
-        <p className="text-gray-600 text-sm mb-2">We've sent a 6-digit verification code to</p>
-
-        {/* Email Display/Edit */}
+      {/* Email Display/Edit */}
+      <div className="text-center">
         {!isEditingEmail ? (
-          <p className="text-slate-700 font-semibold mb-4">{email}</p>
+          <div className="space-y-1">
+            <p className="text-[#171717]/60">
+              Enter the 6-digit code sent to
+            </p>
+            <p className="text-[#171717] font-semibold">{email}</p>
+            {onChangeEmail && (
+              <button
+                type="button"
+                onClick={() => setIsEditingEmail(true)}
+                className="text-sm text-[#ee6c4d] hover:text-[#d65a3d] font-medium mt-2 transition-colors"
+              >
+                Change email
+              </button>
+            )}
+          </div>
         ) : (
-          <div className="max-w-sm mx-auto mb-4 space-y-2">
+          <div className="max-w-sm mx-auto space-y-3">
+            <p className="text-sm text-[#171717]/60 mb-2">Enter new email address</p>
             <div className="flex items-center gap-2">
               <Input
                 type="email"
                 value={editedEmail}
                 onChange={(e) => setEditedEmail(e.target.value)}
-                className="flex-1"
+                className="flex-1 h-11 rounded-xl bg-[#f7f2e9] border-[#171717]/10 focus:border-[#ee6c4d] focus:ring-coral/20"
                 placeholder="Enter new email"
                 autoFocus
               />
@@ -208,10 +202,10 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
                 size="sm"
                 onClick={handleEmailChange}
                 disabled={emailChangeLoading || !editedEmail}
-                className="bg-green-600 hover:bg-green-700 text-white px-3"
+                className="h-11 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl"
               >
                 {emailChangeLoading ? (
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Check className="w-4 h-4" />
                 )}
@@ -222,129 +216,142 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
                 variant="outline"
                 onClick={handleCancelEmailEdit}
                 disabled={emailChangeLoading}
-                className="px-3"
+                className="h-11 px-4 rounded-xl"
               >
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-gray-500">
-              A new verification code will be sent to the new email
+            <p className="text-xs text-[#171717]/50">
+              A new code will be sent to this address
             </p>
           </div>
         )}
       </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
-            Enter verification code
-          </label>
-          <div className="flex justify-center gap-3">
-            {[0, 1, 2].map((index) => (
+        {/* OTP Input Grid */}
+        <div className="flex justify-center items-center gap-3">
+          {digits.map((digit, index) => (
+            <div key={index} className="flex items-center gap-2">
+              {index === 3 && (
+                <span className="text-[#171717]/30 font-medium text-xl">-</span>
+              )}
               <input
-                key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
+                ref={(el) => { inputRefs.current[index] = el; }}
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
-                value={digits[index] || ''}
+                value={digit}
                 onChange={(e) => handleDigitChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={handlePaste}
-                className="w-12 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-700/20 focus:border-slate-700 transition-colors duration-200 bg-white shadow-sm outline-none"
-                required
+                className={`
+                  w-12 h-14 text-center text-2xl font-bold rounded-xl
+                  border-2 outline-none transition-all duration-200
+                  ${digit
+                    ? 'bg-[#ee6c4d]/5 border-[#ee6c4d] text-[#171717]'
+                    : 'bg-[#f7f2e9] border-[#171717]/10 text-[#171717]'
+                  }
+                  hover:border-[#171717]/20
+                  focus:border-[#ee6c4d] focus:bg-white focus:ring-2 focus:ring-[#ee6c4d]/20
+                `}
               />
-            ))}
-            <div className="flex items-center px-2">
-              <span className="text-gray-400 text-2xl font-bold">-</span>
             </div>
-            {[3, 4, 5].map((index) => (
-              <input
-                key={index}
-                ref={(el) => (inputRefs.current[index] = el)}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digits[index] || ''}
-                onChange={(e) => handleDigitChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={handlePaste}
-                className="w-12 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-700/20 focus:border-slate-700 transition-colors duration-200 bg-white shadow-sm outline-none"
-                required
-              />
-            ))}
-          </div>
+          ))}
         </div>
 
+        {/* Verify Button */}
         <Button
           type="submit"
-          className="w-full bg-slate-700 text-white py-3 px-6 rounded-xl hover:bg-slate-800 transition-colors duration-200 font-semibold"
-          disabled={loading || digits.join('').length !== 6}
+          className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || !isCodeComplete}
         >
-          {loading ? "Verifying..." : "Verify Code"}
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verifying...
+            </span>
+          ) : (
+            "Verify email"
+          )}
         </Button>
       </form>
 
-      {/* Resend Code Option */}
-      <div className="text-center space-y-2">
+      {/* Resend and Timer */}
+      <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
-          <p className="text-gray-600 text-sm">
-            Didn't receive it?
-          </p>
+          <span className="text-sm text-[#171717]/50">Didn't receive it?</span>
           <button
             type="button"
             onClick={handleResendCode}
             disabled={resendLoading}
-            className="text-orange-600 hover:text-orange-700 font-semibold text-sm underline-offset-4 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm text-[#ee6c4d] hover:text-[#d65a3d] font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
-            {resendLoading ? "Sending..." : "Resend Code"}
+            {resendLoading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-3.5 h-3.5" />
+                Resend code
+              </>
+            )}
           </button>
         </div>
 
-        {/* Change Email Address Option */}
-        {onChangeEmail && !isEditingEmail && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setIsEditingEmail(true)}
-              className="text-gray-600 hover:text-gray-700 font-medium text-sm underline-offset-4 hover:underline"
-            >
-              Change email address
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Countdown Timer */}
-      <div className="text-center">
-        <div className="text-sm text-gray-500">
+        {/* Timer */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#f7f2e9] rounded-full">
           {timeLeft > 0 ? (
             <>
-              Code expires in <span className="font-semibold text-slate-700">{formatTime(timeLeft)}</span>
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-sm text-[#171717]/60">
+                Code expires in{' '}
+                <span className="font-semibold text-[#171717]">{formatTime(timeLeft)}</span>
+              </span>
             </>
           ) : (
-            <div className="space-y-1">
-              <span className="text-red-500 font-semibold block">Code expired</span>
-              <span className="text-gray-600 text-xs block">Click "Resend code" above to get a new verification code</span>
-            </div>
+            <>
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-sm text-red-600 font-medium">
+                Code expired - request a new one
+              </span>
+            </>
           )}
         </div>
       </div>
 
       {/* Success Overlay */}
       {showOverlay && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 mx-4 max-w-sm w-full text-center shadow-2xl">
+        <div className="fixed inset-0 bg-[#171717]/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div
+            className="bg-white rounded-2xl p-8 mx-4 max-w-sm w-full text-center shadow-2xl"
+            style={{ animation: 'fade-in-up 0.3s ease-out' }}
+          >
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Code Sent!</h3>
-            <p className="text-gray-600 text-sm">A new verification code has been sent to your email.</p>
+            <h3 className="text-xl font-bold text-[#171717] mb-2">Code Sent!</h3>
+            <p className="text-[#171717]/60">
+              A new verification code has been sent to your email.
+            </p>
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
