@@ -66,6 +66,15 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 const Landing = lazy(() => import("@/pages/LandingPage"));
 const Demo = lazy(() => import("@/pages/Demo"));
 const ContactUs = lazy(() => import("@/pages/ContactUs"));
+
+// Legal pages (public)
+const PrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("@/pages/legal/TermsOfService"));
+const FAQ = lazy(() => import("@/pages/legal/FAQ"));
+const Legal = lazy(() => import("@/pages/legal/Legal"));
+const CookieSettings = lazy(() => import("@/pages/legal/CookieSettings"));
+const AccessibilityStatement = lazy(() => import("@/pages/legal/AccessibilityStatement"));
+const DoNotSell = lazy(() => import("@/pages/legal/DoNotSell"));
 const ProposalSigningPage = lazy(() => import("@/pages/ProposalSigningPage"));
 
 // Authentication pages
@@ -149,6 +158,16 @@ export const AppRouter = () => (
 
           {/* Contact us page (public) */}
           <Route path="/contact-us" element={<ContactUs />} />
+
+          {/* Legal pages (public) */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-notice" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/legal" element={<Legal />} />
+          <Route path="/cookie-settings" element={<CookieSettings />} />
+          <Route path="/accessibility-statement" element={<AccessibilityStatement />} />
+          <Route path="/do-not-sell-my-personal-information" element={<DoNotSell />} />
 
           {/* E-signature signing page (public - accessed via token) */}
           <Route path="/sign/:token" element={<ProposalSigningPage />} />

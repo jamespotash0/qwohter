@@ -56,7 +56,15 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/access-denied',
     '/account-inactive',
     '/demo',
-    '/contact-us'
+    '/contact-us',
+    '/privacy-policy',
+    '/privacy-notice',
+    '/terms-of-service',
+    '/faq',
+    '/legal',
+    '/cookie-settings',
+    '/accessibility-statement',
+    '/do-not-sell-my-personal-information'
   ].includes(location.pathname) &&
     !location.pathname.startsWith('/editor/') &&
     !location.pathname.startsWith('/sign/'); // E-signature signing page is public
@@ -296,7 +304,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/access-denied',
     '/account-inactive',
     '/demo',
-    '/contact-us'
+    '/contact-us',
+    '/privacy-policy',
+    '/privacy-notice',
+    '/terms-of-service',
+    '/faq',
+    '/legal',
+    '/cookie-settings',
+    '/accessibility-statement',
+    '/do-not-sell-my-personal-information'
   ].includes(location.pathname) &&
     !location.pathname.startsWith('/editor/') &&
     !location.pathname.startsWith('/sign/'); // E-signature signing page is public
