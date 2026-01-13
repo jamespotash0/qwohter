@@ -49,11 +49,15 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when dialog opens
+  // Reset form when dialog opens or closes
   useEffect(() => {
     if (isOpen) {
       setFolderId(currentFolderId || '');
       setError(null);
+    } else {
+      // Reset on close
+      setError(null);
+      setIsSaving(false);
     }
   }, [isOpen, currentFolderId]);
 

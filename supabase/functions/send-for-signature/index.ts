@@ -52,11 +52,11 @@ async function getOrgAccessToken(
 ): Promise<string> {
   console.log(`[getOrgAccessToken] Looking up token for org: ${organizationId}`);
 
+  // Get token without filtering by is_valid - we'll try to refresh if invalid
   const { data: tokenData, error: tokenError } = await supabaseAdmin
     .from('google_oauth_tokens')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('is_valid', true)
     .single();
 
   if (tokenError || !tokenData) {
@@ -67,8 +67,10 @@ async function getOrgAccessToken(
   const expiresAt = new Date(tokenData.token_expires_at);
   const now = new Date();
   const bufferMs = 5 * 60 * 1000;
+  const isExpired = expiresAt.getTime() - bufferMs <= now.getTime();
 
-  if (expiresAt.getTime() - bufferMs > now.getTime()) {
+  // Only use cached token if it's valid AND not expired
+  if (tokenData.is_valid && !isExpired) {
     // Token still valid
     await supabaseAdmin
       .from('google_oauth_tokens')
@@ -78,7 +80,8 @@ async function getOrgAccessToken(
     return tokenData.access_token;
   }
 
-  // Token expired, refresh it
+  // Token expired or marked as invalid, try to refresh it
+  console.log(`[getOrgAccessToken] Token needs refresh - is_valid: ${tokenData.is_valid}, isExpired: ${isExpired}`);
   //@ts-ignore
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
   //@ts-ignore
@@ -129,15 +132,18 @@ async function getOrgAccessToken(
   const newTokens: GoogleTokenResponse = await refreshResponse.json();
   const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
+  // Update tokens in database - also set is_valid: true since refresh succeeded
   await supabaseAdmin
     .from('google_oauth_tokens')
     .update({
       access_token: newTokens.access_token,
       token_expires_at: newExpiresAt,
       last_used_at: new Date().toISOString(),
+      is_valid: true, // Mark as valid after successful refresh
     })
     .eq('id', tokenData.id);
 
+  console.log('[getOrgAccessToken] Token refreshed successfully');
   return newTokens.access_token;
 }
 

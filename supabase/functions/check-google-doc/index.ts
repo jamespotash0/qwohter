@@ -81,11 +81,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // Get token without filtering by is_valid - we'll try to refresh if invalid
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('google_oauth_tokens')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('is_valid', true)
       .single();
 
     if (tokenError || !tokenData) {
@@ -99,13 +99,16 @@ serve(async (req) => {
       });
     }
 
-    // Check if token needs refresh
+    // Check if token needs refresh (expired OR marked as invalid)
     let accessToken = tokenData.access_token;
     const expiresAt = new Date(tokenData.token_expires_at);
     const now = new Date();
     const bufferMinutes = 5;
+    const isExpired = now >= new Date(expiresAt.getTime() - bufferMinutes * 60 * 1000);
+    const needsRefresh = isExpired || !tokenData.is_valid;
 
-    if (now >= new Date(expiresAt.getTime() - bufferMinutes * 60 * 1000)) {
+    if (needsRefresh) {
+      console.log(`[check-google-doc] Token needs refresh - is_valid: ${tokenData.is_valid}, isExpired: ${isExpired}`);
       // Token expired - refresh it
       const refreshedToken = await refreshGoogleToken(tokenData.refresh_token, supabaseAdmin, organizationId);
       if (!refreshedToken) {
@@ -252,16 +255,18 @@ async function refreshGoogleToken(
     const tokens = await response.json();
     const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-    // Update token in database
+    // Update token in database - also set is_valid: true since refresh succeeded
     await supabaseAdmin
       .from('google_oauth_tokens')
       .update({
         access_token: tokens.access_token,
         token_expires_at: newExpiresAt,
         updated_at: new Date().toISOString(),
+        is_valid: true, // Mark as valid after successful refresh
       })
       .eq('organization_id', organizationId);
 
+    console.log('[check-google-doc] Token refreshed successfully');
     return tokens.access_token;
   } catch (error) {
     console.error('Token refresh error:', error);

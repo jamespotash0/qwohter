@@ -67,29 +67,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Verify the organization has a valid Google connection
+    // Verify the organization has a Google connection (don't filter by is_valid - allow updating settings even if token needs refresh)
     console.log(`[google-update-settings] Looking for token for org: ${organizationId}`);
 
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('google_oauth_tokens')
-      .select('id')
+      .select('id, is_valid')
       .eq('organization_id', organizationId)
-      .eq('is_valid', true)
       .single();
 
-    console.log(`[google-update-settings] Token lookup - error: ${tokenError?.message || 'none'}, found: ${!!tokenData}`);
+    console.log(`[google-update-settings] Token lookup - error: ${tokenError?.message || 'none'}, found: ${!!tokenData}, is_valid: ${tokenData?.is_valid}`);
 
     if (tokenError || !tokenData) {
-      // Check if there's any token (even invalid)
-      const { data: anyToken } = await supabaseAdmin
-        .from('google_oauth_tokens')
-        .select('id, is_valid')
-        .eq('organization_id', organizationId)
-        .single();
-
-      console.log(`[google-update-settings] Any token found: ${!!anyToken}, is_valid: ${anyToken?.is_valid}`);
-
-      return new Response(JSON.stringify({ error: 'Google not connected. Please reconnect in Settings → Integrations.' }), {
+      return new Response(JSON.stringify({ error: 'Google not connected. Please connect in Settings → Integrations.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

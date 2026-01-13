@@ -62,31 +62,23 @@ async function getOrgAccessToken(
 ): Promise<{ accessToken: string; folderId: string | null }> {
   console.log(`[getOrgAccessToken] Looking up token for org: ${organizationId}`);
 
-  // Get org-level token from database
+  // Get org-level token from database (don't filter by is_valid - we'll try to refresh if invalid)
   const { data: tokenData, error: tokenError } = await supabaseAdmin
     .from('google_oauth_tokens')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('is_valid', true)
     .single();
 
-  console.log(`[getOrgAccessToken] Query result - error: ${tokenError?.message || 'none'}, hasData: ${!!tokenData}`);
+  console.log(`[getOrgAccessToken] Query result - error: ${tokenError?.message || 'none'}, hasData: ${!!tokenData}, is_valid: ${tokenData?.is_valid}`);
 
   if (tokenError || !tokenData) {
-    // Try to find ANY token for this org to see if it's just invalid
-    const { data: anyToken } = await supabaseAdmin
-      .from('google_oauth_tokens')
-      .select('id, is_valid, token_expires_at')
-      .eq('organization_id', organizationId)
-      .single();
-
-    if (anyToken) {
-      console.log(`[getOrgAccessToken] Found token but is_valid=${anyToken.is_valid}, expires_at=${anyToken.token_expires_at}`);
-    } else {
-      console.log(`[getOrgAccessToken] No token found for organization at all`);
-    }
-
+    console.log(`[getOrgAccessToken] No token found for organization at all`);
     throw new Error('Google Docs not configured. An admin needs to connect Google in Settings → Integrations.');
+  }
+
+  // If token is marked invalid, we'll still try to refresh it (user may have reauthorized)
+  if (!tokenData.is_valid) {
+    console.log(`[getOrgAccessToken] Token is marked invalid - will attempt refresh`);
   }
 
   const folderId = tokenData.drive_folder_id;
@@ -95,8 +87,10 @@ async function getOrgAccessToken(
   const expiresAt = new Date(tokenData.token_expires_at);
   const now = new Date();
   const bufferMs = 5 * 60 * 1000; // 5 minutes
+  const isExpired = expiresAt.getTime() - bufferMs <= now.getTime();
 
-  if (expiresAt.getTime() - bufferMs > now.getTime()) {
+  // Only use cached token if it's valid AND not expired
+  if (tokenData.is_valid && !isExpired) {
     // Token is still valid
     await supabaseAdmin
       .from('google_oauth_tokens')
@@ -105,6 +99,9 @@ async function getOrgAccessToken(
 
     return { accessToken: tokenData.access_token, folderId };
   }
+
+  // Need to refresh: either expired or marked as invalid
+  console.log(`[getOrgAccessToken] Token needs refresh - is_valid: ${tokenData.is_valid}, isExpired: ${isExpired}`);
   //@ts-ignore
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
   //@ts-ignore
@@ -197,16 +194,18 @@ async function getOrgAccessToken(
   // Calculate new expiration
   const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
-  // Update tokens in database
+  // Update tokens in database - also set is_valid: true since refresh succeeded
   await supabaseAdmin
     .from('google_oauth_tokens')
     .update({
       access_token: newTokens.access_token,
       token_expires_at: newExpiresAt,
       last_used_at: new Date().toISOString(),
+      is_valid: true, // Mark as valid after successful refresh
     })
     .eq('id', tokenData.id);
 
+  console.log('[getOrgAccessToken] Token refreshed successfully, marked as valid');
   return { accessToken: newTokens.access_token, folderId };
 }
 
