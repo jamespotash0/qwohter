@@ -1222,6 +1222,47 @@ export interface Database {
           updated_at?: string;
         };
       };
+      // ============================================================================
+      // Notifications Table
+      // ============================================================================
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          type: string;
+          title: string;
+          message: string;
+          link: string | null;
+          is_read: boolean;
+          metadata: Record<string, any>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          type: string;
+          title: string;
+          message: string;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Record<string, any>;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          organization_id?: string;
+          type?: string;
+          title?: string;
+          message?: string;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Record<string, any>;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

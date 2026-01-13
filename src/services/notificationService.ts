@@ -46,7 +46,7 @@ export async function createNotification(
       message: input.message,
       link: input.link,
       metadata: input.metadata || {},
-    })
+    } as any)
     .select()
     .single();
 
@@ -273,4 +273,126 @@ export async function notifyProposalStatusChange(params: {
       to_status: params.newStatus,
     },
   });
+}
+
+// =============================================================================
+// Member Joined Notifications
+// =============================================================================
+
+interface MemberJoinedNotificationParams {
+  organizationId: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  memberRole: string;
+}
+
+interface AdminWithProfile {
+  user_id: string;
+  profiles: { email: string | null; full_name: string | null };
+}
+
+/**
+ * Notify Admins and Owners when a new member joins via invitation
+ */
+export async function notifyMemberJoined(
+  params: MemberJoinedNotificationParams
+): Promise<void> {
+  try {
+    // Get all Admins and Owners in the organization
+    const { data, error: fetchError } = await supabase
+      .from('memberships')
+      .select('user_id, profiles!inner(email, full_name)')
+      .eq('organization_id', params.organizationId)
+      .eq('status', 'Active')
+      .or('role.eq.Owner,role.eq.Admin');
+
+    if (fetchError) {
+      console.error('[notifyMemberJoined] Failed to fetch admins:', fetchError);
+      return;
+    }
+
+    const admins = data as unknown as AdminWithProfile[] | null;
+
+    if (!admins || admins.length === 0) {
+      console.log('[notifyMemberJoined] No admins/owners to notify');
+      return;
+    }
+
+    // Create notifications for each admin/owner
+    for (const admin of admins) {
+      // Skip notifying the new member themselves if they're an admin
+      if (admin.user_id === params.memberId) continue;
+
+      // Create in-app notification
+      await createNotification({
+        user_id: admin.user_id,
+        organization_id: params.organizationId,
+        type: 'member_joined',
+        title: 'New Team Member',
+        message: `${params.memberName} (${params.memberEmail}) has joined as ${params.memberRole}`,
+        link: '/settings?tab=team',
+        metadata: {
+          member_id: params.memberId,
+          member_name: params.memberName,
+          member_email: params.memberEmail,
+          member_role: params.memberRole,
+        },
+      });
+
+      // Send email notification (non-blocking)
+      if (admin.profiles?.email) {
+        sendMemberJoinedEmail({
+          recipientId: admin.user_id,
+          recipientEmail: admin.profiles.email,
+          recipientName: admin.profiles.full_name || 'Admin',
+          organizationId: params.organizationId,
+          memberName: params.memberName,
+          memberEmail: params.memberEmail,
+          memberRole: params.memberRole,
+        }).catch((err) => {
+          console.error('[notifyMemberJoined] Email failed:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[notifyMemberJoined] Error:', err);
+  }
+}
+
+/**
+ * Send email notification for member joined events
+ */
+async function sendMemberJoinedEmail(params: {
+  recipientId: string;
+  recipientEmail: string;
+  recipientName: string;
+  organizationId: string;
+  memberName: string;
+  memberEmail: string;
+  memberRole: string;
+}): Promise<void> {
+  try {
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.recipientId,
+        organizationId: params.organizationId,
+        notificationType: 'member_joined',
+        recipientEmail: params.recipientEmail,
+        recipientName: params.recipientName,
+        data: {
+          memberName: params.memberName,
+          memberEmail: params.memberEmail,
+          memberRole: params.memberRole,
+          link: '/settings?tab=team',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendMemberJoinedEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendMemberJoinedEmail] Failed to send email:', err);
+  }
 }

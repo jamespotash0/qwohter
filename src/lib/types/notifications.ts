@@ -24,7 +24,17 @@ export type NotificationType =
   | 'approval_approved'
   | 'approval_rejected'
   // Reminder events
-  | 'reminder_due';
+  | 'reminder_due'
+  // Member events
+  | 'member_joined'
+  // Payment/Subscription events
+  | 'payment_success'
+  | 'payment_failed'
+  | 'trial_ending'
+  | 'subscription_activated'
+  | 'subscription_canceled'
+  | 'subscription_renewed'
+  | 'seat_count_changed';
 
 export interface Notification {
   id: string;
@@ -56,6 +66,18 @@ export interface NotificationMetadata {
   reminder_type?: string;
   due_date?: string;
   priority?: string;
+  // Member joined
+  member_id?: string;
+  member_name?: string;
+  member_email?: string;
+  member_role?: string;
+  // Payment/Subscription
+  amount?: number;
+  currency?: string;
+  plan_name?: string;
+  old_seat_count?: number;
+  new_seat_count?: number;
+  days_remaining?: number;
   [key: string]: unknown;
 }
 
@@ -85,6 +107,16 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   approval_approved: 'Proposal Approved',
   approval_rejected: 'Approval Rejected',
   reminder_due: 'Reminder Due',
+  // Member events
+  member_joined: 'Member Joined',
+  // Payment/Subscription events
+  payment_success: 'Payment Successful',
+  payment_failed: 'Payment Failed',
+  trial_ending: 'Trial Ending Soon',
+  subscription_activated: 'Subscription Activated',
+  subscription_canceled: 'Subscription Canceled',
+  subscription_renewed: 'Subscription Renewed',
+  seat_count_changed: 'Seat Count Changed',
 };
 
 // =============================================================================
@@ -117,10 +149,20 @@ export interface NotificationPreferences {
   // Team activity
   email_on_mention: boolean;
   email_on_task_assigned: boolean;
+  email_on_member_joined: boolean;
 
   // Reminders & Due Dates
   email_on_reminder_due: boolean;
   email_on_task_due: boolean;
+
+  // Payment/Subscription events
+  email_on_payment_success: boolean;
+  email_on_payment_failed: boolean;
+  email_on_trial_ending: boolean;
+  email_on_subscription_activated: boolean;
+  email_on_subscription_canceled: boolean;
+  email_on_subscription_renewed: boolean;
+  email_on_seat_count_changed: boolean;
 
   // Timestamps
   created_at: string;
@@ -142,8 +184,16 @@ export interface UpdateNotificationPreferencesInput {
   email_on_proposal_rejected?: boolean;
   email_on_mention?: boolean;
   email_on_task_assigned?: boolean;
+  email_on_member_joined?: boolean;
   email_on_reminder_due?: boolean;
   email_on_task_due?: boolean;
+  email_on_payment_success?: boolean;
+  email_on_payment_failed?: boolean;
+  email_on_trial_ending?: boolean;
+  email_on_subscription_activated?: boolean;
+  email_on_subscription_canceled?: boolean;
+  email_on_subscription_renewed?: boolean;
+  email_on_seat_count_changed?: boolean;
 }
 
 // Default preferences for new users
@@ -160,8 +210,17 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Omit<NotificationPreferences, 'id
   email_on_proposal_rejected: false,
   email_on_mention: true,
   email_on_task_assigned: true,
+  email_on_member_joined: true,
   email_on_reminder_due: true,
   email_on_task_due: true,
+  // Payment/Subscription defaults
+  email_on_payment_success: true,
+  email_on_payment_failed: true,
+  email_on_trial_ending: true,
+  email_on_subscription_activated: true,
+  email_on_subscription_canceled: true,
+  email_on_subscription_renewed: true,
+  email_on_seat_count_changed: false,
 };
 
 // =============================================================================

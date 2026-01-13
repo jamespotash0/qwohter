@@ -28,7 +28,17 @@ type NotificationType =
   | 'approval_approved'
   | 'approval_rejected'
   | 'task_assigned'
-  | 'update_mention';
+  | 'update_mention'
+  // Member events
+  | 'member_joined'
+  // Payment/Subscription events
+  | 'payment_success'
+  | 'payment_failed'
+  | 'trial_ending'
+  | 'subscription_activated'
+  | 'subscription_canceled'
+  | 'subscription_renewed'
+  | 'seat_count_changed';
 
 interface NotificationEmailRequest {
   userId: string;
@@ -49,6 +59,17 @@ interface NotificationEmailRequest {
     projectName?: string;
     mentionedBy?: string;
     commentPreview?: string;
+    // Member joined
+    memberName?: string;
+    memberEmail?: string;
+    memberRole?: string;
+    // Payment/Subscription
+    amount?: number;
+    currency?: string;
+    planName?: string;
+    daysRemaining?: number;
+    oldSeatCount?: number;
+    newSeatCount?: number;
     [key: string]: unknown;
   };
 }
@@ -66,6 +87,16 @@ const preferenceFieldMap: Record<NotificationType, string> = {
   approval_rejected: 'email_on_proposal_rejected',
   task_assigned: 'email_on_task_assigned',
   update_mention: 'email_on_mention',
+  // Member events
+  member_joined: 'email_on_member_joined',
+  // Payment/Subscription events
+  payment_success: 'email_on_payment_success',
+  payment_failed: 'email_on_payment_failed',
+  trial_ending: 'email_on_trial_ending',
+  subscription_activated: 'email_on_subscription_activated',
+  subscription_canceled: 'email_on_subscription_canceled',
+  subscription_renewed: 'email_on_subscription_renewed',
+  seat_count_changed: 'email_on_seat_count_changed',
 };
 
 // Generate email content based on notification type
@@ -203,6 +234,129 @@ function generateEmailContent(
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
       }),
       text: `Your proposal ${data.proposalNumber} was not approved and has been returned to draft.`,
+    }),
+
+    // Member events
+    member_joined: () => ({
+      subject: `[Notification] New Team Member Joined`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p><strong>${data.memberName || 'A new member'}</strong> (${data.memberEmail}) has joined your team as <strong>${data.memberRole || 'Member'}</strong>.</p>
+          <p>You can view and manage your team in Settings.</p>
+        `,
+        ctaButton: { text: 'View Team', url: `${appUrl}/settings?tab=team` },
+      }),
+      text: `${data.memberName || 'A new member'} has joined your team as ${data.memberRole || 'Member'}.`,
+    }),
+
+    // Payment/Subscription events
+    payment_success: () => {
+      const formatAmount = (amount?: number, currency?: string): string => {
+        if (!amount) return '';
+        const dollars = amount / 100;
+        return `$${dollars.toFixed(2)} ${(currency || 'USD').toUpperCase()}`;
+      };
+      return {
+        subject: `[Notification] Payment Successful`,
+        html: createEmailHtml({
+          bodyContent: `
+            <p>Your payment has been processed successfully.</p>
+            ${data.amount ? `<p style="font-size: 24px; font-weight: bold; color: #22c55e;">${formatAmount(data.amount, data.currency)}</p>` : ''}
+            <p>Thank you for your continued subscription!</p>
+          `,
+          ctaButton: { text: 'View Billing', url: `${appUrl}/settings?tab=billing` },
+        }),
+        text: data.amount ? `Your payment of ${formatAmount(data.amount, data.currency)} was successful.` : 'Your payment was successful.',
+      };
+    },
+
+    payment_failed: () => ({
+      subject: `[Notification] Payment Failed - Action Required`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p style="color: #ef4444;"><strong>Your payment could not be processed.</strong></p>
+          <p>Please update your payment method to avoid service interruption.</p>
+          <p>Your access may be limited until payment is resolved.</p>
+        `,
+        ctaButton: { text: 'Update Payment Method', url: `${appUrl}/settings?tab=billing` },
+      }),
+      text: 'Your payment failed. Please update your payment method to avoid service interruption.',
+    }),
+
+    trial_ending: () => ({
+      subject: `[Notification] Your Free Trial Ends in ${data.daysRemaining || 3} Days`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p>Your free trial ends in <strong>${data.daysRemaining || 3} days</strong>.</p>
+          <p>Add a payment method now to continue using all features without interruption.</p>
+          <p>After your trial ends, you'll need an active subscription to access your account.</p>
+        `,
+        ctaButton: { text: 'Add Payment Method', url: `${appUrl}/settings?tab=billing` },
+      }),
+      text: `Your free trial ends in ${data.daysRemaining || 3} days. Add a payment method to continue.`,
+    }),
+
+    subscription_activated: () => ({
+      subject: `[Notification] Subscription Activated`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p style="color: #22c55e;"><strong>Your subscription is now active!</strong></p>
+          ${data.planName ? `<p>Plan: ${data.planName}</p>` : ''}
+          <p>Thank you for subscribing! You now have full access to all features.</p>
+        `,
+        ctaButton: { text: 'Go to Dashboard', url: `${appUrl}/dashboard` },
+      }),
+      text: `Your ${data.planName || ''} subscription is now active. Thank you for subscribing!`,
+    }),
+
+    subscription_canceled: () => ({
+      subject: `[Notification] Subscription Canceled`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p>Your subscription has been canceled.</p>
+          <p>You will continue to have access until the end of your current billing period.</p>
+          <p>We're sorry to see you go! You can reactivate anytime from your billing settings.</p>
+        `,
+        ctaButton: { text: 'View Billing', url: `${appUrl}/settings?tab=billing` },
+      }),
+      text: 'Your subscription has been canceled. You have access until the end of your billing period.',
+    }),
+
+    subscription_renewed: () => {
+      const formatAmount = (amount?: number, currency?: string): string => {
+        if (!amount) return '';
+        const dollars = amount / 100;
+        return `$${dollars.toFixed(2)} ${(currency || 'USD').toUpperCase()}`;
+      };
+      return {
+        subject: `[Notification] Subscription Renewed`,
+        html: createEmailHtml({
+          bodyContent: `
+            <p>Your subscription has been renewed successfully.</p>
+            ${data.amount ? `<p>Amount charged: <strong>${formatAmount(data.amount, data.currency)}</strong></p>` : ''}
+            <p>Thank you for your continued support!</p>
+          `,
+          ctaButton: { text: 'View Billing', url: `${appUrl}/settings?tab=billing` },
+        }),
+        text: data.amount ? `Your subscription has been renewed. Amount charged: ${formatAmount(data.amount, data.currency)}.` : 'Your subscription has been renewed.',
+      };
+    },
+
+    seat_count_changed: () => ({
+      subject: `[Notification] Team Seat Count Updated`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p>Your team seat count has been updated.</p>
+          ${data.oldSeatCount !== undefined && data.newSeatCount !== undefined
+            ? `<p>Changed from <strong>${data.oldSeatCount}</strong> to <strong>${data.newSeatCount}</strong> seats.</p>`
+            : '<p>Your billing will be adjusted accordingly.</p>'
+          }
+        `,
+        ctaButton: { text: 'View Billing', url: `${appUrl}/settings?tab=billing` },
+      }),
+      text: data.oldSeatCount !== undefined && data.newSeatCount !== undefined
+        ? `Your team size changed from ${data.oldSeatCount} to ${data.newSeatCount} seats.`
+        : 'Your team seat count has been updated.',
     }),
   };
 
