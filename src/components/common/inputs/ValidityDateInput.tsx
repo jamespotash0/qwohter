@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { CalendarBlank, Clock } from '@phosphor-icons/react';
+import { CalendarBlank, Clock, X } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -314,12 +314,28 @@ export function ValidityDateInput({
           {/* Result preview */}
           {value && (
             <div className="pt-2 border-t">
-              <div className="flex items-center gap-2 text-xs">
-                <CalendarBlank className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-gray-500">Valid until:</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {formatDate(value)}
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs">
+                  <CalendarBlank className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-500">Valid until:</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {formatDate(value)}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-gray-500 hover:text-red-600"
+                  onClick={() => {
+                    onChange('');
+                    setDays(0);
+                    setDaysInput('');
+                    setOpen(false);
+                  }}
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear
+                </Button>
               </div>
             </div>
           )}

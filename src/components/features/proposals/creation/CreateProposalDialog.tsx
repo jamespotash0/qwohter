@@ -58,28 +58,19 @@ const CreateProposalDialog = ({
     navigate('/forms');
   };
 
-  // Find the default form
-  const defaultForm = useMemo(() => {
-    return forms.find((f: { is_default?: boolean }) => f.is_default);
-  }, [forms]);
-
   // Get selected form details (to show document type)
   const selectedForm = useMemo(() => {
     return forms.find((f: { id: string }) => f.id === selectedFormId);
   }, [forms, selectedFormId]);
 
-  // Pre-select default form when dialog opens
+  // Reset form when dialog opens or closes
   useEffect(() => {
-    if (open && defaultForm && !selectedFormId) {
-      setSelectedFormId(defaultForm.id);
-    } else if (open && forms.length > 0 && !selectedFormId) {
-      // Select first form if no default
-      const firstForm = forms[0];
-      if (firstForm) {
-        setSelectedFormId(firstForm.id);
-      }
+    if (!open) {
+      // Reset all fields when dialog closes
+      setProjectName("");
+      setSelectedFormId("");
     }
-  }, [open, defaultForm, forms, selectedFormId]);
+  }, [open]);
 
   // Check if form is valid
   const isFormValid = projectName.trim() && selectedFormId;

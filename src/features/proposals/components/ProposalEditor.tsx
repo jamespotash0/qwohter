@@ -101,6 +101,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string | null>(null);
+  const hasAppliedTemplateDefaultsRef = useRef(false);
 
   // Get current user and organization
   const user = useUser();
@@ -186,17 +187,38 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         setProposalName(proposalData.project_name);
         setInitialProposalName(proposalData.project_name);
       }
-      // Load form_data from proposal into the context
-      if (proposalData.form_data) {
+
+      // Check if form_data is empty (new proposal)
+      const formData = proposalData.form_data;
+      const formDataIsEmpty = !formData ||
+        Object.keys(formData).length === 0 ||
+        // Also check if only has empty defaults
+        (Object.keys(formData).every(key => {
+          const val = formData[key];
+          if (key === 'info') return !val || Object.keys(val).length === 0;
+          if (Array.isArray(val?.sections)) return val.sections.length === 0;
+          if (Array.isArray(val?.items)) return val.items.length === 0;
+          if (Array.isArray(val?.fields)) return val.fields.length === 0;
+          return true;
+        }));
+
+      // If form_data is empty and we have form template defaults, apply them (only once)
+      // Use loadMetadata to load BOTH config (structure) and data (default values) from template
+      if (formDataIsEmpty && proposalFormData?.metadata && !hasAppliedTemplateDefaultsRef.current) {
+        hasAppliedTemplateDefaultsRef.current = true;
+        loadMetadata(proposalFormData.metadata);
+      } else if (proposalData.form_data && !formDataIsEmpty) {
+        // Load existing form_data from proposal
         const parsedData = parseFormBuilderData(proposalData.form_data);
         loadData(parsedData);
       }
+
       // Load google_doc_id from proposal
       if (proposalData.google_doc_id) {
         setSelectedGoogleDocId(proposalData.google_doc_id);
       }
     }
-  }, [proposalData, isBuilderMode, loadData]);
+  }, [proposalData, proposalFormData, isBuilderMode, loadData, loadMetadata]);
 
   // Track dirty state when name actually changes from initial value
   useEffect(() => {
@@ -388,8 +410,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             proposal_source: infoData?.proposalSource || undefined,
             // Total value from pricing (subtotal before tax)
             total_value: totalValue !== undefined ? totalValue : undefined,
-            // Selected Google Docs template ID (null clears the field)
-            google_doc_id: selectedGoogleDocId,
+            // Selected Google Docs template ID (undefined clears the field)
+            google_doc_id: selectedGoogleDocId ?? undefined,
             // Auto-calculated completion status
             is_complete: isComplete,
             // Timestamp when proposal first became complete
@@ -514,16 +536,20 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     }
 
     // Merge organization into proposalData for tabs that need it (e.g., PresentationTab)
+    // Convert null values to undefined to match expected types
     const proposalWithOrg = {
-      ...proposalData,
-      organization: currentOrganization,
+      id: proposalData?.id,
+      proposal_number: proposalData?.proposal_number ?? undefined,
+      project_name: proposalData?.project_name ?? undefined,
+      form_data: proposalData?.form_data ?? undefined,
+      organization: currentOrganization ?? undefined,
       google_doc_id: selectedGoogleDocId,
     };
 
-    // PresentationTab needs extra props
+    // PresentationTab needs extra props - use directly instead of generic TabComponent
     if (tab.id === 'presentation') {
       return (
-        <TabComponent
+        <PresentationTab
           mode={mode}
           proposalData={proposalWithOrg}
           proposalId={proposalId}
