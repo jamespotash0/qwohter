@@ -62,6 +62,7 @@ export function getGoogleAuthUrl(
     scope: GOOGLE_SCOPES,
     access_type: 'offline', // Get refresh token
     prompt: 'consent', // Always show consent to get refresh token
+    include_granted_scopes: 'true', // Enable incremental authorization
     state: btoa(JSON.stringify(state)),
   });
 
