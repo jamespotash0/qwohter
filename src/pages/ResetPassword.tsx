@@ -1,10 +1,19 @@
+/**
+ * Reset Password Page - Matches Auth.tsx Design
+ *
+ * Matches the landing page aesthetic:
+ * - Warm cream (#FFFEFA) background
+ * - Pink gradient panel with coral blur orbs
+ * - Urbanist typography
+ * - Clean, award-winning design
+ */
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Lock, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSignOut } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,54 +32,24 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ✅ v3.0.0: Use new auth mutation for sign out
   const { mutate: signOut } = useSignOut();
 
   useEffect(() => {
-
-    // Check for access token in URL (from email link)
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
-    const type = searchParams.get('type');
 
-    // Also check for hash-based tokens (common with Supabase)
     const hash = window.location.hash;
-
     const hashParams = new URLSearchParams(hash.substring(1));
     const hashAccessToken = hashParams.get('access_token');
     const hashRefreshToken = hashParams.get('refresh_token');
-    const hashType = hashParams.get('type');
 
-    // console.log('Reset password params:', {
-    //   searchParams: {
-    //     accessToken: !!accessToken,
-    //     refreshToken: !!refreshToken,
-    //     type,
-    //   },
-    //   hashParams: {
-    //     accessToken: !!hashAccessToken,
-    //     refreshToken: !!hashRefreshToken,
-    //     type: hashType,
-    //   },
-    //   allSearchParams: Object.fromEntries(searchParams.entries()),
-    //   allHashParams: Object.fromEntries(hashParams.entries())
-    // });
-
-    // Handle the session setting
     const handleSessionSetup = async () => {
-      // Use hash params first (more common with Supabase), fall back to search params
       const finalAccessToken = hashAccessToken || accessToken;
       const finalRefreshToken = hashRefreshToken || refreshToken;
 
-      // console.log('Final tokens to use:', {
-      //   accessToken: !!finalAccessToken,
-      //   refreshToken: !!finalRefreshToken,
-      //   source: hashAccessToken ? 'hash' : 'search'
-      // });
-
       if (finalAccessToken && finalRefreshToken) {
         try {
-          const { data, error } = await supabase.auth.setSession({
+          const { error } = await supabase.auth.setSession({
             access_token: finalAccessToken,
             refresh_token: finalRefreshToken
           });
@@ -84,8 +63,6 @@ const ResetPassword = () => {
               variant: "destructive",
             });
           } else {
-
-            // Double-check that we can actually get the session
             const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
             if (sessionCheckError) {
               console.error('Session check error:', sessionCheckError);
@@ -108,8 +85,6 @@ const ResetPassword = () => {
         }
       } else if (searchParams.size > 0 || hashParams.size > 0) {
         console.error('Missing required parameters for password reset.');
-        console.error('Search params:', Object.fromEntries(searchParams.entries()));
-        console.error('Hash params:', Object.fromEntries(hashParams.entries()));
         setSessionError('The reset link is invalid or has expired.');
         toast({
           title: "Invalid Reset Link",
@@ -117,7 +92,6 @@ const ResetPassword = () => {
           variant: "destructive",
         });
       } else {
-        // No params at all
         setSessionError('Please use the reset link from your email.');
       }
     };
@@ -181,7 +155,6 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-
       const { error } = await supabase.auth.updateUser({
         password: password
       });
@@ -196,10 +169,9 @@ const ResetPassword = () => {
         throw error;
       }
 
-      // Sign out the user for security - they should sign in with new password
       signOut(undefined, {
         onSuccess: () => {
-          console.log('✅ User signed out after password reset');
+          console.log('User signed out after password reset');
         },
         onError: (error) => {
           console.error('Error signing out after password reset:', error);
@@ -212,7 +184,6 @@ const ResetPassword = () => {
         description: "Your password has been changed. Please sign in with your new password.",
       });
 
-      // Redirect to sign-in page after 3 seconds
       setTimeout(() => {
         navigate("/sign-in");
       }, 3000);
@@ -232,229 +203,283 @@ const ResetPassword = () => {
   const passwordValidation = validatePassword(password);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Header with logo - matching landing page */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+    <div className="min-h-screen bg-[#FFFEFA] flex">
+      {/* Left Panel - Cream & Pink Style */}
+      <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] flex-col items-center justify-center p-10 xl:p-12 relative overflow-hidden">
+        {/* Soft pink blur orbs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div
+            className="absolute top-[-100px] right-[-150px] w-[500px] h-[500px] rounded-full blur-[100px] opacity-40"
+            style={{ background: '#EE6C4D' }}
+          />
+          <div
+            className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] rounded-full blur-[80px] opacity-30"
+            style={{ background: '#F7C4BB' }}
+          />
+        </div>
+
+        {/* Centered Content */}
+        <div className="relative z-10 text-center max-w-[600px] px-4">
+          {/* Logo */}
+          <div
+            className="cursor-pointer mb-8"
+            onClick={() => navigate('/')}
+          >
+            <img
+              src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+              alt="Qwohter"
+              className="h-[42px] w-auto mx-auto"
+            />
+          </div>
+
+          {/* Main Title */}
+          <h1
+            className="text-[28px] xl:text-[32px] leading-[1.2] tracking-[-0.01em] text-[#171717] mb-8"
+            style={{
+              fontFamily: 'Urbanist, sans-serif',
+              fontWeight: 600,
+            }}
+          >
+            Create a strong password
+            <br />
+            to keep your account secure.
+          </h1>
+
+          {/* Trusted By Section */}
+          <div className="pt-6 border-t border-[#171717]/10">
+            <p
+              className="text-sm text-[#171717]/50 mb-3"
+              style={{ fontFamily: 'Urbanist, sans-serif' }}
+            >
+              Trusted by companies in these industries
+            </p>
+            <p
+              className="text-sm text-[#171717]/70"
+              style={{ fontFamily: 'Urbanist, sans-serif' }}
+            >
+              Construction · Landscaping · HVAC · Roofing · Electrical · Plumbing
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form Area */}
+      <div className="flex-1 flex flex-col min-h-screen bg-[#FFF9F7]">
+        {/* Mobile header */}
+        <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#FFF9F7]/90 backdrop-blur-md border-b border-[#171717]/5">
+          <div className="px-6 py-4">
             <div
-              className="flex items-center cursor-pointer"
+              className="cursor-pointer"
               onClick={() => navigate('/')}
             >
               <img
                 src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
-                alt="Qwohter Logo"
-                className="h-8 w-auto"
+                alt="Qwohter"
+                className="h-7 w-auto"
               />
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Background pattern with proposal checkerboard design */}
-      <div className="absolute inset-0">
-        {/* Repeating quotation marks in checkerboard pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23f97316' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
-            `,
-            backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat'
-          }}
-        />
+        {/* Form container */}
+        <div className="flex-1 flex items-center justify-center px-6 py-20 lg:py-12">
+          <div className="w-full max-w-[420px]">
+            {/* Step header */}
+            <div className="mb-6 text-center">
+              <h2
+                className="text-[28px] text-[#171717] tracking-[0.3px] leading-[1.2] mb-1"
+                style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
+              >
+                {success ? "Password updated!" : "Reset your password"}
+              </h2>
+              <p
+                className="text-[#171717]/50 text-sm"
+                style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400 }}
+              >
+                {success
+                  ? "Your password has been successfully changed. Please sign in with your new password."
+                  : "Choose a strong password for your account."
+                }
+              </p>
+            </div>
 
-        {/* Alternating quotation pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.05]"
-          style={{
-            backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='45' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(15)'%3E%E2%80%9C%3C/text%3E%3Ctext x='75' y='75' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(-15)'%3E%E2%80%9D%3C/text%3E%3C/svg%3E")
-            `,
-            backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat',
-            backgroundPosition: '60px 60px'
-          }}
-        />
-
-        {/* Subtle gradient orbs for depth */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100/6 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-100/4 rounded-full blur-3xl" />
-      </div>
-
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="w-full flex items-center justify-center">
-          <div className="w-full relative z-10 max-w-md">
-            {/* Main form card */}
-            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader className="text-center space-y-4 pb-4 pt-8 px-8">
-                {/* Icon */}
-                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
-                  {success ? (
-                    <CheckCircle className="w-6 h-6 text-green-600" />
-                  ) : (
-                    <Lock className="w-6 h-6 text-gray-600" />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <CardTitle className="text-3xl font-bold text-gray-900">
-                    {success ? "Password updated!" : "Reset your password"}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 text-sm leading-relaxed max-w-lg mx-auto">
-                    {success
-                      ? "Your password has been successfully changed. Please sign in with your new password."
-                      : "Choose a strong password for your account."
-                    }
-                  </CardDescription>
-                </div>
-              </CardHeader>
-
-              <CardContent className="px-8 pb-8 space-y-4">
-                {sessionError && !sessionReady && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs">!</span>
-                      </div>
-                      <p className="text-sm font-medium text-red-800">Session Error</p>
+            {/* Form */}
+            <div>
+              {sessionError && !sessionReady && (
+                <div className="bg-[#FEF2F2] border border-[#EF4444]/20 rounded-lg p-4 mb-5">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-5 h-5 bg-[#EF4444] rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-bold">!</span>
                     </div>
-                    <p className="text-sm text-red-700 mt-1">{sessionError}</p>
-                  </div>
-                )}
-
-                {!success ? (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-gray-700 font-medium text-sm">
-                        New password
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(sanitizeInput.string(e.target.value))}
-                          placeholder="Enter your new password"
-                          required
-                          className="bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </Button>
-                      </div>
-
-                      {/* Password requirements */}
-                      {password && (
-                        <div className="space-y-1 mt-2">
-                          <p className="text-xs text-gray-600">Password must contain:</p>
-                          <div className="space-y-1">
-                            {[
-                              { label: "At least 8 characters", valid: password.length >= 8 },
-                              { label: "One uppercase letter", valid: /[A-Z]/.test(password) },
-                              { label: "One lowercase letter", valid: /[a-z]/.test(password) },
-                              { label: "One number", valid: /\d/.test(password) }
-                            ].map((req, index) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <div className={`w-2 h-2 rounded-full ${req.valid ? 'bg-green-500' : 'bg-gray-300'}`} />
-                                <span className={`text-xs ${req.valid ? 'text-green-600' : 'text-gray-500'}`}>
-                                  {req.label}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword" className="text-gray-700 font-medium text-sm">
-                        Confirm new password
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="confirmPassword"
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(sanitizeInput.string(e.target.value))}
-                          placeholder="Confirm your new password"
-                          required
-                          className="bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </Button>
-                      </div>
-
-                      {/* Password match indicator */}
-                      {confirmPassword && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <div className={`w-2 h-2 rounded-full ${password === confirmPassword ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <span className={`text-xs ${password === confirmPassword ? 'text-green-600' : 'text-red-600'}`}>
-                            {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
-                      disabled={loading || !passwordValidation.isValid || password !== confirmPassword || !sessionReady}
+                    <p
+                      className="text-sm font-medium text-[#991B1B]"
+                      style={{ fontFamily: 'Urbanist, sans-serif' }}
                     >
-                      {loading ? "Updating..." : !sessionReady ? "Preparing session..." : "Update password"}
-                    </Button>
-                  </form>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <p className="text-sm font-medium text-green-800">Password updated successfully</p>
+                      Session Error
+                    </p>
+                  </div>
+                  <p
+                    className="text-sm text-[#B91C1C] mt-1"
+                    style={{ fontFamily: 'Urbanist, sans-serif' }}
+                  >
+                    {sessionError}
+                  </p>
+                </div>
+              )}
+
+              {!success ? (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="password"
+                      className="text-[#171717] text-sm"
+                      style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
+                    >
+                      New password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(sanitizeInput.string(e.target.value))}
+                        placeholder="Enter your new password"
+                        required
+                        className="h-12 bg-[#f7f2e9]/50 border-[#171717]/10 rounded-full pr-12 placeholder:text-[#171717]/30 focus:border-[#EE6C4D] focus:ring-[#EE6C4D]/20"
+                        style={{ fontFamily: 'Urbanist, sans-serif' }}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-[#171717]/40" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-[#171717]/40" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Password requirements */}
+                    {password && (
+                      <div className="space-y-1 mt-2">
+                        <p
+                          className="text-xs text-[#171717]/50"
+                          style={{ fontFamily: 'Urbanist, sans-serif' }}
+                        >
+                          Password must contain:
+                        </p>
+                        <div className="space-y-1">
+                          {[
+                            { label: "At least 8 characters", valid: password.length >= 8 },
+                            { label: "One uppercase letter", valid: /[A-Z]/.test(password) },
+                            { label: "One lowercase letter", valid: /[a-z]/.test(password) },
+                            { label: "One number", valid: /\d/.test(password) }
+                          ].map((req, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <div className={`w-2 h-2 rounded-full ${req.valid ? 'bg-[#10B981]' : 'bg-[#171717]/20'}`} />
+                              <span
+                                className={`text-xs ${req.valid ? 'text-[#10B981]' : 'text-[#171717]/50'}`}
+                                style={{ fontFamily: 'Urbanist, sans-serif' }}
+                              >
+                                {req.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-sm text-green-700 mt-1">
-                        You have been signed out for security. Please sign in with your new password.
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="confirmPassword"
+                      className="text-[#171717] text-sm"
+                      style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
+                    >
+                      Confirm new password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(sanitizeInput.string(e.target.value))}
+                        placeholder="Confirm your new password"
+                        required
+                        className="h-12 bg-[#f7f2e9]/50 border-[#171717]/10 rounded-full pr-12 placeholder:text-[#171717]/30 focus:border-[#EE6C4D] focus:ring-[#EE6C4D]/20"
+                        style={{ fontFamily: 'Urbanist, sans-serif' }}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-[#171717]/40" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-[#171717]/40" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Password match indicator */}
+                    {confirmPassword && (
+                      <div className="flex items-center space-x-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${password === confirmPassword ? 'bg-[#10B981]' : 'bg-[#EF4444]'}`} />
+                        <span
+                          className={`text-xs ${password === confirmPassword ? 'text-[#10B981]' : 'text-[#EF4444]'}`}
+                          style={{ fontFamily: 'Urbanist, sans-serif' }}
+                        >
+                          {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200"
+                    style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
+                    disabled={loading || !passwordValidation.isValid || password !== confirmPassword || !sessionReady}
+                  >
+                    {loading ? "Updating..." : !sessionReady ? "Preparing session..." : "Update password"}
+                  </Button>
+                </form>
+              ) : (
+                <div className="space-y-5">
+                  <div className="bg-[#ECFDF5] border border-[#10B981]/20 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5 text-[#10B981]" />
+                      <p
+                        className="text-sm font-medium text-[#065F46]"
+                        style={{ fontFamily: 'Urbanist, sans-serif' }}
+                      >
+                        Password updated successfully
                       </p>
                     </div>
-
-                    <Button
-                      onClick={() => navigate("/sign-in")}
-                      className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
+                    <p
+                      className="text-sm text-[#047857] mt-1"
+                      style={{ fontFamily: 'Urbanist, sans-serif' }}
                     >
-                      Continue to sign in
-                    </Button>
+                      You have been signed out for security. Please sign in with your new password.
+                    </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Footer */}
-            <div className="text-center mt-8">
-              <p className="text-gray-400 text-xs">
-                © 2024 Qwohter. Secure & Professional.
-              </p>
+                  <Button
+                    onClick={() => navigate("/sign-in")}
+                    className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200"
+                    style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
+                  >
+                    Continue to sign in
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>

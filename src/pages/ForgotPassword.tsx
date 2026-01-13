@@ -1,6 +1,15 @@
+/**
+ * Forgot Password Page - Matches Auth.tsx Design
+ *
+ * Matches the landing page aesthetic:
+ * - Warm cream (#FFFEFA) background
+ * - Pink gradient panel with coral blur orbs
+ * - Urbanist typography
+ * - Clean, award-winning design
+ */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +24,6 @@ const ForgotPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ✅ v3.0.0: Use new auth mutation hook
   const { mutate: resetPassword, isPending: loading } = useResetPassword();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,7 +31,7 @@ const ForgotPassword = () => {
     if (!email) return;
 
     resetPassword(
-      { email },
+      email,
       {
         onSuccess: () => {
           setSent(true);
@@ -43,153 +51,183 @@ const ForgotPassword = () => {
     );
   };
 
-  const handleBackToSignIn = () => {
-    navigate("/sign-in");
-  };
-
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Header with logo - matching landing page */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+    <div className="min-h-screen bg-[#FFFEFA] flex">
+      {/* Left Panel - Cream & Pink Style */}
+      <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] flex-col items-center justify-center p-10 xl:p-12 relative overflow-hidden">
+        {/* Soft pink blur orbs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div
+            className="absolute top-[-100px] right-[-150px] w-[500px] h-[500px] rounded-full blur-[100px] opacity-40"
+            style={{ background: '#EE6C4D' }}
+          />
+          <div
+            className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] rounded-full blur-[80px] opacity-30"
+            style={{ background: '#F7C4BB' }}
+          />
+        </div>
+
+        {/* Centered Content */}
+        <div className="relative z-10 text-center max-w-[600px] px-4">
+          {/* Logo */}
+          <div
+            className="cursor-pointer mb-8"
+            onClick={() => navigate('/')}
+          >
+            <img
+              src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+              alt="Qwohter"
+              className="h-[42px] w-auto mx-auto"
+            />
+          </div>
+
+          {/* Main Title */}
+          <h1
+            className="text-[28px] xl:text-[32px] leading-[1.2] tracking-[-0.01em] text-[#171717] mb-8"
+            style={{
+              fontFamily: 'Urbanist, sans-serif',
+              fontWeight: 600,
+            }}
+          >
+            Don't worry, we've got you.
+            <br />
+            Reset your password in seconds.
+          </h1>
+
+          {/* Trusted By Section */}
+          <div className="pt-6 border-t border-[#171717]/10">
+            <p
+              className="text-sm text-[#171717]/50 mb-3"
+              style={{ fontFamily: 'Urbanist, sans-serif' }}
+            >
+              Trusted by companies in these industries
+            </p>
+            <p
+              className="text-sm text-[#171717]/70"
+              style={{ fontFamily: 'Urbanist, sans-serif' }}
+            >
+              Construction · Landscaping · HVAC · Roofing · Electrical · Plumbing
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form Area */}
+      <div className="flex-1 flex flex-col min-h-screen bg-[#FFF9F7]">
+        {/* Mobile header */}
+        <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#FFF9F7]/90 backdrop-blur-md border-b border-[#171717]/5">
+          <div className="px-6 py-4">
             <div
-              className="flex items-center cursor-pointer"
+              className="cursor-pointer"
               onClick={() => navigate('/')}
             >
               <img
                 src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
-                alt="Qwohter Logo"
-                className="h-8 w-auto"
+                alt="Qwohter"
+                className="h-7 w-auto"
               />
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Background pattern with proposal checkerboard design */}
-      <div className="absolute inset-0">
-        {/* Repeating quotation marks in checkerboard pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23f97316' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
-            `,
-            backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat'
-          }}
-        />
+        {/* Form container */}
+        <div className="flex-1 flex items-center justify-center px-6 py-20 lg:py-12">
+          <div className="w-full max-w-[420px]">
+            {/* Step header */}
+            <div className="mb-6 text-center">
+              <h2
+                className="text-[28px] text-[#171717] tracking-[0.3px] leading-[1.2] mb-1"
+                style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
+              >
+                {sent ? "Check your email" : "Forgot password?"}
+              </h2>
+              <p
+                className="text-[#171717]/50 text-sm"
+                style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400 }}
+              >
+                {sent
+                  ? "We've sent password reset instructions to your email address."
+                  : "Enter your email address and we'll send you a link to reset your password."
+                }
+              </p>
+            </div>
 
-        {/* Alternating quotation pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.05]"
-          style={{
-            backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='45' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(15)'%3E%E2%80%9C%3C/text%3E%3Ctext x='75' y='75' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(-15)'%3E%E2%80%9D%3C/text%3E%3C/svg%3E")
-            `,
-            backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat',
-            backgroundPosition: '60px 60px'
-          }}
-        />
-
-        {/* Subtle gradient orbs for depth */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100/6 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-100/4 rounded-full blur-3xl" />
-      </div>
-
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="w-full flex items-center justify-center">
-          <div className="w-full relative z-10 max-w-md">
-            {/* Main form card */}
-            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader className="text-center space-y-4 pb-4 pt-8 px-8">
-                {/* Icon */}
-                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
-                  <Mail className="w-6 h-6 text-gray-600" />
-                </div>
-
-                <div className="space-y-2">
-                  <CardTitle className="text-3xl font-bold text-gray-900">
-                    {sent ? "Check your email" : "Forgot password?"}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 text-sm leading-relaxed max-w-lg mx-auto">
-                    {sent
-                      ? "We've sent password reset instructions to your email address."
-                      : "Enter your email address and we'll send you a link to reset your password."
-                    }
-                  </CardDescription>
-                </div>
-              </CardHeader>
-
-              <CardContent className="px-8 pb-8 space-y-4">
-                {!sent ? (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-gray-700 font-medium text-sm">
-                        Email address
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(sanitizeInput.email(e.target.value))}
-                        placeholder="Enter your email"
-                        required
-                        className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
-                      disabled={loading}
+            {/* Form */}
+            <div>
+              {!sent ? (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="email"
+                      className="text-[#171717] text-sm"
+                      style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
                     >
-                      {loading ? "Sending..." : "Send reset link"}
-                    </Button>
-                  </form>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-5 h-5 text-green-600" />
-                        <p className="text-sm font-medium text-green-800">Email sent successfully</p>
-                      </div>
-                      <p className="text-sm text-green-700 mt-1">
-                        Please check your inbox and follow the instructions to reset your password.
+                      Email address
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(sanitizeInput.email(e.target.value))}
+                      placeholder="Enter your email"
+                      required
+                      className="h-12 bg-[#f7f2e9]/50 border-[#171717]/10 rounded-full placeholder:text-[#171717]/30 focus:border-[#EE6C4D] focus:ring-[#EE6C4D]/20"
+                      style={{ fontFamily: 'Urbanist, sans-serif' }}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200"
+                    style={{ fontFamily: 'Urbanist, sans-serif' }}
+                    disabled={loading}
+                  >
+                    {loading ? "Sending..." : "Send reset link"}
+                  </Button>
+                </form>
+              ) : (
+                <div className="space-y-5">
+                  <div className="bg-[#ECFDF5] border border-[#10B981]/20 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <Mail className="w-5 h-5 text-[#10B981]" />
+                      <p
+                        className="text-sm font-medium text-[#065F46]"
+                        style={{ fontFamily: 'Urbanist, sans-serif' }}
+                      >
+                        Email sent successfully
                       </p>
                     </div>
-
-                    <Button
-                      onClick={() => setSent(false)}
-                      variant="outline"
-                      className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    <p
+                      className="text-sm text-[#047857] mt-1"
+                      style={{ fontFamily: 'Urbanist, sans-serif' }}
                     >
-                      Send another email
-                    </Button>
+                      Please check your inbox and follow the instructions to reset your password.
+                    </p>
                   </div>
-                )}
 
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={handleBackToSignIn}
-                    className="inline-flex items-center space-x-2 text-sm text-orange-500 hover:text-orange-600 font-medium transition-colors"
+                  <Button
+                    onClick={() => setSent(false)}
+                    variant="outline"
+                    className="w-full h-12 border-[#171717]/10 text-[#171717] hover:bg-[#171717]/5 rounded-full"
+                    style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
                   >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Back to sign in</span>
-                  </button>
+                    Send another email
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            {/* Footer */}
-            <div className="text-center mt-8">
-              <p className="text-gray-400 text-xs">
-                © 2024 Qwohter. Secure & Professional.
-              </p>
+              {/* Back to sign in */}
+              <div className="text-center mt-6">
+                <button
+                  type="button"
+                  onClick={() => navigate("/sign-in")}
+                  className="inline-flex items-center space-x-2 text-sm text-[#EE6C4D] hover:text-[#EE6C4D]/80 transition-colors"
+                  style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 500 }}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to sign in</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
