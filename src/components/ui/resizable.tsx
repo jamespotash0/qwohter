@@ -1,4 +1,4 @@
-import { GripVertical } from "lucide-react"
+import { CaretRight, CaretLeft } from "@phosphor-icons/react"
 import * as ResizablePrimitive from "react-resizable-panels"
 
 import { cn } from "@/lib/utils"
@@ -33,8 +33,11 @@ const ResizableHandle = ({
     {...props}
   >
     {withHandle && (
-      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
-        <GripVertical className="h-2.5 w-2.5" />
+      <div className="z-10 flex h-8 w-6 items-center justify-center rounded-md border bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+        <div className="flex items-center gap-0">
+          <CaretLeft className="h-3 w-3 text-gray-600 dark:text-gray-400" weight="bold" />
+          <CaretRight className="h-3 w-3 text-gray-600 dark:text-gray-400" weight="bold" />
+        </div>
       </div>
     )}
   </ResizablePrimitive.PanelResizeHandle>

@@ -75,9 +75,9 @@ const AccessDenied: React.FC = () => {
       case 'owner':
         return 'Full access to all features and settings';
       case 'admin':
-        return 'Manage users, quotes, and organization settings';
+        return 'Manage users, proposals, and organization settings';
       case 'member':
-        return 'Create and manage quotes';
+        return 'Create and manage proposals';
       default:
         return 'Standard access';
     }

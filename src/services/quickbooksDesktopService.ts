@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Quote } from './quotesService';
+import type { Quote } from '@/_deprecated/services/quotesService';
 import { generateInvoiceQBXML, generateCustomerQBXML } from '@/lib/qbxml/generators';
 
 export interface QBDesktopConnection {

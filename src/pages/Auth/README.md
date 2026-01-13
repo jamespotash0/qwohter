@@ -165,7 +165,6 @@ URL with token → Pre-fill org code → Auth Form → Join Organization → Das
 
 ### Company Info State (useCompanyInfoState)
 - Company contact info (phone, fax, address, website)
-- Quote starting point
 - Logo URL
 
 ## 🎨 Benefits

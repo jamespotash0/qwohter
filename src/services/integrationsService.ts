@@ -277,37 +277,7 @@ export async function getAvailableIntegrations(
   }));
 }
 
-/*
- * ============================================================================
- * DEPRECATED: Old hardcoded approach
- * ============================================================================
- *
- * The old approach used a hardcoded array of integrations:
- *
- * export function getAvailableIntegrations(): AvailableIntegration[] {
- *   return [
- *     {
- *       type: 'quickbooks_online',
- *       name: 'QuickBooks Online',
- *       description: 'Sync your quotes and create invoices...',
- *       logoUrl: '/images/integrations/quickbooks-online.png',
- *       features: [],
- *     },
- *     {
- *       type: 'quickbooks_desktop',
- *       name: 'QuickBooks Desktop',
- *       description: 'Integrate with QuickBooks Desktop...',
- *       logoUrl: '/images/integrations/quickbooks-desktop.png',
- *       features: [],
- *     },
- *   ];
- * }
- *
- * This has been replaced with the database-driven approach above.
- * All integration metadata is now stored in the `available_integrations` table.
- *
- * Migration: supabase/migrations/20251125000002_add_available_integrations.sql
- */
+
 
 /**
  * Get integration card display data

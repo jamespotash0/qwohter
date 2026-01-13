@@ -4,6 +4,6 @@
  */
 
 export { useAuthFlow } from './useAuthFlow';
-export type { AuthStep, OrgChoice } from './useAuthFlow';
+export type { AuthStep } from './useAuthFlow';
 export { useAuthFormState } from './useAuthFormState';
 export { useCompanyInfoState } from './useCompanyInfoState';

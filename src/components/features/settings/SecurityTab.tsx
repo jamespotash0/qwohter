@@ -57,17 +57,17 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
       ]
     },
     {
-      id: 'quotes',
-      label: 'Quote Management',
+      id: 'proposals',
+      label: 'Proposal Management',
       icon: <FileText className="w-5 h-5" />,
       permissions: [
-        { id: 'quote_view', label: 'View all organization quotes', owner: true, admin: true, member: true },
-        { id: 'quote_create', label: 'Create new quotes and proposals', owner: true, admin: true, member: true },
-        { id: 'quote_edit_all', label: 'Edit any quote in the organization', owner: true, admin: true, member: false },
-        { id: 'quote_edit_own', label: 'Edit own quotes', owner: true, admin: true, member: true },
-        { id: 'quote_delete_all', label: 'Delete any quote', owner: true, admin: true, member: false },
-        { id: 'quote_delete_own', label: 'Delete own quotes', owner: true, admin: true, member: true },
-        { id: 'quote_templates', label: 'Manage quote templates', owner: true, admin: true, member: false }
+        { id: 'proposal_view', label: 'View all organization proposals', owner: true, admin: true, member: true },
+        { id: 'proposal_create', label: 'Create new proposals', owner: true, admin: true, member: true },
+        { id: 'proposal_edit_all', label: 'Edit any proposal in the organization', owner: true, admin: true, member: false },
+        { id: 'proposal_edit_own', label: 'Edit own proposals', owner: true, admin: true, member: true },
+        { id: 'proposal_delete_all', label: 'Delete any proposal', owner: true, admin: true, member: false },
+        { id: 'proposal_delete_own', label: 'Delete own proposals', owner: true, admin: true, member: true },
+        { id: 'proposal_templates', label: 'Manage proposal templates', owner: true, admin: true, member: false }
       ]
     }
   ]);

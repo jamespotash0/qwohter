@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { JSX, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+// import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const metricsData = [
   {
@@ -10,9 +10,9 @@ const metricsData = [
     description: "Close opportunities with confidence and predictably.",
   },
   {
-    label: "Faster Quote Turnaround",
+    label: "Faster Proposal Turnaround",
     value: "40%",
-    description: "Turn quotes around faster and predictably.",
+    description: "Turn proposals around faster and predictably.",
   },
   {
     label: "Faster Form Creation",
@@ -25,9 +25,9 @@ const metricsData = [
     description: "Gain hours back with streamlined custom forms.",
   },
   {
-    label: "Fewer Errors in Quotes",
+    label: "Fewer Errors in Proposals",
     value: "90%",
-    description: "Minimize mistakes with consistent, precise quotes.",
+    description: "Minimize mistakes with consistent, precise proposals.",
   },
   {
     label: "Brand Consistency",

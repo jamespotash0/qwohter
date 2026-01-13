@@ -9,11 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Bell, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn, parseLocalDate } from '@/lib/utils';
-import { useQuotes } from '@/hooks/queries/useQuotes';
-import { reminderService, type ReminderType } from '@/services/reminderService';
+import { useProposals } from '@/hooks/queries/useProposals';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { reminderService, type ReminderType, type Reminder } from '@/services/reminderService';
 import { toast } from 'sonner';
 import { useUser } from '@/auth';
-import { supabase } from '@/integrations/supabase/client'
 
 interface AddReminderModalProps {
   open: boolean;
@@ -22,33 +22,24 @@ interface AddReminderModalProps {
   onReminderCreated?: () => void;
 }
 
-interface Reminder {
-  id: string;
-  title: string;
-  description?: string;
-  due_date: string;
-  quote_id?: string;
-  reminder_type: ReminderType;
-  organization_id: string;
-}
-
 export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCreated }: AddReminderModalProps) => {
-  // Get user and quotes using React Query
+  // Get user, organization, and proposals using hooks
   const user = useUser();
-  const { data: quotes = [] } = useQuotes(user?.id);
+  const { organization } = useCurrentOrganization(user?.id ?? '', !!user?.id);
+  const { data: proposals = [] } = useProposals(organization?.id);
 
   const [reminderType, setReminderType] = useState<string>('');
   const [alertName, setAlertName] = useState('');
-  const [quoteReference, setQuoteReference] = useState<string>('none');
+  const [proposalReference, setProposalReference] = useState<string>('none');
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('09:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get active (non-archived) quotes
-  const activeQuotes = useMemo(() => {
-    return quotes.filter(q => !q.archived);
-  }, [quotes]);
+  // Get active (non-archived) proposals
+  const activeProposals = useMemo(() => {
+    return proposals.filter(p => !p.archived);
+  }, [proposals]);
 
   // Reset form when modal opens or populate with editing data
   useEffect(() => {
@@ -57,7 +48,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         // Populate form with existing reminder data
         setReminderType(editingReminder.reminder_type);
         setAlertName(editingReminder.title);
-        setQuoteReference(editingReminder.quote_id || 'none');
+        setProposalReference(editingReminder.proposal_id || 'none');
         setNotes(editingReminder.description || '');
 
         // Parse date and time from due_date
@@ -72,7 +63,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         // Reset to empty state for new reminder
         setReminderType('');
         setAlertName('');
-        setQuoteReference('none');
+        setProposalReference('none');
         setNotes('');
         setDate(undefined);
         setTime('09:00');
@@ -117,21 +108,13 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
     setIsSubmitting(true);
 
     try {
-      // Get current user's organization
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('User not authenticated');
         setIsSubmitting(false);
         return;
       }
 
-      const { data: membership, error: membershipError } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (membershipError || !membership) {
+      if (!organization?.id) {
         toast.error('Organization not found');
         setIsSubmitting(false);
         return;
@@ -148,7 +131,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
           title: alertName.trim(),
           description: notes.trim() || undefined,
           due_date: dueDateTime.toISOString(),
-          quote_id: quoteReference && quoteReference !== 'none' ? quoteReference : undefined,
+          proposal_id: proposalReference && proposalReference !== 'none' ? proposalReference : undefined,
           reminder_type: reminderType as ReminderType,
         });
         error = updateResult.error;
@@ -158,9 +141,9 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
           title: alertName.trim(),
           description: notes.trim() || undefined,
           due_date: dueDateTime.toISOString(),
-          quote_id: quoteReference && quoteReference !== 'none' ? quoteReference : undefined,
+          proposal_id: proposalReference && proposalReference !== 'none' ? proposalReference : undefined,
           reminder_type: reminderType as ReminderType,
-          organization_id: (membership as any).organization_id,
+          organization_id: organization.id,
           is_shared: true, // Default to shared with organization
         });
         error = createResult.error;
@@ -175,7 +158,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
       // Reset form
       setAlertName('');
       setNotes('');
-      setQuoteReference('none');
+      setProposalReference('none');
       setReminderType('');
       setDate(undefined);
       setTime('09:00');
@@ -242,7 +225,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="General">General</SelectItem>
-                  <SelectItem value="Quote_Follow_Up">Quote Follow-Up</SelectItem>
+                  <SelectItem value="Proposal_Follow_Up">Proposal Follow-Up</SelectItem>
                   <SelectItem value="Task">Task</SelectItem>
                   <SelectItem value="Meeting">Meeting</SelectItem>
                   <SelectItem value="Deadline">Deadline</SelectItem>
@@ -267,20 +250,20 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
               />
             </div>
 
-            {/* Optional Quote Reference */}
+            {/* Optional Proposal Reference */}
             <div className="space-y-2">
-              <Label htmlFor="quoteReference" className="text-sm font-medium text-gray-700">
-                Quote Reference (Optional)
+              <Label htmlFor="proposalReference" className="text-sm font-medium text-gray-700">
+                Proposal Reference (Optional)
               </Label>
-              <Select value={quoteReference} onValueChange={setQuoteReference}>
+              <Select value={proposalReference} onValueChange={setProposalReference}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="No quote linked" />
+                  <SelectValue placeholder="No proposal linked" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No quote linked</SelectItem>
-                  {activeQuotes.map((quote) => (
-                    <SelectItem key={quote.id} value={quote.id}>
-                      {quote.proposal_number} - {quote.project_name || 'Untitled'}
+                  <SelectItem value="none">No proposal linked</SelectItem>
+                  {activeProposals.map((proposal) => (
+                    <SelectItem key={proposal.id} value={proposal.id}>
+                      {proposal.proposal_number} - {proposal.project_name || 'Untitled'}
                     </SelectItem>
                   ))}
                 </SelectContent>

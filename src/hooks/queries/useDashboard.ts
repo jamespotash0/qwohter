@@ -1,7 +1,7 @@
 /**
  * React Query Hooks for Dashboard
  *
- * Replaces manual dashboard data fetching
+ * Uses the proposals table (new form-builder system)
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -10,36 +10,53 @@ import { queryKeys } from '@/lib/queryClient';
 
 /**
  * Dashboard stats type
+ * Proposal statuses: Draft, Submitted, Won, Rejected
  */
 export interface DashboardStats {
-  totalQuotes: number;
-  submittedQuotes: number;
-  wonQuotes: number;
+  totalProposals: number;
+  draftProposals: number;
+  submittedProposals: number;
+  wonProposals: number;
+  rejectedProposals: number;
   totalValue: number;
-  winRate: number;
+  winRate: number; // Won / (Won + Rejected) * 100
 }
 
 /**
- * Fetch dashboard stats
+ * Fetch dashboard stats from proposals table
  */
+type ProposalRow = {
+  status: 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+  total_value: number | null;
+};
+
 async function fetchDashboardStats(organizationId: string): Promise<DashboardStats> {
-  const { data: quotes, error } = await supabase
-    .from('quotes')
+  const { data: proposals, error } = await supabase
+    .from('proposals')
     .select('status, total_value')
     .eq('organization_id', organizationId);
 
   if (error) throw error;
 
-  const totalQuotes = quotes?.length || 0;
-  const submittedQuotes = quotes?.filter(q => q.status === 'Submitted').length || 0;
-  const wonQuotes = quotes?.filter(q => q.status === 'Won').length || 0;
-  const totalValue = quotes?.reduce((sum, q) => sum + (q.total_value || 0), 0) || 0;
-  const winRate = submittedQuotes > 0 ? (wonQuotes / submittedQuotes) * 100 : 0;
+  const typedProposals = (proposals ?? []) as ProposalRow[];
+
+  const totalProposals = typedProposals?.length || 0;
+  const draftProposals = typedProposals?.filter(p => p.status === 'Draft').length || 0;
+  const submittedProposals = typedProposals?.filter(p => p.status === 'Submitted').length || 0;
+  const wonProposals = typedProposals?.filter(p => p.status === 'Won').length || 0;
+  const rejectedProposals = typedProposals?.filter(p => p.status === 'Rejected').length || 0;
+  const totalValue = typedProposals?.reduce((sum, p) => sum + (p.total_value || 0), 0) || 0;
+
+  // Win rate = Won / (Won + Rejected) * 100
+  const decidedProposals = wonProposals + rejectedProposals;
+  const winRate = decidedProposals > 0 ? (wonProposals / decidedProposals) * 100 : 0;
 
   return {
-    totalQuotes,
-    submittedQuotes,
-    wonQuotes,
+    totalProposals,
+    draftProposals,
+    submittedProposals,
+    wonProposals,
+    rejectedProposals,
     totalValue,
     winRate,
   };
@@ -48,7 +65,7 @@ async function fetchDashboardStats(organizationId: string): Promise<DashboardSta
 /**
  * Hook: Use Dashboard Stats
  *
- * Fetches aggregated quote statistics
+ * Fetches aggregated proposal statistics
  */
 export function useDashboardStats(organizationId: string, enabled: boolean = true) {
   return useQuery({

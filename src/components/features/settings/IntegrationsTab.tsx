@@ -5,16 +5,29 @@
  */
 
 import React, { useState } from 'react';
-import { Shield, Plug, Loader2 } from 'lucide-react';
+import { Shield, Plug, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard } from '@/components/features/integrations/IntegrationCard';
 import { QBOnlineConnectDialog } from '@/components/features/integrations/QBOnlineConnectDialog';
 import { QBDesktopConnectDialog } from '@/components/features/integrations/QBDesktopConnectDialog';
+import { GoogleDocsConnectDialog } from '@/components/features/integrations/GoogleDocsConnectDialog';
+import { GoogleDocsSettingsDialog } from '@/components/features/integrations/GoogleDocsSettingsDialog';
 import { useIntegrationsData } from '@/hooks/useIntegrations';
 import { disconnectQBOnline } from '@/services/quickbooksOnlineService';
 import { disconnectQBDesktop } from '@/services/quickbooksDesktopService';
+import { disconnectGoogle } from '@/services/googleDocsIntegrationService';
 import { hasAdminPermissions } from '@/utils/permissions';
 import { invalidateQueries } from '@/lib/queryClient';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { IntegrationType } from '@/lib/types/integrations';
 
 interface IntegrationsTabProps {
@@ -27,16 +40,25 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   userRole,
 }) => {
   const [connectingType, setConnectingType] = useState<IntegrationType | null>(null);
+  const [disconnectingType, setDisconnectingType] = useState<IntegrationType | null>(null);
   const [showQBOnlineDialog, setShowQBOnlineDialog] = useState(false);
   const [showQBDesktopDialog, setShowQBDesktopDialog] = useState(false);
+  const [showGoogleDocsDialog, setShowGoogleDocsDialog] = useState(false);
+  const [showGoogleDocsSettings, setShowGoogleDocsSettings] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [pendingDisconnect, setPendingDisconnect] = useState<IntegrationType | null>(null);
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
   // Use React Query hook for integrations data (automatic caching)
-  const { integrations, isLoading, error } = useIntegrationsData(
+  const { integrations, isLoading, error, connectedIntegrations } = useIntegrationsData(
     organization?.id || '',
     // organization?.plan // Uncomment when plan filtering is needed
   );
+
+  // Get Google Docs settings for the settings dialog
+  const googleDocsIntegration = connectedIntegrations.find(i => i.integration_type === 'google_docs');
+  const googleDocsSettings = googleDocsIntegration?.settings as { drive_folder_id?: string; connected_email?: string } | undefined;
 
   // Show error toast if loading failed
   React.useEffect(() => {
@@ -60,47 +82,102 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         setShowQBOnlineDialog(true);
       } else if (type === 'quickbooks_desktop') {
         setShowQBDesktopDialog(true);
+      } else if (type === 'google_docs') {
+        setShowGoogleDocsDialog(true);
       }
     } finally {
       setConnectingType(null);
     }
   };
 
-  // Handle disconnect
-  const handleDisconnect = async (type: IntegrationType) => {
+  // Handle disconnect - show confirmation first
+  const handleDisconnect = (type: IntegrationType) => {
     if (!hasEditPermission) {
       toast.error('You need Admin or Owner permissions to manage integrations');
       return;
     }
 
-    if (!organization?.id) return;
+    setPendingDisconnect(type);
+    setShowDisconnectConfirm(true);
+  };
+
+  // Handle configure - open settings dialog
+  const handleConfigure = (type: IntegrationType) => {
+    if (!hasEditPermission) {
+      toast.error('You need Admin or Owner permissions to manage integrations');
+      return;
+    }
+
+    if (type === 'google_docs') {
+      setShowGoogleDocsSettings(true);
+    }
+  };
+
+  // Actually perform the disconnect after confirmation
+  const confirmDisconnect = async () => {
+    if (!organization?.id || !pendingDisconnect) return;
+
+    setDisconnectingType(pendingDisconnect);
+    setShowDisconnectConfirm(false);
 
     try {
-      if (type === 'quickbooks_online') {
+      if (pendingDisconnect === 'quickbooks_online') {
         await disconnectQBOnline(organization.id);
         toast.success('QuickBooks Online disconnected');
-      } else if (type === 'quickbooks_desktop') {
+      } else if (pendingDisconnect === 'quickbooks_desktop') {
         await disconnectQBDesktop(organization.id);
         toast.success('QuickBooks Desktop disconnected');
+      } else if (pendingDisconnect === 'google_docs') {
+        await disconnectGoogle(organization.id);
+        toast.success('Google Docs disconnected');
       }
 
       // Invalidate cache to trigger refetch
       await invalidateQueries.connectedIntegrations(organization.id);
+
+      // Also invalidate Google connection cache if it was Google Docs
+      if (pendingDisconnect === 'google_docs') {
+        await invalidateQueries.googleConnection(organization.id);
+      }
     } catch (error) {
       console.error('Failed to disconnect integration:', error);
       toast.error('Failed to disconnect integration');
+    } finally {
+      setDisconnectingType(null);
+      setPendingDisconnect(null);
     }
+  };
+
+  // Get integration name for confirmation dialog
+  const getIntegrationName = (type: IntegrationType | null): string => {
+    if (!type) return 'this integration';
+    const names: Record<IntegrationType, string> = {
+      quickbooks_online: 'QuickBooks Online',
+      quickbooks_desktop: 'QuickBooks Desktop',
+      google_docs: 'Google Docs',
+      dropbox: 'Dropbox',
+    };
+    return names[type] || 'this integration';
   };
 
   // Handle successful connection
   const handleConnectionSuccess = async () => {
+    const wasGoogleDocs = showGoogleDocsDialog;
+
     setShowQBOnlineDialog(false);
     setShowQBDesktopDialog(false);
+    setShowGoogleDocsDialog(false);
 
     if (!organization?.id) return;
 
     // Invalidate cache to trigger refetch
     await invalidateQueries.connectedIntegrations(organization.id);
+
+    // Also invalidate Google connection cache if it was Google Docs
+    if (wasGoogleDocs) {
+      await invalidateQueries.googleConnection(organization.id);
+    }
+
     toast.success('Integration connected successfully');
   };
 
@@ -150,7 +227,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               isConnected={integration.isConnected}
               onConnect={() => handleConnect(integration.type)}
               onDisconnect={() => handleDisconnect(integration.type)}
+              onConfigure={integration.type === 'google_docs' ? () => handleConfigure(integration.type) : undefined}
               isConnecting={connectingType === integration.type}
+              isDisconnecting={disconnectingType === integration.type}
               comingSoon={integration.comingSoon}
               platformRequirement={integration.platformRequirement}
             />
@@ -187,6 +266,48 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         onSuccess={handleConnectionSuccess}
         organizationId={organization?.id || ''}
       />
+
+      <GoogleDocsConnectDialog
+        isOpen={showGoogleDocsDialog}
+        onClose={() => setShowGoogleDocsDialog(false)}
+        onSuccess={handleConnectionSuccess}
+        organizationId={organization?.id || ''}
+      />
+
+      <GoogleDocsSettingsDialog
+        isOpen={showGoogleDocsSettings}
+        onClose={() => setShowGoogleDocsSettings(false)}
+        organizationId={organization?.id || ''}
+        currentFolderId={googleDocsSettings?.drive_folder_id}
+        connectedEmail={googleDocsSettings?.connected_email}
+      />
+
+      {/* Disconnect Confirmation Dialog */}
+      <AlertDialog open={showDisconnectConfirm} onOpenChange={setShowDisconnectConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Disconnect {getIntegrationName(pendingDisconnect)}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to disconnect {getIntegrationName(pendingDisconnect)}?
+              You will need to reconnect and re-authorize to use this integration again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingDisconnect(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDisconnect}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

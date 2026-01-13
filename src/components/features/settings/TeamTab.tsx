@@ -797,8 +797,8 @@ export function TeamTab() {
                 <p className="text-sm">This action will:</p>
                 <ul className="text-sm list-disc list-inside space-y-1 ml-2">
                   <li>Revoke their access immediately</li>
-                  <li>Preserve their quotes and data</li>
-                  <li>Display their name as "Deactivated User" on quotes</li>
+                  <li>Preserve their proposals and data</li>
+                  <li>Display their name as "Deactivated User" on proposals</li>
                 </ul>
 
                 {/* Billing Impact Notice */}

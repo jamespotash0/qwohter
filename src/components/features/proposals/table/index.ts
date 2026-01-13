@@ -1,0 +1,1 @@
+export { EnhancedProposalsTable } from './EnhancedProposalsTable';

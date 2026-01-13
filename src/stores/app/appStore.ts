@@ -17,7 +17,7 @@ interface AppState {
   
   // Feature flags
   features: {
-    advancedQuoteEditor: boolean;
+    advancedProposalEditor: boolean;
     wallSystemBuilder: boolean;
     teamManagement: boolean;
     analytics: boolean;
@@ -44,7 +44,7 @@ interface AppState {
 }
 
 const initialFeatures = {
-  advancedQuoteEditor: true,
+  advancedProposalEditor: true,
   wallSystemBuilder: true,
   teamManagement: true,
   analytics: true,
@@ -78,9 +78,9 @@ export const useAppStore = create<AppState>()(
           // OLD: await useAuthStore.getState().initialize();
           // NEW: AuthProvider handles this automatically
 
-          // ✅ v3.0.0: Quote store initialization removed
-          // OLD: await useQuotesStore.getState().initialize();
-          // NEW: React Query handles initialization automatically via useQuotes() hook
+          // ✅ v3.0.0: Proposal store initialization removed
+          // OLD: await useProposalsStore.getState().initialize();
+          // NEW: React Query handles initialization automatically via useProposals() hook
           
           // Set up online/offline listeners
           if (typeof window !== 'undefined') {
@@ -131,12 +131,12 @@ export const useAppStore = create<AppState>()(
         try {
           useUIStore.getState().setGlobalLoading(true, 'Syncing data...');
 
-          // Re-fetch quotes if user is authenticated
+          // Re-fetch proposals if user is authenticated
           // React Query handles this automatically via invalidation
           // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
           const session = await authService.getSession();
           if (session?.user) {
-            await queryClient.invalidateQueries({ queryKey: ['quotes'] });
+            await queryClient.invalidateQueries({ queryKey: ['proposals'] });
           }
 
           set({ lastSync: new Date() });

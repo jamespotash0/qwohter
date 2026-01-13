@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Quote } from './quotesService';
+import type { Quote } from '@/_deprecated/services/quotesService';
 import type {
   QBOnlineConnection,
   QBOnlineInvoice,

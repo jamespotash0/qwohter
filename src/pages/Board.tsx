@@ -149,15 +149,15 @@ export default function Board() {
   };
 
   const handleRequestAISuggestions = async () => {
-    if (!selectedProject?.quote) {
-      alert('No quote data found for this project. AI suggestions require quote information.');
+    if (!selectedProject?.proposal) {
+      alert('No proposal data found for this project. AI suggestions require project information.');
       return;
     }
 
     setIsGeneratingAI(true);
     try {
       const result = await AIMilestoneService.generateMilestones(
-        selectedProject.quote,
+        selectedProject.proposal,
         selectedProject.created_at
       );
       setAiSuggestions(result.milestones);
@@ -863,13 +863,14 @@ export default function Board() {
                       }}
                     >
                       {columnProjects.map((project) => {
-                        const quote = project.quote;
-                        const clientName = quote?.job_details?.client_name || '';
-                        const clientCompany = quote?.job_details?.client_company || '';
-                        const clientAddress = quote?.job_details?.client_address || '';
-                        // const jobLocation = quote?.job_details?.job_location || '';
-                        const total = quote?.price_details?.final_selling_price;
-                        // const avatarColor = getAvatarColor(project.id);
+                        const proposal = project.proposal;
+
+                        // Get data from proposal
+                        const projectName = proposal?.project_name || 'Untitled Project';
+                        const proposalNumber = proposal?.proposal_number || '';
+                        const clientName = proposal?.client_name || '';
+                        const clientCompany = proposal?.client_company || '';
+                        const clientAddress = proposal?.job_location || '';
 
                         return (
                           <div key={project.id} className="relative">
@@ -920,7 +921,7 @@ export default function Board() {
                             {/* Card Header */}
                             <div className="flex-1 min-w-0 pr-6 mb-2">
                               <h4 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1">
-                                {quote?.project_name || 'Untitled Project'}
+                                {projectName}
                               </h4>
                               <p className="text-xs text-gray-600 truncate">
                                 {clientName}
@@ -940,12 +941,12 @@ export default function Board() {
 
                             {/* Card Metadata - Footer */}
                             <div className="flex items-center justify-between text-xs text-gray-500 mt-auto pt-3 border-t border-gray-100">
-                              {/* Left Side - Quote # and Values */}
+                              {/* Left Side - Proposal # and Values */}
                               <div className="flex items-center gap-2">
-                                {quote?.proposal_number && (
+                                {proposalNumber && (
                                   <div className="flex items-center gap-1">
                                     <HashIcon className="w-3 h-3" />
-                                    <span>{quote.proposal_number}</span>
+                                    <span>{proposalNumber}</span>
                                   </div>
                                 )}
 
@@ -1143,13 +1144,13 @@ export default function Board() {
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
                   <span className="text-base font-semibold text-gray-900">
-                    {selectedProject.quote?.project_name || 'Untitled Project'}
+                    {selectedProject.proposal?.project_name || 'Untitled Project'}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Proposal #:</span>
                   <span className="text-sm text-gray-700">
-                    {selectedProject.quote?.proposal_number || 'N/A'}
+                    {selectedProject.proposal?.proposal_number || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -1212,56 +1213,52 @@ export default function Board() {
                 </button>
                 {!collapsedSections.has('summary') && (
                   <div className="space-y-2 text-sm">
-                  {selectedProject.quote?.job_details?.client_name && (
+                  {selectedProject.proposal?.client_name && (
                     <div className="flex gap-3">
                       <span className="text-gray-500 min-w-[100px]">Client:</span>
-                      <span className="text-gray-900">{selectedProject.quote.job_details.client_name}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.job_details?.client_company && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Company:</span>
-                      <span className="text-gray-900">{selectedProject.quote.job_details.client_company}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.job_details?.job_location && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
-                      <span className="text-gray-900">{selectedProject.quote.job_details.job_location}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.wall_details?.wall_type && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Wall Type:</span>
                       <span className="text-gray-900">
-                        {selectedProject.quote.wall_details.wall_type}
-                        {selectedProject.quote.wall_details.series && ` - ${selectedProject.quote.wall_details.series}`}
-                        {selectedProject.quote.wall_details.model && ` (${selectedProject.quote.wall_details.model})`}
+                        {selectedProject.proposal.client_name}
                       </span>
                     </div>
                   )}
-                  {selectedProject.quote?.price_details?.final_selling_price && (
+                  {selectedProject.proposal?.client_company && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Company:</span>
+                      <span className="text-gray-900">
+                        {selectedProject.proposal.client_company}
+                      </span>
+                    </div>
+                  )}
+                  {selectedProject.proposal?.job_location && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
+                      <span className="text-gray-900">
+                        {selectedProject.proposal.job_location}
+                      </span>
+                    </div>
+                  )}
+                  {selectedProject.proposal?.total_value && (
                     <div className="flex gap-3">
                       <span className="text-gray-500 min-w-[100px]">Total Price:</span>
                       <span className="text-gray-900 font-semibold text-blue-600">
-                        {formatCurrency(selectedProject.quote.price_details.final_selling_price)}
+                        {formatCurrency(selectedProject.proposal.total_value)}
                       </span>
                     </div>
                   )}
 
-                  {/* Quick Actions - Only show if quote exists */}
-                  {selectedProject.quote?.proposal_number && (
+                  {/* Quick Actions */}
+                  {selectedProject.proposal?.id && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <Button
                         variant="ghost"
                         size="sm"
                         className="w-full h-8 text-xs justify-start"
                         onClick={() => {
-                          window.location.href = `/editor/${selectedProject.quote.proposal_number}`;
+                          window.location.href = `/proposals/${selectedProject.proposal!.id}/edit`;
                         }}
                       >
                         <FileIcon className="w-3.5 h-3.5 mr-1.5" />
-                        View Quote
+                        View Proposal
                       </Button>
                     </div>
                   )}
@@ -1315,7 +1312,7 @@ export default function Board() {
                   <ProjectTasks
                     projectId={selectedProject.id}
                     organizationId={organizationId}
-                    projectName={selectedProject.quote?.project_name || 'Project'}
+                    projectName={selectedProject.proposal?.project_name || 'Project'}
                   />
                 )}
               </div>
@@ -1367,7 +1364,7 @@ export default function Board() {
         }}
         title="Delete Project"
         description="This action cannot be undone. All tasks, attachments, and milestones associated with this project will be permanently removed."
-        itemName={deleteProjectDialog.project?.quote?.project_name || 'Untitled Project'}
+        itemName={deleteProjectDialog.project?.proposal?.project_name || 'Untitled Project'}
       />
     </PageContent>
   );

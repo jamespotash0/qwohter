@@ -199,7 +199,6 @@ const Auth = () => {
           if (savedState.email) formState.setEmail(savedState.email);
           if (savedState.userId) authFlow.setUserId(savedState.userId);
           if (savedState.fullName) formState.setFullName(savedState.fullName);
-          if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
           if (savedState.orgName) formState.setOrgName(savedState.orgName);
 
           if (savedState.step && savedState.step !== 'auth') {
@@ -256,8 +255,11 @@ const Auth = () => {
           .eq('id', session.user.id)
           .maybeSingle();
 
+        // Explicitly type profile to avoid TS error
+        const typedProfile = profile as { full_name?: string } | null;
+
         // If user has completed onboarding (has name and active membership), redirect to dashboard
-        if (profile?.full_name && membership) {
+        if (typedProfile?.full_name && membership) {
           console.log('User has completed onboarding, redirecting to dashboard');
           authFlow.redirectingRef.current = true;
           clearAuthState();
@@ -540,14 +542,12 @@ const Auth = () => {
       companyFax: companyInfo.companyFax,
       companyAddress: companyInfo.companyAddress,
       companyWebsite: companyInfo.companyWebsite,
-      quoteStartingPoint: companyInfo.quoteStartingPoint,
       industry: formState.industry,
       foundVia: formState.foundVia,
       setLoading: authFlow.setLoading,
       toast,
       clearAuthState,
       redirectAfterAuth: () => redirectAfterAuth(navigate),
-      // setStep: authFlow.setStep,
       navigate,
     });
   };
@@ -596,7 +596,7 @@ const Auth = () => {
         </div>
       </header>
 
-      {/* Background pattern with quote checkerboard design */}
+      {/* Background pattern with proposal checkerboard design */}
       <div className="absolute inset-0">
         {/* Repeating quotation marks in checkerboard pattern */}
         <div
@@ -631,7 +631,11 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" : "max-w-lg"
+            authFlow.step === "auth" && !authFlow.isSignUp
+              ? "max-w-md"
+              : authFlow.step === "company-info"
+                ? "max-w-2xl"
+                : "max-w-lg"
           }`}>
             {/* Main form card for all steps */}
             <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
@@ -727,7 +731,6 @@ const Auth = () => {
                 fax={companyInfo.companyFax}
                 address={companyInfo.companyAddress}
                 website={companyInfo.companyWebsite}
-                quoteStartingPoint={companyInfo.quoteStartingPoint}
                 industry={formState.industry}
                 foundVia={formState.foundVia}
                 loading={authFlow.loading}
@@ -737,7 +740,6 @@ const Auth = () => {
                 onFaxChange={companyInfo.setCompanyFax}
                 onAddressChange={companyInfo.setCompanyAddress}
                 onWebsiteChange={companyInfo.setCompanyWebsite}
-                onQuoteStartingPointChange={companyInfo.setQuoteStartingPoint}
                 onIndustryChange={formState.setIndustry}
                 onFoundViaChange={formState.setFoundVia}
                 onLogoUpload={onLogoUpload}

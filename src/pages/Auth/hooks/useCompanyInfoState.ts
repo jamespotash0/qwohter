@@ -14,8 +14,6 @@ interface CompanyInfoState {
   setCompanyAddress: (address: string) => void;
   companyWebsite: string;
   setCompanyWebsite: (website: string) => void;
-  quoteStartingPoint: string;
-  setQuoteStartingPoint: (point: string) => void;
   currentLogoUrl: string | undefined;
   setCurrentLogoUrl: (url: string | undefined) => void;
 }
@@ -25,7 +23,6 @@ export const useCompanyInfoState = (): CompanyInfoState => {
   const [companyFax, setCompanyFax] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
-  const [quoteStartingPoint, setQuoteStartingPoint] = useState('');
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | undefined>();
 
   return {
@@ -37,8 +34,6 @@ export const useCompanyInfoState = (): CompanyInfoState => {
     setCompanyAddress,
     companyWebsite,
     setCompanyWebsite,
-    quoteStartingPoint,
-    setQuoteStartingPoint,
     currentLogoUrl,
     setCurrentLogoUrl,
   };

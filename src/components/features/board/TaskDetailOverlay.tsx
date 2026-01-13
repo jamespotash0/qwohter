@@ -25,15 +25,17 @@ import {
   FolderOpen,
   Check,
 } from '@phosphor-icons/react';
-import { ExternalLink, Link2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 
 interface ProjectOption {
   id: string;
-  quote?: {
-    project_name?: string;
-    proposal_number?: string;
+  proposal_id?: string;
+  proposal?: {
+    project_name?: string | null;
+    proposal_number?: string | null;
+    [key: string]: unknown; // Allow additional properties from full Proposal type
   } | null;
 }
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
@@ -41,9 +43,10 @@ import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
 
 interface Member {
   user_id: string;
-  full_name: string | null;
-  email: string;
+  full_name?: string | null;
+  email?: string;
   status: string;
+  [key: string]: unknown; // Allow additional properties from OrganizationMember type
 }
 
 interface TaskDetailOverlayProps {
@@ -127,11 +130,13 @@ export function TaskDetailOverlay({
     }
   };
 
-  const proposalNumber = task.project?.quote?.proposal_number;
+  // Get proposal_id from the projects list (more reliable than task.project which may not be updated)
+  const linkedProject = task.project_id ? projects.find(p => p.id === task.project_id) : null;
+  const proposalId = linkedProject?.proposal_id || task.project?.proposal_id;
 
   const handleNavigateToProject = () => {
-    if (proposalNumber) {
-      navigate(`/editor/${proposalNumber}`);
+    if (proposalId) {
+      navigate(`/proposals/${proposalId}/edit`);
     }
   };
 
@@ -314,27 +319,11 @@ export function TaskDetailOverlay({
               }}
               className="w-40 h-8"
             />
-            {dueDate && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-gray-400 hover:text-red-500"
-                onClick={() => {
-                  setDueDate('');
-                  handleSave('due_date', null);
-                }}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            )}
           </div>
 
           {/* Link to Project */}
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 w-20 flex items-center gap-1">
-              <Link2 className="w-3.5 h-3.5" />
-              Project
-            </span>
+            <span className="text-sm text-gray-500 w-20">Project</span>
             <Select
               value={task.project_id || 'none'}
               onValueChange={(value) => {
@@ -353,19 +342,20 @@ export function TaskDetailOverlay({
                   <SelectItem key={project.id} value={project.id}>
                     <div className="flex items-center gap-2">
                       <FolderOpen className="w-3 h-3 text-purple-500" />
-                      {project.quote?.project_name || 'Unnamed Project'}
+                      {project.proposal?.project_name || 'Unnamed Project'}
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {task.project_id && proposalNumber && (
+            {task.project_id && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
                 onClick={handleNavigateToProject}
-                title="Open project"
+                disabled={!proposalId}
+                title={proposalId ? 'Open proposal' : 'Proposal not linked'}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
               </Button>

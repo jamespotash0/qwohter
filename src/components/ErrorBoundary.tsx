@@ -103,18 +103,18 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 /**
- * QuoteErrorBoundary - Specialized error boundary for quote-related components
+ * ProposalErrorBoundary - Specialized error boundary for proposal-related components
  * Provides domain-specific error handling and recovery
  */
-export const QuoteErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const handleQuoteError = (error: Error, errorInfo: ErrorInfo) => {
-    console.error('Quote Error:', error, errorInfo);
-    // TODO: Track quote-specific errors for analytics
+export const ProposalErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const handleProposalError = (error: Error, errorInfo: ErrorInfo) => {
+    console.error('Proposal Error:', error, errorInfo);
+    // TODO: Track proposal-specific errors for analytics
   };
 
   return (
     <ErrorBoundary
-      onError={handleQuoteError}
+      onError={handleProposalError}
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
           <Card className="max-w-md w-full">
@@ -124,9 +124,9 @@ export const QuoteErrorBoundary: React.FC<{ children: ReactNode }> = ({ children
                   <AlertTriangle className="h-12 w-12 text-red-600 dark:text-red-400" />
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold">Quote Error</CardTitle>
+              <CardTitle className="text-2xl font-bold">Proposal Error</CardTitle>
               <CardDescription className="text-base mt-2">
-                There was an issue loading your quote. Your data has been saved automatically.
+                There was an issue loading your proposal. Your data has been saved automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -139,12 +139,12 @@ export const QuoteErrorBoundary: React.FC<{ children: ReactNode }> = ({ children
                   Try Again
                 </Button>
                 <Button
-                  onClick={() => window.location.href = '/quotes'}
+                  onClick={() => window.location.href = '/proposals'}
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2"
                 >
                   <Home className="h-4 w-4" />
-                  All Quotes
+                  All Proposals
                 </Button>
               </div>
             </CardContent>

@@ -13,25 +13,26 @@ export const useSecureActions = () => {
   const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id);
 
   /**
-   * Secure quote creation with validation
+   * Secure proposal creation with validation
+   * Uses the proposals table (new form-builder system)
    */
-  const createQuoteSecurely = useCallback(async (quoteData: any) => {
+  const createProposalSecurely = useCallback(async (proposalData: any) => {
     // Rate limiting check
-    if (!authRateLimiter.isAllowed(`create_quote_${user?.id}`)) {
-      throw new Error('Too many requests. Please wait before creating another quote.');
+    if (!authRateLimiter.isAllowed(`create_proposal_${user?.id}`)) {
+      throw new Error('Too many requests. Please wait before creating another proposal.');
     }
 
     // Input validation and sanitization
     const sanitizedData = {
-      ...quoteData,
-      quote_name: sanitizeInput.string(quoteData.quote_name),
-      customer_name: sanitizeInput.string(quoteData.customer_name || ''),
-      customer_email: sanitizeInput.email(quoteData.customer_email || ''),
+      ...proposalData,
+      project_name: sanitizeInput.string(proposalData.project_name),
+      client_name: sanitizeInput.string(proposalData.client_name || ''),
+      client_company: sanitizeInput.string(proposalData.client_company || ''),
     };
 
     // Validate content safety
-    if (!validateSecurity.contentSafety(sanitizedData.quote_name)) {
-      throw new Error('Invalid content detected in quote data');
+    if (sanitizedData.project_name && !validateSecurity.contentSafety(sanitizedData.project_name)) {
+      throw new Error('Invalid content detected in proposal data');
     }
 
     // Validate organization access
@@ -41,13 +42,13 @@ export const useSecureActions = () => {
 
     try {
       // Client-side validation (server-side validation is handled by RLS policies)
-      if (!sanitizedData.quote_name || sanitizedData.quote_name.length > 255) {
-        throw new Error('Invalid quote name');
+      if (sanitizedData.project_name && sanitizedData.project_name.length > 255) {
+        throw new Error('Invalid project name');
       }
 
-      // Create quote with sanitized data
+      // Create proposal with sanitized data
       const { data, error } = await supabase
-        .from('quotes')
+        .from('proposals')
         .insert({
           ...sanitizedData,
           organization_id: currentOrganization.id,
@@ -60,47 +61,48 @@ export const useSecureActions = () => {
 
       return data;
     } catch (error) {
-      console.error('Secure quote creation failed:', error);
+      console.error('Secure proposal creation failed:', error);
       throw error;
     }
   }, [user, currentOrganization]);
 
   /**
-   * Secure quote update with validation
+   * Secure proposal update with validation
+   * Uses the proposals table (new form-builder system)
    */
-  const updateQuoteSecurely = useCallback(async (quoteId: string, updates: any) => {
+  const updateProposalSecurely = useCallback(async (proposalId: string, updates: any) => {
     // Rate limiting
-    if (!authRateLimiter.isAllowed(`update_quote_${user?.id}`)) {
+    if (!authRateLimiter.isAllowed(`update_proposal_${user?.id}`)) {
       throw new Error('Too many requests. Please wait before updating.');
     }
 
-    // Validate quote ID
-    const sanitizedQuoteId = sanitizeInput.uuid(quoteId);
-    if (!sanitizedQuoteId) {
-      throw new Error('Invalid quote ID');
+    // Validate proposal ID
+    const sanitizedProposalId = sanitizeInput.uuid(proposalId);
+    if (!sanitizedProposalId) {
+      throw new Error('Invalid proposal ID');
     }
 
-    // Validate user can access this quote by checking organization
-    const { data: quoteData, error: quoteError } = await supabase
-      .from('quotes')
+    // Validate user can access this proposal by checking organization
+    const { data: proposalData, error: proposalError } = await supabase
+      .from('proposals')
       .select('organization_id')
-      .eq('id', sanitizedQuoteId)
+      .eq('id', sanitizedProposalId)
       .single();
 
-    if (quoteError || !quoteData) {
-      throw new Error('Quote not found');
+    if (proposalError || !proposalData) {
+      throw new Error('Proposal not found');
     }
 
-    if (quoteData.organization_id !== currentOrganization?.id) {
-      throw new Error('Access denied: Cannot modify this quote');
+    if (proposalData.organization_id !== currentOrganization?.id) {
+      throw new Error('Access denied: Cannot modify this proposal');
     }
 
     // Sanitize update data
     const sanitizedUpdates = {
       ...updates,
-      quote_name: updates.quote_name ? sanitizeInput.string(updates.quote_name) : undefined,
-      customer_name: updates.customer_name ? sanitizeInput.string(updates.customer_name) : undefined,
-      customer_email: updates.customer_email ? sanitizeInput.email(updates.customer_email) : undefined,
+      project_name: updates.project_name ? sanitizeInput.string(updates.project_name) : undefined,
+      client_name: updates.client_name ? sanitizeInput.string(updates.client_name) : undefined,
+      client_company: updates.client_company ? sanitizeInput.string(updates.client_company) : undefined,
     };
 
     // Remove undefined values
@@ -112,9 +114,9 @@ export const useSecureActions = () => {
 
     try {
       const { data, error } = await supabase
-        .from('quotes')
+        .from('proposals')
         .update(sanitizedUpdates)
-        .eq('id', sanitizedQuoteId)
+        .eq('id', sanitizedProposalId)
         .select()
         .single();
 
@@ -122,10 +124,10 @@ export const useSecureActions = () => {
 
       return data;
     } catch (error) {
-      console.error('Secure quote update failed:', error);
+      console.error('Secure proposal update failed:', error);
       throw error;
     }
-  }, [user]);
+  }, [user, currentOrganization]);
 
   /**
    * Secure admin action with privilege validation
@@ -205,8 +207,8 @@ export const useSecureActions = () => {
   }, []);
 
   return {
-    createQuoteSecurely,
-    updateQuoteSecurely,
+    createProposalSecurely,
+    updateProposalSecurely,
     performAdminAction,
     validateFileUpload,
   };

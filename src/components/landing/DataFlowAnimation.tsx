@@ -6,7 +6,7 @@ export const DataFlowAnimation: React.FC = () => {
     <div className="relative w-full h-32 overflow-hidden bg-gradient-to-r from-blue-50 to-orange-50 rounded-2xl p-6">
       {/* Data flowing particles */}
       <div className="absolute inset-0">
-        {/* Quote generation flow */}
+        {/* Proposal generation flow */}
         <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
           <div className="flex items-center space-x-4 animate-pulse">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">

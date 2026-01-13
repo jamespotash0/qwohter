@@ -45,10 +45,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   const [checkingMembership, setCheckingMembership] = useState(false);
 
   // Check if current route should show sidebar
-  // Wizard pages (/quotes/new, /quotes/edit-incomplete) are full-screen without sidebar
-  const isWizardPage = location.pathname === '/quotes/new' ||
-    location.pathname.startsWith('/quotes/edit-incomplete/');
-
+  // Public routes that don't require authentication
   const shouldShowSidebar = ![
     '/',
     '/sign-in',
@@ -62,7 +59,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/contact-us'
   ].includes(location.pathname) &&
     !location.pathname.startsWith('/editor/') &&
-    !isWizardPage;
+    !location.pathname.startsWith('/sign/'); // E-signature signing page is public
 
   // Check membership status for protected routes
   useEffect(() => {
@@ -80,7 +77,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
           .from('memberships')
           .select('status, role') //membership_status
           .eq('user_id', user.id)
-          .maybeSingle();
+          .maybeSingle() as { data: { status: string; role: string } | null; error: any };
 
         if (error) {
           console.error('Error checking membership:', error);
@@ -224,20 +221,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       // Render editor with auth but no layout wrapper
       return <>{children}</>;
     }
-    // Wizard pages need auth check but no sidebar (full-screen experience)
-    if (isWizardPage) {
-      // Check auth for wizard
-      if (isInitialized && !user) {
-        navigate('/sign-in');
-        return null;
-      }
-      // Render wizard full-screen without sidebar
-      return (
-        <div className="h-screen w-full overflow-auto bg-[var(--content-bg)]">
-          {children}
-        </div>
-      );
-    }
     // Other public routes render directly
     return <>{children}</>;
   }
@@ -302,10 +285,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
 
   // Check if current route should show sidebar
-  // Wizard pages are full-screen without sidebar
-  const isWizardPage = location.pathname === '/quotes/new' ||
-    location.pathname.startsWith('/quotes/edit-incomplete/');
-
+  // Public routes that don't require authentication
   const shouldShowSidebar = ![
     '/',
     '/sign-in',
@@ -319,7 +299,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/contact-us'
   ].includes(location.pathname) &&
     !location.pathname.startsWith('/editor/') &&
-    !isWizardPage;
+    !location.pathname.startsWith('/sign/'); // E-signature signing page is public
 
   // Wrap with SidebarProvider only for protected routes
   if (shouldShowSidebar) {
@@ -330,6 +310,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     );
   }
 
-  // Public routes render without SidebarProvider
-  return <MainLayoutContent>{children}</MainLayoutContent>;
+  // Public routes (like /sign/:token) bypass MainLayoutContent entirely
+  // MainLayoutContent has auth redirects, so public pages must not use it
+  return <>{children}</>;
 };

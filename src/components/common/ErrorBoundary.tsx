@@ -10,7 +10,7 @@
  *
  * When to use:
  * - Wrap the entire app (done in App.tsx)
- * - Wrap critical features (quotes editor, PDF viewer, analytics)
+ * - Wrap critical features (proposals editor, PDF viewer, analytics)
  * - DON'T wrap every component (too granular, hard to debug)
  */
 
@@ -130,13 +130,6 @@ export const ErrorBoundary = Sentry.withErrorBoundary(
 );
 
 /**
- * Feature-level Error Boundary
- * Use this for specific features that can fail independently
- *
- * Example:
- * <FeatureErrorBoundary featureName="Quote Editor">
- *   <QuoteEditor />
- * </FeatureErrorBoundary>
  */
 export const FeatureErrorBoundary = ({
   children,

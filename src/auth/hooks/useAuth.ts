@@ -212,6 +212,8 @@ export function useSignUp() {
  * ```
  */
 export function useSignOut() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: authService.signOut,
     onSuccess: (result) => {
@@ -219,8 +221,31 @@ export function useSignOut() {
         throw result.error;
       }
 
-      // Cache will be cleared by AuthProvider's listener
-      // This just triggers the signout process
+      // Always clear cache on successful signout
+      // This handles cases where session was already invalid and SIGNED_OUT event doesn't fire
+      queryClient.clear();
+
+      // Clear auth-related localStorage (same as AuthProvider's handleSignedOut)
+      const keysToRemove = [
+        'auth_cached_profile',
+        'sidebar_cached_profile',
+        'sidebar_cached_role',
+        'auth_flow_state',
+        'temp_onboarding_progress',
+        'org_cached_organization',
+        'org_cached_user_role',
+        'org_cached_membership',
+        'temp-signup-data',
+      ];
+      keysToRemove.forEach((key) => {
+        try {
+          localStorage.removeItem(key);
+        } catch (err) {
+          // Ignore localStorage errors
+        }
+      });
+
+      console.log('🔐 useSignOut: Cache and localStorage cleared');
     },
   });
 }

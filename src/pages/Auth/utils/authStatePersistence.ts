@@ -8,7 +8,6 @@ interface AuthFlowState {
   email?: string;
   userId?: string;
   fullName?: string;
-  orgChoice?: string;
   orgName?: string;
   timestamp?: number;
 }

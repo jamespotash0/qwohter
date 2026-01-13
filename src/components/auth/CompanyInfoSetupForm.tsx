@@ -21,7 +21,6 @@ interface CompanyInfoSetupFormProps {
   fax: string;
   address: string;
   website: string;
-  quoteStartingPoint: string;
   industry: string;
   foundVia: string;
   loading: boolean;
@@ -31,7 +30,6 @@ interface CompanyInfoSetupFormProps {
   onFaxChange: (fax: string) => void;
   onAddressChange: (address: string) => void;
   onWebsiteChange: (website: string) => void;
-  onQuoteStartingPointChange: (startingPoint: string) => void;
   onIndustryChange: (industry: string) => void;
   onFoundViaChange: (foundVia: string) => void;
   onLogoUpload: (result: LogoUploadResult) => void;
@@ -45,7 +43,6 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   fax,
   address,
   website,
-  quoteStartingPoint,
   industry,
   foundVia,
   loading,
@@ -55,7 +52,6 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   onFaxChange,
   onAddressChange,
   onWebsiteChange,
-  onQuoteStartingPointChange,
   onIndustryChange,
   onFoundViaChange,
   onLogoUpload,
@@ -119,76 +115,61 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
     setTouched(prev => ({ ...prev, website: true }));
   };
 
-  // Quote starting point formatting function
-  const formatQuoteStartingPoint = (value: string): string => {
-    // Remove spaces and convert to uppercase
-    const cleanValue = value.replace(/\s/g, '').toUpperCase();
-    
-    // Allow alphanumeric characters and hyphens
-    const allowedChars = cleanValue.replace(/[^A-Z0-9-]/g, '');
-    
-    return allowedChars;
-  };
-
-  const handleQuoteStartingPointChange = (value: string) => {
-    onQuoteStartingPointChange(formatQuoteStartingPoint(value));
-  };
-
-  // Check if form has validation errors - only Quote Starting Number and Found Via are required
+  // Check if form has validation errors - only Found Via is required
   const hasValidationErrors = Object.values(validationErrors).some(error => error !== undefined);
-  const hasRequiredFieldsEmpty = !quoteStartingPoint.trim() || !foundVia.trim();
+  const hasRequiredFieldsEmpty = !foundVia.trim();
   const isFormInvalid = hasValidationErrors || hasRequiredFieldsEmpty;
+
+  const handleLogoUploadClick = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/jpg,image/png,image/svg+xml';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          onLogoError('File size must be less than 5MB');
+          return;
+        }
+
+        setIsUploading(true);
+        setUploadedFileName(file.name);
+
+        try {
+          const result = await LogoUploadService.uploadLogo(file, userId);
+
+          if (result.success) {
+            onLogoUpload({
+              success: true,
+              url: result.url,
+              fileName: file.name
+            });
+          } else {
+            onLogoError(result.error || 'Upload failed');
+            setUploadedFileName('');
+          }
+        } catch {
+          onLogoError('Upload failed. Please try again.');
+          setUploadedFileName('');
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    };
+    input.click();
+  };
+
   return (
     <div className="space-y-4">
-      {/* Form */}
-      <form onSubmit={onSubmit} className="space-y-4">
-        {/* Logo Upload Section */}
+      <form onSubmit={onSubmit} className="space-y-5">
+        {/* Logo Upload Section - Full Width */}
         <div className="space-y-2">
           <Label className="text-gray-700 font-medium text-sm">Company Logo (Optional)</Label>
           <div className="flex items-center space-x-3">
             <Button
               type="button"
               variant="outline"
-              onClick={async () => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/jpeg,image/jpg,image/png,image/svg+xml';
-                input.onchange = async (e) => {
-                  const file = (e.target as HTMLInputElement).files?.[0];
-                  if (file) {
-                    // Basic validation
-                    if (file.size > 5 * 1024 * 1024) {
-                      onLogoError('File size must be less than 5MB');
-                      return;
-                    }
-
-                    setIsUploading(true);
-                    setUploadedFileName(file.name);
-
-                    try {
-                      // Actually upload the file
-                      const result = await LogoUploadService.uploadLogo(file, userId);
-
-                      if (result.success) {
-                        onLogoUpload({
-                          success: true,
-                          url: result.url,
-                          fileName: file.name
-                        });
-                      } else {
-                        onLogoError(result.error || 'Upload failed');
-                        setUploadedFileName('');
-                      }
-                    } catch (error) {
-                      onLogoError('Upload failed. Please try again.');
-                      setUploadedFileName('');
-                    } finally {
-                      setIsUploading(false);
-                    }
-                  }
-                };
-                input.click();
-              }}
+              onClick={handleLogoUploadClick}
               disabled={loading || isUploading}
               className="h-10"
             >
@@ -202,56 +183,35 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             )}
           </div>
           <p className="text-xs text-gray-400">
-            Upload your logo to appear on quotes (JPG, JPEG, SVG, max 5MB)
+            Upload your logo to appear on proposals (JPG, JPEG, SVG, max 5MB)
           </p>
         </div>
 
-        {/* Phone Number */}
-        <div>
+        {/* Phone & Fax - 2 Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <PhoneInput
             id="phone"
             value={phone}
             onChange={handlePhoneChange}
             label="Phone Number (Optional)"
-            placeholder="Enter your business phone number"
+            placeholder="Enter your business phone"
             disabled={loading}
             error={touched.phone ? validationErrors.phone : undefined}
             showValidation={false}
           />
-        </div>
-
-        {/* Fax Number */}
-        <div>
           <PhoneInput
             id="fax"
             value={fax}
             onChange={handleFaxChange}
             label="Fax Number (Optional)"
-            placeholder="Enter your business fax number"
+            placeholder="Enter your business fax"
             disabled={loading}
             error={touched.fax ? validationErrors.fax : undefined}
             showValidation={false}
           />
         </div>
 
-        {/* Quote Starting Point */}
-        <div className="space-y-2">
-          <Label htmlFor="quoteStartingPoint" className="text-gray-700 font-medium text-sm">Quote Starting Number <span className="text-red-500">*</span></Label>
-          <Input
-            id="quoteStartingPoint"
-            type="text"
-            value={quoteStartingPoint}
-            onChange={(e) => handleQuoteStartingPointChange(e.target.value)}
-            placeholder="P10001, 15000, Q-10001"
-            required
-            className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
-          />
-          <p className="text-xs text-gray-400">
-            Starting point for your quote numbering system
-          </p>
-        </div>
-
-        {/* Address */}
+        {/* Address - Full Width */}
         <div className="space-y-2">
           <MapboxInput
             id="address"
@@ -267,33 +227,33 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           </p>
         </div>
 
-        {/* Website */}
-        <div className="space-y-2">
-          <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website (Optional)</Label>
-          <Input
-            id="website"
-            value={website}
-            onChange={handleWebsiteChange}
-            placeholder="https://www.yourcompany.com"
-            className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
-              touched.website && validationErrors.website ? 'border-red-500 focus:border-red-500' : ''
-            }`}
+        {/* Website & Industry - 2 Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website (Optional)</Label>
+            <Input
+              id="website"
+              value={website}
+              onChange={handleWebsiteChange}
+              placeholder="https://www.yourcompany.com"
+              className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
+                touched.website && validationErrors.website ? 'border-red-500 focus:border-red-500' : ''
+              }`}
+              disabled={loading}
+            />
+            {touched.website && validationErrors.website && (
+              <div className="text-sm text-red-600">{validationErrors.website}</div>
+            )}
+          </div>
+          <IndustrySelector
+            value={industry}
+            onChange={onIndustryChange}
+            required={false}
             disabled={loading}
           />
-          {touched.website && validationErrors.website && (
-            <div className="text-sm text-red-600">{validationErrors.website}</div>
-          )}
         </div>
 
-        {/* Industry */}
-        <IndustrySelector
-          value={industry}
-          onChange={onIndustryChange}
-          required={false}
-          disabled={loading}
-        />
-
-        {/* Found Via */}
+        {/* Found Via - Full Width */}
         <FoundViaSelector
           value={foundVia}
           onChange={onFoundViaChange}
@@ -302,7 +262,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         />
 
         {/* Action Button */}
-        <div className="pt-6">
+        <div className="pt-4">
           <Button
             type="submit"
             className="w-full h-12 text-base bg-slate-600 hover:bg-slate-700 text-white font-semibold transition-colors"

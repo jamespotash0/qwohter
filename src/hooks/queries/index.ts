@@ -2,22 +2,9 @@
  * Central export for all React Query hooks
  *
  * Import all hooks from here for consistency:
- * import { useQuotes, useOrganization, useSubscriptionStatus } from '@/hooks/queries';
+ * import { useOrganization, useSubscriptionStatus } from '@/hooks/queries';
  */
 
-// Quotes
-export {
-  useQuotes,
-  useQuote,
-  useCreateQuote,
-  useUpdateQuote,
-  useDeleteQuote,
-  useUpdateQuoteStatus,
-  useArchiveQuote,
-  useUnarchiveQuote,
-  useSetMainVersion,
-  useCreateQuoteVersion,
-} from './useQuotes';
 
 // Organization
 export {
@@ -74,6 +61,45 @@ export {
   useMoveBoardItem,
 } from './useBoard';
 
+// Forms
+export {
+  useForms,
+  useForm,
+  useDefaultForm,
+  useCreateForm,
+  useUpdateForm,
+  useDeleteForm,
+  useCopyForm,
+  useSetDefaultForm,
+  useUnsetDefaultForm,
+  useArchivedForms,
+  useArchiveForm,
+  useUnarchiveForm,
+  useIsFormInUse,
+  // Factory functions
+  createDefaultFieldConfig,
+  createDefaultFormConfiguration,
+  createDefaultFormMetadata,
+} from './useForms';
+
+// Google Docs Generation
+export { useGenerateGoogleDoc } from './useGenerateGoogleDoc';
+
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats } from './useDashboard';
+export type { Form } from './useForms';
+
+// Form Configuration Types
+export type {
+  FieldConfig,
+  InfoTabConfig,
+  ProductsTabConfig,
+  PricingTabConfig,
+  LeadTimesTabConfig,
+  MiscTabConfig,
+  DocumentsTabConfig,
+  PresentationTabConfig,
+  FormConfiguration,
+  FormMetadata,
+} from './useForms';

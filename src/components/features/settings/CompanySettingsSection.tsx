@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useUser, useProfile } from "@/auth";
 import { useCurrentOrganization, useUpdateOrganization } from "@/hooks/queries";
-import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
+import { extractCompanyInfoForForm } from "@/lib/types/companySettings";
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -117,12 +117,6 @@ export function CompanySettingsSection() {
                     <p>{companyData.fax_number}</p>
                   </div>
                 )}
-                <div>
-                  <span className="font-medium text-muted-foreground">Proposal Starting Number:</span>
-                  <p className="font-mono text-lg font-semibold text-blue-700">
-                    {companyData?.quote_start_number || 'Not set'}
-                  </p>
-                </div>
               </div>
               
               {/* Right Side - Website and Address */}
@@ -147,7 +141,7 @@ export function CompanySettingsSection() {
             </div>
             <h3 className="font-medium mb-2">Company information not set up</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Set up your organization's contact details to enable professional quote generation
+              Set up your organization's contact details to enable professional proposal generation
             </p>
             {isAdmin && (
               <Button onClick={handleEdit} size="sm">

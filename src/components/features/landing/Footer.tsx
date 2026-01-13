@@ -42,7 +42,7 @@ export const Footer = (): JSX.Element => {
                 }}
               >
                 The most intuitive quoting platform for modern businesses. Generate,
-                design, and track your quotes with ease.
+                design, and track your proposals with ease.
               </p>
             </div>
 

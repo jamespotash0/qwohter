@@ -15,7 +15,6 @@ import {
   BellRinging,
   Plus,
   Clock,
-  UploadSimple,
   FileText,
   DotsThreeVertical
 } from '@phosphor-icons/react';
@@ -29,16 +28,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
-import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useProposals } from "@/hooks/queries/useProposals";
 import { useUser, useProfile } from "@/auth";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
-import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
-import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
+import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
+import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
-import { stripeService } from "@/services/stripeService";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -54,17 +52,17 @@ const Dashboard = () => {
   const user = useUser();
   const { data: profile } = useProfile(user?.id);
 
-  // React Query hooks for organization and quotes
-  const { organization: currentOrganization, isLoading: orgLoading } = useCurrentOrganization(user?.id);
+  // React Query hooks for organization and proposals
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id ?? '', !!user?.id);
   const organizationId = currentOrganization?.id || null;
-  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
+  const { data: proposals = [], isLoading: proposalsLoading } = useProposals(organizationId || undefined);
 
   console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showNewProposalDialog, setShowNewProposalDialog] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
   const [trialStatus, setTrialStatus] = useState<{
@@ -106,6 +104,7 @@ const Dashboard = () => {
       }, 3000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [searchParams, setSearchParams]);
 
   // Fetch trial status from subscription
@@ -162,7 +161,7 @@ const Dashboard = () => {
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
-  // React Query automatically fetches quotes - no manual fetching needed!
+  // React Query automatically fetches proposals - no manual fetching needed!
 
   const queryClient = useQueryClient();
 
@@ -251,7 +250,7 @@ const Dashboard = () => {
     if (!user?.id || !organizationId) return;
 
     const { error } = await reminderService.completeReminder(reminderId, {
-      reminder_status: 'Completed',
+      status: 'Completed',
       completed_by: user.id,
     });
 
@@ -325,50 +324,50 @@ const Dashboard = () => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Group quotes by version to avoid counting duplicates
-    const quoteGroups = groupQuotesByVersion(quotes);
+    // Group proposals by version to avoid counting duplicates
+    const proposalGroups = groupProposalsByVersion(proposals);
 
-    // Track when quote groups were marked as Won using won_at timestamp
+    // Track when proposal groups were marked as Won using won_at timestamp
     // Use the won version if exists, otherwise use latest version
-    const wonQuoteGroupsThisMonth = quoteGroups.filter(group => {
+    const wonProposalGroupsThisMonth = proposalGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
       const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= thisMonth;
     });
 
-    const wonQuoteGroupsLastMonth = quoteGroups.filter(group => {
+    const wonProposalGroupsLastMonth = proposalGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
       const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
-    const totalRevenue = wonQuoteGroupsThisMonth.reduce((sum, group) => {
+    const totalRevenue = wonProposalGroupsThisMonth.reduce((sum, group) => {
       const wonVersion = group.versions.find(v => v.status === 'Won');
-      return sum + (wonVersion?.price_details?.final_selling_price || 0);
+      return sum + (wonVersion?.total_value || 0);
     }, 0);
 
-    const lastMonthRevenue = wonQuoteGroupsLastMonth.reduce((sum, group) => {
+    const lastMonthRevenue = wonProposalGroupsLastMonth.reduce((sum, group) => {
       const wonVersion = group.versions.find(v => v.status === 'Won');
-      return sum + (wonVersion?.price_details?.final_selling_price || 0);
+      return sum + (wonVersion?.total_value || 0);
     }, 0);
 
-    const activeQuotes = quoteGroups.filter(group =>
+    const activeProposals = proposalGroups.filter(group =>
       group.versions.some(v => ['Submitted'].includes(v.status || ''))
     ).length;
 
-    // Current overall win rate (all time) - count groups not individual quotes
-    const wonQuotes = quoteGroups.filter(g => g.versions.some(v => v.status === 'Won')).length;
-    const rejectedQuotes = quoteGroups.filter(g =>
+    // Current overall win rate (all time) - count groups not individual proposals
+    const wonProposals = proposalGroups.filter(g => g.versions.some(v => v.status === 'Won')).length;
+    const rejectedProposals = proposalGroups.filter(g =>
       g.versions.some(v => v.status === 'Rejected') && !g.versions.some(v => v.status === 'Won')
     ).length;
-    const totalDecidedQuotes = wonQuotes + rejectedQuotes;
-    const winRate = totalDecidedQuotes > 0 ? ((wonQuotes / totalDecidedQuotes) * 100).toFixed(1) : '0';
+    const totalDecidedProposals = wonProposals + rejectedProposals;
+    const winRate = totalDecidedProposals > 0 ? ((wonProposals / totalDecidedProposals) * 100).toFixed(1) : '0';
 
     // This month's win rate
-    const wonThisMonth = wonQuoteGroupsThisMonth.length;
-    const rejectedThisMonth = quoteGroups.filter(group => {
+    const wonThisMonth = wonProposalGroupsThisMonth.length;
+    const rejectedThisMonth = proposalGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
@@ -378,8 +377,8 @@ const Dashboard = () => {
     const winRateThisMonth = decidedThisMonth > 0 ? ((wonThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
 
     // Last month's win rate
-    const wonLastMonth = wonQuoteGroupsLastMonth.length;
-    const rejectedLastMonth = quoteGroups.filter(group => {
+    const wonLastMonth = wonProposalGroupsLastMonth.length;
+    const rejectedLastMonth = proposalGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
@@ -399,15 +398,15 @@ const Dashboard = () => {
     return {
       totalRevenue,
       lastMonthRevenue,
-      activeQuotes,
+      activeProposals,
       winRate,
       winRateThisMonth,
       winRateLastMonth,
-      wonQuotes,
-      rejectedQuotes,
+      wonProposals,
+      rejectedProposals,
       overdueReminders
     };
-  }, [quotes, reminders]);
+  }, [proposals, reminders]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -429,7 +428,7 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Quote of the Day - Fetch from API or use fallback
+  // Quote of the Day - Fetch from API
   const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string }>({
     text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
     author: "Stephen Covey"
@@ -437,23 +436,9 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchDailyQuote = async () => {
-      // Fallback quotes in case API fails
-      const fallbackQuotes = [
-        { text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.", author: "Stephen Covey" },
-        { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
-        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-        { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
-        { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
-        { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
-        { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
-        { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
-        { text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
-        { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs" }
-      ];
-
       try {
         // Check localStorage cache
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0] ?? '';
         const cachedDate = localStorage.getItem('daily_quote_date');
         const cachedQuote = localStorage.getItem('daily_quote');
 
@@ -466,7 +451,7 @@ const Dashboard = () => {
         const response = await fetch('https://quoteslate.vercel.app/api/quotes/random?categories=motivational,business,success');
 
         if (!response.ok) {
-          throw new Error('API request failed');
+          return; // Keep default quote
         }
 
         const data = await response.json();
@@ -480,19 +465,10 @@ const Dashboard = () => {
 
           // Cache for today
           localStorage.setItem('daily_quote', JSON.stringify(newQuote));
-          localStorage.setItem('daily_quote_date', today as string);
-        } else {
-          throw new Error('Invalid API response');
+          localStorage.setItem('daily_quote_date', today);
         }
-      } catch (error) {
-        // Use rotating fallback quotes on error
-        const today = new Date();
-        const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
-        const quoteIndex = dayOfYear % fallbackQuotes.length;
-        const fallbackQuote = fallbackQuotes[quoteIndex];
-        if (fallbackQuote) {
-          setDailyQuote(fallbackQuote);
-        }
+      } catch {
+        // Keep default quote on error
       }
     };
 
@@ -575,7 +551,7 @@ const Dashboard = () => {
 
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {quotesLoading ? (
+        {proposalsLoading ? (
           <>
             {/* Loading Skeletons for Metrics */}
             {[...Array(4)].map((_, i) => (
@@ -625,7 +601,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Active Quotes */}
+            {/* Active Proposals */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -633,8 +609,8 @@ const Dashboard = () => {
                     <FileText weight="duotone" className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeQuotes}</p>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Proposals</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeProposals}</p>
                   </div>
                 </div>
               </CardContent>
@@ -693,7 +669,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-            {quotesLoading ? (
+            {proposalsLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <Skeleton key={i} className="w-full h-12" />
@@ -702,27 +678,27 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-3">
                 <Button
-                  onClick={() => setShowNewQuoteDialog(true)}
+                  onClick={() => setShowNewProposalDialog(true)}
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-coral hover:bg-coral-dark text-white"
                 >
                   <Plus className="w-5 h-5" />
-                  <span className="font-medium">Create New Quote</span>
+                  <span className="font-medium">Create New Proposal</span>
                 </Button>
 
                 <Button
-                  disabled
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                  onClick={() => navigate('/task-board')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
+                >
+                  <Clock className="w-5 h-5" />
+                  <span className="font-medium">Create New Task</span>
+                </Button>
+
+                <Button
+                  onClick={() => navigate('/forms/new')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200"
                 >
                   <FileText className="w-5 h-5" />
-                  <span className="font-medium">Use Template</span>
-                </Button>
-
-                <Button
-                  disabled
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                >
-                  <UploadSimple className="w-5 h-5" />
-                  <span className="font-medium">Import from Form</span>
+                  <span className="font-medium">Create Form</span>
                 </Button>
               </div>
             )}
@@ -773,7 +749,7 @@ const Dashboard = () => {
 
                       const getTypeColor = (type: string) => {
                         switch (type) {
-                          case 'Quote_Follow_Up':
+                          case 'Proposal_Follow_Up':
                             return 'text-blue-600 bg-blue-50';
                           case 'Meeting':
                             return 'text-purple-600 bg-purple-50';
@@ -809,10 +785,10 @@ const Dashboard = () => {
                                 </h4>
                               </div>
 
-                              {/* Quote Reference (no spacing) */}
-                              {reminder.quote_number && (
+                              {/* Proposal Reference (no spacing) */}
+                              {reminder.proposal_number && (
                                 <p className={`text-xs ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
-                                  #{reminder.quote_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
+                                  #{reminder.proposal_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
                                 </p>
                               )}
 
@@ -968,13 +944,26 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Create Quote Dialog */}
-      <CreateQuoteDialog
-        open={showNewQuoteDialog}
-        onOpenChange={setShowNewQuoteDialog}
-        onCreateQuote={(quoteName) => {
-          setShowNewQuoteDialog(false);
-          navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
+      {/* Create Proposal Dialog */}
+      <CreateProposalDialog
+        open={showNewProposalDialog}
+        onOpenChange={setShowNewProposalDialog}
+        onCreateProposal={async (data: ProposalInitialData) => {
+          setShowNewProposalDialog(false);
+          try {
+            // document_type is inherited from the form automatically
+            const { createProposal } = await import('@/services/proposalsService');
+            const proposal = await createProposal({
+              form_id: data.formId,
+              project_name: data.projectName,
+              status: 'Draft',
+            });
+            toast.success('Created successfully');
+            navigate(`/proposals/${proposal.id}/edit`);
+          } catch (error) {
+            console.error('Failed to create:', error);
+            toast.error('Failed to create');
+          }
         }}
       />
 
@@ -985,7 +974,7 @@ const Dashboard = () => {
           open={showExpiryModal}
           onClose={() => setShowExpiryModal(false)}
           metrics={{
-            quotesCreated: quotes.length,
+            proposalsCreated: proposals.length,
             totalRevenue: metrics.totalRevenue,
             teamMembers: 1,
           }}

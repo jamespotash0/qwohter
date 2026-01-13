@@ -2,86 +2,6 @@
 export interface Database {
   public: {
     Tables: {
-      quotes: {
-        Row: {
-          id: string;
-          proposal_number: string;
-          project_name?: string;
-          quote_details: any;
-          job_details: any;
-          wall_details: any;
-          price_details: any;
-          delivery_details: any;
-          labor_details: any;
-          status: string;
-          quote_source?: string;
-          created_by: string;
-          date_last_downloaded?: string;
-          document_version: number;
-          created_at: string;
-          updated_at: string;
-          organization_id: string;
-          customization?: any;
-          archived?: boolean;
-          is_main_version?: boolean;
-          total_value?: number | null;
-          subtotal?: number | null;
-          margin_percentage?: number | null;
-          won_at?: string;
-          submitted_at?: string;
-          rejected_at?: string;
-        };
-        Insert: {
-          id?: string;
-          proposal_number: string;
-          project_name?: string;
-          quote_details: any;
-          job_details: any;
-          wall_details: any;
-          price_details: any;
-          delivery_details: any;
-          labor_details: any;
-          status?: string;
-          quote_source?: string;
-          created_by?: string;
-          date_last_downloaded?: string;
-          document_version?: number;
-          created_at?: string;
-          updated_at?: string;
-          organization_id: string;
-          customization?: any;
-          archived?: boolean;
-          is_main_version?: boolean;
-          won_at?: string;
-          submitted_at?: string;
-          rejected_at?: string;
-        };
-        Update: {
-          id?: string;
-          proposal_number?: string;
-          project_name?: string;
-          quote_details?: any;
-          job_details?: any;
-          wall_details?: any;
-          price_details?: any;
-          delivery_details?: any;
-          labor_details?: any;
-          status?: string;
-          quote_source?: string;
-          created_by?: string;
-          date_last_downloaded?: string;
-          document_version?: number;
-          created_at?: string;
-          updated_at?: string;
-          organization_id?: string;
-          customization?: any;
-          archived?: boolean;
-          is_main_version?: boolean;
-          won_at?: string;
-          submitted_at?: string;
-          rejected_at?: string;
-        };
-      };
       profiles: {
         Row: {
           id: string;
@@ -116,7 +36,6 @@ export interface Database {
           website: string;
           logo_data: any;
           industry: string;
-          quote_starting_point: string;
           created_at: string;
           updated_at: string;
         };
@@ -130,7 +49,6 @@ export interface Database {
           website: string;
           logo_data?: any;
           industry: string;
-          quote_starting_point: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -144,7 +62,6 @@ export interface Database {
           website?: string;
           logo_data?: any;
           industry?: string;
-          quote_starting_point?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -408,7 +325,7 @@ export interface Database {
       projects: {
         Row: {
           id: string;
-          quote_id: string;
+          proposal_id: string | null; // Links to proposal if created from a proposal
           workflow_status: string;
           board_order: number | null;
           priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
@@ -419,7 +336,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          quote_id: string;
+          proposal_id?: string | null; // Links to proposal if created from a proposal
           workflow_status: string;
           board_order?: number | null;
           priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
@@ -430,7 +347,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          quote_id?: string;
+          proposal_id?: string | null;
           workflow_status?: string;
           board_order?: number | null;
           priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
@@ -475,7 +392,6 @@ export interface Database {
       reminders: {
         Row: {
           id: string;
-          quote_id: string;
           organization_id: string;
           title: string;
           description: string | null;
@@ -490,7 +406,6 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          quote_id: string;
           organization_id: string;
           title: string;
           description?: string | null;
@@ -505,7 +420,6 @@ export interface Database {
         };
         Update: {
           id?: string;
-          quote_id?: string;
           organization_id?: string;
           title?: string;
           description?: string | null;
@@ -549,6 +463,763 @@ export interface Database {
           success?: boolean;
           error_message?: string | null;
           created_at?: string;
+        };
+      };
+      /**
+       * Forms table - Form template definitions
+       * Stores form structure in metadata JSONB field
+       */
+      forms: {
+        Row: {
+          id: string;
+          organization_id: string | null; // Null for system templates
+          name: string;
+          description: string | null;
+          metadata: Record<string, any> | null; // Form builder data (terms, pricing, etc.)
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          is_archived: boolean;
+          is_default: boolean | null;
+          is_template: boolean; // True for system templates
+          copied_from_form_id: string | null; // Template lineage tracking
+          document_type: string | null; // 'Proposal' | 'Invoice' | 'Service_Request'
+          presentation_template: Record<string, any> | null; // PresentationTemplate JSONB
+        };
+        Insert: {
+          id?: string;
+          organization_id?: string | null;
+          name: string;
+          description?: string | null;
+          metadata?: Record<string, any> | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          is_archived?: boolean;
+          is_default?: boolean | null;
+          is_template?: boolean;
+          copied_from_form_id?: string | null;
+          document_type?: string | null;
+          presentation_template?: Record<string, any> | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string | null;
+          name?: string;
+          description?: string | null;
+          metadata?: Record<string, any> | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          is_archived?: boolean;
+          is_default?: boolean | null;
+          is_template?: boolean;
+          copied_from_form_id?: string | null;
+          document_type?: string | null;
+          presentation_template?: Record<string, any> | null;
+        };
+      };
+      /**
+       * Proposals table - New form-builder system
+       */
+      proposals: {
+        Row: {
+          id: string;
+          organization_id: string;
+          created_by: string;
+          created_by_name: string | null;
+          form_id: string;
+          proposal_number: string | null;
+          form_data: Record<string, any> | null;
+          status: string | null;
+          // Direct columns for querying (extracted from form_data)
+          project_name: string | null;
+          client_name: string | null;
+          client_company: string | null;
+          organization_name: string | null;
+          job_location: string | null;
+          total_value: number | null;
+          // Document and template references
+          document_type: string | null;
+          template_type: string | null;
+          // Board and workflow
+          is_on_board: boolean | null;
+          proposal_source: string | null;
+          // Versioning
+          parent_proposal_id: string | null;
+          is_main_version: boolean | null;
+          // Archive
+          archived: boolean | null;
+          archived_at: string | null;
+          // Completion tracking
+          is_complete: boolean | null;
+          // Document count
+          documents_count: number | null;
+          // Status timestamps
+          submitted_at: string | null;
+          won_at: string | null;
+          rejected_at: string | null;
+          // Metadata
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          created_by: string;
+          form_id: string;
+          proposal_number?: string | null;
+          form_data?: Record<string, any> | null;
+          status?: string | null;
+          project_name?: string | null;
+          client_name?: string | null;
+          client_company?: string | null;
+          organization_name?: string | null;
+          job_location?: string | null;
+          total_value?: number | null;
+          document_type?: string | null;
+          template_type?: string | null;
+          is_on_board?: boolean | null;
+          proposal_source?: string | null;
+          parent_proposal_id?: string | null;
+          is_main_version?: boolean | null;
+          archived?: boolean | null;
+          archived_at?: string | null;
+          is_complete?: boolean | null;
+          documents_count?: number | null;
+          submitted_at?: string | null;
+          won_at?: string | null;
+          rejected_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          created_by?: string;
+          form_id?: string;
+          proposal_number?: string | null;
+          form_data?: Record<string, any> | null;
+          status?: string | null;
+          project_name?: string | null;
+          client_name?: string | null;
+          client_company?: string | null;
+          organization_name?: string | null;
+          job_location?: string | null;
+          total_value?: number | null;
+          document_type?: string | null;
+          template_type?: string | null;
+          is_on_board?: boolean | null;
+          proposal_source?: string | null;
+          parent_proposal_id?: string | null;
+          is_main_version?: boolean | null;
+          archived?: boolean | null;
+          archived_at?: string | null;
+          is_complete?: boolean | null;
+          documents_count?: number | null;
+          submitted_at?: string | null;
+          won_at?: string | null;
+          rejected_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Proposal Status Transitions table - Audit log for proposal status changes
+       * Automatically populated by database trigger on proposals table
+       */
+      proposal_status_transitions: {
+        Row: {
+          id: string;
+          proposal_id: string;
+          organization_id: string;
+          from_status: string | null;
+          to_status: string;
+          transitioned_by: string | null;
+          transitioned_at: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          proposal_id: string;
+          organization_id: string;
+          from_status?: string | null;
+          to_status: string;
+          transitioned_by?: string | null;
+          transitioned_at?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          proposal_id?: string;
+          organization_id?: string;
+          from_status?: string | null;
+          to_status?: string;
+          transitioned_by?: string | null;
+          transitioned_at?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
+      /**
+       * Proposal Documents table - File attachments for proposals
+       * Actual files stored in Supabase Storage, this table stores metadata
+       */
+      proposal_documents: {
+        Row: {
+          id: string;
+          proposal_id: string;
+          organization_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size: number | null;
+          mime_type: string | null;
+          tab_key: string | null;
+          description: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          proposal_id: string;
+          organization_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size?: number | null;
+          mime_type?: string | null;
+          tab_key?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          proposal_id?: string;
+          organization_id?: string;
+          file_name?: string;
+          storage_path?: string;
+          file_size?: number | null;
+          mime_type?: string | null;
+          tab_key?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      // ============================================================================
+      // Product Hierarchy Tables
+      // ============================================================================
+      /**
+       * Product Domain - Top level product categorization (e.g., "Operable Walls")
+       * Renamed from product_types
+       */
+      product_domain: {
+        Row: {
+          id: string;
+          name: string;
+          code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Category - Domain subcategories (e.g., "Accordion Fold", "Panel")
+       * Renamed from product_categories
+       */
+      product_category: {
+        Row: {
+          id: string;
+          domain_id: string | null;
+          name: string;
+          code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          domain_id?: string | null;
+          name: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          domain_id?: string | null;
+          name?: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Manufacturers - Manufacturer companies
+       */
+      product_manufacturers: {
+        Row: {
+          id: string;
+          name: string;
+          code: string | null;
+          logo_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          code?: string | null;
+          logo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          code?: string | null;
+          logo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Manufacturer Product Domains - Junction table for many-to-many relationship
+       */
+      manufacturer_product_domains: {
+        Row: {
+          id: string;
+          manufacturer_id: string;
+          domain_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          manufacturer_id: string;
+          domain_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          manufacturer_id?: string;
+          domain_id?: string;
+          created_at?: string;
+        };
+      };
+      /**
+       * Product Line - Product lines under manufacturers
+       */
+      product_line: {
+        Row: {
+          id: string;
+          manufacturer_id: string;
+          name: string;
+          code: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          manufacturer_id: string;
+          name: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          manufacturer_id?: string;
+          name?: string;
+          code?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Series - Series under product lines or directly under manufacturers
+       */
+      product_series: {
+        Row: {
+          id: string;
+          manufacturer_id: string | null;
+          product_line_id: string | null;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          manufacturer_id?: string | null;
+          product_line_id?: string | null;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          manufacturer_id?: string | null;
+          product_line_id?: string | null;
+          name?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Models - Individual product models
+       * Can belong to a series OR directly to a manufacturer
+       */
+      product_models: {
+        Row: {
+          id: string;
+          series_id: string | null;
+          manufacturer_id: string | null;
+          category_id: string | null;
+          product_series_id: string | null;
+          product_line_id: string | null;
+          product_manufacturer_id: string | null;
+          name: string;
+          default_configurations: Record<string, any> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          series_id?: string | null;
+          manufacturer_id?: string | null;
+          category_id?: string | null;
+          product_series_id?: string | null;
+          product_line_id?: string | null;
+          product_manufacturer_id?: string | null;
+          name: string;
+          default_configurations?: Record<string, any> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          series_id?: string | null;
+          manufacturer_id?: string | null;
+          category_id?: string | null;
+          product_series_id?: string | null;
+          product_line_id?: string | null;
+          product_manufacturer_id?: string | null;
+          name?: string;
+          default_configurations?: Record<string, any> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Product Variants - Variant options for product models
+       */
+      product_variants: {
+        Row: {
+          id: string;
+          model_id: string;
+          name: string;
+          description: string | null;
+          specifications: Record<string, any>;
+          pricing: Record<string, any>;
+          is_default: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_id: string;
+          name: string;
+          description?: string | null;
+          specifications?: Record<string, any>;
+          pricing?: Record<string, any>;
+          is_default?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_id?: string;
+          name?: string;
+          description?: string | null;
+          specifications?: Record<string, any>;
+          pricing?: Record<string, any>;
+          is_default?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      // ============================================================================
+      // Product Configuration Tables (pc_ prefix)
+      // ============================================================================
+      /**
+       * Option Groups - Shared option definitions (Track System, Panel Face, etc.)
+       */
+      pc_option_groups: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          field_type: 'dropdown' | 'input' | 'multi-select' | 'auto';
+          input_type: 'string' | 'number' | 'decimal' | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
+          input_type?: 'string' | 'number' | 'decimal' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          description?: string | null;
+          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
+          input_type?: 'string' | 'number' | 'decimal' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Option Values - All possible values for each option group
+       */
+      pc_option_values: {
+        Row: {
+          id: string;
+          option_group_id: string;
+          value: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          option_group_id: string;
+          value: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          option_group_id?: string;
+          value?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+      };
+      /**
+       * Model Options - Links models to option groups with model-specific UI settings
+       */
+      pc_model_options: {
+        Row: {
+          id: string;
+          model_id: string;
+          option_group_id: string;
+          display_order: number;
+          display_group: 'primary' | 'secondary' | 'advanced' | 'hidden';
+          grid_span: number;
+          placeholder: string | null;
+          help_text: string | null;
+          is_required: boolean;
+          is_multi_select: boolean;
+          is_manual_select: boolean;
+          is_visible: boolean;
+          default_value_id: string | null;
+          default_input_value: string | null;
+          min_value: number | null;
+          max_value: number | null;
+          step_value: number | null;
+          validation_pattern: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_id: string;
+          option_group_id: string;
+          display_order?: number;
+          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
+          grid_span?: number;
+          placeholder?: string | null;
+          help_text?: string | null;
+          is_required?: boolean;
+          is_multi_select?: boolean;
+          is_manual_select?: boolean;
+          is_visible?: boolean;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          min_value?: number | null;
+          max_value?: number | null;
+          step_value?: number | null;
+          validation_pattern?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_id?: string;
+          option_group_id?: string;
+          display_order?: number;
+          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
+          grid_span?: number;
+          placeholder?: string | null;
+          help_text?: string | null;
+          is_required?: boolean;
+          is_multi_select?: boolean;
+          is_manual_select?: boolean;
+          is_visible?: boolean;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          min_value?: number | null;
+          max_value?: number | null;
+          step_value?: number | null;
+          validation_pattern?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Model Allowed Values - Restricts which option values are available for a specific model
+       */
+      pc_model_allowed_values: {
+        Row: {
+          id: string;
+          model_option_id: string;
+          option_value_id: string;
+          is_default: boolean;
+          sort_order: number;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          model_option_id: string;
+          option_value_id: string;
+          is_default?: boolean;
+          sort_order?: number;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          model_option_id?: string;
+          option_value_id?: string;
+          is_default?: boolean;
+          sort_order?: number;
+          is_active?: boolean;
+        };
+      };
+      /**
+       * Product Rules - Business rules for conditional option behavior
+       */
+      pc_rules: {
+        Row: {
+          id: string;
+          model_id: string | null;
+          variant_id: string | null;
+          name: string;
+          description: string | null;
+          priority: number;
+          is_active: boolean;
+          condition: Record<string, any>;
+          effect: Record<string, any>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          model_id?: string | null;
+          variant_id?: string | null;
+          name: string;
+          description?: string | null;
+          priority?: number;
+          is_active?: boolean;
+          condition: Record<string, any>;
+          effect: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          model_id?: string | null;
+          variant_id?: string | null;
+          name?: string;
+          description?: string | null;
+          priority?: number;
+          is_active?: boolean;
+          condition?: Record<string, any>;
+          effect?: Record<string, any>;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Variant Option Overrides - Variant-specific overrides for model option configurations
+       */
+      pc_variant_option_overrides: {
+        Row: {
+          id: string;
+          variant_id: string;
+          model_option_id: string;
+          is_required: boolean | null;
+          is_visible: boolean | null;
+          is_manual_select: boolean | null;
+          default_value_id: string | null;
+          default_input_value: string | null;
+          allowed_value_ids: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          variant_id: string;
+          model_option_id: string;
+          is_required?: boolean | null;
+          is_visible?: boolean | null;
+          is_manual_select?: boolean | null;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          allowed_value_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          variant_id?: string;
+          model_option_id?: string;
+          is_required?: boolean | null;
+          is_visible?: boolean | null;
+          is_manual_select?: boolean | null;
+          default_value_id?: string | null;
+          default_input_value?: string | null;
+          allowed_value_ids?: string[];
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };
@@ -604,6 +1275,57 @@ export interface Database {
           p_error_message?: string | null;
         };
         Returns: string;
+      };
+      /**
+       * Get complete model configuration as JSON
+       * Returns the full option configuration in a frontend-friendly format
+       */
+      get_model_configuration: {
+        Args: {
+          p_model_id: string;
+        };
+        Returns: {
+          model_id: string;
+          model_name: string;
+          series_id: string | null;
+          series_name: string | null;
+          product_line_id: string | null;
+          product_line_name: string | null;
+          option_groups: Array<{
+            id: string;
+            name: string;
+            slug: string;
+            field_type: string;
+            input_type: string | null;
+            allowed_values: Array<{
+              id: string;
+              value: string;
+            }>;
+            default_value: string | null;
+            ui_metadata: {
+              display_order: number;
+              display_group: string;
+              grid_span: number;
+              placeholder: string | null;
+              help_text: string | null;
+              is_required: boolean;
+              is_multi_select: boolean;
+              is_manual_select: boolean;
+              is_visible: boolean;
+              min_value: number | null;
+              max_value: number | null;
+              step_value: number | null;
+            };
+          }>;
+          rules: Array<{
+            id: string;
+            name: string;
+            description: string | null;
+            priority: number;
+            condition: Record<string, any>;
+            effect: Record<string, any>;
+          }>;
+        } | null;
       };
     };
     Enums: {

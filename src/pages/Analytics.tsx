@@ -6,7 +6,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useProposals } from "@/hooks/queries/useProposals";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
 
@@ -17,7 +17,7 @@ import {
   generateAnalyticsSummary,
   formatCurrency,
   calculateWinRate,
-  filterMainVersionQuotes,
+  filterMainVersionProposals,
   calculateAveragesOverTime,
   calculateTotalsOverTime,
   calculateWonRejectedOverTime,
@@ -57,7 +57,7 @@ import {
  * - KPI cards with real-time trends
  * - Time period toggles (Weekly/Monthly/Yearly)
  * - Revenue tracking and conversion metrics
- * - Quote source performance
+ * - Proposal source performance
  * - Export and enlarge capabilities
  *
  * Architecture: Uses React Query for data fetching and real-time updates
@@ -80,42 +80,42 @@ const Analytics = () => {
   // Get user from new auth system
   const user = useUser();
 
-  // Fetch quotes using React Query (includes automatic realtime subscriptions)
-  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
-
   // Get current organization from React Query
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
+  // Fetch proposals using React Query
+  const { data: proposals = [], isLoading: proposalsLoading } = useProposals(currentOrganization?.id);
+
   // Filter to main versions only to prevent double-counting across versions
-  const mainVersionQuotes = useMemo(() => {
-    return filterMainVersionQuotes(quotes);
-  }, [quotes]);
+  const mainVersionProposals = useMemo(() => {
+    return filterMainVersionProposals(proposals);
+  }, [proposals]);
 
   // Generate comprehensive analytics using new calculation utilities
   const analytics = useMemo(() => {
-    const result = generateAnalyticsSummary(mainVersionQuotes, timePeriod);
+    const result = generateAnalyticsSummary(mainVersionProposals, timePeriod);
     return result;
-  }, [mainVersionQuotes, timePeriod]);
+  }, [mainVersionProposals, timePeriod]);
 
   // Individual chart data with their own time periods
   const averagesData = useMemo(() => {
-    const data = calculateAveragesOverTime(mainVersionQuotes, averagesTimePeriod, 12, averagesPeriodOffset);
+    const data = calculateAveragesOverTime(mainVersionProposals, averagesTimePeriod, 12, averagesPeriodOffset);
     return averagesCumulative ? makeAveragesCumulative(data) : data;
-  }, [mainVersionQuotes, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
+  }, [mainVersionProposals, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
 
   const totalsData = useMemo(() => {
-    const data = calculateTotalsOverTime(mainVersionQuotes, totalsTimePeriod, 12, totalsPeriodOffset);
+    const data = calculateTotalsOverTime(mainVersionProposals, totalsTimePeriod, 12, totalsPeriodOffset);
     return totalsCumulative ? makeTotalsCumulative(data) : data;
-  }, [mainVersionQuotes, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
+  }, [mainVersionProposals, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
 
   const wonRejectedData = useMemo(() => {
-    const data = calculateWonRejectedOverTime(mainVersionQuotes, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
+    const data = calculateWonRejectedOverTime(mainVersionProposals, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
     return wonRejectedCumulative ? makeWonRejectedCumulative(data) : data;
-  }, [mainVersionQuotes, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
+  }, [mainVersionProposals, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
 
   const teamData = useMemo(() => {
-    return calculateUserMetrics(mainVersionQuotes);
-  }, [mainVersionQuotes]);
+    return calculateUserMetrics(mainVersionProposals);
+  }, [mainVersionProposals]);
 
   // Chart color scheme
   const COLORS = {
@@ -145,7 +145,7 @@ const Analytics = () => {
       showPageHeader={true}
     >
       {/* Loading State */}
-      {quotesLoading ? (
+      {proposalsLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-[#EE6C4D] border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading analytics data...</p>
@@ -156,7 +156,7 @@ const Analytics = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPICard
               title="Total Revenue (All Time)"
-              value={formatCurrency(mainVersionQuotes.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
+              value={formatCurrency(mainVersionProposals.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
               subtitle="Lifetime earnings"
               icon={DollarSign}
               iconColor="orange"
@@ -176,22 +176,22 @@ const Analytics = () => {
             />
 
             <KPICard
-              title="Quote Win Rate"
-              value={`${calculateWinRate(mainVersionQuotes).toFixed(1)}%`}
+              title="Proposal Win Rate"
+              value={`${calculateWinRate(mainVersionProposals).toFixed(1)}%`}
               subtitle="Won / Decided (Won+Rejected)"
               icon={Target}
               iconColor="blue"
             />
 
             <KPICard
-              title="Total Quotes This Week"
+              title="Total Proposals This Week"
               value={(() => {
                 const now = new Date();
                 const startOfThisWeek = new Date(now);
                 startOfThisWeek.setDate(now.getDate() - now.getDay());
                 startOfThisWeek.setHours(0, 0, 0, 0);
 
-                const thisWeekCount = mainVersionQuotes.filter(q => {
+                const thisWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfThisWeek;
                 }).length;
@@ -210,12 +210,12 @@ const Analytics = () => {
                 const startOfLastWeek = new Date(startOfThisWeek);
                 startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-                const thisWeekCount = mainVersionQuotes.filter(q => {
+                const thisWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfThisWeek;
                 }).length;
 
-                const lastWeekCount = mainVersionQuotes.filter(q => {
+                const lastWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfLastWeek && createdDate < startOfThisWeek;
                 }).length;
@@ -240,12 +240,12 @@ const Analytics = () => {
           </div>
 
           {/* Charts Section */}
-          {quotes.length > 0 ? (
+          {proposals.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Row 1: Average and Total Metrics Over Time */}
-              {/* Average Quote Metrics Over Time */}
+              {/* Average Proposal Metrics Over Time */}
               <EnhancedChartCard
-                title="Average Quote Metrics Over Time"
+                title="Average Proposal Metrics Over Time"
                 subtitle="Track profit, revenue, and value trends"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -304,7 +304,7 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
@@ -332,7 +332,7 @@ const Analytics = () => {
                         dataKey="avgValue"
                         stroke={COLORS.purple}
                         strokeWidth={2}
-                        name="Avg Quote Value"
+                        name="Avg Proposal Value"
                         dot={false}
                         activeDot={{ r: 5 }}
                       />
@@ -383,14 +383,14 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
                       />
                       <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Proposal Value" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   )}
                 </ResponsiveContainer>
@@ -549,117 +549,10 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Row 2: Product Charts */}
-              {/* Product Breakdown */}
-              <EnhancedChartCard
-                title="Most Quoted Products"
-                subtitle="Product type distribution"
-                onExport={() => handleExport('products')}
-                onExpand={() => handleEnlarge('products')}
-              >
-                <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="productType"
-                      stroke="#6B7280"
-                      fontSize={10}
-                      tickLine={false}
-                      angle={-45}
-                      textAnchor="end"
-                      height={120}
-                    />
-                    <YAxis
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
-                      {analytics.productMetrics.map((entry, index) => {
-                        const productColors: Record<string, string> = {
-                          'Operable Wall': COLORS.blue,
-                          'Glass Wall': COLORS.green,
-                          'Accordion Partition': COLORS.purple,
-                        };
-                        const color = productColors[entry.productType] || COLORS.orange;
-                        return <Cell key={`cell-${index}`} fill={color} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Product Model Breakdown */}
-              <EnhancedChartCard
-                title="Product Breakdown by Model"
-                subtitle="Detailed breakdown by model for all product types"
-                onExport={() => handleExport('product-models')}
-                onExpand={() => handleEnlarge('product-models')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="model"
-                      stroke="#6B7280"
-                      fontSize={11}
-                      tickLine={false}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value: number, name: string) => {
-                        if (name === 'Quotes') return [value, 'Quote Count'];
-                        return [value, name];
-                      }}
-                      labelFormatter={(label, payload) => {
-                        if (payload && payload.length > 0) {
-                          const item = payload[0]!.payload;
-                          return `${item.productType} - ${label}`;
-                        }
-                        return label;
-                      }}
-                    />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
-                      {analytics.productModelMetrics.map((_, index) => {
-                        const modelColors = [
-                          COLORS.blue,
-                          COLORS.green,
-                          COLORS.purple,
-                          COLORS.orange,
-                          COLORS.teal,
-                          COLORS.primary,
-                          '#F59E0B',
-                          '#EC4899',
-                          '#6366F1',
-                          '#14B8A6',
-                        ];
-                        const color = modelColors[index % modelColors.length];
-                        return <Cell key={`cell-${index}`} fill={color} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Row 3: Won/Rejected and Team Member Charts */}
+              {/* Row 2: Won/Rejected and Team Member Charts */}
               {/* Won vs Rejected Over Time */}
               <EnhancedChartCard
-                title="Won vs Rejected Quotes"
+                title="Won vs Rejected Proposals"
                 subtitle="Track outcomes over time"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -776,10 +669,10 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Quotes by People */}
+              {/* Proposals by People */}
               <EnhancedChartCard
-                title="Quotes by Team Member"
-                subtitle="Quote volume per person"
+                title="Proposals by Team Member"
+                subtitle="Proposal volume per person"
                 onExport={() => handleExport('by-people')}
                 onExpand={() => handleEnlarge('by-people')}
               >
@@ -810,16 +703,16 @@ const Analytics = () => {
                       formatter={(value: number, name: string) => [value, name]}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Total Proposals" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Row 4: Quote Status Charts */}
-              {/* Quote Status Breakdown */}
+              {/* Row 4: Proposal Status Charts */}
+              {/* Proposal Status Breakdown */}
               <EnhancedChartCard
-                title="Quote Status Breakdown"
+                title="Proposal Status Breakdown"
                 subtitle="Distribution across all statuses"
                 onExport={() => handleExport('status')}
                 onExpand={() => handleEnlarge('status')}
@@ -830,7 +723,6 @@ const Analytics = () => {
                       <PieChart>
                         <Pie
                           data={[
-                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                             { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                             { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                             { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -844,7 +736,6 @@ const Analytics = () => {
                           dataKey="value"
                         >
                           {[
-                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                             { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                             { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                             { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -866,8 +757,7 @@ const Analytics = () => {
                           align="right"
                           layout="vertical"
                           formatter={(value, entry: any) => {
-                            const total = analytics.statusBreakdown.incomplete +
-                                         analytics.statusBreakdown.draft +
+                            const total = analytics.statusBreakdown.draft +
                                          analytics.statusBreakdown.submitted +
                                          analytics.statusBreakdown.won +
                                          analytics.statusBreakdown.rejected;
@@ -882,9 +772,9 @@ const Analytics = () => {
                 </div>
               </EnhancedChartCard>
 
-              {/* Quote Source Performance */}
+              {/* Proposal Source Performance */}
               <EnhancedChartCard
-                title="Quote Source Performance"
+                title="Proposal Source Performance"
                 subtitle="Revenue and conversion by source"
                 onExport={() => handleExport('sources')}
                 onExpand={() => handleEnlarge('sources')}
@@ -896,7 +786,7 @@ const Analytics = () => {
                         <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                           <tr>
                             <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
-                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
                             <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Avg Value</th>
                             <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
                           </tr>
@@ -905,7 +795,7 @@ const Analytics = () => {
                           {analytics.sourceMetrics.map((source, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                               <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{source.source}</td>
-                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.proposalCount}</td>
                               <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.averageValue)}</td>
                               <td className="px-4 py-3 text-right">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -930,12 +820,312 @@ const Analytics = () => {
                   )}
                 </div>
               </EnhancedChartCard>
+
+              {/* Row 5: Category of Work and Project Type */}
+              {/* Category of Work */}
+              <EnhancedChartCard
+                title="Category of Work"
+                subtitle="Proposals by work category"
+                onExport={() => handleExport('category-of-work')}
+                onExpand={() => handleEnlarge('category-of-work')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.categoryOfWorkMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="category"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Won') return [value, 'Won'];
+                        if (name === 'Proposals') return [value, 'Total Proposals'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Proposals" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Project Type */}
+              <EnhancedChartCard
+                title="Project Type"
+                subtitle="Proposals by project type"
+                onExport={() => handleExport('project-type')}
+                onExpand={() => handleEnlarge('project-type')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.projectTypeMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="projectType"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Won') return [value, 'Won'];
+                        if (name === 'Proposals') return [value, 'Total Proposals'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="proposalCount" fill={COLORS.purple} name="Proposals" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 6: Location Type and Work Classification */}
+              {/* Location Type */}
+              <EnhancedChartCard
+                title="Location Type"
+                subtitle="Proposals by location type"
+                onExport={() => handleExport('location-type')}
+                onExpand={() => handleEnlarge('location-type')}
+              >
+                <div className="h-[300px] flex items-center">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={analytics.locationTypeMetrics.filter(l => l.proposalCount > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={90}
+                        fill="#8884d8"
+                        dataKey="proposalCount"
+                        nameKey="locationType"
+                      >
+                        {analytics.locationTypeMetrics.filter(l => l.proposalCount > 0).map((_, index) => {
+                          const pieColors = [COLORS.blue, COLORS.green, COLORS.purple, COLORS.orange, COLORS.teal, COLORS.primary];
+                          return <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />;
+                        })}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [value, name]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="middle"
+                        align="right"
+                        layout="vertical"
+                        formatter={(value, entry: any) => {
+                          const total = analytics.locationTypeMetrics.reduce((sum, l) => sum + l.proposalCount, 0);
+                          const itemValue = entry.payload?.proposalCount || 0;
+                          const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
+                          return `${value}: ${itemValue} (${percent}%)`;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+
+              {/* Work Classification (Union / Prevailing Wage) */}
+              <EnhancedChartCard
+                title="Work Classification"
+                subtitle="Union and prevailing wage breakdown"
+                onExport={() => handleExport('work-classification')}
+                onExpand={() => handleEnlarge('work-classification')}
+              >
+                <div className="h-[300px] flex flex-col">
+                  {analytics.workClassificationMetrics.length > 0 ? (
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Classification</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Won</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Revenue</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {analytics.workClassificationMetrics.map((item, idx) => {
+                            const label = item.isUnion && item.isPrevailingWage
+                              ? 'Union + Prevailing Wage'
+                              : item.isUnion
+                              ? 'Union'
+                              : item.isPrevailingWage
+                              ? 'Prevailing Wage'
+                              : 'Standard';
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                                  <span className={`inline-flex items-center gap-2 ${
+                                    item.isUnion || item.isPrevailingWage ? 'text-amber-600 dark:text-amber-400' : ''
+                                  }`}>
+                                    {label}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{item.proposalCount}</td>
+                                <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{item.wonCount}</td>
+                                <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(item.revenue)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                      No work classification data available
+                    </div>
+                  )}
+                </div>
+              </EnhancedChartCard>
+
+              {/* Row 7: Product Charts (moved down) */}
+              {/* Product Breakdown */}
+              <EnhancedChartCard
+                title="Most Proposed Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                onExpand={() => handleEnlarge('products')}
+              >
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="productType"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={120}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((entry, index) => {
+                        const productColors: Record<string, string> = {
+                          'Operable Wall': COLORS.blue,
+                          'Glass Wall': COLORS.green,
+                          'Accordion Partition': COLORS.purple,
+                        };
+                        const color = productColors[entry.productType] || COLORS.orange;
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Product Model Breakdown */}
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed breakdown by model for all product types"
+                onExport={() => handleExport('product-models')}
+                onExpand={() => handleEnlarge('product-models')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Proposals') return [value, 'Proposal Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0]!.payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((_, index) => {
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B',
+                          '#EC4899',
+                          '#6366F1',
+                          '#14B8A6',
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
             </div>
           ) : (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">No quotes data available</p>
-              <p className="text-sm text-gray-500">Create some quotes to see analytics</p>
+              <p className="text-gray-600 mb-4">No proposals data available</p>
+              <p className="text-sm text-gray-500">Create some proposals to see analytics</p>
             </div>
           )}
         </>
@@ -945,10 +1135,10 @@ const Analytics = () => {
       {enlargedChart && (
         <Dialog open={!!enlargedChart} onOpenChange={(open) => !open && setEnlargedChart(null)}>
           <DialogContent className="max-w-[95vw] h-[92vh] p-6 flex flex-col overflow-hidden">
-            {/* Average Quote Metrics */}
+            {/* Average Proposal Metrics */}
             {enlargedChart === 'averages' && (
               <EnhancedChartCard
-                title="Average Quote Metrics Over Time"
+                title="Average Proposal Metrics Over Time"
                 subtitle="Track profit, revenue, and value trends"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -1008,7 +1198,7 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
@@ -1037,7 +1227,7 @@ const Analytics = () => {
                         dataKey="avgValue"
                         stroke={COLORS.purple}
                         strokeWidth={3}
-                        name="Avg Quote Value"
+                        name="Avg Proposal Value"
                         dot={{ r: 4 }}
                         activeDot={{ r: 6 }}
                       />
@@ -1088,7 +1278,7 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
@@ -1096,7 +1286,7 @@ const Analytics = () => {
                       <Legend />
                       <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Proposal Value" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   )}
                 </ResponsiveContainer>
@@ -1264,7 +1454,7 @@ const Analytics = () => {
             {/* Won vs Rejected */}
             {enlargedChart === 'won-rejected' && (
               <EnhancedChartCard
-                title="Won vs Rejected Quotes"
+                title="Won vs Rejected Proposals"
                 subtitle="Track outcomes over time"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -1386,7 +1576,7 @@ const Analytics = () => {
             {/* Products */}
             {enlargedChart === 'products' && (
               <EnhancedChartCard
-                title="Most Quoted Products"
+                title="Most Proposed Products"
                 subtitle="Product type distribution"
                 onExport={() => handleExport('products')}
                 onExpand={() => setEnlargedChart(null)}
@@ -1418,7 +1608,7 @@ const Analytics = () => {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
                       {analytics.productMetrics.map((entry, index) => {
                         const productColors: Record<string, string> = {
                           'Operable Wall': COLORS.blue,
@@ -1462,7 +1652,7 @@ const Analytics = () => {
                         borderRadius: '8px',
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        if (name === 'Proposals') return [value, 'Proposal Count'];
                         return [value, name];
                       }}
                       labelFormatter={(label, payload) => {
@@ -1474,7 +1664,7 @@ const Analytics = () => {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
                       {analytics.productModelMetrics.map((_, index) => {
                         const modelColors = [
                           COLORS.blue,
@@ -1500,8 +1690,8 @@ const Analytics = () => {
             {/* By People */}
             {enlargedChart === 'by-people' && (
               <EnhancedChartCard
-                title="Quotes by Team Member"
-                subtitle="Quote volume per person"
+                title="Proposals by Team Member"
+                subtitle="Proposal volume per person"
                 onExport={() => handleExport('by-people')}
                 onExpand={() => setEnlargedChart(null)}
                 isEnlarged={true}
@@ -1533,7 +1723,7 @@ const Analytics = () => {
                       formatter={(value: number, name: string) => [value, name]}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Total Proposals" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1543,7 +1733,7 @@ const Analytics = () => {
             {/* Status */}
             {enlargedChart === 'status' && (
               <EnhancedChartCard
-                title="Quote Status Breakdown"
+                title="Proposal Status Breakdown"
                 subtitle="Distribution across all statuses"
                 onExport={() => handleExport('status')}
                 onExpand={() => setEnlargedChart(null)}
@@ -1554,7 +1744,6 @@ const Analytics = () => {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                           { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                           { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                           { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -1569,7 +1758,6 @@ const Analytics = () => {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
                       >
                         {[
-                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                           { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                           { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                           { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -1590,8 +1778,7 @@ const Analytics = () => {
                         verticalAlign="bottom"
                         height={36}
                         formatter={(value, entry: any) => {
-                          const total = analytics.statusBreakdown.incomplete +
-                                       analytics.statusBreakdown.draft +
+                          const total = analytics.statusBreakdown.draft +
                                        analytics.statusBreakdown.submitted +
                                        analytics.statusBreakdown.won +
                                        analytics.statusBreakdown.rejected;
@@ -1609,7 +1796,7 @@ const Analytics = () => {
             {/* Sources */}
             {enlargedChart === 'sources' && (
               <EnhancedChartCard
-                title="Quote Source Performance"
+                title="Proposal Source Performance"
                 subtitle="Revenue and conversion by source"
                 onExport={() => handleExport('sources')}
                 onExpand={() => setEnlargedChart(null)}
@@ -1622,7 +1809,7 @@ const Analytics = () => {
                         <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                           <tr>
                             <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
-                            <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
                             <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Avg Value</th>
                             <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
                           </tr>
@@ -1631,7 +1818,7 @@ const Analytics = () => {
                           {analytics.sourceMetrics.map((source, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                               <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{source.source}</td>
-                              <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{source.proposalCount}</td>
                               <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.averageValue)}</td>
                               <td className="px-6 py-4 text-right">
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${

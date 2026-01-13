@@ -19,7 +19,7 @@ interface TrialExpiryModalProps {
   onClose: () => void;
   /** Optional: metrics to show user value */
   metrics?: {
-    quotesCreated?: number;
+    proposalsCreated?: number;
     totalRevenue?: number;
     teamMembers?: number;
   };
@@ -101,10 +101,10 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
                 Your Progress So Far
               </h3>
               <div className="grid grid-cols-3 gap-4">
-                {metrics.quotesCreated !== undefined && (
+                {metrics.proposalsCreated !== undefined && (
                   <div className="text-center">
                     <div className="text-3xl font-bold text-blue-600">
-                      {metrics.quotesCreated}
+                      {metrics.proposalsCreated}
                     </div>
                     <div className="text-xs text-gray-600 mt-1">
                       Proposals Created
@@ -142,7 +142,7 @@ export const TrialExpiryModal: React.FC<TrialExpiryModalProps> = ({
             </h3>
             <div className="space-y-2">
               {[
-                'Unlimited proposals and quotes',
+                'Unlimited proposals',
                 'Full team collaboration features',
                 'Advanced analytics and reporting',
                 'Priority customer support',

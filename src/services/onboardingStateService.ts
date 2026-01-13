@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface OnboardingSessionData {
   fullName?: string;
-  orgChoice?: 'join' | 'create';
   orgName?: string;
   industry?: string;
   foundVia?: string;
@@ -16,7 +15,6 @@ export interface OnboardingSessionData {
   companyFax?: string;
   companyAddress?: string;
   companyWebsite?: string;
-  quoteStartingPoint?: string;
 }
 
 export interface OnboardingProgress {

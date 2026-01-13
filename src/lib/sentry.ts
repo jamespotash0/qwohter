@@ -10,7 +10,7 @@
  *
  * What we DON'T track:
  * - Passwords, payment info, API keys
- * - Personal customer data from quotes
+ * - Personal customer data from proposals
  * - Sensitive business information
  */
 
@@ -38,7 +38,7 @@ export const initializeSentry = () => {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: ENVIRONMENT,
-    release: `wall-quote-wizard@${APP_VERSION}`,
+    release: `qwohter@${APP_VERSION}`,
 
     // Performance Monitoring
     integrations: [

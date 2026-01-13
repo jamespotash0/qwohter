@@ -1,9 +1,21 @@
+import React from 'react';
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools, persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 
 type Theme = 'light' | 'dark' | 'system';
 type SidebarState = 'expanded' | 'collapsed' | 'hidden';
+type DataDensity = 'compact' | 'comfortable' | 'spacious';
+
+// Page-specific preferences (persisted per page)
+interface PagePreferences {
+  expandedRows?: Record<string, boolean>;     // Expanded table rows/accordions
+  columnVisibility?: Record<string, boolean>; // Table column visibility
+  columnSizing?: Record<string, number>;      // Table column widths
+  dataDensity?: DataDensity;                  // Table row density
+  sorting?: Array<{ id: string; desc: boolean }>; // Table sorting
+  pageSize?: number;                          // Pagination size
+}
 
 interface UIState {
   // Theme and appearance
@@ -17,9 +29,9 @@ interface UIState {
 
   // Modal and dialog state
   modals: {
-    createQuote: boolean;
-    editQuote: boolean;
-    deleteQuote: boolean;
+    createProposal: boolean;
+    editProposal: boolean;
+    deleteProposal: boolean;
     wallSystemEditor: boolean;
     userProfile: boolean;
   };
@@ -43,6 +55,12 @@ interface UIState {
   unsavedChanges: boolean;
   formErrors: Record<string, string[]>;
 
+  // Page-specific preferences (persisted to localStorage)
+  pagePreferences: Record<string, PagePreferences>;
+
+  // Sidebar section expansion states
+  sidebarSections: Record<string, boolean>;
+
   // Actions
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void; // Cycles through: light → dark → system → light
@@ -65,6 +83,20 @@ interface UIState {
   setFormErrors: (errors: Record<string, string[]>) => void;
   clearFormErrors: () => void;
 
+  // Page preferences management
+  getPagePreferences: (pageId: string) => PagePreferences;
+  setPagePreferences: (pageId: string, preferences: Partial<PagePreferences>) => void;
+  setExpandedRows: (pageId: string, expanded: Record<string, boolean>) => void;
+  toggleExpandedRow: (pageId: string, rowId: string) => void;
+  setColumnVisibility: (pageId: string, visibility: Record<string, boolean>) => void;
+  setDataDensity: (pageId: string, density: DataDensity) => void;
+  setPageSize: (pageId: string, size: number) => void;
+
+  // Sidebar section management
+  toggleSidebarSection: (sectionId: string) => void;
+  setSidebarSection: (sectionId: string, expanded: boolean) => void;
+  getSidebarSection: (sectionId: string) => boolean;
+
   // Utilities
   toggleSidebar: () => void;
   resetUI: () => void;
@@ -76,6 +108,39 @@ const getSystemTheme = (): 'light' | 'dark' => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
+// ============================================================================
+// LocalStorage Migration: wall-quote-wizard-ui → qwohter-ui
+// ============================================================================
+// Migrates user preferences from old localStorage key to new one.
+// This ensures existing users keep their settings after the rename.
+// Can be safely removed after a few months when all users have migrated.
+const OLD_STORAGE_KEY = 'wall-quote-wizard-ui';
+const NEW_STORAGE_KEY = 'qwohter-ui';
+
+const migrateLocalStorage = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const oldData = localStorage.getItem(OLD_STORAGE_KEY);
+    const newData = localStorage.getItem(NEW_STORAGE_KEY);
+
+    // Only migrate if old key exists and new key doesn't
+    if (oldData && !newData) {
+      localStorage.setItem(NEW_STORAGE_KEY, oldData);
+      localStorage.removeItem(OLD_STORAGE_KEY);
+      console.log('[UI Store] Migrated preferences from wall-quote-wizard-ui to qwohter-ui');
+    } else if (oldData && newData) {
+      // Both exist - remove old key (new key takes precedence)
+      localStorage.removeItem(OLD_STORAGE_KEY);
+    }
+  } catch (error) {
+    console.warn('[UI Store] Failed to migrate localStorage:', error);
+  }
+};
+
+// Run migration immediately (before store initialization)
+migrateLocalStorage();
+
 const initialState: UIState = {
   theme: 'light', // TEMP: Force light mode until dark mode is fully implemented
   effectiveTheme: 'light', // TEMP: Force light mode until dark mode is fully implemented
@@ -83,9 +148,9 @@ const initialState: UIState = {
   globalLoading: false,
   loadingMessage: null,
   modals: {
-    createQuote: false,
-    editQuote: false,
-    deleteQuote: false,
+    createProposal: false,
+    editProposal: false,
+    deleteProposal: false,
     wallSystemEditor: false,
     userProfile: false,
   },
@@ -95,6 +160,8 @@ const initialState: UIState = {
   breadcrumbs: [],
   unsavedChanges: false,
   formErrors: {},
+  pagePreferences: {},
+  sidebarSections: {},
   // added below to fix infers any error
   setTheme: () => {},
   toggleTheme: () => {},
@@ -111,6 +178,16 @@ const initialState: UIState = {
   setUnsavedChanges: () => {},
   setFormErrors: () => {},
   clearFormErrors: () => {},
+  getPagePreferences: () => ({}),
+  setPagePreferences: () => {},
+  setExpandedRows: () => {},
+  toggleExpandedRow: () => {},
+  setColumnVisibility: () => {},
+  setDataDensity: () => {},
+  setPageSize: () => {},
+  toggleSidebarSection: () => {},
+  setSidebarSection: () => {},
+  getSidebarSection: () => false,
   toggleSidebar: () => {},
   resetUI: () => {},
 };
@@ -237,16 +314,124 @@ export const useUIStore = create<UIState>()(
           set({ formErrors: {} });
         },
 
+        // Page preferences management
+        getPagePreferences: (pageId: string): PagePreferences => {
+          return get().pagePreferences[pageId] || {};
+        },
+
+        setPagePreferences: (pageId: string, preferences: Partial<PagePreferences>) => {
+          set((state) => ({
+            pagePreferences: {
+              ...state.pagePreferences,
+              [pageId]: {
+                ...state.pagePreferences[pageId],
+                ...preferences,
+              },
+            },
+          }));
+        },
+
+        setExpandedRows: (pageId: string, expanded: Record<string, boolean>) => {
+          set((state) => ({
+            pagePreferences: {
+              ...state.pagePreferences,
+              [pageId]: {
+                ...state.pagePreferences[pageId],
+                expandedRows: expanded,
+              },
+            },
+          }));
+        },
+
+        toggleExpandedRow: (pageId: string, rowId: string) => {
+          set((state) => {
+            const current = state.pagePreferences[pageId]?.expandedRows || {};
+            return {
+              pagePreferences: {
+                ...state.pagePreferences,
+                [pageId]: {
+                  ...state.pagePreferences[pageId],
+                  expandedRows: {
+                    ...current,
+                    [rowId]: !current[rowId],
+                  },
+                },
+              },
+            };
+          });
+        },
+
+        setColumnVisibility: (pageId: string, visibility: Record<string, boolean>) => {
+          set((state) => ({
+            pagePreferences: {
+              ...state.pagePreferences,
+              [pageId]: {
+                ...state.pagePreferences[pageId],
+                columnVisibility: visibility,
+              },
+            },
+          }));
+        },
+
+        setDataDensity: (pageId: string, density: DataDensity) => {
+          set((state) => ({
+            pagePreferences: {
+              ...state.pagePreferences,
+              [pageId]: {
+                ...state.pagePreferences[pageId],
+                dataDensity: density,
+              },
+            },
+          }));
+        },
+
+        setPageSize: (pageId: string, size: number) => {
+          set((state) => ({
+            pagePreferences: {
+              ...state.pagePreferences,
+              [pageId]: {
+                ...state.pagePreferences[pageId],
+                pageSize: size,
+              },
+            },
+          }));
+        },
+
+        // Sidebar section management
+        toggleSidebarSection: (sectionId: string) => {
+          set((state) => ({
+            sidebarSections: {
+              ...state.sidebarSections,
+              [sectionId]: !state.sidebarSections[sectionId],
+            },
+          }));
+        },
+
+        setSidebarSection: (sectionId: string, expanded: boolean) => {
+          set((state) => ({
+            sidebarSections: {
+              ...state.sidebarSections,
+              [sectionId]: expanded,
+            },
+          }));
+        },
+
+        getSidebarSection: (sectionId: string): boolean => {
+          return get().sidebarSections[sectionId] ?? true; // Default to expanded
+        },
+
         // Reset UI to initial state
         resetUI: () => {
           set(initialState);
         },
       })),
       {
-        name: 'wall-quote-wizard-ui',
+        name: NEW_STORAGE_KEY,
         partialize: (state) => ({
           theme: state.theme,
           sidebarState: state.sidebarState,
+          pagePreferences: state.pagePreferences,
+          sidebarSections: state.sidebarSections,
         }),
       }
     )
@@ -331,3 +516,75 @@ export const useUIActions = () => useUIStore((state) => ({
   clearFormErrors: state.clearFormErrors,
   resetUI: state.resetUI,
 }));
+
+// Stable empty object to avoid creating new references
+const EMPTY_PREFERENCES: PagePreferences = {};
+
+// Page preferences hook - returns preferences and actions for a specific page
+export const usePagePreferences = (pageId: string) => {
+  // Get preferences with stable fallback
+  const preferences = useUIStore((state) => state.pagePreferences[pageId] ?? EMPTY_PREFERENCES);
+
+  // Get stable action references from store
+  const setPagePreferencesStore = useUIStore((state) => state.setPagePreferences);
+  const setExpandedRowsStore = useUIStore((state) => state.setExpandedRows);
+  const toggleExpandedRowStore = useUIStore((state) => state.toggleExpandedRow);
+  const setColumnVisibilityStore = useUIStore((state) => state.setColumnVisibility);
+  const setDataDensityStore = useUIStore((state) => state.setDataDensity);
+  const setPageSizeStore = useUIStore((state) => state.setPageSize);
+
+  // Memoize curried actions to prevent new references on every render
+  const setPreferences = React.useCallback(
+    (prefs: Partial<PagePreferences>) => setPagePreferencesStore(pageId, prefs),
+    [pageId, setPagePreferencesStore]
+  );
+  const setExpandedRows = React.useCallback(
+    (expanded: Record<string, boolean>) => setExpandedRowsStore(pageId, expanded),
+    [pageId, setExpandedRowsStore]
+  );
+  const toggleExpandedRow = React.useCallback(
+    (rowId: string) => toggleExpandedRowStore(pageId, rowId),
+    [pageId, toggleExpandedRowStore]
+  );
+  const setColumnVisibility = React.useCallback(
+    (visibility: Record<string, boolean>) => setColumnVisibilityStore(pageId, visibility),
+    [pageId, setColumnVisibilityStore]
+  );
+  const setDataDensity = React.useCallback(
+    (density: DataDensity) => setDataDensityStore(pageId, density),
+    [pageId, setDataDensityStore]
+  );
+  const setPageSize = React.useCallback(
+    (size: number) => setPageSizeStore(pageId, size),
+    [pageId, setPageSizeStore]
+  );
+
+  // Return preferences and curried actions (pageId is baked in)
+  return {
+    // Spread individual preference values to avoid object reference issues
+    expandedRows: preferences.expandedRows,
+    columnVisibility: preferences.columnVisibility,
+    columnSizing: preferences.columnSizing,
+    dataDensity: preferences.dataDensity,
+    sorting: preferences.sorting,
+    pageSize: preferences.pageSize,
+    // Memoized actions
+    setPreferences,
+    setExpandedRows,
+    toggleExpandedRow,
+    setColumnVisibility,
+    setDataDensity,
+    setPageSize,
+  };
+};
+
+// Sidebar sections hook
+export const useSidebarSections = () => useUIStore(useShallow((state) => ({
+  sections: state.sidebarSections,
+  toggleSection: state.toggleSidebarSection,
+  setSection: state.setSidebarSection,
+  getSection: state.getSidebarSection,
+})));
+
+// Export types for consumers
+export type { PagePreferences, DataDensity };

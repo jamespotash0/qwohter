@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import * as Sentry from '@sentry/react';
 
-export type ReminderType = 'Quote_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task' | 'Other';
+export type ReminderType = 'Proposal_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task' | 'Other';
 export type ReminderStatus = 'Pending' | 'Completed' | 'Dismissed';
 
 export interface Reminder {
@@ -11,7 +11,7 @@ export interface Reminder {
   title: string;
   description?: string;
   due_date: string;
-  quote_id?: string;
+  proposal_id?: string;
   reminder_type: ReminderType;
   reminder_status: ReminderStatus; //reminder_status formerly status
   is_shared: boolean;
@@ -20,7 +20,7 @@ export interface Reminder {
   created_at: string;
   updated_at: string;
   // Joined data
-  quote_number?: string;
+  proposal_number?: string;
   project_name?: string;
   creator_name?: string;
 }
@@ -29,7 +29,7 @@ export interface CreateReminderParams {
   title: string;
   description?: string;
   due_date: string;
-  quote_id?: string;
+  proposal_id?: string;
   reminder_type: ReminderType;
   organization_id: string;
   is_shared?: boolean; // Default to false (personal) if not specified
@@ -39,7 +39,7 @@ export interface UpdateReminderParams {
   title?: string;
   description?: string;
   due_date?: string;
-  quote_id?: string;
+  proposal_id?: string;
   reminder_type?: ReminderType;
 }
 
@@ -61,7 +61,7 @@ export const reminderService = {
         .from('reminders')
         .select(`
           *,
-          quotes:quote_id (
+          proposal:proposals!proposal_id (
             proposal_number,
             project_name
           ),
@@ -89,11 +89,11 @@ export const reminderService = {
       // Map joined data to flat structure
       const reminders = data.map((reminder: any) => ({
         ...reminder,
-        quote_number: reminder.quotes?.proposal_number,
-        project_name: reminder.quotes?.project_name,
+        proposal_number: reminder.proposal?.proposal_number,
+        project_name: reminder.proposal?.project_name,
         creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
-        quotes: undefined,
+        proposal: undefined,
         created_by_profile: undefined,
         completed_by_profile: undefined,
       }));
@@ -106,24 +106,24 @@ export const reminderService = {
   },
 
   /**
-   * Get reminders for a specific quote
+   * Get reminders for a specific proposal
    */
-  async getQuoteReminders(quoteId: string): Promise<{ data: Reminder[] | null; error?: string }> {
+  async getProposalReminders(proposalId: string): Promise<{ data: Reminder[] | null; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('reminders')
         .select('*')
-        .eq('quote_id', quoteId)
+        .eq('proposal_id', proposalId)
         .order('due_date', { ascending: true });
 
       if (error) {
-        console.error('Failed to fetch quote reminders:', error);
+        console.error('Failed to fetch proposal reminders:', error);
         return { data: null, error: error.message };
       }
 
       return { data: data as Reminder[] };
     } catch (error) {
-      console.error('Failed to fetch quote reminders:', error);
+      console.error('Failed to fetch proposal reminders:', error);
       return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -137,7 +137,7 @@ export const reminderService = {
    * What we track:
    * - Success/failure rate
    * - Reminder type distribution (which types are used most)
-   * - Quote association (are reminders linked to quotes?)
+   * - Proposal association (are reminders linked to proposals?)
    * - Auth failures
    */
   async createReminder(params: CreateReminderParams): Promise<{ data: Reminder | null; error?: string }> {
@@ -147,7 +147,7 @@ export const reminderService = {
         op: 'db.query',
         attributes: {
           'reminder.type': params.reminder_type,
-          'reminder.has_quote': !!params.quote_id,
+          'reminder.has_proposal': !!params.proposal_id,
           'reminder.is_shared': params.is_shared ?? false,
         },
       },
@@ -172,7 +172,7 @@ export const reminderService = {
               title: params.title,
               description: params.description,
               due_date: params.due_date,
-              quote_id: params.quote_id,
+              proposal_id: params.proposal_id,
               reminder_type: params.reminder_type,
               reminder_status: 'Pending', // Default status for new reminders
               organization_id: params.organization_id,
@@ -364,7 +364,7 @@ export const reminderService = {
         .from('reminders')
         .select(`
           *,
-          quotes:quote_id (
+          proposal:proposals!proposal_id (
             proposal_number,
             project_name
           ),
@@ -388,11 +388,11 @@ export const reminderService = {
       // Map joined data to flat structure
       const reminders = data.map((reminder: any) => ({
         ...reminder,
-        quote_number: reminder.quotes?.proposal_number,
-        project_name: reminder.quotes?.project_name,
+        proposal_number: reminder.proposal?.proposal_number,
+        project_name: reminder.proposal?.project_name,
         creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
-        quotes: undefined,
+        proposal: undefined,
         created_by_profile: undefined,
         completed_by_profile: undefined,
       }));

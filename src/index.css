@@ -8,8 +8,6 @@
 /* Import the complete design system */
 @import './styles/design-system.css';
 
-/* Import semantic markup visual indicators for quote templates */
-@import './styles/templateMarkers.css';
 
 /* ============================================
    🍞 TOAST NOTIFICATIONS (SONNER)
@@ -105,7 +103,10 @@
 
     /* App-specific */
     --sidebar-background: hsl(210 20% 98%); /* #F9FAFB */
-    --sidebar-border: hsl(220 13% 91%); /* #E5E7EB */
+    --sidebar-border: hsl(220 13% 91%); /* #E5E7EB */ --brand: oklch(0.623 0.214 259.815);
+  }
+  .dark {
+    --brand: oklch(0.707 0.165 254.624);
   }
 }
 
@@ -157,6 +158,107 @@
 }
 
 /* ============================================
+   📝 PRESENTATION EDITOR - BASE STYLES
+   ============================================ */
+
+/* Prevent unwanted scroll behavior */
+.presentation-editor {
+  scroll-behavior: auto !important;
+}
+
+.presentation-editor * {
+  scroll-margin: 0 !important;
+  scroll-snap-align: none !important;
+}
+
+/* Disable focus scroll into view for TipTap */
+.presentation-editor .tiptap {
+  scroll-margin-top: 0;
+  scroll-margin-bottom: 0;
+}
+
+.presentation-editor .tiptap:focus {
+  scroll-margin: 0;
+}
+
+/* ============================================
+   📝 PRESENTATION EDITOR - LIST STYLES
+   ============================================ */
+
+/* Bullet lists */
+.presentation-editor ul {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.presentation-editor ul ul {
+  list-style-type: circle;
+}
+
+.presentation-editor ul ul ul {
+  list-style-type: square;
+}
+
+/* Numbered lists */
+.presentation-editor ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+/* Make markers inherit font properties from the list item */
+.presentation-editor li::marker {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: currentColor;
+}
+
+/* List item spacing */
+.presentation-editor li {
+  padding-left: 0.25em;
+}
+
+.presentation-editor li > p {
+  margin: 0;
+  display: inline;
+}
+
+/* ============================================
+   📊 PRESENTATION EDITOR - TABLE STYLES
+   ============================================ */
+
+/* Ensure table rows respect min-height */
+.presentation-editor table tr {
+  height: auto;
+}
+
+.presentation-editor table tr[style*="min-height"] {
+  height: auto;
+}
+
+.presentation-editor table td,
+.presentation-editor table th {
+  vertical-align: top;
+  padding: 8px 12px;
+}
+
+/* Table resize handles */
+.presentation-editor .table-column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 10;
+}
+
+.presentation-editor .table-column-resize-handle:hover {
+  background: hsl(218, 100%, 62%);
+}
+
+/* ============================================
    🔧 UTILITY CLASSES
    ============================================ */
 
@@ -168,4 +270,17 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari, and Opera */
+}
+
+/*
+ ---break---
+ */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

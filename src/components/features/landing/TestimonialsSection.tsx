@@ -1,5 +1,5 @@
 import { CheckCircleIcon } from "lucide-react";
-import React from "react";
+import React, { JSX } from "react";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";

@@ -7,7 +7,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 
 interface IntegrationCardProps {
   name: string;
@@ -16,7 +16,9 @@ interface IntegrationCardProps {
   isConnected: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
+  onConfigure?: () => void;
   isConnecting?: boolean;
+  isDisconnecting?: boolean;
   comingSoon?: boolean;
   platformRequirement?: string;
 }
@@ -28,10 +30,13 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
   isConnected,
   onConnect,
   onDisconnect,
+  onConfigure,
   isConnecting = false,
+  isDisconnecting = false,
   comingSoon = false,
   platformRequirement,
 }) => {
+  const isLoading = isConnecting || isDisconnecting;
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200 relative">
@@ -78,25 +83,42 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
               </Badge>
             ) : (
               <div className="flex items-center justify-between">
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-md border text-xs font-medium ${
-                  isConnected
-                    ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
-                    : 'bg-gray-50 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
-                }`}>
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : isConnected ? (
-                    'Connected'
-                  ) : (
-                    'Connect'
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md border text-xs font-medium ${
+                    isConnected
+                      ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+                      : 'bg-gray-50 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                  }`}>
+                    {isConnecting ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : isDisconnecting ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                        Disconnecting...
+                      </>
+                    ) : isConnected ? (
+                      'Connected'
+                    ) : (
+                      'Connect'
+                    )}
+                  </span>
+                  {isConnected && onConfigure && (
+                    <button
+                      onClick={onConfigure}
+                      disabled={isLoading}
+                      className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
                   )}
-                </span>
+                </div>
                 <button
                   onClick={isConnected ? onDisconnect : onConnect}
-                  disabled={isConnecting}
+                  disabled={isLoading}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     isConnected
                       ? 'bg-blue-600 hover:bg-blue-700'

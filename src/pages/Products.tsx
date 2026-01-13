@@ -190,7 +190,7 @@ export default function ProductsPage() {
   return (
     <PageContent
       title="Products"
-      subtitle="Manage your product catalog for quotes and proposals"
+      subtitle="Manage your product catalog for proposals"
       showPageHeader={true}
     >
       {/* Filters Row */}

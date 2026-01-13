@@ -155,6 +155,29 @@ export class ContactsService {
   }
 
   /**
+   * Bulk delete multiple contacts
+   * Members can delete contacts in their organization (enforced by RLS)
+   */
+  async bulkDeleteContacts(contactIds: string[]): Promise<void> {
+    if (contactIds.length === 0) return;
+
+    const { error } = await supabase
+      .from('contacts')
+      .delete()
+      .in('id', contactIds);
+
+    if (error) {
+      console.error('Failed to bulk delete contacts:', error);
+
+      if (error.code === 'PGRST301' || error.message.includes('policy')) {
+        throw new Error('You do not have permission to delete contacts. Only active members can delete contacts.');
+      }
+
+      throw new Error(`Failed to delete contacts: ${error.message}`);
+    }
+  }
+
+  /**
    * Check if a contact email exists in the organization
    * Note: With emails as arrays, this checks if ANY contact has the email
    */

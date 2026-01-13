@@ -1,14 +1,14 @@
 /**
  * Analytics Calculation Utilities
  *
- * Processes quote data to generate comprehensive analytics metrics including:
+ * Processes proposal data to generate comprehensive analytics metrics including:
  * - Revenue metrics (total, growth, averages)
  * - Conversion metrics (win rate, loss rate)
  * - Time-based breakdowns (weekly, monthly, yearly)
- * - Quote source performance
+ * - Proposal source performance
  */
 
-import type { Quote } from '@/services/quotesService';
+import type { Proposal } from '@/services/proposalsService';
 import { startOfWeek, startOfMonth, startOfYear, endOfWeek, endOfMonth, endOfYear, addDays, getDay, format, subWeeks, subMonths, subYears, getDaysInMonth } from 'date-fns';
 
 export type TimePeriod = 'weekly' | 'monthly' | 'yearly';
@@ -16,7 +16,7 @@ export type TimePeriod = 'weekly' | 'monthly' | 'yearly';
 export interface TimeSeriesDataPoint {
   date: string;
   revenue: number;
-  quoteCount: number;
+  proposalCount: number;
   wonCount: number;
   rejectedCount: number;
   conversionRate: number;
@@ -30,47 +30,77 @@ export interface MetricWithTrend {
   trendDirection: 'up' | 'down' | 'neutral';
 }
 
-export interface QuoteSourceMetrics {
+export interface ProposalSourceMetrics {
   source: string;
-  quoteCount: number;
+  proposalCount: number;
   averageValue: number;
   wonCount: number;
   conversionRate: number;
   referralType?: string; // For referral breakdowns (contractor, architect, manufacturer)
 }
 
-export interface QuoteStatusBreakdown {
-  incomplete: number;
+export interface ProposalStatusBreakdown {
   draft: number;
   submitted: number;
   won: number;
   rejected: number;
 }
 
-export interface UserQuoteMetrics {
+export interface UserProposalMetrics {
   userName: string;
-  quoteCount: number;
+  proposalCount: number;
   wonCount: number;
   revenue: number;
 }
 
 export interface ProductMetrics {
   productType: string; // Operable Wall, Glass Wall, Accordion Wall
-  quoteCount: number;
+  proposalCount: number;
   revenue: number;
 }
 
 export interface ProductModelMetrics {
   productType: string; // Operable Wall, Glass Wall, Accordion Partition
   model: string; // Model for all product types
-  quoteCount: number;
+  proposalCount: number;
   revenue: number;
+}
+
+export interface CategoryOfWorkMetrics {
+  category: string;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+  conversionRate: number;
+}
+
+export interface ProjectTypeMetrics {
+  projectType: string;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+  conversionRate: number;
+}
+
+export interface LocationTypeMetrics {
+  locationType: string;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
+}
+
+export interface WorkClassificationMetrics {
+  isUnion: boolean;
+  isPrevailingWage: boolean;
+  proposalCount: number;
+  revenue: number;
+  wonCount: number;
 }
 
 export interface RevenueVsQuotedData {
   date: string;
-  revenue: number; // Won quotes total
-  quotedValue: number; // All submitted quotes total
+  revenue: number; // Won proposals total
+  quotedValue: number; // All submitted proposals total
 }
 
 export interface AveragesOverTimeData {
@@ -84,9 +114,9 @@ export interface AveragesOverTimeData {
 export interface TotalsOverTimeData {
   date: string;
   fullDate?: Date; // Store full date for tooltip formatting
-  revenue: number; // Total revenue (won quotes)
-  grossProfit: number; // Total gross profit (won quotes)
-  pipelineValue: number; // Total pipeline value (all quotes in Won/Draft/Submitted/Rejected)
+  revenue: number; // Total revenue (won proposals)
+  grossProfit: number; // Total gross profit (won proposals)
+  pipelineValue: number; // Total pipeline value (all proposals in Won/Draft/Submitted/Rejected)
 }
 
 export interface WonRejectedOverTimeData {
@@ -98,18 +128,23 @@ export interface WonRejectedOverTimeData {
 
 export interface AnalyticsSummary {
   totalRevenue: MetricWithTrend;
-  quotesSent: MetricWithTrend;
+  proposalsSent: MetricWithTrend;
   conversionRate: MetricWithTrend;
-  averageQuoteValue: MetricWithTrend;
+  averageProposalValue: MetricWithTrend;
   timeSeriesData: TimeSeriesDataPoint[];
-  sourceMetrics: QuoteSourceMetrics[];
-  statusBreakdown: QuoteStatusBreakdown;
-  userMetrics: UserQuoteMetrics[];
+  sourceMetrics: ProposalSourceMetrics[];
+  statusBreakdown: ProposalStatusBreakdown;
+  userMetrics: UserProposalMetrics[];
   productMetrics: ProductMetrics[];
   productModelMetrics: ProductModelMetrics[];
   revenueVsQuoted: RevenueVsQuotedData[];
   averagesOverTime: AveragesOverTimeData[];
   totalsOverTime: TotalsOverTimeData[];
+  // New InfoTab field analytics
+  categoryOfWorkMetrics: CategoryOfWorkMetrics[];
+  projectTypeMetrics: ProjectTypeMetrics[];
+  locationTypeMetrics: LocationTypeMetrics[];
+  workClassificationMetrics: WorkClassificationMetrics[];
 }
 
 /**
@@ -190,38 +225,38 @@ export const formatDateForPeriod = (date: Date, period: TimePeriod): string => {
 };
 
 /**
- * Filter quotes by date range
+ * Filter proposals by date range
  */
-export const filterQuotesByDateRange = (
-  quotes: Quote[],
+export const filterProposalsByDateRange = (
+  proposals: Proposal[],
   startDate: Date,
   endDate: Date = new Date(),
   dateField: 'created_at' | 'submitted_at' | 'won_at' | 'rejected_at' = 'created_at'
-): Quote[] => {
-  return quotes.filter((quote) => {
-    const quoteDate = quote[dateField] ? new Date(quote[dateField]!) : null;
-    if (!quoteDate) return false;
-    return quoteDate >= startDate && quoteDate <= endDate;
+): Proposal[] => {
+  return proposals.filter((proposal) => {
+    const proposalDate = proposal[dateField] ? new Date(proposal[dateField]!) : null;
+    if (!proposalDate) return false;
+    return proposalDate >= startDate && proposalDate <= endDate;
   });
 };
 
 /**
- * Calculate total revenue from quotes
+ * Calculate total revenue from proposals
  */
-export const calculateTotalRevenue = (quotes: Quote[]): number => {
-  return quotes
-    .filter((q) => q.status === 'Won')
-    .reduce((sum, q) => sum + (q.total_value || 0), 0);
+export const calculateTotalRevenue = (proposals: Proposal[]): number => {
+  return proposals
+    .filter((p) => p.status === 'Won')
+    .reduce((sum, p) => sum + (p.total_value || 0), 0);
 };
 
 /**
- * Calculate win rate (% of decided quotes that were won)
+ * Calculate win rate (% of decided proposals that were won)
  * Formula: Won / (Won + Rejected) * 100
- * This excludes draft/incomplete quotes - only counts decided outcomes
+ * This excludes draft/incomplete proposals - only counts decided outcomes
  */
-export const calculateWinRate = (quotes: Quote[]): number => {
-  const won = quotes.filter((q) => q.status === 'Won').length;
-  const rejected = quotes.filter((q) => q.status === 'Rejected').length;
+export const calculateWinRate = (proposals: Proposal[]): number => {
+  const won = proposals.filter((p) => p.status === 'Won').length;
+  const rejected = proposals.filter((p) => p.status === 'Rejected').length;
   const decided = won + rejected;
 
   if (decided === 0) return 0;
@@ -229,80 +264,81 @@ export const calculateWinRate = (quotes: Quote[]): number => {
 };
 
 /**
- * Calculate conversion rate (% of submitted quotes that were won)
+ * Calculate conversion rate (% of submitted proposals that were won)
  * Formula: Won / Total Submitted * 100
- * Note: "Submitted" = any quote sent out (Submitted status + Won + Rejected)
+ * Note: "Submitted" = any proposal sent out (Submitted status + Won + Rejected)
  */
-export const calculateConversionRate = (quotes: Quote[]): number => {
-  // Total submitted = quotes with Submitted, Won, or Rejected status
-  const totalSubmitted = quotes.filter((q) =>
-    q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected'
+export const calculateConversionRate = (proposals: Proposal[]): number => {
+  // Total submitted = proposals with Submitted, Won, or Rejected status
+  const totalSubmitted = proposals.filter((p) =>
+    p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected'
   ).length;
 
   if (totalSubmitted === 0) return 0;
 
-  const won = quotes.filter((q) => q.status === 'Won').length;
+  const won = proposals.filter((p) => p.status === 'Won').length;
   return (won / totalSubmitted) * 100;
 };
 
 /**
- * Calculate average quote value (all submitted/won/rejected quotes)
+ * Calculate average proposal value (all submitted/won/rejected proposals)
  */
-export const calculateAverageQuoteValue = (quotes: Quote[]): number => {
-  const submittedQuotes = quotes.filter((q) =>
-    (q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected') &&
-    q.total_value &&
-    q.total_value > 0
+export const calculateAverageProposalValue = (proposals: Proposal[]): number => {
+  const submittedProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    p.total_value &&
+    p.total_value > 0
   );
-  if (submittedQuotes.length === 0) return 0;
+  if (submittedProposals.length === 0) return 0;
 
-  const total = submittedQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
-  return total / submittedQuotes.length;
+  const total = submittedProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
+  return total / submittedProposals.length;
 };
 
 /**
- * Calculate average revenue per quote (won quotes only)
+ * Calculate average revenue per proposal (won proposals only)
  */
-export const calculateAverageRevenuePerQuote = (quotes: Quote[]): number => {
-  const wonQuotes = quotes.filter((q) => q.status === 'Won' && q.total_value && q.total_value > 0);
-  if (wonQuotes.length === 0) return 0;
+export const calculateAverageRevenuePerProposal = (proposals: Proposal[]): number => {
+  const wonProposals = proposals.filter((p) => p.status === 'Won' && p.total_value && p.total_value > 0);
+  if (wonProposals.length === 0) return 0;
 
-  const totalRevenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
-  return totalRevenue / wonQuotes.length;
+  const totalRevenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
+  return totalRevenue / wonProposals.length;
 };
 
 /**
- * Calculate average gross profit per quote (won quotes only)
+ * Calculate average gross profit per proposal (won proposals only)
  */
-export const calculateAverageGrossProfitPerQuote = (quotes: Quote[]): number => {
-  const wonQuotes = quotes.filter((q) => q.status === 'Won');
-  if (wonQuotes.length === 0) return 0;
+export const calculateAverageGrossProfitPerProposal = (proposals: Proposal[]): number => {
+  const wonProposals = proposals.filter((p) => p.status === 'Won');
+  if (wonProposals.length === 0) return 0;
 
   let totalProfit = 0;
-  let quotesWithProfit = 0;
+  let proposalsWithProfit = 0;
 
-  wonQuotes.forEach((q) => {
-    // Try to get profit from price_details first
-    const profitAmount = q.price_details?.final_selling_price_profit_amount;
+  wonProposals.forEach((p) => {
+    // Try to get profit from form_data.pricing first
+    const pricingData = p.form_data?.pricing;
+    const profitAmount = pricingData?.grossProfit;
     if (profitAmount !== undefined && profitAmount !== null) {
       totalProfit += profitAmount;
-      quotesWithProfit++;
-    } else if (q.margin_percentage && q.total_value) {
-      // Fallback: calculate from margin percentage
-      const profit = q.total_value * (q.margin_percentage / 100);
+      proposalsWithProfit++;
+    } else if (p.margin_percentage && p.total_value) {
+      // Fallback: calculate from margin percentage and total_value
+      const profit = p.total_value * (p.margin_percentage / 100);
       totalProfit += profit;
-      quotesWithProfit++;
+      proposalsWithProfit++;
     }
   });
 
-  return quotesWithProfit > 0 ? totalProfit / quotesWithProfit : 0;
+  return proposalsWithProfit > 0 ? totalProfit / proposalsWithProfit : 0;
 };
 
 /**
- * Group quotes by time period
+ * Group proposals by time period
  */
-export const groupQuotesByPeriod = (
-  quotes: Quote[],
+export const groupProposalsByPeriod = (
+  proposals: Proposal[],
   period: TimePeriod,
   periodsToShow: number = 12
 ): TimeSeriesDataPoint[] => {
@@ -329,27 +365,27 @@ export const groupQuotesByPeriod = (
         break;
     }
 
-    // Filter quotes for this period
-    // For submitted quotes - use submitted_at
-    const periodQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'submitted_at');
+    // Filter proposals for this period
+    // For submitted proposals - use submitted_at
+    const periodProposals = filterProposalsByDateRange(proposals, periodStart, periodEnd, 'submitted_at');
 
-    // For won quotes - use won_at to show when they were actually won
-    const wonQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'won_at')
-      .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+    // For won proposals - use won_at to show when they were actually won
+    const wonProposals = filterProposalsByDateRange(proposals, periodStart, periodEnd, 'won_at')
+      .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
 
-    // For rejected quotes - use rejected_at to show when they were actually rejected
-    const rejectedQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'rejected_at')
-      .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+    // For rejected proposals - use rejected_at to show when they were actually rejected
+    const rejectedProposals = filterProposalsByDateRange(proposals, periodStart, periodEnd, 'rejected_at')
+      .filter((p) => p.status === 'Rejected' && (p.is_main_version === true || p.is_main_version === undefined));
 
-    const revenue = calculateTotalRevenue(wonQuotes);
-    const conversionRate = calculateConversionRate(periodQuotes);
+    const revenue = calculateTotalRevenue(wonProposals);
+    const conversionRate = calculateConversionRate(periodProposals);
 
     dataPoints.push({
       date: formatDateForPeriod(periodStart, period),
       revenue,
-      quoteCount: periodQuotes.length,
-      wonCount: wonQuotes.length,
-      rejectedCount: rejectedQuotes.length,
+      proposalCount: periodProposals.length,
+      wonCount: wonProposals.length,
+      rejectedCount: rejectedProposals.length,
       conversionRate,
     });
   }
@@ -361,9 +397,9 @@ export const groupQuotesByPeriod = (
  * Calculate metric with trend
  */
 export const calculateMetricWithTrend = (
-  quotes: Quote[],
+  proposals: Proposal[],
   period: TimePeriod,
-  calculator: (quotes: Quote[]) => number,
+  calculator: (proposals: Proposal[]) => number,
   formatter: (value: number) => string,
   dateField: 'created_at' | 'submitted_at' | 'won_at' | 'rejected_at' = 'submitted_at'
 ): MetricWithTrend => {
@@ -372,12 +408,12 @@ export const calculateMetricWithTrend = (
   const previousPeriodStart = getPreviousPeriodStart(period, currentPeriodStart);
 
   // Current period
-  const currentQuotes = filterQuotesByDateRange(quotes, currentPeriodStart, now, dateField);
-  const currentValue = calculator(currentQuotes);
+  const currentProposals = filterProposalsByDateRange(proposals, currentPeriodStart, now, dateField);
+  const currentValue = calculator(currentProposals);
 
   // Previous period
-  const previousQuotes = filterQuotesByDateRange(quotes, previousPeriodStart, currentPeriodStart, dateField);
-  const previousValue = calculator(previousQuotes);
+  const previousProposals = filterProposalsByDateRange(proposals, previousPeriodStart, currentPeriodStart, dateField);
+  const previousValue = calculator(previousProposals);
 
   // Calculate trend
   const trend = calculatePercentageChange(currentValue, previousValue);
@@ -393,39 +429,39 @@ export const calculateMetricWithTrend = (
 };
 
 /**
- * Calculate quote source metrics
+ * Calculate proposal source metrics
  */
-export const calculateSourceMetrics = (quotes: Quote[]): QuoteSourceMetrics[] => {
+export const calculateSourceMetrics = (proposals: Proposal[]): ProposalSourceMetrics[] => {
   const sourceMap = new Map<string, {
     source: string;
-    quoteCount: number;
+    proposalCount: number;
     totalValue: number;
     wonCount: number;
   }>();
 
-  // Only consider submitted/won/rejected quotes and main versions only
-  const relevantQuotes = quotes.filter((q) =>
-    (q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected') &&
-    (q.is_main_version === true || q.is_main_version === undefined)
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
   );
 
-  relevantQuotes.forEach((quote) => {
-    const source = quote.quote_source || 'Unknown';
+  relevantProposals.forEach((proposal) => {
+    const source = proposal.proposal_source || 'Unknown';
 
     if (!sourceMap.has(source)) {
       sourceMap.set(source, {
         source,
-        quoteCount: 0,
+        proposalCount: 0,
         totalValue: 0,
         wonCount: 0,
       });
     }
 
     const metrics = sourceMap.get(source)!;
-    metrics.quoteCount++;
-    metrics.totalValue += quote.total_value || 0;
+    metrics.proposalCount++;
+    metrics.totalValue += proposal.total_value || 0;
 
-    if (quote.status === 'Won') {
+    if (proposal.status === 'Won') {
       metrics.wonCount++;
     }
   });
@@ -433,11 +469,11 @@ export const calculateSourceMetrics = (quotes: Quote[]): QuoteSourceMetrics[] =>
   // Calculate conversion rates and average values
   const metricsArray = Array.from(sourceMap.values()).map(metrics => ({
     source: metrics.source,
-    quoteCount: metrics.quoteCount,
-    averageValue: metrics.quoteCount > 0 ? metrics.totalValue / metrics.quoteCount : 0,
+    proposalCount: metrics.proposalCount,
+    averageValue: metrics.proposalCount > 0 ? metrics.totalValue / metrics.proposalCount : 0,
     wonCount: metrics.wonCount,
-    conversionRate: metrics.quoteCount > 0
-      ? (metrics.wonCount / metrics.quoteCount) * 100
+    conversionRate: metrics.proposalCount > 0
+      ? (metrics.wonCount / metrics.proposalCount) * 100
       : 0,
   }));
 
@@ -446,100 +482,117 @@ export const calculateSourceMetrics = (quotes: Quote[]): QuoteSourceMetrics[] =>
 };
 
 /**
- * Calculate quote status breakdown
+ * Calculate proposal status breakdown
+ * Proposal statuses: Draft, Submitted, Won, Rejected
  */
-export const calculateStatusBreakdown = (quotes: Quote[]): QuoteStatusBreakdown => {
+export const calculateStatusBreakdown = (proposals: Proposal[]): ProposalStatusBreakdown => {
   return {
-    incomplete: quotes.filter((q) => !q.status || q.status === 'Incomplete').length,
-    draft: quotes.filter((q) => q.status === 'Draft').length,
-    submitted: quotes.filter((q) => q.status === 'Submitted').length,
-    won: quotes.filter((q) => q.status === 'Won').length,
-    rejected: quotes.filter((q) => q.status === 'Rejected').length,
+    draft: proposals.filter((p) => p.status === 'Draft' || !p.status).length,
+    submitted: proposals.filter((p) => p.status === 'Submitted').length,
+    won: proposals.filter((p) => p.status === 'Won').length,
+    rejected: proposals.filter((p) => p.status === 'Rejected').length,
   };
 };
 
 /**
  * Calculate metrics by user
- * Note: Counts ALL quotes (regardless of status) to show team member activity
+ * Note: Counts ALL proposals (regardless of status) to show team member activity
  */
-export const calculateUserMetrics = (quotes: Quote[]): UserQuoteMetrics[] => {
-  const userMap = new Map<string, UserQuoteMetrics>();
+export const calculateUserMetrics = (proposals: Proposal[]): UserProposalMetrics[] => {
+  const userMap = new Map<string, UserProposalMetrics>();
 
-  quotes.forEach((quote) => {
+  proposals.forEach((proposal) => {
     // Use created_by_name as the primary field
-    const userName = quote.created_by_name || quote.creator_name || 'Unknown';
+    const userName = proposal.created_by_name || proposal.creator_name || 'Unknown';
 
     if (!userMap.has(userName)) {
       userMap.set(userName, {
         userName,
-        quoteCount: 0,
+        proposalCount: 0,
         wonCount: 0,
         revenue: 0,
       });
     }
 
     const metrics = userMap.get(userName)!;
-    metrics.quoteCount++;
+    metrics.proposalCount++;
 
-    if (quote.status === 'Won') {
+    if (proposal.status === 'Won') {
       metrics.wonCount++;
-      metrics.revenue += quote.total_value || 0;
+      metrics.revenue += proposal.total_value || 0;
     }
   });
 
-  // Sort by quote count (highest first)
-  return Array.from(userMap.values()).sort((a, b) => b.quoteCount - a.quoteCount);
+  // Sort by proposal count (highest first)
+  return Array.from(userMap.values()).sort((a, b) => b.proposalCount - a.proposalCount);
 };
 
 /**
- * Calculate product metrics by wall type
- * Note: Counts all walls in all quotes (if a quote has 2 walls, both are counted)
+ * Calculate product metrics by product type
+ * Note: Counts all products in all proposals (if a proposal has 2 products, both are counted)
+ * Extracts productType from multiple possible locations (rawData.productType, rawData.productDomain, direct field)
  */
-export const calculateProductMetrics = (quotes: Quote[]): ProductMetrics[] => {
+export const calculateProductMetrics = (proposals: Proposal[]): ProductMetrics[] => {
   const productMap = new Map<string, ProductMetrics>();
 
-  quotes.forEach((quote) => {
-    // Get all wall types from wall_details
-    const walls = quote.wall_details?.walls || {};
-    Object.values(walls).forEach((wall: any) => {
-      const productType = wall.wallSystemType || 'Other';
+  proposals.forEach((proposal) => {
+    // Get all products from form_data.products
+    const products = proposal.form_data?.products?.items || [];
+    products.forEach((product: any) => {
+      // Extract product type from various possible locations
+      const productType =
+        product.rawData?.productDomain ||
+        product.rawData?.productType ||
+        product.productType ||
+        product.type ||
+        'Other';
 
       if (!productMap.has(productType)) {
         productMap.set(productType, {
           productType,
-          quoteCount: 0,
+          proposalCount: 0,
           revenue: 0,
         });
       }
 
       const metrics = productMap.get(productType)!;
-      metrics.quoteCount++;
+      metrics.proposalCount++;
 
-      if (quote.status === 'Won') {
-        metrics.revenue += quote.total_value || 0;
+      if (proposal.status === 'Won') {
+        metrics.revenue += proposal.total_value || 0;
       }
     });
   });
 
-  // Sort by quote count (highest first)
-  return Array.from(productMap.values()).sort((a, b) => b.quoteCount - a.quoteCount);
+  // Sort by proposal count (highest first)
+  return Array.from(productMap.values()).sort((a, b) => b.proposalCount - a.proposalCount);
 };
 
 /**
  * Calculate product metrics broken down by model
- * Note: Counts all walls in all quotes (if a quote has 2 walls, both are counted)
+ * Note: Counts all products in all proposals (if a proposal has 2 products, both are counted)
+ * Extracts productType and model from multiple possible locations (rawData fields, direct fields)
  */
-export const calculateProductModelMetrics = (quotes: Quote[]): ProductModelMetrics[] => {
+export const calculateProductModelMetrics = (proposals: Proposal[]): ProductModelMetrics[] => {
   const modelMap = new Map<string, ProductModelMetrics>();
 
-  quotes.forEach((quote) => {
-    // Get all wall types from wall_details
-    const walls = quote.wall_details?.walls || {};
-    Object.values(walls).forEach((wall: any) => {
-      const productType = wall.wallSystemType || 'Other';
+  proposals.forEach((proposal) => {
+    // Get all products from form_data.products
+    const products = proposal.form_data?.products?.items || [];
+    products.forEach((product: any) => {
+      // Extract product type from various possible locations
+      const productType =
+        product.rawData?.productDomain ||
+        product.rawData?.productType ||
+        product.productType ||
+        product.type ||
+        'Other';
 
-      // Get model for all product types (Operable, Glass, Accordion)
-      const model = wall.model || 'Other';
+      // Get model from rawData or direct field
+      const model =
+        product.rawData?.model ||
+        product.model ||
+        'Other';
 
       // Create unique key combining product type and model
       const key = `${productType}|${model}`;
@@ -548,34 +601,34 @@ export const calculateProductModelMetrics = (quotes: Quote[]): ProductModelMetri
         modelMap.set(key, {
           productType,
           model,
-          quoteCount: 0,
+          proposalCount: 0,
           revenue: 0,
         });
       }
 
       const metrics = modelMap.get(key)!;
-      metrics.quoteCount++;
+      metrics.proposalCount++;
 
-      if (quote.status === 'Won') {
-        metrics.revenue += quote.total_value || 0;
+      if (proposal.status === 'Won') {
+        metrics.revenue += proposal.total_value || 0;
       }
     });
   });
 
-  // Sort by product type first, then by quote count
+  // Sort by product type first, then by proposal count
   return Array.from(modelMap.values()).sort((a, b) => {
     if (a.productType !== b.productType) {
       return a.productType.localeCompare(b.productType);
     }
-    return b.quoteCount - a.quoteCount;
+    return b.proposalCount - a.proposalCount;
   });
 };
 
 /**
- * Calculate averages over time (profit, revenue, value per quote)
+ * Calculate averages over time (profit, revenue, value per proposal)
  */
 export const calculateAveragesOverTime = (
-  quotes: Quote[],
+  proposals: Proposal[],
   period: TimePeriod,
   periodsToShow: number = 12,
   periodOffset: number = 0
@@ -606,13 +659,13 @@ export const calculateAveragesOverTime = (
       for (let i = 0; i < 7; i++) {
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(dayStart, 1);
-        const periodQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'submitted_at');
+        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'submitted_at');
 
         dataPoints.push({
           date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
-          avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
-          avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
-          avgValue: calculateAverageQuoteValue(periodQuotes),
+          avgGrossProfit: calculateAverageGrossProfitPerProposal(periodProposals),
+          avgRevenue: calculateAverageRevenuePerProposal(periodProposals),
+          avgValue: calculateAverageProposalValue(periodProposals),
         });
       }
       break;
@@ -624,14 +677,14 @@ export const calculateAveragesOverTime = (
       for (let i = 0; i < daysInMonth; i++) {
         const dayStart = addDays(monthStart, i);
         const dayEnd = addDays(dayStart, 1);
-        const periodQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'submitted_at');
+        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'submitted_at');
 
         dataPoints.push({
           date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
           fullDate: dayStart, // Store full date for tooltip
-          avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
-          avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
-          avgValue: calculateAverageQuoteValue(periodQuotes),
+          avgGrossProfit: calculateAverageGrossProfitPerProposal(periodProposals),
+          avgRevenue: calculateAverageRevenuePerProposal(periodProposals),
+          avgValue: calculateAverageProposalValue(periodProposals),
         });
       }
       break;
@@ -643,13 +696,13 @@ export const calculateAveragesOverTime = (
         const monthStart = new Date(yearStart);
         monthStart.setMonth(i);
         const monthEnd = endOfMonth(monthStart);
-        const periodQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'submitted_at');
+        const periodProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'submitted_at');
 
         dataPoints.push({
           date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
-          avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
-          avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
-          avgValue: calculateAverageQuoteValue(periodQuotes),
+          avgGrossProfit: calculateAverageGrossProfitPerProposal(periodProposals),
+          avgRevenue: calculateAverageRevenuePerProposal(periodProposals),
+          avgValue: calculateAverageProposalValue(periodProposals),
         });
       }
       break;
@@ -663,7 +716,7 @@ export const calculateAveragesOverTime = (
  * Calculate revenue vs quoted value over time
  */
 export const calculateRevenueVsQuoted = (
-  quotes: Quote[],
+  proposals: Proposal[],
   period: TimePeriod,
   periodsToShow: number = 12
 ): RevenueVsQuotedData[] => {
@@ -701,15 +754,15 @@ export const calculateRevenueVsQuoted = (
         break;
     }
 
-    // Revenue: Won quotes in this period
-    const wonQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'won_at')
-      .filter((q) => q.status === 'Won');
-    const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+    // Revenue: Won proposals in this period
+    const wonProposals = filterProposalsByDateRange(proposals, periodStart, periodEnd, 'won_at')
+      .filter((p) => p.status === 'Won');
+    const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
-    // Quoted Value: All submitted/won/rejected quotes in this period
-    const submittedQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'submitted_at')
-      .filter((q) => q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected');
-    const quotedValue = submittedQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+    // Quoted Value: All submitted/won/rejected proposals in this period
+    const submittedProposals = filterProposalsByDateRange(proposals, periodStart, periodEnd, 'submitted_at')
+      .filter((p) => p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected');
+    const quotedValue = submittedProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
     dataPoints.push({
       date: formatDateForPeriod(periodStart, period),
@@ -725,7 +778,7 @@ export const calculateRevenueVsQuoted = (
  * Calculate totals over time (revenue, gross profit, quoted value)
  */
 export const calculateTotalsOverTime = (
-  quotes: Quote[],
+  proposals: Proposal[],
   period: TimePeriod,
   periodsToShow: number = 12,
   periodOffset: number = 0
@@ -757,29 +810,30 @@ export const calculateTotalsOverTime = (
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(dayStart, 1);
 
-        // Revenue: Won quotes in this period
-        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
-          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
-        const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        // Revenue: Won proposals in this period
+        const wonProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'won_at')
+          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
+        const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
-        // Gross Profit: Calculate from won quotes
+        // Gross Profit: Calculate from won proposals using form_data.pricing or margin fallback
         let grossProfit = 0;
-        wonQuotes.forEach((q) => {
-          const profitAmount = q.price_details?.final_selling_price_profit_amount;
+        wonProposals.forEach((p) => {
+          const pricingData = p.form_data?.pricing;
+          const profitAmount = pricingData?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
-          } else if (q.margin_percentage && q.total_value) {
-            grossProfit += q.total_value * (q.margin_percentage / 100);
+          } else if (p.margin_percentage && p.total_value) {
+            grossProfit += p.total_value * (p.margin_percentage / 100);
           }
         });
 
-        // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status
-        const pipelineQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'created_at')
-          .filter((q) =>
-            (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
-            (q.is_main_version === true || q.is_main_version === undefined)
+        // Pipeline Value: All proposals in Won/Draft/Submitted/Rejected status
+        const pipelineProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at')
+          .filter((p) =>
+            (p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected') &&
+            (p.is_main_version === true || p.is_main_version === undefined)
           );
-        const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        const pipelineValue = pipelineProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         dataPoints.push({
           date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
@@ -798,29 +852,30 @@ export const calculateTotalsOverTime = (
         const dayStart = addDays(monthStart, i);
         const dayEnd = addDays(dayStart, 1);
 
-        // Revenue: Won quotes in this period
-        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
-          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
-        const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        // Revenue: Won proposals in this period
+        const wonProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'won_at')
+          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
+        const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
-        // Gross Profit: Calculate from won quotes
+        // Gross Profit: Calculate from won proposals using form_data.pricing or margin fallback
         let grossProfit = 0;
-        wonQuotes.forEach((q) => {
-          const profitAmount = q.price_details?.final_selling_price_profit_amount;
+        wonProposals.forEach((p) => {
+          const pricingData = p.form_data?.pricing;
+          const profitAmount = pricingData?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
-          } else if (q.margin_percentage && q.total_value) {
-            grossProfit += q.total_value * (q.margin_percentage / 100);
+          } else if (p.margin_percentage && p.total_value) {
+            grossProfit += p.total_value * (p.margin_percentage / 100);
           }
         });
 
-        // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status
-        const pipelineQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'created_at')
-          .filter((q) =>
-            (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
-            (q.is_main_version === true || q.is_main_version === undefined)
+        // Pipeline Value: All proposals in Won/Draft/Submitted/Rejected status
+        const pipelineProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at')
+          .filter((p) =>
+            (p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected') &&
+            (p.is_main_version === true || p.is_main_version === undefined)
           );
-        const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        const pipelineValue = pipelineProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         dataPoints.push({
           date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
@@ -840,29 +895,30 @@ export const calculateTotalsOverTime = (
         monthStart.setMonth(i);
         const monthEnd = endOfMonth(monthStart);
 
-        // Revenue: Won quotes in this period
-        const wonQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'won_at')
-          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
-        const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        // Revenue: Won proposals in this period
+        const wonProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'won_at')
+          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
+        const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
-        // Gross Profit: Calculate from won quotes
+        // Gross Profit: Calculate from won proposals using form_data.pricing or margin fallback
         let grossProfit = 0;
-        wonQuotes.forEach((q) => {
-          const profitAmount = q.price_details?.final_selling_price_profit_amount;
+        wonProposals.forEach((p) => {
+          const pricingData = p.form_data?.pricing;
+          const profitAmount = pricingData?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
-          } else if (q.margin_percentage && q.total_value) {
-            grossProfit += q.total_value * (q.margin_percentage / 100);
+          } else if (p.margin_percentage && p.total_value) {
+            grossProfit += p.total_value * (p.margin_percentage / 100);
           }
         });
 
-        // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status
-        const pipelineQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'created_at')
-          .filter((q) =>
-            (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
-            (q.is_main_version === true || q.is_main_version === undefined)
+        // Pipeline Value: All proposals in Won/Draft/Submitted/Rejected status
+        const pipelineProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'created_at')
+          .filter((p) =>
+            (p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected') &&
+            (p.is_main_version === true || p.is_main_version === undefined)
           );
-        const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        const pipelineValue = pipelineProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         dataPoints.push({
           date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
@@ -883,7 +939,7 @@ export const calculateTotalsOverTime = (
  * Shows current period only (not historical spread)
  */
 export const calculateWonRejectedOverTime = (
-  quotes: Quote[],
+  proposals: Proposal[],
   period: TimePeriod,
   periodsToShow: number = 12,
   periodOffset: number = 0
@@ -915,16 +971,16 @@ export const calculateWonRejectedOverTime = (
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(dayStart, 1);
 
-        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
-          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+        const wonProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'won_at')
+          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
 
-        const rejectedQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'rejected_at')
-          .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+        const rejectedProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'rejected_at')
+          .filter((p) => p.status === 'Rejected' && (p.is_main_version === true || p.is_main_version === undefined));
 
         dataPoints.push({
           date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
-          wonCount: wonQuotes.length,
-          rejectedCount: rejectedQuotes.length,
+          wonCount: wonProposals.length,
+          rejectedCount: rejectedProposals.length,
         });
       }
       break;
@@ -937,17 +993,17 @@ export const calculateWonRejectedOverTime = (
         const dayStart = addDays(monthStart, i);
         const dayEnd = addDays(dayStart, 1);
 
-        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
-          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+        const wonProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'won_at')
+          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
 
-        const rejectedQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'rejected_at')
-          .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+        const rejectedProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'rejected_at')
+          .filter((p) => p.status === 'Rejected' && (p.is_main_version === true || p.is_main_version === undefined));
 
         dataPoints.push({
           date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
           fullDate: dayStart, // Store full date for tooltip
-          wonCount: wonQuotes.length,
-          rejectedCount: rejectedQuotes.length,
+          wonCount: wonProposals.length,
+          rejectedCount: rejectedProposals.length,
         });
       }
       break;
@@ -960,16 +1016,16 @@ export const calculateWonRejectedOverTime = (
         monthStart.setMonth(i);
         const monthEnd = endOfMonth(monthStart);
 
-        const wonQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'won_at')
-          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+        const wonProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'won_at')
+          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
 
-        const rejectedQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'rejected_at')
-          .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+        const rejectedProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'rejected_at')
+          .filter((p) => p.status === 'Rejected' && (p.is_main_version === true || p.is_main_version === undefined));
 
         dataPoints.push({
           date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
-          wonCount: wonQuotes.length,
-          rejectedCount: rejectedQuotes.length,
+          wonCount: wonProposals.length,
+          rejectedCount: rejectedProposals.length,
         });
       }
       break;
@@ -1043,58 +1099,248 @@ export const makeWonRejectedCumulative = (data: WonRejectedOverTimeData[]): WonR
 };
 
 /**
- * Filter quotes to only include main versions
- * This prevents counting the same quote multiple times across versions
+ * Calculate category of work metrics
+ * Extracts categoryOfWork from form_data.info
  */
-export const filterMainVersionQuotes = (quotes: Quote[]): Quote[] => {
-  return quotes.filter((q) => q.is_main_version === true || q.is_main_version === undefined);
+export const calculateCategoryOfWorkMetrics = (proposals: Proposal[]): CategoryOfWorkMetrics[] => {
+  const categoryMap = new Map<string, {
+    category: string;
+    proposalCount: number;
+    revenue: number;
+    wonCount: number;
+    totalDecided: number;
+  }>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const category = proposal.form_data?.info?.categoryOfWork || 'Other';
+
+    if (!categoryMap.has(category)) {
+      categoryMap.set(category, {
+        category,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+        totalDecided: 0,
+      });
+    }
+
+    const metrics = categoryMap.get(category)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+      metrics.totalDecided++;
+    } else if (proposal.status === 'Rejected') {
+      metrics.totalDecided++;
+    }
+  });
+
+  return Array.from(categoryMap.values()).map(m => ({
+    category: m.category,
+    proposalCount: m.proposalCount,
+    revenue: m.revenue,
+    wonCount: m.wonCount,
+    conversionRate: m.totalDecided > 0 ? (m.wonCount / m.totalDecided) * 100 : 0,
+  })).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Calculate project type metrics
+ * Extracts projectType from form_data.info
+ */
+export const calculateProjectTypeMetrics = (proposals: Proposal[]): ProjectTypeMetrics[] => {
+  const typeMap = new Map<string, {
+    projectType: string;
+    proposalCount: number;
+    revenue: number;
+    wonCount: number;
+    totalDecided: number;
+  }>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const projectType = proposal.form_data?.info?.projectType || 'Other';
+
+    if (!typeMap.has(projectType)) {
+      typeMap.set(projectType, {
+        projectType,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+        totalDecided: 0,
+      });
+    }
+
+    const metrics = typeMap.get(projectType)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+      metrics.totalDecided++;
+    } else if (proposal.status === 'Rejected') {
+      metrics.totalDecided++;
+    }
+  });
+
+  return Array.from(typeMap.values()).map(m => ({
+    projectType: m.projectType,
+    proposalCount: m.proposalCount,
+    revenue: m.revenue,
+    wonCount: m.wonCount,
+    conversionRate: m.totalDecided > 0 ? (m.wonCount / m.totalDecided) * 100 : 0,
+  })).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Calculate location type metrics
+ * Extracts locationType from form_data.info
+ */
+export const calculateLocationTypeMetrics = (proposals: Proposal[]): LocationTypeMetrics[] => {
+  const locationMap = new Map<string, LocationTypeMetrics>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const locationType = proposal.form_data?.info?.locationType || 'Other';
+
+    if (!locationMap.has(locationType)) {
+      locationMap.set(locationType, {
+        locationType,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+      });
+    }
+
+    const metrics = locationMap.get(locationType)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+    }
+  });
+
+  return Array.from(locationMap.values()).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Calculate work classification metrics (Union / Prevailing Wage)
+ * Extracts isUnion and isPrevailingWage from form_data.info
+ */
+export const calculateWorkClassificationMetrics = (proposals: Proposal[]): WorkClassificationMetrics[] => {
+  const classificationMap = new Map<string, WorkClassificationMetrics>();
+
+  // Only consider submitted/won/rejected proposals and main versions only
+  const relevantProposals = proposals.filter((p) =>
+    (p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected') &&
+    (p.is_main_version === true || p.is_main_version === undefined)
+  );
+
+  relevantProposals.forEach((proposal) => {
+    const isUnion = proposal.form_data?.info?.isUnion === true;
+    const isPrevailingWage = proposal.form_data?.info?.isPrevailingWage === true;
+
+    // Create a key for the combination
+    const key = `${isUnion}-${isPrevailingWage}`;
+
+    if (!classificationMap.has(key)) {
+      classificationMap.set(key, {
+        isUnion,
+        isPrevailingWage,
+        proposalCount: 0,
+        revenue: 0,
+        wonCount: 0,
+      });
+    }
+
+    const metrics = classificationMap.get(key)!;
+    metrics.proposalCount++;
+
+    if (proposal.status === 'Won') {
+      metrics.wonCount++;
+      metrics.revenue += proposal.total_value || 0;
+    }
+  });
+
+  return Array.from(classificationMap.values()).sort((a, b) => b.proposalCount - a.proposalCount);
+};
+
+/**
+ * Filter proposals to only include main versions
+ * This prevents counting the same proposal multiple times across versions
+ */
+export const filterMainVersionProposals = (proposals: Proposal[]): Proposal[] => {
+  return proposals.filter((p) => p.is_main_version === true || p.is_main_version === undefined);
 };
 
 /**
  * Generate complete analytics summary
- * Note: Automatically filters for main version quotes only to prevent skewing
+ * Note: Automatically filters for main version proposals only to prevent skewing
  */
 export const generateAnalyticsSummary = (
-  quotes: Quote[],
+  proposals: Proposal[],
   period: TimePeriod = 'monthly'
 ): AnalyticsSummary => {
   // Filter to main versions only to avoid double-counting
-  const mainVersionQuotes = filterMainVersionQuotes(quotes);
+  const mainVersionProposals = filterMainVersionProposals(proposals);
 
   return {
     totalRevenue: calculateMetricWithTrend(
-      mainVersionQuotes,
+      mainVersionProposals,
       period,
       calculateTotalRevenue,
       formatCurrency,
       'won_at'
     ),
-    quotesSent: calculateMetricWithTrend(
-      mainVersionQuotes,
+    proposalsSent: calculateMetricWithTrend(
+      mainVersionProposals,
       period,
-      (qs) => qs.filter((q) => q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected').length,
+      (ps) => ps.filter((p) => p.status === 'Submitted' || p.status === 'Won' || p.status === 'Rejected').length,
       (v) => v.toString()
     ),
     conversionRate: calculateMetricWithTrend(
-      mainVersionQuotes,
+      mainVersionProposals,
       period,
       calculateConversionRate,
       (v) => `${v.toFixed(1)}%`
     ),
-    averageQuoteValue: calculateMetricWithTrend(
-      mainVersionQuotes,
+    averageProposalValue: calculateMetricWithTrend(
+      mainVersionProposals,
       period,
-      calculateAverageQuoteValue,
+      calculateAverageProposalValue,
       formatCurrency
     ),
-    timeSeriesData: groupQuotesByPeriod(mainVersionQuotes, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
-    sourceMetrics: calculateSourceMetrics(mainVersionQuotes),
-    statusBreakdown: calculateStatusBreakdown(mainVersionQuotes),
-    userMetrics: calculateUserMetrics(mainVersionQuotes),
-    productMetrics: calculateProductMetrics(mainVersionQuotes),
-    productModelMetrics: calculateProductModelMetrics(mainVersionQuotes),
-    revenueVsQuoted: calculateRevenueVsQuoted(mainVersionQuotes, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
-    averagesOverTime: calculateAveragesOverTime(mainVersionQuotes, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
-    totalsOverTime: calculateTotalsOverTime(mainVersionQuotes, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
+    timeSeriesData: groupProposalsByPeriod(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
+    sourceMetrics: calculateSourceMetrics(mainVersionProposals),
+    statusBreakdown: calculateStatusBreakdown(mainVersionProposals),
+    userMetrics: calculateUserMetrics(mainVersionProposals),
+    productMetrics: calculateProductMetrics(mainVersionProposals),
+    productModelMetrics: calculateProductModelMetrics(mainVersionProposals),
+    revenueVsQuoted: calculateRevenueVsQuoted(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
+    averagesOverTime: calculateAveragesOverTime(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
+    totalsOverTime: calculateTotalsOverTime(mainVersionProposals, period, period === 'weekly' ? 12 : period === 'monthly' ? 12 : 5),
+    // New InfoTab field analytics
+    categoryOfWorkMetrics: calculateCategoryOfWorkMetrics(mainVersionProposals),
+    projectTypeMetrics: calculateProjectTypeMetrics(mainVersionProposals),
+    locationTypeMetrics: calculateLocationTypeMetrics(mainVersionProposals),
+    workClassificationMetrics: calculateWorkClassificationMetrics(mainVersionProposals),
   };
 };

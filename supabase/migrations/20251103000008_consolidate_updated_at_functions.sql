@@ -22,17 +22,11 @@
 -- STEP 1: Recreate triggers for tables using update_updated_at_column
 -- ============================================================================
 
--- Form definitions
+-- Forms (formerly form_definitions)
+DROP TRIGGER IF EXISTS set_updated_at ON forms;
 DROP TRIGGER IF EXISTS set_updated_at ON form_definitions;
 CREATE TRIGGER set_updated_at
-  BEFORE UPDATE ON form_definitions
-  FOR EACH ROW
-  EXECUTE FUNCTION handle_updated_at();
-
--- Form submissions
-DROP TRIGGER IF EXISTS set_updated_at ON form_submissions;
-CREATE TRIGGER set_updated_at
-  BEFORE UPDATE ON form_submissions
+  BEFORE UPDATE ON forms
   FOR EACH ROW
   EXECUTE FUNCTION handle_updated_at();
 
@@ -120,10 +114,10 @@ BEGIN
     RAISE WARNING '⚠️  Still have % redundant functions!', redundant_functions_count;
   END IF;
 
-  IF handle_updated_at_count = 12 THEN
-    RAISE NOTICE '✅ All 12 tables now use the optimized handle_updated_at() function';
+  IF handle_updated_at_count = 11 THEN
+    RAISE NOTICE '✅ All 11 tables now use the optimized handle_updated_at() function';
   ELSE
-    RAISE WARNING '⚠️  Expected 12 triggers, found %', handle_updated_at_count;
+    RAISE WARNING '⚠️  Expected 11 triggers, found %', handle_updated_at_count;
   END IF;
 END $$;
 
@@ -136,15 +130,14 @@ COMMENT ON FUNCTION handle_updated_at() IS
 Includes optimization: only updates if row actually changed.
 Used by all tables with updated_at columns.
 
-Tables using this function (12 total):
+Tables using this function (11 total):
 - memberships
 - organizations
 - profiles
 - quotes
 - subscription_plans
 - subscriptions
-- form_definitions
-- form_submissions
+- forms
 - project_workflow_columns
 - projects
 - user_onboarding_progress
@@ -162,9 +155,8 @@ Replaced functions:
 /*
 WHAT THIS MIGRATION DOES:
 
-1. Switches 5 tables from update_updated_at_column to handle_updated_at:
-   - form_definitions
-   - form_submissions
+1. Switches 4 tables from update_updated_at_column to handle_updated_at:
+   - forms (formerly form_definitions)
    - project_workflow_columns
    - projects
    - user_onboarding_progress
@@ -176,7 +168,9 @@ WHAT THIS MIGRATION DOES:
    - update_updated_at_column
    - update_reminders_updated_at
 
-RESULT: All 12 tables now use the same optimized function
+NOTE: form_submissions table was dropped in later migration
+
+RESULT: All 11 tables now use the same optimized function
 
 OPTIMIZATION BENEFIT:
 The handle_updated_at() function includes this check:

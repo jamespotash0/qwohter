@@ -8,7 +8,9 @@
 // Integration Types
 // ============================================================================
 
-export type IntegrationType = 'quickbooks_online' | 'quickbooks_desktop';
+export type IntegrationType = 'quickbooks_online' | 'quickbooks_desktop' | 'google_docs' | 'dropbox';
+
+export type StorageProvider = 'google_drive' | 'dropbox';
 
 export type ConnectionStatus = 'Connected' | 'Disconnected' | 'Error' | 'Connecting';
 
@@ -193,4 +195,52 @@ export interface OAuthState {
   organization_id: string;
   return_url: string;
   nonce: string;
+}
+
+// ============================================================================
+// Google Docs Integration Types
+// Now org-level: one token per organization, connected by an admin
+// ============================================================================
+
+export interface GoogleOAuthToken {
+  id: string;
+  organization_id: string;
+  connected_by_user_id: string | null;  // Admin who connected
+  access_token: string;
+  refresh_token: string;
+  token_expires_at: string;
+  scopes: string[];
+  google_email: string | null;
+  google_name: string | null;
+  drive_folder_id: string | null;       // Shared folder for documents
+  is_valid: boolean;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoogleOAuthCallbackParams {
+  code: string;
+  state: string;
+}
+
+export interface GoogleOAuthState {
+  organization_id: string;
+  user_id: string;
+  return_url: string;
+  nonce: string;
+}
+
+export interface GoogleTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
+  scope: string;
+}
+
+export interface GoogleUserInfo {
+  email: string;
+  name: string;
+  picture?: string;
 }

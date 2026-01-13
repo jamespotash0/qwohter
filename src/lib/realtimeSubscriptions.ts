@@ -8,9 +8,9 @@
  * ```typescript
  * useEffect(() => {
  *   const unsubscribe = subscribeToTableChanges(
- *     'quotes',
+ *     'proposals',
  *     queryClient,
- *     ['quotes', 'list', userId]
+ *     ['proposals', 'list', userId]
  *   );
  *   return unsubscribe;
  * }, [userId]);
@@ -21,7 +21,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-type TableName = 'quotes' | 'reminders' | 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'invite_tokens' | 'contacts' | 'profiles' | 'subscription_plans' | 'project_tasks' | 'task_board_columns' | 'project_workflow_columns' | 'products';
+type TableName = 'reminders' | 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'invite_tokens' | 'contacts' | 'profiles' | 'subscription_plans' | 'project_tasks' | 'task_board_columns' | 'project_workflow_columns' | 'products' | 'proposals' | 'proposal_activities' | 'proposal_status_transitions' | 'forms' | 'document_templates' | 'form_document_templates';
 
 interface SubscriptionOptions {
   /**
@@ -67,15 +67,32 @@ export function subscribeToTableChanges(
   let debounceTimeout: NodeJS.Timeout | null = null;
   let channel: RealtimeChannel | null = null;
 
-  const invalidateCache = () => {
-    // Debounce to avoid excessive invalidations
+  const invalidateCache = (deletedId?: string) => {
+    console.log(`🔄 Realtime: Updating cache for`, queryKey, deletedId ? `(deleted: ${deletedId})` : '');
+
+    // If we have a deleted ID, remove it from cache IMMEDIATELY (no debounce)
+    if (deletedId) {
+      queryClient.setQueriesData(
+        { queryKey },
+        (old: any[] | undefined) => {
+          if (!old || !Array.isArray(old)) return old;
+          const filtered = old.filter((item: any) => item.id !== deletedId);
+          console.log(`🗑️ Removed ${deletedId} from cache. Items: ${old.length} -> ${filtered.length}`);
+          return filtered;
+        }
+      );
+      // Force immediate re-render by also invalidating
+      queryClient.invalidateQueries({ queryKey });
+      return;
+    }
+
+    // For non-delete events, debounce to avoid excessive refetches
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
     }
 
     debounceTimeout = setTimeout(() => {
-      console.log(`🔄 Realtime: Invalidating cache for`, queryKey);
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     }, debounceMs);
   };
 
@@ -85,7 +102,12 @@ export function subscribeToTableChanges(
   // Subscribe to changes
   channel = supabase.channel(channelName);
 
-  events.forEach((event) => {
+  // Separate filtered events (INSERT, UPDATE) from unfiltered (DELETE)
+  const filteredEvents = events.filter(e => e !== 'DELETE');
+  const hasDelete = events.includes('DELETE');
+
+  // Add filtered event listeners (INSERT, UPDATE use the filter)
+  filteredEvents.forEach((event) => {
     const config: any = {
       event,
       schema: 'public',
@@ -101,6 +123,23 @@ export function subscribeToTableChanges(
       invalidateCache();
     });
   });
+
+  // Add DELETE listener WITHOUT filter
+  // IMPORTANT: Supabase DELETE payloads only include the primary key (id), not other columns
+  // So filters like organization_id=eq.xxx will never match DELETE events
+  if (hasDelete) {
+    channel!.on('postgres_changes', {
+      event: 'DELETE',
+      schema: 'public',
+      table,
+    }, (payload) => {
+      // Extract the deleted record's ID from payload.old
+      const deletedId = payload.old?.id as string | undefined;
+      console.log(`🔔 Realtime DELETE on ${table}:`, payload, `deletedId: ${deletedId}`);
+      // Pass the ID so we can remove it from cache immediately
+      invalidateCache(deletedId);
+    });
+  }
 
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
@@ -134,7 +173,7 @@ export function subscribeToTableChanges(
  *
  * Usage:
  * ```typescript
- * useRealtimeSubscription('quotes', ['quotes', 'list', userId], {
+ * useRealtimeSubscription('proposals', ['proposals', 'list', userId], {
  *   filter: `organization_id=eq.${orgId}`
  * });
  * ```
