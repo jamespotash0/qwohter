@@ -42,8 +42,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     navigate,
   } = params;
 
-  // Only foundVia is required (validated in form)
-  if (!userId || !foundVia) return;
+  // All fields are optional - only userId is required
+  if (!userId) return;
 
   console.log('=== Company Info Submit ===');
   console.log('Industry:', industry);
