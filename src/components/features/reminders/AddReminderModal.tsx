@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { cn, parseLocalDate } from '@/lib/utils';
 import { useProposals } from '@/hooks/queries/useProposals';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-import { reminderService, type ReminderType } from '@/services/reminderService';
+import { reminderService, type ReminderType, type Reminder } from '@/services/reminderService';
 import { toast } from 'sonner';
 import { useUser } from '@/auth';
 
@@ -22,20 +22,10 @@ interface AddReminderModalProps {
   onReminderCreated?: () => void;
 }
 
-interface Reminder {
-  id: string;
-  title: string;
-  description?: string;
-  due_date: string;
-  proposal_id?: string;
-  reminder_type: ReminderType;
-  organization_id: string;
-}
-
 export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCreated }: AddReminderModalProps) => {
   // Get user, organization, and proposals using hooks
   const user = useUser();
-  const { organization } = useCurrentOrganization(user?.id);
+  const { organization } = useCurrentOrganization(user?.id ?? '', !!user?.id);
   const { data: proposals = [] } = useProposals(organization?.id);
 
   const [reminderType, setReminderType] = useState<string>('');
