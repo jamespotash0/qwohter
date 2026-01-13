@@ -31,6 +31,7 @@ import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 
 interface ProjectOption {
   id: string;
+  proposal_id?: string;
   proposal?: {
     project_name?: string | null;
     proposal_number?: string | null;
@@ -129,11 +130,13 @@ export function TaskDetailOverlay({
     }
   };
 
-  const proposalNumber = task.project?.proposal?.proposal_number;
+  // Get proposal_id from the projects list (more reliable than task.project which may not be updated)
+  const linkedProject = task.project_id ? projects.find(p => p.id === task.project_id) : null;
+  const proposalId = linkedProject?.proposal_id || task.project?.proposal_id;
 
   const handleNavigateToProject = () => {
-    if (proposalNumber) {
-      navigate(`/editor/${proposalNumber}`);
+    if (proposalId) {
+      navigate(`/proposals/${proposalId}/edit`);
     }
   };
 
@@ -345,13 +348,14 @@ export function TaskDetailOverlay({
                 ))}
               </SelectContent>
             </Select>
-            {task.project_id && proposalNumber && (
+            {task.project_id && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
                 onClick={handleNavigateToProject}
-                title="Open project"
+                disabled={!proposalId}
+                title={proposalId ? 'Open proposal' : 'Proposal not linked'}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
               </Button>

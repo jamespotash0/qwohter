@@ -36,6 +36,7 @@ export interface ProjectTask {
   // Project info (for task board - only when fetching org tasks)
   project?: {
     id: string;
+    proposal_id?: string;
     proposal?: {
       project_name?: string;
       proposal_number?: string;
