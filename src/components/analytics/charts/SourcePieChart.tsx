@@ -1,7 +1,7 @@
 /**
- * 🥧 Quote Source Pie Chart Component
+ * Source Pie Chart Component
  *
- * Donut chart showing quote distribution by source
+ * Donut chart showing proposal distribution by source
  */
 
 import {
@@ -57,7 +57,7 @@ export const SourcePieChart = ({ data }: SourcePieChartProps) => {
             borderRadius: '8px',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
           }}
-          formatter={(value: number) => [value, 'Quotes']}
+          formatter={(value: number) => [value, 'Proposals']}
         />
         <Legend
           wrapperStyle={{ fontSize: '14px' }}

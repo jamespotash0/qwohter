@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, FileUp, Loader2 } from 'lucide-react';
 import { FileUploadStep } from '@/_deprecated/components/features/quotes/import/FileUploadStep';
 import { ProcessingStep } from '@/_deprecated/components/features/quotes/import/ProcessingStep';
-import { extractTextFromFile, parseQuoteWithAI } from '@/services/proposalImport';
+import { extractTextFromFile, parseProposalWithAI } from '@/services/proposalImport';
 import { createProposal, type CreateProposalData } from '@/services/proposalsService';
 import { useForms } from '@/hooks/queries';
 import { useFormDocumentTemplates } from '@/hooks/queries/useDocumentTemplates';
@@ -209,7 +209,7 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
         );
       }
 
-      const extractedData = await parseQuoteWithAI({
+      const extractedData = await parseProposalWithAI({
         documentText: extractionResult.text,
         fileName: state.file.name,
         fileType: state.fileType || undefined,

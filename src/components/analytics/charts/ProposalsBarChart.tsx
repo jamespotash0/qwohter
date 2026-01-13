@@ -1,7 +1,7 @@
 /**
- * 📊 Quotes Bar Chart Component
+ * Proposals Bar Chart Component
  *
- * Bar chart showing quote counts by status or period
+ * Bar chart showing proposal counts by status or period
  */
 
 import {
@@ -16,7 +16,7 @@ import {
   Cell,
 } from 'recharts';
 
-export interface QuotesBarChartProps {
+export interface ProposalsBarChartProps {
   data: Array<{
     name: string;
     won: number;
@@ -31,7 +31,7 @@ const COLORS = {
   submitted: '#F59E0B', // Amber
 };
 
-export const QuotesBarChart = ({ data }: QuotesBarChartProps) => {
+export const ProposalsBarChart = ({ data }: ProposalsBarChartProps) => {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>

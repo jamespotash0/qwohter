@@ -91,7 +91,7 @@ interface ExtractedProducts {
   items: ExtractedProductSpec[];
 }
 
-interface ExtractedQuoteData {
+interface ExtractedProposalData {
   client: ExtractedClient;
   job: ExtractedJob;
   pricing: ExtractedPricing;
@@ -343,7 +343,7 @@ serve(async (req) => {
       .trim();
 
     // Parse AI response
-    let extractedData: ExtractedQuoteData;
+    let extractedData: ExtractedProposalData;
     try {
       extractedData = JSON.parse(cleanedResponse);
     } catch (parseError) {
@@ -362,7 +362,7 @@ serve(async (req) => {
     }
 
     // Validate and sanitize the response
-    const sanitizedData: ExtractedQuoteData = {
+    const sanitizedData: ExtractedProposalData = {
       client: {
         name: extractedData.client?.name || null,
         company: extractedData.client?.company || null,

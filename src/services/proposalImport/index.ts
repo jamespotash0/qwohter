@@ -1,7 +1,7 @@
 /**
- * Quote Import Service
- * Handles file upload, text extraction, and AI parsing for bulk quote import
+ * Proposal Import Service
+ * Handles file upload, text extraction, and AI parsing for bulk proposal import
  */
 
 export { extractTextFromFile, validateFile, detectFileType } from './textExtractor';
-export { parseQuoteWithAI, fallbackParse, QUOTE_EXTRACTION_PROMPT } from './openAIParser';
+export { parseProposalWithAI, fallbackParse, PROPOSAL_EXTRACTION_PROMPT } from './openAIParser';

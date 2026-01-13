@@ -1552,7 +1552,7 @@ function normalizeVariableExpr(expr: string): string {
   return expr
     // Remove zero-width characters and other invisible Unicode
     .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '')
-    // Replace curly/smart quotes with straight ones (Google Docs converts these)
+    // Replace curly/smart proposals with straight ones (Google Docs converts these)
     .replace(/[""]/g, '"')
     .replace(/['']/g, "'")
     // Trim whitespace

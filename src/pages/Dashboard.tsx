@@ -53,7 +53,7 @@ const Dashboard = () => {
   const { data: profile } = useProfile(user?.id);
 
   // React Query hooks for organization and proposals
-  const { organization: currentOrganization, isLoading: orgLoading } = useCurrentOrganization(user?.id);
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id ?? '', !!user?.id);
   const organizationId = currentOrganization?.id || null;
   const { data: proposals = [], isLoading: proposalsLoading } = useProposals(organizationId || undefined);
 
@@ -62,7 +62,7 @@ const Dashboard = () => {
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showNewProposalDialog, setShowNewProposalDialog] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
   const [trialStatus, setTrialStatus] = useState<{
@@ -104,6 +104,7 @@ const Dashboard = () => {
       }, 3000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [searchParams, setSearchParams]);
 
   // Fetch trial status from subscription
@@ -160,7 +161,7 @@ const Dashboard = () => {
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
-  // React Query automatically fetches quotes - no manual fetching needed!
+  // React Query automatically fetches proposals - no manual fetching needed!
 
   const queryClient = useQueryClient();
 
@@ -427,7 +428,7 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Quote of the Day - Fetch from API or use fallback
+  // Quote of the Day - Fetch from API
   const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string }>({
     text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
     author: "Stephen Covey"
@@ -435,23 +436,9 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchDailyQuote = async () => {
-      // Fallback quotes in case API fails
-      const fallbackQuotes = [
-        { text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.", author: "Stephen Covey" },
-        { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
-        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-        { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
-        { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
-        { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
-        { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
-        { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
-        { text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
-        { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs" }
-      ];
-
       try {
         // Check localStorage cache
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0] ?? '';
         const cachedDate = localStorage.getItem('daily_quote_date');
         const cachedQuote = localStorage.getItem('daily_quote');
 
@@ -464,7 +451,7 @@ const Dashboard = () => {
         const response = await fetch('https://quoteslate.vercel.app/api/quotes/random?categories=motivational,business,success');
 
         if (!response.ok) {
-          throw new Error('API request failed');
+          return; // Keep default quote
         }
 
         const data = await response.json();
@@ -478,19 +465,10 @@ const Dashboard = () => {
 
           // Cache for today
           localStorage.setItem('daily_quote', JSON.stringify(newQuote));
-          localStorage.setItem('daily_quote_date', today as string);
-        } else {
-          throw new Error('Invalid API response');
+          localStorage.setItem('daily_quote_date', today);
         }
-      } catch (error) {
-        // Use rotating fallback quotes on error
-        const today = new Date();
-        const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
-        const quoteIndex = dayOfYear % fallbackQuotes.length;
-        const fallbackQuote = fallbackQuotes[quoteIndex];
-        if (fallbackQuote) {
-          setDailyQuote(fallbackQuote);
-        }
+      } catch {
+        // Keep default quote on error
       }
     };
 
@@ -700,7 +678,7 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-3">
                 <Button
-                  onClick={() => setShowNewQuoteDialog(true)}
+                  onClick={() => setShowNewProposalDialog(true)}
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-coral hover:bg-coral-dark text-white"
                 >
                   <Plus className="w-5 h-5" />
@@ -966,12 +944,12 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Create Quote Dialog */}
+      {/* Create Proposal Dialog */}
       <CreateProposalDialog
-        open={showNewQuoteDialog}
-        onOpenChange={setShowNewQuoteDialog}
+        open={showNewProposalDialog}
+        onOpenChange={setShowNewProposalDialog}
         onCreateProposal={async (data: ProposalInitialData) => {
-          setShowNewQuoteDialog(false);
+          setShowNewProposalDialog(false);
           try {
             // document_type is inherited from the form automatically
             const { createProposal } = await import('@/services/proposalsService');
@@ -996,7 +974,7 @@ const Dashboard = () => {
           open={showExpiryModal}
           onClose={() => setShowExpiryModal(false)}
           metrics={{
-            quotesCreated: proposals.length,
+            proposalsCreated: proposals.length,
             totalRevenue: metrics.totalRevenue,
             teamMembers: 1,
           }}

@@ -1,15 +1,15 @@
 /**
- * OpenAI-powered quote parsing service
+ * OpenAI-powered proposal parsing service
  * Sends extracted text to OpenAI via Supabase Edge Function for structured data extraction
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import type {
-  ExtractedQuoteData,
-  ParseQuoteResponse,
+  ExtractedProposalData,
+  ParseProposalResponse,
 } from '@/lib/types/proposalImport';
 
-interface ParseQuoteOptions {
+interface ParseProposalOptions {
   documentText?: string;
   base64Data?: string;
   mimeType?: string;
@@ -18,12 +18,12 @@ interface ParseQuoteOptions {
 }
 
 /**
- * Parse quote using OpenAI via Edge Function
+ * Parse proposal using OpenAI via Edge Function
  * Supports both text content and PDF base64 data
  */
-export async function parseQuoteWithAI(
-  options: ParseQuoteOptions
-): Promise<ExtractedQuoteData> {
+export async function parseProposalWithAI(
+  options: ParseProposalOptions
+): Promise<ExtractedProposalData> {
   const { documentText, base64Data, mimeType, fileName, fileType } = options;
 
   // For text content, truncate very long documents
@@ -45,7 +45,7 @@ export async function parseQuoteWithAI(
   };
 
   try {
-    const { data, error } = await supabase.functions.invoke<ParseQuoteResponse>(
+    const { data, error } = await supabase.functions.invoke<ParseProposalResponse>(
       'parse-quote',
       {
         body: request,
@@ -54,16 +54,16 @@ export async function parseQuoteWithAI(
 
     if (error) {
       console.error('Edge function error:', error);
-      throw new Error(`Failed to parse quote: ${error.message}`);
+      throw new Error(`Failed to parse proposal: ${error.message}`);
     }
 
     if (!data?.success || !data.data) {
-      throw new Error(data?.error || 'Failed to extract quote data');
+      throw new Error(data?.error || 'Failed to extract proposal data');
     }
 
     return data.data;
   } catch (error) {
-    console.error('Quote parsing error:', error);
+    console.error('proposal parsing error:', error);
     throw error;
   }
 }
@@ -72,7 +72,7 @@ export async function parseQuoteWithAI(
  * Prompt template for OpenAI
  * This is also defined in the Edge Function, but kept here for reference
  */
-export const QUOTE_EXTRACTION_PROMPT = `You are an expert at extracting structured data from quotes, estimates, and invoices for any type of project.
+export const PROPOSAL_EXTRACTION_PROMPT = `You are an expert at extracting structured data from proposals, estimates, and invoices for any type of project.
 Extract information from the following document and return a JSON object with this exact structure.
 Use null for any fields you cannot find or are uncertain about.
 Do not make up or infer data that is not explicitly stated.
@@ -113,7 +113,7 @@ Return ONLY valid JSON with this structure:
 For the confidence field, provide a number between 0 and 1 indicating how confident you are in the overall extraction.
 - 1.0 = Very confident, found most key fields
 - 0.7-0.9 = Moderately confident, found some key fields
-- 0.4-0.6 = Low confidence, document may not be a quote
+- 0.4-0.6 = Low confidence, document may not be a proposal
 - 0.1-0.3 = Very low confidence, could not extract meaningful data
 
 For pricing amounts, convert all values to numbers (remove $ signs, commas).
@@ -124,8 +124,8 @@ For dates, use ISO format (YYYY-MM-DD) if possible, otherwise keep original form
  * Fallback parser for when Edge Function is unavailable
  * Uses basic regex patterns to extract common fields
  */
-export function fallbackParse(text: string): Partial<ExtractedQuoteData> {
-  const result: Partial<ExtractedQuoteData> = {
+export function fallbackParse(text: string): Partial<ExtractedProposalData> {
+  const result: Partial<ExtractedProposalData> = {
     client: {
       name: null,
       company: null,

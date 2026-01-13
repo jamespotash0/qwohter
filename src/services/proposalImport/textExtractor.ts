@@ -1,5 +1,5 @@
 /**
- * Text extraction utilities for quote import
+ * Text extraction utilities for proposal import
  * Supports PDF, DOCX, CSV, and TXT files
  * Uses pdf.js for PDF text extraction
  */

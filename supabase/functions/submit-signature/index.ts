@@ -663,8 +663,8 @@ async function sendSignatureNotifications(
           </div>
 
           <div class="footer">
-            <p>This is an automated notification from WallQu.</p>
-            <p style="font-size: 12px; color: #adb5bd;">© ${new Date().getFullYear()} WallQu. All rights reserved.</p>
+            <p>This is an automated notification from Qwohter.</p>
+            <p style="font-size: 12px; color: #adb5bd;">© ${new Date().getFullYear()} Qwohter. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -679,7 +679,7 @@ async function sendSignatureNotifications(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'WallQu <notifications@qwohter.com>',
+      from: 'Qwohter <notifications@qwohter.com>',
       to: [orgEmail],
       subject: `✓ Proposal ${proposalNumber} Signed by ${signerName}`,
       html: emailHtml,
@@ -702,7 +702,7 @@ async function sendSignatureNotifications(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'WallQu <notifications@qwohter.com>',
+      from: 'Qwohter <notifications@qwohter.com>',
       to: [clientEmail],
       subject: `Your Signed Proposal - ${proposalNumber}`,
       html: clientHtml,
