@@ -134,7 +134,8 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     if (location.pathname === '/account-inactive') return; // Prevent redirect loop
 
     if (membershipStatus === 'Inactive' && !checkingMembership) {
-      navigate('/account-inactive');
+      // Pass fromApp: true so AccountInactive knows this is a valid redirect
+      navigate('/account-inactive', { state: { fromApp: true } });
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 

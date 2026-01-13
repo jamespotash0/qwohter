@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
@@ -128,6 +128,9 @@ const RulesPage = lazy(() => import("@/features/admin/pages/RulesPage").then(m =
 // Products page - HIDDEN for now
 // const Products = lazy(() => import("@/pages/Products"));
 
+// Dev preview pages (only in development)
+const ErrorBoundaryPreview = lazy(() => import("@/pages/dev/ErrorBoundaryPreview"));
+
 // Loading component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -171,6 +174,14 @@ export const AppRouter = () => (
 
           {/* E-signature signing page (public - accessed via token) */}
           <Route path="/sign/:token" element={<ProposalSigningPage />} />
+
+          {/* Dev preview pages (only accessible in development) */}
+          {import.meta.env.DEV && (
+            <Route path="/dev/error-test" element={<ErrorBoundaryPreview />} />
+          )}
+
+          {/* 404 page - outside MainLayout for full screen */}
+          <Route path="/404" element={<NotFound />} />
 
           {/* Authentication routes - redirect to dashboard if already logged in */}
           <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -244,8 +255,8 @@ export const AppRouter = () => (
                 <Route path="/forms" element={<Forms />} />
                 <Route path="/forms/library" element={<Forms />} />
 
-                {/* 404 page */}
-                <Route path="*" element={<NotFound />} />
+                {/* Catch-all redirects to full-screen 404 */}
+                <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
             </MainLayout>
           } />

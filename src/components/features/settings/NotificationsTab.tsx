@@ -132,42 +132,7 @@ export function NotificationsTab({ userId, organizationId, userEmail }: Notifica
     setIsEditingEmail(false);
   }, [emailInput, userEmail, savePreference]);
 
-  if (!userId || !organizationId) {
-    return (
-      <div className="w-full max-w-5xl min-w-[640px]">
-        <div className="text-center py-12 text-gray-500">
-          Please sign in to manage notification preferences.
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="w-full max-w-5xl min-w-[640px]">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 mb-8"></div>
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if all events are enabled
-  const allEventsEnabled =
-    (localPrefs.email_on_signature_sent ?? true) &&
-    (localPrefs.email_on_signature_viewed ?? true) &&
-    (localPrefs.email_on_signature_signed ?? true) &&
-    (localPrefs.email_on_proposal_submitted ?? true) &&
-    (localPrefs.email_on_proposal_won ?? true) &&
-    (localPrefs.email_on_proposal_rejected ?? false) &&
-    (localPrefs.email_on_mention ?? true) &&
-    (localPrefs.email_on_task_assigned ?? true) &&
-    (localPrefs.email_on_reminder_due ?? true) &&
-    (localPrefs.email_on_task_due ?? true);
-
-  // Toggle all events on or off
+  // Toggle all events on or off - must be before early returns to maintain hooks order
   const handleToggleAllEvents = useCallback((enabled: boolean) => {
     if (!userId || !organizationId) return;
 
@@ -204,6 +169,41 @@ export function NotificationsTab({ userId, organizationId, userEmail }: Notifica
       }
     );
   }, [userId, organizationId, updatePreferences, preferences]);
+
+  if (!userId || !organizationId) {
+    return (
+      <div className="w-full max-w-5xl min-w-[640px]">
+        <div className="text-center py-12 text-gray-500">
+          Please sign in to manage notification preferences.
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-5xl min-w-[640px]">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96 mb-8"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if all events are enabled
+  const allEventsEnabled =
+    (localPrefs.email_on_signature_sent ?? true) &&
+    (localPrefs.email_on_signature_viewed ?? true) &&
+    (localPrefs.email_on_signature_signed ?? true) &&
+    (localPrefs.email_on_proposal_submitted ?? true) &&
+    (localPrefs.email_on_proposal_won ?? true) &&
+    (localPrefs.email_on_proposal_rejected ?? false) &&
+    (localPrefs.email_on_mention ?? true) &&
+    (localPrefs.email_on_task_assigned ?? true) &&
+    (localPrefs.email_on_reminder_due ?? true) &&
+    (localPrefs.email_on_task_due ?? true);
 
   return (
     <div className="w-full max-w-5xl min-w-[640px]">
