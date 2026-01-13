@@ -131,10 +131,10 @@ export const Footer = (): JSX.Element => {
             </p>
 
             <nav className="inline-flex items-center justify-start relative flex-[0_0_auto] gap-3 flex-wrap">
-              {['FAQ', 'Privacy notice', 'Legal', 'Cookie settings', 'Accessibility Statement', 'Do Not Sell My Personal Information'].map((link, index, array) => (
+              {['FAQ', 'Privacy Policy', 'Terms of Service', 'Legal', 'Cookie settings', 'Accessibility Statement', 'Do Not Sell My Personal Information'].map((link, index, array) => (
                 <React.Fragment key={index}>
                   <a
-                    href={link === 'FAQ' ? '/contact-us#faq' : `/${link.toLowerCase().replace(/ /g, '-')}`}
+                    href={link === 'FAQ' ? '/contact-us#faq' : link === 'Privacy Policy' ? '/privacy-policy' : link === 'Terms of Service' ? '/terms-of-service' : `/${link.toLowerCase().replace(/ /g, '-')}`}
                     className="relative w-fit text-white text-base tracking-[0] leading-6 whitespace-nowrap hover:text-[#f7f2e9] transition-colors"
                     style={{
                       fontFamily: 'Urbanist, sans-serif',
