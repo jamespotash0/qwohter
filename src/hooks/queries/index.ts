@@ -85,6 +85,13 @@ export {
 // Google Docs Generation
 export { useGenerateGoogleDoc } from './useGenerateGoogleDoc';
 
+// Notification Preferences
+export {
+  useNotificationPreferences,
+  useNotificationPreferencesWithDefaults,
+  useUpdateNotificationPreferences,
+} from './useNotificationPreferences';
+
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats } from './useDashboard';

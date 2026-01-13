@@ -5,7 +5,12 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-    type TEXT NOT NULL CHECK (type IN ('task_assigned', 'task_due', 'update_mention', 'update_reply', 'general')),
+    type TEXT NOT NULL CHECK (type IN (
+        'task_assigned', 'task_due', 'update_mention', 'update_reply', 'general',
+        'signature_sent', 'signature_viewed', 'signature_signed',
+        'proposal_submitted', 'proposal_won', 'proposal_rejected',
+        'reminder_due'
+    )),
     title TEXT NOT NULL,
     message TEXT NOT NULL,
     link TEXT, -- Optional link to navigate to (e.g., /board?project=xxx)

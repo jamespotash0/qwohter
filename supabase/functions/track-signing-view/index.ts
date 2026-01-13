@@ -46,10 +46,10 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Get signing token
+    // Get signing token with sent_by for notification
     const { data: signingToken, error: tokenError } = await supabaseAdmin
       .from('proposal_signing_tokens')
-      .select('id, organization_id, proposal_id, status, first_viewed_at')
+      .select('id, organization_id, proposal_id, status, first_viewed_at, sent_by, client_name, client_email')
       .eq('access_token', accessToken)
       .single();
 
@@ -103,6 +103,54 @@ serve(async (req) => {
         ip_address: ipAddress,
         user_agent: userAgent,
       });
+
+      // Send notification to document owner (non-blocking)
+      if (signingToken.sent_by) {
+        try {
+          // Get proposal info
+          const { data: proposal } = await supabaseAdmin
+            .from('proposals')
+            .select('proposal_number, project_name')
+            .eq('id', signingToken.proposal_id)
+            .single();
+
+          // Get user profile for notification email
+          const { data: userProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', signingToken.sent_by)
+            .single();
+
+          if (userProfile?.email) {
+            // Call send-notification-email function
+            const notificationUrl = `${supabaseUrl}/functions/v1/send-notification-email`;
+            fetch(notificationUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${serviceRoleKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: signingToken.sent_by,
+                organizationId: signingToken.organization_id,
+                notificationType: 'signature_viewed',
+                recipientEmail: userProfile.email,
+                recipientName: userProfile.full_name || 'User',
+                data: {
+                  proposalNumber: proposal?.proposal_number,
+                  proposalName: proposal?.project_name,
+                  signerEmail: signingToken.client_email,
+                  signerName: signingToken.client_name,
+                  link: `/proposals/${signingToken.proposal_id}`,
+                },
+              }),
+            }).catch(err => console.error('[track-signing-view] Notification error:', err));
+          }
+        } catch (notifError) {
+          console.error('[track-signing-view] Failed to send notification:', notifError);
+          // Don't fail the request for notification errors
+        }
+      }
     }
 
     console.log('[track-signing-view] View tracked successfully');

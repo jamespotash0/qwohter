@@ -92,7 +92,7 @@ export async function deleteAllNotifications(userId: string): Promise<void> {
 }
 
 /**
- * Create a task assignment notification
+ * Create a task assignment notification (in-app + email)
  */
 export async function notifyTaskAssigned(params: {
   assigneeId: string;
@@ -103,7 +103,8 @@ export async function notifyTaskAssigned(params: {
   taskTitle: string;
   assignedByName: string;
 }): Promise<Notification> {
-  return createNotification({
+  // Create in-app notification
+  const notification = await createNotification({
     user_id: params.assigneeId,
     organization_id: params.organizationId,
     type: 'task_assigned',
@@ -114,6 +115,162 @@ export async function notifyTaskAssigned(params: {
       task_id: params.taskId,
       project_id: params.projectId,
       assigned_by_name: params.assignedByName,
+    },
+  });
+
+  // Send email notification (async, non-blocking)
+  sendTaskAssignedEmail({
+    assigneeId: params.assigneeId,
+    organizationId: params.organizationId,
+    taskId: params.taskId,
+    taskTitle: params.taskTitle,
+    projectId: params.projectId,
+    projectName: params.projectName,
+    assignedByName: params.assignedByName,
+  }).catch((err) => {
+    console.error('[notifyTaskAssigned] Email failed:', err);
+  });
+
+  return notification;
+}
+
+/**
+ * Send email notification for task assignments
+ * Calls the send-notification-email edge function
+ */
+async function sendTaskAssignedEmail(params: {
+  assigneeId: string;
+  organizationId: string;
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  projectName: string;
+  assignedByName: string;
+}): Promise<void> {
+  try {
+    // Get assignee's email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', params.assigneeId)
+      .single<{ email: string | null; full_name: string | null }>();
+
+    if (!profile?.email) {
+      console.warn('[sendTaskAssignedEmail] Assignee has no email');
+      return;
+    }
+
+    const recipientName = profile.full_name || 'User';
+
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.assigneeId,
+        organizationId: params.organizationId,
+        notificationType: 'task_assigned',
+        recipientEmail: profile.email,
+        recipientName,
+        data: {
+          taskTitle: params.taskTitle,
+          projectName: params.projectName,
+          actorName: params.assignedByName,
+          link: `/board?project=${params.projectId}`,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendTaskAssignedEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendTaskAssignedEmail] Failed to send email:', err);
+  }
+}
+
+/**
+ * Send email notification for proposal status changes
+ * Calls the send-notification-email edge function
+ */
+export async function sendProposalStatusEmail(params: {
+  userId: string;
+  organizationId: string;
+  recipientEmail: string;
+  recipientName: string;
+  notificationType: 'proposal_won' | 'proposal_rejected' | 'proposal_submitted';
+  proposalNumber: string;
+  proposalName?: string;
+  proposalId: string;
+}): Promise<void> {
+  try {
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.userId,
+        organizationId: params.organizationId,
+        notificationType: params.notificationType,
+        recipientEmail: params.recipientEmail,
+        recipientName: params.recipientName,
+        data: {
+          proposalNumber: params.proposalNumber,
+          proposalName: params.proposalName,
+          link: `/proposals/${params.proposalId}`,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendProposalStatusEmail] Edge function error:', error);
+      // Don't throw - email failures shouldn't break the status update
+    }
+  } catch (err) {
+    console.error('[sendProposalStatusEmail] Failed to send email:', err);
+    // Don't throw - email failures shouldn't break the status update
+  }
+}
+
+/**
+ * Create an in-app notification for proposal status changes
+ */
+export async function notifyProposalStatusChange(params: {
+  userId: string;
+  organizationId: string;
+  proposalId: string;
+  proposalNumber: string;
+  proposalName?: string;
+  newStatus: 'Won' | 'Rejected' | 'Submitted';
+}): Promise<Notification> {
+  const statusMessages = {
+    Won: {
+      title: 'Proposal Won!',
+      message: `Congratulations! Proposal ${params.proposalNumber}${params.proposalName ? ` (${params.proposalName})` : ''} has been marked as won.`,
+    },
+    Rejected: {
+      title: 'Proposal Rejected',
+      message: `Proposal ${params.proposalNumber}${params.proposalName ? ` (${params.proposalName})` : ''} has been marked as rejected.`,
+    },
+    Submitted: {
+      title: 'Proposal Submitted',
+      message: `Proposal ${params.proposalNumber}${params.proposalName ? ` (${params.proposalName})` : ''} has been submitted.`,
+    },
+  };
+
+  const notificationTypes = {
+    Won: 'proposal_won',
+    Rejected: 'proposal_rejected',
+    Submitted: 'proposal_submitted',
+  } as const;
+
+  const { title, message } = statusMessages[params.newStatus];
+
+  return createNotification({
+    user_id: params.userId,
+    organization_id: params.organizationId,
+    type: notificationTypes[params.newStatus],
+    title,
+    message,
+    link: `/proposals/${params.proposalId}`,
+    metadata: {
+      proposal_id: params.proposalId,
+      proposal_number: params.proposalNumber,
+      to_status: params.newStatus,
     },
   });
 }

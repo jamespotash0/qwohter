@@ -574,6 +574,44 @@ serve(async (req) => {
       },
     });
 
+    // Send notification email to user (non-blocking)
+    try {
+      const { data: userProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (userProfile?.email) {
+        // Call send-notification-email function
+        const notificationUrl = `${supabaseUrl}/functions/v1/send-notification-email`;
+        fetch(notificationUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId,
+            notificationType: 'signature_sent',
+            recipientEmail: userProfile.email,
+            recipientName: userProfile.full_name || 'User',
+            data: {
+              proposalNumber: proposal.proposal_number,
+              proposalName: proposal.project_name,
+              signerEmail: clientEmail,
+              signerName: clientName || proposal.client_name,
+              link: `/proposals/${proposalId}`,
+            },
+          }),
+        }).catch(err => console.error('[send-for-signature] Notification error:', err));
+      }
+    } catch (notifError) {
+      console.error('[send-for-signature] Failed to send notification:', notifError);
+      // Don't fail the request for notification errors
+    }
+
     console.log('[send-for-signature] Success!');
 
     return new Response(

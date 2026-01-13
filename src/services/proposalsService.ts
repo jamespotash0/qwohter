@@ -631,6 +631,7 @@ export async function setMainVersion(
 
 /**
  * Update proposal status
+ * Sends email and in-app notifications for Won/Rejected/Submitted status changes
  */
 export async function updateProposalStatus(
   proposalId: string,
@@ -640,7 +641,8 @@ export async function updateProposalStatus(
 
   // Add timestamp for status transitions
   const now = new Date().toISOString();
-  switch (status) {
+  const normalizedStatus = status.toLowerCase();
+  switch (normalizedStatus) {
     case 'submitted':
       updates.submitted_at = now;
       break;
@@ -652,7 +654,96 @@ export async function updateProposalStatus(
       break;
   }
 
-  return updateProposal(proposalId, updates);
+  // Update the proposal first
+  const updatedProposal = await updateProposal(proposalId, updates);
+
+  // Send notifications for significant status changes (non-blocking)
+  if (['won', 'submitted', 'rejected'].includes(normalizedStatus)) {
+    sendStatusChangeNotifications(updatedProposal, status).catch((err) => {
+      console.error('[updateProposalStatus] Failed to send notifications:', err);
+    });
+  }
+
+  return updatedProposal;
+}
+
+/**
+ * Helper to send notifications after status change
+ * Runs asynchronously and doesn't block the status update
+ */
+async function sendStatusChangeNotifications(
+  proposal: Proposal,
+  newStatus: string
+): Promise<void> {
+  // Import notification functions dynamically to avoid circular dependency
+  const { sendProposalStatusEmail, notifyProposalStatusChange } = await import(
+    '@/services/notificationService'
+  );
+
+  // Normalize status to proper case for notification
+  const statusMap: Record<string, 'Won' | 'Rejected' | 'Submitted'> = {
+    won: 'Won',
+    Won: 'Won',
+    rejected: 'Rejected',
+    Rejected: 'Rejected',
+    submitted: 'Submitted',
+    Submitted: 'Submitted',
+  };
+
+  const normalizedStatus = statusMap[newStatus];
+  if (!normalizedStatus) return;
+
+  // Get the proposal creator's info for notifications
+  if (!proposal.created_by || !proposal.organization_id) {
+    console.warn('[sendStatusChangeNotifications] Missing creator or org ID');
+    return;
+  }
+
+  // Fetch creator's profile for email
+  const { data: creatorProfile } = await supabase
+    .from('profiles')
+    .select('email, full_name')
+    .eq('id', proposal.created_by)
+    .single<{ email: string | null; full_name: string | null }>();
+
+  if (!creatorProfile?.email) {
+    console.warn('[sendStatusChangeNotifications] Creator has no email');
+    return;
+  }
+
+  const recipientName = creatorProfile.full_name || 'User';
+
+  const notificationType = {
+    Won: 'proposal_won',
+    Rejected: 'proposal_rejected',
+    Submitted: 'proposal_submitted',
+  }[normalizedStatus] as 'proposal_won' | 'proposal_rejected' | 'proposal_submitted';
+
+  // Send email notification (async, non-blocking)
+  sendProposalStatusEmail({
+    userId: proposal.created_by,
+    organizationId: proposal.organization_id,
+    recipientEmail: creatorProfile.email,
+    recipientName,
+    notificationType,
+    proposalNumber: proposal.proposal_number || 'Proposal',
+    proposalName: proposal.project_name || undefined,
+    proposalId: proposal.id,
+  }).catch((err) => {
+    console.error('[sendStatusChangeNotifications] Email failed:', err);
+  });
+
+  // Create in-app notification (async, non-blocking)
+  notifyProposalStatusChange({
+    userId: proposal.created_by,
+    organizationId: proposal.organization_id,
+    proposalId: proposal.id,
+    proposalNumber: proposal.proposal_number || 'Proposal',
+    proposalName: proposal.project_name || undefined,
+    newStatus: normalizedStatus,
+  }).catch((err) => {
+    console.error('[sendStatusChangeNotifications] In-app notification failed:', err);
+  });
 }
 
 /**

@@ -173,6 +173,13 @@ export const queryKeys = {
     connected: (organizationId: string) =>
       [...queryKeys.integrations.all, 'connected', organizationId] as const,
   },
+
+  // Notification Preferences
+  notificationPreferences: {
+    all: ['notificationPreferences'] as const,
+    byUserOrg: (userId: string, organizationId: string) =>
+      [...queryKeys.notificationPreferences.all, userId, organizationId] as const,
+  },
 } as const;
 
 /**
