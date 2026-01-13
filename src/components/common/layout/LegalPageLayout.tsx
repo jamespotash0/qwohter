@@ -234,6 +234,7 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
               <Link to="/privacy-policy" className="text-[#171717]/50 hover:text-[#EE6C4D] transition-all duration-200 hover:scale-105">Privacy</Link>
               <Link to="/terms-of-service" className="text-[#171717]/50 hover:text-[#EE6C4D] transition-all duration-200 hover:scale-105">Terms</Link>
               <Link to="/cookie-settings" className="text-[#171717]/50 hover:text-[#EE6C4D] transition-all duration-200 hover:scale-105">Cookies</Link>
+              <Link to="/contact-us#faq" className="text-[#171717]/50 hover:text-[#EE6C4D] transition-all duration-200 hover:scale-105">FAQ</Link>
               <Link to="/" className="text-[#171717]/50 hover:text-[#EE6C4D] transition-all duration-200 hover:scale-105">Home</Link>
             </div>
           </div>

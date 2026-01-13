@@ -134,7 +134,7 @@ export const Footer = (): JSX.Element => {
               {['FAQ', 'Privacy notice', 'Legal', 'Cookie settings', 'Accessibility Statement', 'Do Not Sell My Personal Information'].map((link, index, array) => (
                 <React.Fragment key={index}>
                   <a
-                    href={`/${link.toLowerCase().replace(/ /g, '-')}`}
+                    href={link === 'FAQ' ? '/contact-us#faq' : `/${link.toLowerCase().replace(/ /g, '-')}`}
                     className="relative w-fit text-white text-base tracking-[0] leading-6 whitespace-nowrap hover:text-[#f7f2e9] transition-colors"
                     style={{
                       fontFamily: 'Urbanist, sans-serif',
