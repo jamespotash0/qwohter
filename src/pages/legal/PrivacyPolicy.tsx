@@ -38,6 +38,52 @@ const PrivacyPolicy: React.FC = () => {
       <h3>Information We Collect from Other Sources</h3>
       <p>We may also obtain information about you from other sources and combine that with information we collect about you. For example, if you create or log into your account through a third-party platform, we will have access to certain information from that platform in accordance with the authorization procedures determined by that platform.</p>
 
+      <h2>Google API Services</h2>
+      <p>Our Services offer optional integration with Google services. When you choose to connect your Google account, we access certain data from Google in accordance with Google's API Services User Data Policy.</p>
+
+      <h3>What Google Data We Access</h3>
+      <p>If you choose to connect your Google account, we may access:</p>
+      <ul>
+        <li><strong>Basic profile information:</strong> Your name and email address for authentication purposes</li>
+        <li><strong>Google Drive files:</strong> Files you explicitly select or authorize us to access for embedding in presentations and quotes</li>
+        <li><strong>Google Docs content:</strong> Document content for display and embedding within our Services</li>
+      </ul>
+
+      <h3>How We Use Google Data</h3>
+      <p>We use information obtained from Google APIs solely to:</p>
+      <ul>
+        <li>Authenticate your identity when you sign in with Google</li>
+        <li>Display and embed Google Docs within presentations and quotes you create</li>
+        <li>Read files from your Google Drive that you explicitly select</li>
+        <li>Write files to your Google Drive when you choose to save or export content</li>
+      </ul>
+      <p><strong>Qwohter's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements.</strong></p>
+
+      <h3>How We Store Google Data</h3>
+      <p>We minimize storage of Google user data:</p>
+      <ul>
+        <li><strong>Authentication tokens:</strong> Stored securely and encrypted to maintain your connection</li>
+        <li><strong>File references:</strong> We store references (IDs) to files you've selected, not copies of the files themselves</li>
+        <li><strong>Cached content:</strong> Temporarily cached for display purposes and cleared when no longer needed</li>
+      </ul>
+      <p>We do not permanently store the contents of your Google Drive files on our servers.</p>
+
+      <h3>Sharing of Google Data</h3>
+      <p><strong>We do not sell, share, or transfer your Google user data to third parties</strong> except:</p>
+      <ul>
+        <li>With your explicit consent</li>
+        <li>As necessary to provide the Services you requested</li>
+        <li>As required by law</li>
+      </ul>
+
+      <h3>Revoking Google Access</h3>
+      <p>You can disconnect your Google account and revoke our access at any time by:</p>
+      <ul>
+        <li>Visiting your account settings within Qwohter</li>
+        <li>Removing Qwohter from your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Google Account permissions</a></li>
+      </ul>
+      <p>Upon revocation, we will delete any stored Google authentication tokens and file references associated with your account.</p>
+
       <h2>How We Use Your Information</h2>
       <p>We use the information we collect to:</p>
       <ul>
