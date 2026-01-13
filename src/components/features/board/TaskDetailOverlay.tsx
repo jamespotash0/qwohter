@@ -25,7 +25,7 @@ import {
   FolderOpen,
   Check,
 } from '@phosphor-icons/react';
-import { ExternalLink, Link2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 
@@ -43,7 +43,7 @@ import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
 interface Member {
   user_id: string;
   full_name?: string | null;
-  email: string;
+  email?: string;
   status: string;
   [key: string]: unknown; // Allow additional properties from OrganizationMember type
 }
@@ -316,27 +316,11 @@ export function TaskDetailOverlay({
               }}
               className="w-40 h-8"
             />
-            {dueDate && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-gray-400 hover:text-red-500"
-                onClick={() => {
-                  setDueDate('');
-                  handleSave('due_date', null);
-                }}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            )}
           </div>
 
           {/* Link to Project */}
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 w-20 flex items-center gap-1">
-              <Link2 className="w-3.5 h-3.5" />
-              Project
-            </span>
+            <span className="text-sm text-gray-500 w-20">Project</span>
             <Select
               value={task.project_id || 'none'}
               onValueChange={(value) => {

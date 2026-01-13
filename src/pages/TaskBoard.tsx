@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
+import { Link2 } from 'lucide-react';
 import { parseLocalDate } from '@/lib/utils';
 import { PageContent } from '@/components/common/layout';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -52,7 +53,6 @@ import {
   Calendar,
   Flag,
   X,
-  FolderOpen,
   PencilSimple,
   Check,
   DotsSixVertical,
@@ -60,6 +60,72 @@ import {
   CaretRight,
   User,
 } from '@phosphor-icons/react';
+
+/**
+ * Format date as local ISO string (without UTC conversion)
+ */
+function toLocalISOString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Get due date display info with countdown and color coding
+ */
+function getDueDateDisplay(dueDate: string): { text: string; color: string; bgColor: string } {
+  const now = new Date();
+  const due = parseLocalDate(dueDate);
+
+  // Check if same calendar day
+  const isToday = now.getFullYear() === due.getFullYear() &&
+                  now.getMonth() === due.getMonth() &&
+                  now.getDate() === due.getDate();
+
+  // Check if tomorrow
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = tomorrow.getFullYear() === due.getFullYear() &&
+                     tomorrow.getMonth() === due.getMonth() &&
+                     tomorrow.getDate() === due.getDate();
+
+  const diffMs = due.getTime() - now.getTime();
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  // Overdue - red
+  if (diffMs < 0 && !isToday) {
+    const overdueTotalHours = Math.abs(totalHours);
+    const overdueDays = Math.floor(overdueTotalHours / 24);
+    const overdueHours = overdueTotalHours % 24;
+    let text: string;
+    if (overdueDays >= 1) {
+      text = overdueHours > 0 ? `${overdueDays}d ${overdueHours}h overdue` : `${overdueDays}d overdue`;
+    } else {
+      text = `${overdueHours}h overdue`;
+    }
+    return { text, color: 'text-red-600', bgColor: 'bg-red-50' };
+  }
+
+  // Today - amber
+  if (isToday) {
+    return { text: 'Today', color: 'text-amber-600', bgColor: 'bg-amber-50' };
+  }
+
+  // Tomorrow - amber
+  if (isTomorrow) {
+    return { text: 'Tomorrow', color: 'text-amber-600', bgColor: 'bg-amber-50' };
+  }
+
+  // More than 1 day - green with days and hours
+  const text = hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  return { text, color: 'text-green-600', bgColor: 'bg-green-50' };
+}
 
 export default function TaskBoard() {
   const user = useUser();
@@ -96,6 +162,15 @@ export default function TaskBoard() {
 
   // State for new column
   const [isAddingColumn, setIsAddingColumn] = useState(false);
+
+  // Timer for due date countdown refresh (every 5 minutes)
+  const [, setCountdownTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdownTick(tick => tick + 1);
+    }, 5 * 60 * 1000); // 5 minutes
+    return () => clearInterval(interval);
+  }, []);
   const [newColumnName, setNewColumnName] = useState('');
   const [newColumnColor, setNewColumnColor] = useState(COLUMN_COLORS[0]?.value || '#94A3B8');
 
@@ -587,42 +662,84 @@ export default function TaskBoard() {
                             draggedTask === task.id ? 'opacity-50' : ''
                           }`}
                         >
-                          {/* Task Menu - 3 dot ellipsis */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                onClick={(e) => e.stopPropagation()}
-                                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <DotsThreeVertical className="w-4 h-4 text-gray-500" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenuItem
-                                onClick={() => setDeleteTaskDialog({ open: true, task })}
-                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
-                              >
-                                <Trash className="w-4 h-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {/* Top Right: Menu only */}
+                          <div className="absolute top-2 right-2">
+                            {/* Task Menu - 3 dot ellipsis */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 rounded hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <DotsThreeVertical className="w-4 h-4 text-gray-500" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteTaskDialog({ open: true, task })}
+                                  className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
 
-                          {/* Task Title */}
-                          <div className="mb-2 pr-6">
+                          {/* Task Title with Project Link */}
+                          <div className="mb-1 pr-8 flex items-start gap-1.5">
                             <h4 className="text-sm font-small text-gray-900 line-clamp-2">
                               {task.title}
                             </h4>
+                            {/* Project Link Icon - rotated, right of title */}
+                            {projects.length > 0 && (
+                              <Popover>
+                                <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    className={`flex-shrink-0 p-1 rounded hover:bg-gray-100 transition-all ${
+                                      projectName
+                                        ? 'text-purple-500 hover:text-purple-600'
+                                        : 'text-gray-300 hover:text-gray-400 opacity-0 group-hover:opacity-100'
+                                    }`}
+                                    title={projectName || 'Link to project'}
+                                  >
+                                    <Link2 className="w-3.5 h-3.5 -rotate-45" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56 p-2" align="end" onClick={(e) => e.stopPropagation()}>
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-medium text-gray-500 px-2 pb-1">Link to Project</p>
+                                    {projects.map((project) => (
+                                      <button
+                                        key={project.id}
+                                        onClick={() => handleLinkProject(task.id, project.id)}
+                                        className={`w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2 ${
+                                          task.project_id === project.id ? 'bg-purple-50' : ''
+                                        }`}
+                                      >
+                                        <Link2 className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 -rotate-45" />
+                                        <span className="truncate">{project.proposal?.project_name || 'Unnamed Project'}</span>
+                                      </button>
+                                    ))}
+                                    {task.project_id && (
+                                      <button
+                                        onClick={() => handleLinkProject(task.id, null)}
+                                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-red-50 rounded text-red-600"
+                                      >
+                                        Remove
+                                      </button>
+                                    )}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
                           </div>
 
-                          {/* Project Badge */}
-                          {projectName && (
-                            <div className="mb-2">
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200">
-                                <FolderOpen className="w-2.5 h-2.5 mr-1" />
-                                {projectName}
-                              </Badge>
-                            </div>
+                          {/* Description */}
+                          {task.description && (
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-2">
+                              {task.description}
+                            </p>
                           )}
 
                           {/* Bottom Row: Reference, Priority, Due Date, Assignee */}
@@ -635,31 +752,84 @@ export default function TaskBoard() {
                                 </span>
                               )}
 
-                              {/* Priority Indicator - only show if priority is set */}
-                              {task.priority && (
-                                <Flag
-                                  weight="fill"
-                                  className={`w-3.5 h-3.5 ${
-                                    task.priority === 'high' ? 'text-red-500' :
-                                    task.priority === 'medium' ? 'text-yellow-500' : 'text-gray-400'
-                                  }`}
-                                />
-                              )}
+                              {/* Priority Indicator - clickable dropdown */}
+                              <Popover>
+                                <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    className={`p-1 rounded hover:bg-gray-100 transition-all ${
+                                      task.priority
+                                        ? ''
+                                        : 'opacity-0 group-hover:opacity-100'
+                                    }`}
+                                    title={task.priority ? `Priority: ${task.priority}` : 'Set priority'}
+                                  >
+                                    <Flag
+                                      weight="fill"
+                                      className={`w-3.5 h-3.5 ${
+                                        task.priority === 'high' ? 'text-red-500' :
+                                        task.priority === 'medium' ? 'text-yellow-500' :
+                                        task.priority === 'low' ? 'text-gray-400' : 'text-gray-300'
+                                      }`}
+                                    />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-32 p-2" align="start" onClick={(e) => e.stopPropagation()}>
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-medium text-gray-500 px-2 pb-1">Priority</p>
+                                    {(['high', 'medium', 'low'] as const).map((priority) => (
+                                      <button
+                                        key={priority}
+                                        onClick={() => handleUpdateTask(task.id, { priority } as any)}
+                                        className={`w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2 ${
+                                          task.priority === priority ? 'bg-gray-50' : ''
+                                        }`}
+                                      >
+                                        <Flag
+                                          weight="fill"
+                                          className={`w-3.5 h-3.5 ${
+                                            priority === 'high' ? 'text-red-500' :
+                                            priority === 'medium' ? 'text-yellow-500' : 'text-gray-400'
+                                          }`}
+                                        />
+                                        <span className="capitalize">{priority}</span>
+                                      </button>
+                                    ))}
+                                    {task.priority && (
+                                      <button
+                                        onClick={() => handleUpdateTask(task.id, { priority: null } as any)}
+                                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-red-50 rounded text-red-600"
+                                      >
+                                        Remove
+                                      </button>
+                                    )}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
 
                               {/* Due Date */}
-                              {task.due_date ? (
+                              {task.due_date ? (() => {
+                                const dueDateInfo = getDueDateDisplay(task.due_date);
+                                return (
                                 <Popover>
                                   <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                    <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
+                                    <button className={`flex items-center gap-1.5 text-xs px-1.5 py-0.5 rounded ${dueDateInfo.bgColor} ${dueDateInfo.color}`}>
                                       <Calendar className="w-3 h-3" />
-                                      {format(parseLocalDate(task.due_date), 'MMM d')}
+                                      <span className="font-medium">{dueDateInfo.text}</span>
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
                                     <CalendarPicker
                                       mode="single"
                                       selected={parseLocalDate(task.due_date)}
-                                      onSelect={(date) => handleQuickDueDate(task.id, date ? format(date, 'yyyy-MM-dd') : null)}
+                                      defaultMonth={parseLocalDate(task.due_date)}
+                                      disabled={{ before: new Date() }}
+                                      onSelect={(date) => {
+                                        if (date) {
+                                          // Set to end of day (23:59:59) so "today" isn't immediately overdue
+                                          date.setHours(23, 59, 59, 999);
+                                          handleQuickDueDate(task.id, toLocalISOString(date));
+                                        }
+                                      }}
                                       initialFocus
                                     />
                                     <div className="border-t p-2">
@@ -674,7 +844,8 @@ export default function TaskBoard() {
                                     </div>
                                   </PopoverContent>
                                 </Popover>
-                              ) : (
+                                );
+                              })() : (
                                 <Popover>
                                   <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                     <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded">
@@ -685,7 +856,15 @@ export default function TaskBoard() {
                                     <CalendarPicker
                                       mode="single"
                                       selected={undefined}
-                                      onSelect={(date) => handleQuickDueDate(task.id, date ? format(date, 'yyyy-MM-dd') : null)}
+                                      defaultMonth={new Date()}
+                                      disabled={{ before: new Date() }}
+                                      onSelect={(date) => {
+                                        if (date) {
+                                          // Set to end of day (23:59:59) so "today" isn't immediately overdue
+                                          date.setHours(23, 59, 59, 999);
+                                          handleQuickDueDate(task.id, toLocalISOString(date));
+                                        }
+                                      }}
                                       initialFocus
                                     />
                                   </PopoverContent>
@@ -707,12 +886,6 @@ export default function TaskBoard() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-48 p-2" align="end" onClick={(e) => e.stopPropagation()}>
                                   <div className="space-y-1">
-                                    <button
-                                      onClick={() => handleQuickAssign(task.id, null)}
-                                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded text-gray-500"
-                                    >
-                                      Unassign
-                                    </button>
                                     {activeMembers.map((member) => (
                                       <button
                                         key={member.user_id}
@@ -729,6 +902,12 @@ export default function TaskBoard() {
                                         <span className="truncate">{member.full_name || member.email}</span>
                                       </button>
                                     ))}
+                                    <button
+                                      onClick={() => handleQuickAssign(task.id, null)}
+                                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-red-50 rounded text-red-600"
+                                    >
+                                      Unassign
+                                    </button>
                                   </div>
                                 </PopoverContent>
                               </Popover>
@@ -810,6 +989,7 @@ export default function TaskBoard() {
                                 <CalendarPicker
                                   mode="single"
                                   selected={newTaskDueDate ? parseLocalDate(newTaskDueDate) : undefined}
+                                  defaultMonth={newTaskDueDate ? parseLocalDate(newTaskDueDate) : new Date()}
                                   onSelect={(date) => setNewTaskDueDate(date ? format(date, 'yyyy-MM-dd') : '')}
                                   initialFocus
                                 />
