@@ -19,6 +19,10 @@ export type NotificationType =
   | 'proposal_submitted'
   | 'proposal_won'
   | 'proposal_rejected'
+  // Approval events
+  | 'approval_requested'
+  | 'approval_approved'
+  | 'approval_rejected'
   // Reminder events
   | 'reminder_due';
 
@@ -77,6 +81,9 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   proposal_submitted: 'Proposal Submitted',
   proposal_won: 'Proposal Won',
   proposal_rejected: 'Proposal Rejected',
+  approval_requested: 'Approval Requested',
+  approval_approved: 'Proposal Approved',
+  approval_rejected: 'Approval Rejected',
   reminder_due: 'Reminder Due',
 };
 

@@ -24,6 +24,9 @@ type NotificationType =
   | 'proposal_submitted'
   | 'proposal_won'
   | 'proposal_rejected'
+  | 'approval_requested'
+  | 'approval_approved'
+  | 'approval_rejected'
   | 'task_assigned'
   | 'update_mention';
 
@@ -58,6 +61,9 @@ const preferenceFieldMap: Record<NotificationType, string> = {
   proposal_submitted: 'email_on_proposal_submitted',
   proposal_won: 'email_on_proposal_won',
   proposal_rejected: 'email_on_proposal_rejected',
+  approval_requested: 'email_on_proposal_submitted', // Use submitted preference for approval requests
+  approval_approved: 'email_on_proposal_submitted',
+  approval_rejected: 'email_on_proposal_rejected',
   task_assigned: 'email_on_task_assigned',
   update_mention: 'email_on_mention',
 };
@@ -161,6 +167,42 @@ function generateEmailContent(
         ctaButton: data.link ? { text: 'View Comment', url: `${appUrl}${data.link}` } : undefined,
       }),
       text: `${data.mentionedBy || 'Someone'} mentioned you in a comment.`,
+    }),
+
+    approval_requested: () => ({
+      subject: `[Notification] Approval Requested - ${data.proposalNumber || 'Proposal'}`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p><strong>${data.actorName || 'A team member'}</strong> has requested approval for proposal <strong>${data.proposalNumber}</strong>${data.proposalName ? ` (${data.proposalName})` : ''}.</p>
+          <p>Please review and approve or reject this proposal.</p>
+        `,
+        ctaButton: data.link ? { text: 'Review Proposal', url: `${appUrl}${data.link}` } : undefined,
+      }),
+      text: `${data.actorName || 'A team member'} requested approval for proposal ${data.proposalNumber}.`,
+    }),
+
+    approval_approved: () => ({
+      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Approved`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p>Great news! <strong>${data.actorName || 'An admin'}</strong> has approved your proposal <strong>${data.proposalNumber}</strong>${data.proposalName ? ` (${data.proposalName})` : ''}.</p>
+          <p>The proposal has been submitted.</p>
+        `,
+        ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
+      }),
+      text: `Your proposal ${data.proposalNumber} has been approved and submitted.`,
+    }),
+
+    approval_rejected: () => ({
+      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Not Approved`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p><strong>${data.actorName || 'An admin'}</strong> has not approved your proposal <strong>${data.proposalNumber}</strong>${data.proposalName ? ` (${data.proposalName})` : ''}.</p>
+          <p>The proposal has been returned to draft status for revisions.</p>
+        `,
+        ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
+      }),
+      text: `Your proposal ${data.proposalNumber} was not approved and has been returned to draft.`,
     }),
   };
 

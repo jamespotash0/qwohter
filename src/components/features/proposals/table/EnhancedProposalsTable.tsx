@@ -82,6 +82,7 @@ interface EnhancedProposalsTableProps {
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-800',
+  'Pending Approval': 'bg-amber-100 text-amber-800',
   Submitted: 'bg-purple-100 text-purple-800',
   Won: 'bg-emerald-100 text-emerald-800',
   Rejected: 'bg-red-100 text-red-800',
@@ -527,7 +528,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {['Draft', 'Submitted', 'Won', 'Rejected'].map(s => (
+              {['Draft', 'Pending Approval', 'Submitted', 'Won', 'Rejected'].map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>
@@ -974,7 +975,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {['Draft', 'Submitted', 'Won', 'Rejected'].map(s => (
+                                  {['Draft', 'Pending Approval', 'Submitted', 'Won', 'Rejected'].map(s => (
                                     <SelectItem key={s} value={s}>{s}</SelectItem>
                                   ))}
                                 </SelectContent>
