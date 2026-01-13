@@ -14,13 +14,6 @@ import { Plus, Trash, UploadSimple, Package, CurrencyDollar, CaretDown, Check, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -53,25 +46,6 @@ interface ProductsTabProps {
   mode: EditorMode;
   onDirtyChange?: (isDirty: boolean) => void;
 }
-
-const UNITS = [
-  { value: 'ea', label: 'Each' },
-  { value: 'box', label: 'Box' },
-  { value: 'case', label: 'Case' },
-  { value: 'ft', label: 'Feet' },
-  { value: 'sqft', label: 'Sq Ft' },
-  { value: 'lbs', label: 'Pounds' },
-  { value: 'gal', label: 'Gallon' },
-];
-
-// Calculate product amount (qty * unitCost - discount)
-const calculateProductAmount = (product: Product): number => {
-  const baseAmount = (product.quantity || 0) * (product.unitCost || 0);
-  if (product.discountPercent && product.discountPercent > 0) {
-    return baseAmount * (1 - product.discountPercent / 100);
-  }
-  return baseAmount;
-};
 
 // Format currency
 const formatCurrency = (amount: number): string => {
@@ -117,9 +91,10 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     }
   }, [entryMode, fetchTypes]);
 
-  // Helper function to determine if a product was AI-extracted (has rawData)
+  // Helper function to determine if a product was AI-extracted or from catalog
+  // Check for rawData.source specifically - manual products may have rawData.model but no source
   const isAIExtractedProduct = useCallback((product: Product): boolean => {
-    return !!(product.rawData && Object.keys(product.rawData).length > 0);
+    return !!(product.rawData?.source);
   }, []);
 
   // Separate products by source
@@ -147,7 +122,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     setProductsData({ items: updatedProducts });
 
     // Cascade updates to linked pricing line items
-    // Only cascade: unitCost, quantity, name, discountPercent
+    // Only cascade: unitCost, quantity, name, discountPercent, rawData.model
     const pricingUpdates: Partial<PricingLineItem> = {};
     if ('unitCost' in updates) pricingUpdates.unitCost = updates.unitCost || 0;
     if ('quantity' in updates) pricingUpdates.quantity = updates.quantity || 0;
@@ -155,6 +130,9 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     if ('discountPercent' in updates) {
       pricingUpdates.discountValue = updates.discountPercent || 0;
       pricingUpdates.discountType = 'percent';
+    }
+    if ('rawData' in updates && updates.rawData?.model !== undefined) {
+      pricingUpdates.modelNumber = updates.rawData.model || undefined;
     }
 
     // Only update pricing if there are relevant changes
@@ -247,17 +225,19 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     }
 
     // Add product as line item with link back to source product
+    // Pricing details (qty, cost, markup, etc.) are entered in the Pricing tab
     const newLineItem = {
       id: `${Date.now()}`,
       name: product.name || 'Unnamed Product',
-      quantity: product.quantity || 1,
+      modelNumber: product.rawData?.model || undefined,
+      quantity: 1,
       sellRule: 'per_unit',
-      unitCost: product.unitCost || 0,
+      unitCost: 0,
       markupValue: 0,
       markupType: 'percent' as const,
       isTaxable: false,
       sourceProductId: product.id, // Link to source product for cascade delete
-      discountValue: product.discountPercent || 0,
+      discountValue: 0,
       discountType: 'percent' as const,
     };
 
@@ -842,207 +822,196 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       {entryMode === 'manual' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <div className="col-span-3">Product Name</div>
-            <div className="col-span-1 text-center">Qty</div>
-            <div className="col-span-1">Unit</div>
-            <div className="col-span-2 text-right">Unit Cost</div>
-            <div className="col-span-1 text-center">Disc %</div>
-            <div className="col-span-2 text-right">Amount</div>
+          <div className="grid grid-cols-12 gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="col-span-3">Name</div>
+            <div className="col-span-2">Model #</div>
+            <div className="col-span-2">SKU / Part #</div>
+            <div className="col-span-3">Description</div>
             <div className="col-span-2"></div>
           </div>
 
           {/* Product Rows */}
-          <div>
-            {/* Product Rows - Only manual products (no rawData) */}
+          <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
             {manualProducts.map((product) => {
-              const amount = calculateProductAmount(product);
+              const linkedSection = pricingSections.find(section =>
+                section.lineItems.some(item => item.sourceProductId === product.id)
+              );
+
               return (
-              <div
-                key={product.id}
-                className="grid grid-cols-12 gap-2 px-3 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
-              >
-                {/* Product Name */}
-                <div className="col-span-3">
-                  <Input
-                    value={product.name}
-                    onChange={(e) =>
-                      updateProduct(product.id, { name: e.target.value })
-                    }
-                    placeholder="Product name"
-                    className={inputClassName}
-                  />
-                </div>
-
-                {/* Quantity */}
-                <div className="col-span-1">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={product.quantity || ''}
-                    onChange={(e) =>
-                      updateProduct(product.id, {
-                        quantity: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    placeholder="0"
-                    className={cn(
-                      inputClassName,
-                      'text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                    )}
-                  />
-                </div>
-
-                {/* Unit */}
-                <div className="col-span-1">
-                  <Select
-                    value={product.unit}
-                    onValueChange={(v) =>
-                      updateProduct(product.id, { unit: v })
-                    }
-                  >
-                    <SelectTrigger className={cn(inputClassName, 'px-1')}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNITS.map((unit) => (
-                        <SelectItem key={unit.value} value={unit.value}>
-                          {unit.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Unit Cost */}
-                <div className="col-span-2">
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                <div
+                  key={product.id}
+                  className="grid grid-cols-12 gap-1 px-3 py-2 items-center hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                >
+                  {/* Name */}
+                  <div className="col-span-3">
                     <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={product.unitCost || ''}
-                      onChange={(e) =>
-                        updateProduct(product.id, {
-                          unitCost: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0.00"
-                      className={cn(
-                        inputClassName,
-                        'pl-5 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                      )}
+                      value={product.name}
+                      onChange={(e) => updateProduct(product.id, { name: e.target.value })}
+                      placeholder="Name"
+                      className={inputClassName}
                     />
                   </div>
-                </div>
 
-                {/* Discount Percent */}
-                <div className="col-span-1">
-                  <div className="relative">
+                  {/* Model # */}
+                  <div className="col-span-2">
                     <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={product.discountPercent || ''}
-                      onChange={(e) =>
+                      value={product.rawData?.model ?? ''}
+                      onChange={(e) => {
                         updateProduct(product.id, {
-                          discountPercent: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0"
-                      className={cn(
-                        inputClassName,
-                        'pr-5 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                      )}
+                          rawData: { ...(product.rawData || {}), model: e.target.value || null },
+                        });
+                      }}
+                      placeholder="Model #"
+                      className={cn(inputClassName, 'font-mono text-xs')}
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
                   </div>
-                </div>
 
-                {/* Amount (calculated) */}
-                <div className="col-span-2 text-right">
-                  <span className="font-mono text-xs text-gray-700 dark:text-gray-300">
-                    {amount > 0 ? formatCurrency(amount) : '—'}
-                  </span>
-                </div>
+                  {/* SKU */}
+                  <div className="col-span-2">
+                    <Input
+                      value={product.rawData?.sku ?? ''}
+                      onChange={(e) => {
+                        updateProduct(product.id, {
+                          rawData: { ...(product.rawData || {}), sku: e.target.value || null },
+                        });
+                      }}
+                      placeholder="SKU"
+                      className={cn(inputClassName, 'font-mono text-xs')}
+                    />
+                  </div>
 
-                {/* Actions - Section Selector + Delete */}
-                <div className="col-span-2 flex justify-end gap-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        className="p-1 text-gray-400 hover:text-green-600 transition-colors rounded hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-0.5"
-                        title="Add to Pricing Section"
-                      >
-                        <CurrencyDollar className="w-3.5 h-3.5" />
-                        <CaretDown className="w-2.5 h-2.5" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-48 p-1">
-                      <div className="text-[10px] font-medium text-gray-500 uppercase tracking-wider px-2 py-1">
-                        Add to Section
-                      </div>
-                      {pricingSections.length === 0 ? (
-                        <button
-                          onClick={() => addToPricing(product)}
-                          className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                        >
-                          <Package className="w-3 h-3 text-gray-400" />
-                          <span>Create Merchandise</span>
-                        </button>
-                      ) : (
-                        <>
-                          {pricingSections.map((section) => {
-                            const isLinked = section.lineItems.some(
-                              item => item.sourceProductId === product.id
-                            );
-                            return (
+                  {/* Description */}
+                  <div className="col-span-3">
+                    <Input
+                      value={product.description ?? ''}
+                      onChange={(e) => updateProduct(product.id, { description: e.target.value })}
+                      placeholder="Description"
+                      className={inputClassName}
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-2 flex justify-end gap-1">
+                    {linkedSection ? (
+                      (() => {
+                        // Find the specific line item linked to this product
+                        const linkedItem = linkedSection.lineItems.find(
+                          item => item.sourceProductId === product.id
+                        );
+                        // Calculate the line item amount
+                        const baseAmount = (linkedItem?.unitCost || 0) * (linkedItem?.quantity || 1);
+                        const markupAmount = linkedItem?.markupType === 'percent'
+                          ? baseAmount * ((linkedItem?.markupValue || 0) / 100)
+                          : (linkedItem?.markupValue || 0);
+                        const totalAmount = baseAmount + markupAmount;
+
+                        return (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1 px-1 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors cursor-pointer"
+                                title="View pricing details"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span className="truncate max-w-[60px]">{linkedSection.name}</span>
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-52 p-3">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                                  <CurrencyDollar className="w-4 h-4 text-green-600" />
+                                  <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                                    {linkedSection.name}
+                                  </span>
+                                </div>
+                                <div className="space-y-1.5 text-xs">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Quantity:</span>
+                                    <span className="font-medium">{linkedItem?.quantity || 1}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Unit Cost:</span>
+                                    <span className="font-medium">{formatCurrency(linkedItem?.unitCost || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Markup:</span>
+                                    <span className="font-medium">
+                                      {linkedItem?.markupType === 'percent'
+                                        ? `${linkedItem?.markupValue || 0}%`
+                                        : formatCurrency(linkedItem?.markupValue || 0)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between pt-1.5 border-t border-gray-100 dark:border-gray-700">
+                                    <span className="text-gray-700 dark:text-gray-300 font-medium">Total:</span>
+                                    <span className="font-semibold text-green-600">{formatCurrency(totalAmount)}</span>
+                                  </div>
+                                </div>
+                                <p className="text-[10px] text-gray-400 pt-1 italic">
+                                  Edit in Pricing tab
+                                </p>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })()
+                    ) : (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            className="p-1 text-gray-400 hover:text-green-600 transition-colors rounded hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-0.5"
+                            title="Add to Pricing"
+                          >
+                            <CurrencyDollar className="w-3.5 h-3.5" />
+                            <CaretDown className="w-2.5 h-2.5" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-44 p-1">
+                          <div className="text-[10px] font-medium text-gray-500 uppercase px-2 py-1">Add to Section</div>
+                          {pricingSections.length === 0 ? (
+                            <button
+                              onClick={() => addToPricing(product)}
+                              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                            >
+                              <Package className="w-3 h-3 text-gray-400" />
+                              <span>Create Merchandise</span>
+                            </button>
+                          ) : (
+                            pricingSections.map((section) => (
                               <button
                                 key={section.id}
                                 onClick={() => addToPricing(product, section.id)}
-                                disabled={isLinked}
-                                className={cn(
-                                  'w-full text-left px-2 py-1.5 text-xs rounded flex items-center justify-between gap-2',
-                                  isLinked
-                                    ? 'text-gray-400 cursor-not-allowed'
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                )}
+                                className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 truncate"
                               >
-                                <span className="truncate">{section.name}</span>
-                                {isLinked && <Check className="w-3 h-3 text-green-500" />}
+                                {section.name}
                               </button>
-                            );
-                          })}
-                        </>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                  <button
-                    onClick={() => removeProduct(product.id)}
-                    className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                    title="Delete"
-                  >
-                    <Trash className="w-3.5 h-3.5" />
-                  </button>
+                            ))
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    <button
+                      onClick={() => removeProduct(product.id)}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                      title="Delete"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
               );
             })}
 
-            {/* Add Product Row - Bottom */}
-            <div className="grid grid-cols-12 gap-2 px-3 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
-              <div className="col-span-12">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={addProduct}
-                  className="text-gray-400 hover:text-coral hover:bg-coral/5 h-6 text-[10px]"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Product
-                </Button>
-              </div>
+            {/* Add Product */}
+            <div className="px-3 py-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={addProduct}
+                className="text-gray-400 hover:text-coral hover:bg-coral/5 h-6 text-[10px]"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Product
+              </Button>
             </div>
           </div>
         </div>

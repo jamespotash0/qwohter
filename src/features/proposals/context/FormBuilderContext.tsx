@@ -20,6 +20,8 @@ import {
 export interface PricingLineItem {
   id: string;
   name: string;
+  /** Model number from product (for display) */
+  modelNumber?: string;
   quantity: number;
   sellRule: string;
   unitCost: number;
@@ -112,6 +114,9 @@ export interface ProductRawData {
   productCategory?: string | null;
   series?: string | null;
   model?: string | null;
+  sku?: string | null;
+  specs?: string | null;
+  source?: string | null; // Source of the product (e.g., 'catalog', 'ai-extraction')
   dimensions?: {
     height?: string | null;
     width?: string | null;
