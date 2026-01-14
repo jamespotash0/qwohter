@@ -33,6 +33,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   const [timeLeft, setTimeLeft] = useState(165);
   const [showOverlay, setShowOverlay] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer after resend
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [editedEmail, setEditedEmail] = useState(email);
   const [emailChangeLoading, setEmailChangeLoading] = useState(false);
@@ -54,6 +55,17 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
 
     return () => clearInterval(timer);
   }, [timeLeft]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setResendCooldown(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleDigitChange = (index: number, value: string) => {
     const cleanValue = value.replace(/\D/g, '');
@@ -117,6 +129,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       setDigits(clearedDigits);
       onOtpCodeChange('');
       setTimeLeft(165);
+      setResendCooldown(60); // Start 60-second cooldown
       setShowOverlay(true);
       inputRefs.current[0]?.focus();
 
@@ -281,24 +294,30 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
           <span className="text-sm text-[#171717]/50">Didn't receive it?</span>
-          <button
-            type="button"
-            onClick={handleResendCode}
-            disabled={resendLoading}
-            className="text-sm text-[#ee6c4d] hover:text-[#d65a3d] font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
-          >
-            {resendLoading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-3.5 h-3.5" />
-                Resend code
-              </>
-            )}
-          </button>
+          {resendCooldown > 0 ? (
+            <span className="text-sm text-red-500 font-semibold">
+              Resend in {resendCooldown}s
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resendLoading}
+              className="text-sm text-[#ee6c4d] hover:text-[#d65a3d] font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {resendLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Resend code
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Timer */}
