@@ -923,40 +923,22 @@ const Dashboard = () => {
               ) : (
                 <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
                   {notifications.map((notification: Notification) => {
-                    const getNotificationIcon = (type: Notification['type']) => {
-                      switch (type) {
-                        case 'task_assigned':
-                          return '📋';
-                        case 'task_due':
-                          return '⏰';
-                        case 'update_mention':
-                          return '@';
-                        case 'update_reply':
-                          return '💬';
-                        case 'signature_sent':
-                          return '✉️';
-                        case 'signature_viewed':
-                          return '👁️';
-                        case 'signature_signed':
-                          return '✍️';
-                        case 'proposal_submitted':
-                          return '📤';
-                        case 'proposal_won':
-                          return '🏆';
-                        case 'proposal_rejected':
-                          return '❌';
-                        case 'reminder_due':
-                          return '🔔';
-                        default:
-                          return '🔔';
-                      }
-                    };
+                    // Notification types that require action (should show "View" button)
+                    const ACTION_REQUIRED_TYPES = ['approval_requested', 'task_assigned'];
+                    const requiresAction = ACTION_REQUIRED_TYPES.includes(notification.type) && notification.link;
 
-                    const handleNotificationClick = () => {
+                    // Mark as read when clicking on the notification
+                    const handleMarkAsRead = () => {
                       if (!notification.is_read) {
                         markNotificationAsRead.mutate(notification.id);
                       }
+                    };
+
+                    // Navigate to the linked page (separate action)
+                    const handleViewAction = (e: React.MouseEvent) => {
+                      e.stopPropagation();
                       if (notification.link) {
+                        handleMarkAsRead();
                         navigate(notification.link);
                       }
                     };
@@ -964,17 +946,22 @@ const Dashboard = () => {
                     return (
                       <div
                         key={notification.id}
-                        onClick={handleNotificationClick}
+                        onClick={handleMarkAsRead}
                         className={`p-4 rounded-lg border transition-all cursor-pointer ${
                           !notification.is_read
-                            ? 'border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800'
+                            ? 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700'
                             : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <span className="text-lg flex-shrink-0">
-                            {getNotificationIcon(notification.type)}
-                          </span>
+                          {/* Red dot for unread, invisible placeholder for read */}
+                          <div className="flex-shrink-0 mt-1.5">
+                            {!notification.is_read ? (
+                              <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            ) : (
+                              <div className="w-2 h-2"></div>
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm ${!notification.is_read ? 'font-semibold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
                               {notification.title}
@@ -982,13 +969,20 @@ const Dashboard = () => {
                             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
                               {notification.message}
                             </p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                              {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-xs text-gray-400 dark:text-gray-500">
+                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                              </p>
+                              {requiresAction && (
+                                <button
+                                  onClick={handleViewAction}
+                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                                >
+                                  View
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          {!notification.is_read && (
-                            <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>
-                          )}
                         </div>
                       </div>
                     );
