@@ -9,17 +9,13 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, FolderOpen, HelpCircle, CheckCircle2, Info } from 'lucide-react';
-import { GoogleLogo } from '@phosphor-icons/react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -97,12 +93,9 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <GoogleLogo className="w-6 h-6 text-blue-500" weight="bold" />
-            Google Docs Settings
-          </DialogTitle>
+          <DialogTitle>Google Docs Settings</DialogTitle>
           <DialogDescription>
             Update your Google Docs integration settings
           </DialogDescription>
@@ -122,16 +115,23 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
           {/* Folder ID Input */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label htmlFor="folderId" className="text-sm font-medium">
+              <label
+                htmlFor="settingsFolderId"
+                className="text-sm font-medium text-gray-900 dark:text-white"
+              >
                 Drive Folder ID
-              </Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
+              </label>
+              <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+                <Tooltip disableHoverableContent>
+                  <TooltipTrigger
+                    type="button"
+                    className="inline-flex focus:outline-none"
+                    onFocus={(e) => e.preventDefault()}
+                  >
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>The folder ID from your Google Drive URL. Open the folder in Drive and copy the ID from the URL:</p>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p>The folder ID from your Google Drive URL. Open the folder in Drive and copy the ID:</p>
                     <p className="text-xs mt-1 font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded">
                       drive.google.com/drive/folders/<strong>FOLDER_ID</strong>
                     </p>
@@ -142,7 +142,7 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
             <div className="flex gap-2">
               <FolderOpen className="w-5 h-5 text-gray-400 mt-2.5" />
               <Input
-                id="folderId"
+                id="settingsFolderId"
                 placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
                 value={folderId}
                 onChange={(e) => setFolderId(e.target.value)}
@@ -150,7 +150,7 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
               />
             </div>
             <p className="text-xs text-gray-500">
-              Leave empty to access all your Google Docs. Set a folder ID to only show templates from that folder.
+              Leave empty to access all docs. Set a folder ID to filter templates.
             </p>
           </div>
 
@@ -158,8 +158,7 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
           <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-700 dark:text-blue-300 text-sm">
-              When selecting templates in the form builder, only Google Docs from this folder will be shown.
-              Leave empty to browse all your documents.
+              When selecting templates, only Google Docs from this folder will be shown.
             </AlertDescription>
           </Alert>
 
@@ -171,25 +170,30 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+        {/* Footer */}
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            onClick={onClose}
+            disabled={isSaving}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+          >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="px-4 py-2 text-sm font-medium bg-[#EE6C4D] hover:bg-[#EE6C4D]/90 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Saving...
               </>
             ) : (
               'Save Settings'
             )}
-          </Button>
-        </DialogFooter>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );
