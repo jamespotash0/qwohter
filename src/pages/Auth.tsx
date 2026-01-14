@@ -353,7 +353,8 @@ const Auth = () => {
           variant: "destructive"
         });
       }
-      return;
+      // Throw so OtpVerificationForm knows resend failed and won't show success overlay
+      throw new Error(error.message || "Failed to resend code");
     }
 
     const tempData = tempSignupService.get();
@@ -365,7 +366,7 @@ const Auth = () => {
 
     toast({
       title: "Code Sent!",
-      description: "A new verification code has been sent to your email."
+      description: "Check your inbox. If no email arrives, wait 60 seconds before trying again."
     });
   };
 
