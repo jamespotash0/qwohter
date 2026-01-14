@@ -94,7 +94,7 @@ export const ProposalsTableToolbar: React.FC<ProposalsTableToolbarProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              {['Draft', 'Complete', 'Sent', 'Approved', 'Rejected'].map(status => (
+              {['Draft', 'Submitted', 'Won', 'Rejected'].map(status => (
                 <DropdownMenuItem
                   key={status}
                   onClick={() => {

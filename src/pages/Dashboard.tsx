@@ -33,6 +33,8 @@ import { useUser, useProfile } from "@/auth";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
+import { useNotifications, useMarkNotificationAsRead } from "@/hooks/useNotifications";
+import type { Notification } from "@/lib/types/notifications";
 import { toast } from "sonner";
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
 import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
@@ -56,6 +58,10 @@ const Dashboard = () => {
   const { organization: currentOrganization } = useCurrentOrganization(user?.id ?? '', !!user?.id);
   const organizationId = currentOrganization?.id || null;
   const { data: proposals = [], isLoading: proposalsLoading } = useProposals(organizationId || undefined);
+
+  // Notifications hooks
+  const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(user?.id);
+  const markNotificationAsRead = useMarkNotificationAsRead(user?.id || '');
 
   console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
@@ -884,7 +890,7 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Right Column - Notifications (Coming Soon) */}
+          {/* Right Column - Notifications */}
           <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col self-start" style={{ height: '900px' }}>
             <CardHeader className="pb-4 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
@@ -893,17 +899,102 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="relative pb-4 flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
-                  <p className="text-[var(--content-muted-text)]">
-                    No notifications
-                  </p>
-                  <p className="text-sm text-[var(--content-muted-text)] mt-1">
-                    Notifications will appear here
-                  </p>
+              {notificationsLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-pulse">
+                      <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-3"></div>
+                      <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mx-auto"></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : notifications.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
+                    <p className="text-[var(--content-muted-text)]">
+                      No notifications
+                    </p>
+                    <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                      Notifications will appear here
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
+                  {notifications.map((notification: Notification) => {
+                    const getNotificationIcon = (type: Notification['type']) => {
+                      switch (type) {
+                        case 'task_assigned':
+                          return '📋';
+                        case 'task_due':
+                          return '⏰';
+                        case 'update_mention':
+                          return '@';
+                        case 'update_reply':
+                          return '💬';
+                        case 'signature_sent':
+                          return '✉️';
+                        case 'signature_viewed':
+                          return '👁️';
+                        case 'signature_signed':
+                          return '✍️';
+                        case 'proposal_submitted':
+                          return '📤';
+                        case 'proposal_won':
+                          return '🏆';
+                        case 'proposal_rejected':
+                          return '❌';
+                        case 'reminder_due':
+                          return '🔔';
+                        default:
+                          return '🔔';
+                      }
+                    };
+
+                    const handleNotificationClick = () => {
+                      if (!notification.is_read) {
+                        markNotificationAsRead.mutate(notification.id);
+                      }
+                      if (notification.link) {
+                        navigate(notification.link);
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={notification.id}
+                        onClick={handleNotificationClick}
+                        className={`p-4 rounded-lg border transition-all cursor-pointer ${
+                          !notification.is_read
+                            ? 'border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800'
+                            : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg flex-shrink-0">
+                            {getNotificationIcon(notification.type)}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${!notification.is_read ? 'font-semibold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
+                              {notification.title}
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                            </p>
+                          </div>
+                          {!notification.is_read && (
+                            <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -152,7 +152,7 @@ const Settings = () => {
         id: "notifications",
         label: "Notifications",
         icon: <Bell className="w-4 h-4" />,
-        component: <NotificationsTab userId={user?.id} organizationId={organization?.id} userEmail={profile?.email} />,
+        component: <NotificationsTab userId={user?.id} organizationId={organization?.id} userEmail={profile?.email} userRole={userRole || 'Member'} />,
         alwaysAvailable: true
       },
       {

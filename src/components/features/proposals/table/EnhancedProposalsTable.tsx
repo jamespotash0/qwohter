@@ -19,7 +19,7 @@ import {
 } from '@tanstack/react-table';
 import {
   ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal,
-  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban
+  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban, CheckCircle2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -78,15 +78,20 @@ interface EnhancedProposalsTableProps {
   onExportCSV?: (data: Proposal[]) => void;
   onExportPDF?: (data: Proposal[]) => void;
   onSetMainVersion?: (proposalId: string, baseNumber: string) => void;
+  userRole?: 'Owner' | 'Admin' | 'Member';
+  onApproveProposal?: (proposalId: string) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-800',
-  'Pending Approval': 'bg-amber-100 text-amber-800',
+  'Pending Approval': 'bg-orange-100 text-orange-700 border border-orange-300',
   Submitted: 'bg-purple-100 text-purple-800',
   Won: 'bg-emerald-100 text-emerald-800',
   Rejected: 'bg-red-100 text-red-800',
 };
+
+// Statuses that users can manually select (excludes system-only statuses like "Pending Approval")
+const USER_SELECTABLE_STATUSES = ['Draft', 'Submitted', 'Won', 'Rejected'];
 
 const COLUMN_LABELS: Record<string, string> = {
   proposal_number: 'Proposal #',
@@ -126,6 +131,8 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   onExportCSV,
   onExportPDF,
   onSetMainVersion,
+  userRole = 'Member',
+  onApproveProposal,
 }) => {
   // Centralized page preferences from UI store (persisted to localStorage)
   const {
@@ -522,20 +529,53 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
           return <div className="text-sm italic text-gray-500">Various</div>;
         }
         const status = proposal.status || 'Draft';
+
+        // Pending Approval: Show static badge with approve button for Admin/Owner
+        if (status === 'Pending Approval') {
+          const canApprove = (userRole === 'Owner' || userRole === 'Admin') && onApproveProposal;
+          return (
+            <div className="flex items-center gap-1">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[status]}`}>
+                Pending
+              </span>
+              {canApprove && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onApproveProposal(proposal.id);
+                        }}
+                        className="p-1 rounded hover:bg-green-100 text-green-600 hover:text-green-700 transition-colors"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Approve & Submit</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+          );
+        }
+
         return (
           <Select value={status} onValueChange={(value) => handleStatusChangeWithConfirm(proposal, value)}>
             <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[status]}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {['Draft', 'Pending Approval', 'Submitted', 'Won', 'Rejected'].map(s => (
+              {USER_SELECTABLE_STATUSES.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         );
       },
-      size: 130,
+      size: 150,
       enableSorting: false,
     }),
     columnHelper.accessor('created_at', {
@@ -635,7 +675,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       size: 60,
       enableSorting: false,
     }),
-  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard]);
+  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard, userRole, onApproveProposal]);
 
   const table = useReactTable({
     data: displayProposals,
@@ -970,16 +1010,44 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                               {version.total_value != null ? formatCurrency(version.total_value) : '—'}
                             </td>
                             <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('status')?.getSize() }}>
-                              <Select value={version.status || 'Draft'} onValueChange={(value) => handleStatusChangeWithConfirm(version, value)}>
-                                <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[version.status || 'Draft']}`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {['Draft', 'Pending Approval', 'Submitted', 'Won', 'Rejected'].map(s => (
-                                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {version.status === 'Pending Approval' ? (
+                                <div className="flex items-center gap-1">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS['Pending Approval']}`}>
+                                    Pending
+                                  </span>
+                                  {(userRole === 'Owner' || userRole === 'Admin') && onApproveProposal && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onApproveProposal(version.id);
+                                            }}
+                                            className="p-1 rounded hover:bg-green-100 text-green-600 hover:text-green-700 transition-colors"
+                                          >
+                                            <CheckCircle2 className="w-4 h-4" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Approve & Submit</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </div>
+                              ) : (
+                                <Select value={version.status || 'Draft'} onValueChange={(value) => handleStatusChangeWithConfirm(version, value)}>
+                                  <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[version.status || 'Draft']}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {USER_SELECTABLE_STATUSES.map(s => (
+                                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </td>
                             <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('created_at')?.getSize() }}>
                               {version.created_at ? formatDateEST(version.created_at) : '—'}
