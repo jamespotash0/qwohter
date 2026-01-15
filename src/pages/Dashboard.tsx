@@ -434,53 +434,6 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Quote of the Day - Fetch from API
-  const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string }>({
-    text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
-    author: "Stephen Covey"
-  });
-
-  useEffect(() => {
-    const fetchDailyQuote = async () => {
-      try {
-        // Check localStorage cache
-        const today = new Date().toISOString().split('T')[0] ?? '';
-        const cachedDate = localStorage.getItem('daily_quote_date');
-        const cachedQuote = localStorage.getItem('daily_quote');
-
-        if (cachedDate === today && cachedQuote) {
-          setDailyQuote(JSON.parse(cachedQuote));
-          return;
-        }
-
-        // Fetch from QuoteSlate API (free, no key required)
-        const response = await fetch('https://quoteslate.vercel.app/api/quotes/random?categories=motivational,business,success');
-
-        if (!response.ok) {
-          return; // Keep default quote
-        }
-
-        const data = await response.json();
-
-        if (data && data.quote) {
-          const newQuote = {
-            text: data.quote,
-            author: data.author || 'Unknown'
-          };
-          setDailyQuote(newQuote);
-
-          // Cache for today
-          localStorage.setItem('daily_quote', JSON.stringify(newQuote));
-          localStorage.setItem('daily_quote_date', today);
-        }
-      } catch {
-        // Keep default quote on error
-      }
-    };
-
-    fetchDailyQuote();
-  }, []);
-
   return (
     <PageContent>
       {/* Welcome Overlay for New Users */}
@@ -510,15 +463,10 @@ const Dashboard = () => {
 
       {/* Dashboard Header */}
       <div className="mb-8 flex items-start justify-between">
-        <div className="flex-1 max-w-3xl">
-          <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
-            Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}!
+        <div className="flex-1">
+          <h1 className="text-3xl font-semibold text-[var(--content-header-text)]">
+            Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}
           </h1>
-          <div className="mt-3">
-            <p className="text-[15px] text-[var(--content-header-text)] italic leading-relaxed">
-              &ldquo;{dailyQuote?.text}&rdquo; <span className="text-[14px] text-[var(--content-header-text)] not-italic font-bold">— {dailyQuote?.author}</span>
-            </p>
-          </div>
         </div>
         <div className="flex flex-col items-end gap-1 ml-6">
           <div className="flex items-baseline gap-2">
