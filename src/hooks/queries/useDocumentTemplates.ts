@@ -13,7 +13,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 // ============================================================================
 // Types
@@ -625,42 +624,27 @@ async function fetchTemplateLinkedForms(
 // ============================================================================
 
 /**
- * Hook: Fetch all available document templates with realtime updates
+ * Hook: Fetch all available document templates
+ * Updates via mutation cache invalidation (no realtime polling)
  */
 export function useDocumentTemplates(organizationId?: string) {
   const queryKey = documentTemplateQueryKeys.list(organizationId);
 
-  // Subscribe to realtime changes on document_templates table
-  // Always subscribe when enabled, filter is optional for org-specific changes
-  useRealtimeSubscription(
-    'document_templates',
-    queryKey,
-    organizationId ? { filter: `organization_id=eq.${organizationId}` } : {},
-    true // Always enabled - we want to catch all changes
-  );
-
   return useQuery({
     queryKey,
     queryFn: () => fetchDocumentTemplates(organizationId),
-    staleTime: 30 * 1000, // Reduced to 30 seconds for faster cache invalidation
-    refetchOnMount: 'always', // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: 2 * 60 * 1000, // 2 minutes - templates rarely change
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
   });
 }
 
 /**
- * Hook: Fetch a single document template by ID with realtime updates
+ * Hook: Fetch a single document template by ID
+ * Updates via mutation cache invalidation (no realtime polling)
  */
 export function useDocumentTemplate(templateId: string | undefined) {
   const queryKey = documentTemplateQueryKeys.detail(templateId || '__no_id__');
-
-  // Subscribe to realtime changes for this specific template
-  useRealtimeSubscription(
-    'document_templates',
-    queryKey,
-    templateId ? { filter: `id=eq.${templateId}` } : {},
-    !!templateId
-  );
 
   return useQuery({
     queryKey,
@@ -669,25 +653,18 @@ export function useDocumentTemplate(templateId: string | undefined) {
       return fetchDocumentTemplateById(templateId);
     },
     enabled: !!templateId,
-    staleTime: 30 * 1000, // Reduced to 30 seconds
-    refetchOnMount: 'always',
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 }
 
 /**
- * Hook: Fetch document templates linked to a specific form with realtime updates
+ * Hook: Fetch document templates linked to a specific form
+ * Updates via mutation cache invalidation (no realtime polling)
  */
 export function useFormDocumentTemplates(formId: string | undefined) {
   const queryKey = documentTemplateQueryKeys.formTemplates(formId || '__no_id__');
-
-  // Subscribe to realtime changes on form_document_templates junction table
-  useRealtimeSubscription(
-    'form_document_templates',
-    queryKey,
-    formId ? { filter: `form_id=eq.${formId}` } : {},
-    !!formId
-  );
 
   return useQuery({
     queryKey,
@@ -696,24 +673,18 @@ export function useFormDocumentTemplates(formId: string | undefined) {
       return fetchFormDocumentTemplates(formId);
     },
     enabled: !!formId,
-    staleTime: 30 * 1000,
-    refetchOnMount: 'always',
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
 /**
- * Hook: Fetch forms linked to a specific document template (reverse lookup) with realtime updates
+ * Hook: Fetch forms linked to a specific document template (reverse lookup)
+ * Updates via mutation cache invalidation (no realtime polling)
  */
 export function useTemplateForms(templateId: string | undefined) {
   const queryKey = documentTemplateQueryKeys.templateForms(templateId || '__no_id__');
-
-  // Subscribe to realtime changes on form_document_templates junction table
-  useRealtimeSubscription(
-    'form_document_templates',
-    queryKey,
-    templateId ? { filter: `document_template_id=eq.${templateId}` } : {},
-    !!templateId
-  );
 
   return useQuery({
     queryKey,
@@ -722,8 +693,9 @@ export function useTemplateForms(templateId: string | undefined) {
       return fetchTemplateForms(templateId);
     },
     enabled: !!templateId,
-    staleTime: 30 * 1000,
-    refetchOnMount: 'always',
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 

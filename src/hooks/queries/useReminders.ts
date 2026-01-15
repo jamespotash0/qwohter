@@ -6,7 +6,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
-import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import {
   reminderService,
   type Reminder,
@@ -45,26 +44,18 @@ async function fetchUpcomingReminders(organizationId: string, daysAhead: number 
  * Hook: Use Reminders
  *
  * Fetches all reminders for an organization
- * Includes realtime subscriptions for automatic updates
+ * Updates via mutation cache invalidation (no realtime polling)
  */
 export function useReminders(organizationId?: string, includeCompleted: boolean = false, enabled: boolean = true) {
   const queryKey = queryKeys.reminders.list(organizationId || '');
-
-  // Set up realtime subscription for this organization
-  useRealtimeSubscription(
-    'reminders',
-    queryKey,
-    {
-      filter: `organization_id=eq.${organizationId}`,
-    },
-    !!organizationId && enabled
-  );
 
   return useQuery({
     queryKey,
     queryFn: () => fetchReminders(organizationId!, includeCompleted),
     enabled: !!organizationId && enabled,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
   });
 }
 
