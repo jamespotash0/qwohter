@@ -75,6 +75,17 @@ export const OrganizationSetupForm: React.FC<OrganizationSetupFormProps> = ({
           )}
         </Button>
       </form>
+
+      {/* Support Contact */}
+      <p
+        className="text-xs text-[#171717]/40 text-center"
+        style={{ fontFamily: 'Urbanist, sans-serif' }}
+      >
+        Need help?{' '}
+        <a href="mailto:info@qwohter.com" className="text-[#ee6c4d] hover:underline">
+          info@qwohter.com
+        </a>
+      </p>
     </div>
   );
 };

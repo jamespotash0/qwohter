@@ -18,6 +18,7 @@ import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
+import { SignupRecoveryPrompt } from "@/components/auth/SignupRecoveryPrompt";
 import { validateInviteTokenDetailed } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,6 +163,8 @@ const Auth = () => {
 
         if (!session || (savedState.userId && session.user.id !== savedState.userId)) {
           clearAuthState();
+          // Also clear temp signup data to prevent OTP state from being restored
+          tempSignupService.clear();
         } else {
           if (savedState.email) formState.setEmail(savedState.email);
           if (savedState.userId) authFlow.setUserId(savedState.userId);
@@ -173,14 +176,26 @@ const Auth = () => {
           }
           return;
         }
+      } else {
+        // loadAuthState() returned null - check for interrupted signup flow
+        const tempData = tempSignupService.get();
+        if (tempData && tempData.otpSent) {
+          // User was in OTP verification but got interrupted (reload/navigation)
+          // Show recovery prompt instead of auto-navigating to OTP or clearing
+          console.log('[Auth] Detected interrupted signup flow, showing recovery prompt');
+          formState.setEmail(tempData.email);
+          formState.setFullName(tempData.fullName);
+          authFlow.setStep('signup-recovery');
+          return;
+        }
       }
 
+      // Only restore from tempSignupService if user hasn't sent OTP yet
+      // This allows pre-filled form data to persist, but prevents OTP loop
       const tempData = tempSignupService.get();
-      if (tempData && tempData.otpSent) {
+      if (tempData && !tempData.otpSent) {
         formState.setEmail(tempData.email);
         formState.setFullName(tempData.fullName);
-        authFlow.setStep('verify-otp');
-        saveAuthState({ step: 'verify-otp', email: tempData.email, fullName: tempData.fullName });
       }
     };
 
@@ -413,12 +428,89 @@ const Auth = () => {
     });
   };
 
+  // Recovery flow handlers
+  const onRecoveryContinue = async () => {
+    // Resend OTP and navigate to verification
+    const { error } = await authService.resendOtp(formState.email);
+
+    if (error) {
+      toast({
+        title: "Could not send code",
+        description: error.message || "Please try again or start over.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+
+    // Update temp signup to mark OTP as sent with fresh timestamp
+    const tempData = tempSignupService.get();
+    if (tempData) {
+      tempSignupService.store({
+        email: tempData.email,
+        password: tempData.password,
+        fullName: tempData.fullName,
+      });
+      tempSignupService.markOtpSent();
+    }
+
+    setOtpAttempts(0);
+    authFlow.setStep('verify-otp');
+    saveAuthState({ step: 'verify-otp', email: formState.email, fullName: formState.fullName });
+
+    toast({
+      title: "Code Sent!",
+      description: "Check your inbox for the verification code."
+    });
+  };
+
+  const onRecoveryStartOver = () => {
+    // Clear all temp data and go back to signup form
+    tempSignupService.clear();
+    clearAuthState();
+    formState.setEmail('');
+    formState.setFullName('');
+    formState.setPassword('');
+    formState.setOtpCode('');
+    authFlow.setStep('auth');
+    navigate('/create-account');
+  };
+
+  // Sign out and switch to different account
+  const handleSwitchAccount = async () => {
+    try {
+      // Sign out from Supabase if authenticated
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+
+    // Clear all state
+    tempSignupService.clear();
+    clearAuthState();
+    formState.setEmail('');
+    formState.setFullName('');
+    formState.setPassword('');
+    formState.setOtpCode('');
+    formState.setOrgName('');
+    companyInfo.setCompanyPhone('');
+    companyInfo.setCompanyFax('');
+    companyInfo.setCompanyAddress('');
+    companyInfo.setCompanyWebsite('');
+    formState.setIndustry('');
+    formState.setFoundVia('');
+
+    // Navigate to sign-in
+    authFlow.setStep('auth');
+    navigate('/sign-in');
+  };
+
   // ============================================================================
   // RENDER HELPERS
   // ============================================================================
 
   const getStepTitle = () => {
     if (authFlow.step === "auth") return authFlow.isSignUp ? "Create your account" : "Welcome back";
+    if (authFlow.step === "signup-recovery") return "Welcome back";
     if (authFlow.step === "verify-otp") return "Verify your email";
     if (authFlow.step === "organization") return "Set up your organization";
     if (authFlow.step === "company-info") return "Company details";
@@ -429,6 +521,7 @@ const Auth = () => {
     if (authFlow.step === "auth") return authFlow.isSignUp
       ? "Start creating winning proposals in minutes"
       : "Sign in to continue building proposals";
+    if (authFlow.step === "signup-recovery") return "Pick up where you left off";
     if (authFlow.step === "verify-otp") return "We sent a code to your email";
     if (authFlow.step === "organization") return "Create your workspace";
     if (authFlow.step === "company-info") return "Help us personalize your experience";
@@ -523,8 +616,8 @@ const Auth = () => {
           <div className={`w-full ${
             authFlow.step === "company-info" ? "max-w-2xl" : "max-w-[420px]"
           }`}>
-            {/* Progress indicator - show for onboarding steps */}
-            {authFlow.step !== "auth" && (
+            {/* Progress indicator - show for onboarding steps (not recovery) */}
+            {authFlow.step !== "auth" && authFlow.step !== "signup-recovery" && (
               <div className="mb-6">
                 <OnboardingProgress
                   currentStep={authFlow.step}
@@ -535,7 +628,7 @@ const Auth = () => {
             )}
 
             {/* Step header */}
-            <div className={`mb-6 ${(authFlow.step === "verify-otp" || authFlow.step === "organization" || authFlow.step === "company-info") ? "text-center" : ""}`}>
+            <div className={`mb-6 ${(authFlow.step === "signup-recovery" || authFlow.step === "verify-otp" || authFlow.step === "organization" || authFlow.step === "company-info") ? "text-center" : ""}`}>
               <h2
                 className="text-[28px] text-[#171717] tracking-[0.3px] leading-[1.2] mb-1"
                 style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
@@ -575,6 +668,17 @@ const Auth = () => {
                       navigate("/create-account");
                     }
                   }}
+                />
+              )}
+
+              {/* Signup Recovery Prompt - shown when user returns with interrupted OTP flow */}
+              {authFlow.step === "signup-recovery" && (
+                <SignupRecoveryPrompt
+                  email={formState.email}
+                  fullName={formState.fullName}
+                  loading={authFlow.loading}
+                  onContinue={onRecoveryContinue}
+                  onStartOver={onRecoveryStartOver}
                 />
               )}
 
@@ -618,6 +722,20 @@ const Auth = () => {
                   onFoundViaChange={formState.setFoundVia}
                   onSubmit={onCompanyInfoSubmit}
                 />
+              )}
+
+              {/* Switch account link - shown during onboarding steps */}
+              {(authFlow.step === "verify-otp" || authFlow.step === "organization" || authFlow.step === "company-info") && (
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={handleSwitchAccount}
+                    className="text-xs text-[#171717]/40 hover:text-[#171717]/60 transition-colors"
+                    style={{ fontFamily: 'Urbanist, sans-serif' }}
+                  >
+                    Use a different account
+                  </button>
+                </div>
               )}
             </div>
           </div>

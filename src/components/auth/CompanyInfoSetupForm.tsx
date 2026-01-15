@@ -229,6 +229,17 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
       <p className="text-xs text-[#171717]/40 text-center">
         You can update this information anytime in Settings
       </p>
+
+      {/* Support Contact */}
+      <p
+        className="text-xs text-[#171717]/40 text-center"
+        style={{ fontFamily: 'Urbanist, sans-serif' }}
+      >
+        Need help?{' '}
+        <a href="mailto:info@qwohter.com" className="text-[#ee6c4d] hover:underline">
+          info@qwohter.com
+        </a>
+      </p>
     </div>
   );
 };

@@ -1,14 +1,14 @@
 /**
  * OTP Verification Form Component - Redesigned
  *
- * Clean, elegant verification with individual digit inputs
- * Refined animations and clear visual feedback
+ * Clean, elegant verification with single line input
+ * Auto-formats as XXX-XXX
  */
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, X, Loader2, RefreshCw } from "lucide-react";
+import { Check, X, Loader2, RefreshCw, ArrowRight } from "lucide-react";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -29,95 +29,40 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   onResendCode,
   onChangeEmail
 }) => {
-  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [timeLeft, setTimeLeft] = useState(165);
   const [showOverlay, setShowOverlay] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer after resend
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [editedEmail, setEditedEmail] = useState(email);
   const [emailChangeLoading, setEmailChangeLoading] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Format display value with dash (XXX-XXX)
+  const formatForDisplay = (digits: string): string => {
+    if (digits.length <= 3) return digits;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}`;
+  };
+
+  const [displayValue, setDisplayValue] = useState(formatForDisplay(otpCode));
+
+  // Sync display value when otpCode changes externally
   useEffect(() => {
-    // Ensure we always have exactly 6 elements
-    const codeChars = otpCode.split('').slice(0, 6);
-    const newDigits = [...codeChars, ...Array(6 - codeChars.length).fill('')];
-    setDigits(newDigits);
+    setDisplayValue(formatForDisplay(otpCode));
   }, [otpCode]);
 
   useEffect(() => {
-    if (timeLeft <= 0) return;
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-
-  // Resend cooldown timer
-  useEffect(() => {
     if (resendCooldown <= 0) return;
-
     const timer = setInterval(() => {
       setResendCooldown(prev => prev - 1);
     }, 1000);
-
     return () => clearInterval(timer);
   }, [resendCooldown]);
-
-  const handleDigitChange = (index: number, value: string) => {
-    const cleanValue = value.replace(/\D/g, '');
-    if (!cleanValue && value !== '') return;
-
-    const newDigits = [...digits];
-
-    if (value === '') {
-      newDigits[index] = '';
-      setDigits(newDigits);
-      onOtpCodeChange(newDigits.join(''));
-      return;
-    }
-
-    const lastDigit = cleanValue.slice(-1);
-    newDigits[index] = lastDigit;
-    setDigits(newDigits);
-    onOtpCodeChange(newDigits.join(''));
-
-    if (index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pasteData = e.clipboardData.getData('text');
-    const pastedDigits = pasteData.replace(/\D/g, '').slice(0, 6);
-
-    const newDigits = Array(6).fill('');
-    for (let i = 0; i < pastedDigits.length; i++) {
-      newDigits[i] = pastedDigits[i];
-    }
-
-    setDigits(newDigits);
-    onOtpCodeChange(newDigits.join(''));
-
-    const nextEmptyIndex = newDigits.findIndex(digit => digit === '');
-    const focusIndex = nextEmptyIndex === -1 ? 5 : Math.min(nextEmptyIndex, 5);
-    inputRefs.current[focusIndex]?.focus();
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    const digits = pasteData.replace(/\D/g, '').slice(0, 6);
+    onOtpCodeChange(digits);
   };
 
   const handleResendCode = async () => {
@@ -125,13 +70,11 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       setResendLoading(true);
       await onResendCode();
 
-      const clearedDigits = ['', '', '', '', '', ''];
-      setDigits(clearedDigits);
       onOtpCodeChange('');
-      setTimeLeft(165);
-      setResendCooldown(60); // Start 60-second cooldown
+      setDisplayValue('');
+      setResendCooldown(60);
       setShowOverlay(true);
-      inputRefs.current[0]?.focus();
+      inputRef.current?.focus();
 
       setTimeout(() => {
         setShowOverlay(false);
@@ -154,14 +97,12 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       setEmailChangeLoading(true);
       await onChangeEmail(editedEmail);
 
-      const clearedDigits = ['', '', '', '', '', ''];
-      setDigits(clearedDigits);
       onOtpCodeChange('');
-      setTimeLeft(165);
+      setDisplayValue('');
       setIsEditingEmail(false);
 
       setTimeout(() => {
-        inputRefs.current[0]?.focus();
+        inputRef.current?.focus();
       }, 100);
 
     } catch (error) {
@@ -176,7 +117,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     setIsEditingEmail(false);
   };
 
-  const isCodeComplete = digits.join('').length === 6;
+  const isCodeComplete = otpCode.length === 6;
 
   return (
     <div className="space-y-6">
@@ -206,7 +147,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
                 type="email"
                 value={editedEmail}
                 onChange={(e) => setEditedEmail(e.target.value)}
-                className="flex-1 h-11 rounded-xl bg-[#f7f2e9] border-[#171717]/10 focus:border-[#ee6c4d] focus:ring-coral/20"
+                className="flex-1 h-11 rounded-lg bg-[#f7f2e9] border-[#171717]/10 focus:border-[#ee6c4d] focus:ring-coral/20"
                 placeholder="Enter new email"
                 autoFocus
               />
@@ -215,7 +156,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
                 size="sm"
                 onClick={handleEmailChange}
                 disabled={emailChangeLoading || !editedEmail}
-                className="h-11 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl"
+                className="h-11 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg"
               >
                 {emailChangeLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -229,7 +170,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
                 variant="outline"
                 onClick={handleCancelEmailEdit}
                 disabled={emailChangeLoading}
-                className="h-11 px-4 rounded-xl"
+                className="h-11 px-4 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -242,41 +183,43 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
-        {/* OTP Input Grid */}
-        <div className="flex justify-center items-center gap-3">
-          {digits.map((digit, index) => (
-            <div key={index} className="flex items-center gap-2">
-              {index === 3 && (
-                <span className="text-[#171717]/30 font-medium text-xl">-</span>
-              )}
-              <input
-                ref={(el) => { inputRefs.current[index] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleDigitChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={handlePaste}
-                className={`
-                  w-12 h-14 text-center text-2xl font-bold rounded-xl
-                  border-2 outline-none transition-all duration-200
-                  ${digit
-                    ? 'bg-[#ee6c4d]/5 border-[#ee6c4d] text-[#171717]'
-                    : 'bg-[#f7f2e9] border-[#171717]/10 text-[#171717]'
-                  }
-                  hover:border-[#171717]/20
-                  focus:border-[#ee6c4d] focus:bg-white focus:ring-2 focus:ring-[#ee6c4d]/20
-                `}
-              />
-            </div>
-          ))}
+        {/* Single OTP Input with auto-formatting as XXX-XXX */}
+        <div className="flex justify-center">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            value={displayValue}
+            onChange={(e) => {
+              // Extract only digits, max 6
+              const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+              onOtpCodeChange(digits);
+              setDisplayValue(formatForDisplay(digits));
+            }}
+            onPaste={handlePaste}
+            placeholder="000-000"
+            autoFocus
+            maxLength={7}
+            className={`
+              w-40 h-12 text-center text-3xl font-bold tracking-[0.15em]
+              bg-transparent border-0 border-b-2 rounded-none
+              outline-none transition-all duration-200
+              ${otpCode.length > 0
+                ? 'border-[#ee6c4d] text-[#171717]'
+                : 'border-[#171717]/20 text-[#171717]'
+              }
+              placeholder:text-[#171717]/20
+              hover:border-[#171717]/30
+              focus:border-[#ee6c4d]
+            `}
+          />
         </div>
 
         {/* Verify Button */}
         <Button
           type="submit"
-          className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200 group"
+          style={{ fontFamily: 'Urbanist, sans-serif' }}
           disabled={loading || !isCodeComplete}
         >
           {loading ? (
@@ -285,12 +228,15 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
               Verifying...
             </span>
           ) : (
-            "Verify email"
+            <span className="flex items-center justify-center gap-2">
+              Verify email
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
           )}
         </Button>
       </form>
 
-      {/* Resend and Timer */}
+      {/* Resend */}
       <div className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
           <span className="text-sm text-[#171717]/50">Didn't receive it?</span>
@@ -320,25 +266,13 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
           )}
         </div>
 
-        {/* Timer */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#f7f2e9] rounded-full">
-          {timeLeft > 0 ? (
-            <>
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-sm text-[#171717]/60">
-                Code expires in{' '}
-                <span className="font-semibold text-[#171717]">{formatTime(timeLeft)}</span>
-              </span>
-            </>
-          ) : (
-            <>
-              <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-sm text-red-600 font-medium">
-                Code expired - request a new one
-              </span>
-            </>
-          )}
-        </div>
+        {/* Support Contact */}
+        <p className="text-xs text-[#171717]/40">
+          Need help?{' '}
+          <a href="mailto:info@qwohter.com" className="text-[#ee6c4d] hover:underline">
+            info@qwohter.com
+          </a>
+        </p>
       </div>
 
       {/* Success Overlay */}

@@ -8,7 +8,7 @@
 import React from "react";
 import { Check } from "lucide-react";
 
-type StepType = "auth" | "verify-otp" | "organization" | "company-info" | "subscription";
+type StepType = "auth" | "signup-recovery" | "verify-otp" | "organization" | "company-info" | "subscription";
 
 interface OnboardingProgressProps {
   currentStep: StepType;

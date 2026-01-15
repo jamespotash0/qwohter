@@ -14,6 +14,7 @@ export interface TempSignupData {
 
 const TEMP_SIGNUP_KEY = 'temp-signup-data';
 const EXPIRY_HOURS = 2; // Expire after 2 hours
+const OTP_EXPIRY_MINUTES = 10; // OTP data expires after 10 minutes
 
 export const tempSignupService = {
   /**
@@ -31,6 +32,7 @@ export const tempSignupService = {
 
   /**
    * Get temporary signup data if not expired
+   * If otpSent is true, uses shorter OTP expiry (10 minutes)
    */
   get(): TempSignupData | null {
     try {
@@ -38,14 +40,24 @@ export const tempSignupService = {
       if (!stored) return null;
 
       const data: TempSignupData = JSON.parse(stored);
-
-      // Check if expired
       const now = Date.now();
-      const expiryTime = data.timestamp + (EXPIRY_HOURS * 60 * 60 * 1000);
 
-      if (now > expiryTime) {
-        this.clear();
-        return null;
+      // Use shorter expiry if OTP was sent (user is in verification flow)
+      // This prevents orphaned users stuck on OTP page after reload/navigation
+      if (data.otpSent) {
+        const otpExpiryTime = data.timestamp + (OTP_EXPIRY_MINUTES * 60 * 1000);
+        if (now > otpExpiryTime) {
+          console.log('[TempSignup] OTP flow expired, clearing temp data');
+          this.clear();
+          return null;
+        }
+      } else {
+        // Standard expiry for pre-OTP data
+        const expiryTime = data.timestamp + (EXPIRY_HOURS * 60 * 60 * 1000);
+        if (now > expiryTime) {
+          this.clear();
+          return null;
+        }
       }
 
       return data;
