@@ -396,3 +396,171 @@ async function sendMemberJoinedEmail(params: {
     console.error('[sendMemberJoinedEmail] Failed to send email:', err);
   }
 }
+
+// =============================================================================
+// Task Comment & Mention Notifications
+// =============================================================================
+
+interface TaskCommentNotificationParams {
+  organizationId: string;
+  taskId: string;
+  taskTitle: string;
+  taskReference?: string;
+  commentId: string;
+  commentContent: string;
+  commenterName: string;
+  commenterId: string;
+}
+
+/**
+ * Notify users who are mentioned in a task comment
+ */
+export async function notifyTaskCommentMention(
+  params: TaskCommentNotificationParams & { mentionedUserIds: string[] }
+): Promise<void> {
+  try {
+    // Get mentioned users' info
+    for (const userId of params.mentionedUserIds) {
+      // Don't notify the commenter if they mention themselves
+      if (userId === params.commenterId) continue;
+
+      // Create in-app notification
+      await createNotification({
+        user_id: userId,
+        organization_id: params.organizationId,
+        type: 'update_mention',
+        title: 'You were mentioned',
+        message: `${params.commenterName} mentioned you in a comment on "${params.taskTitle}"`,
+        link: `/board?task=${params.taskId}`,
+        metadata: {
+          task_id: params.taskId,
+          task_reference: params.taskReference,
+          comment_id: params.commentId,
+          assigned_by_name: params.commenterName,
+        },
+      });
+
+      // Send email notification (async, non-blocking)
+      sendMentionEmail({
+        userId,
+        organizationId: params.organizationId,
+        taskId: params.taskId,
+        taskTitle: params.taskTitle,
+        commentContent: params.commentContent,
+        commenterName: params.commenterName,
+      }).catch((err) => {
+        console.error('[notifyTaskCommentMention] Email failed:', err);
+      });
+    }
+  } catch (err) {
+    console.error('[notifyTaskCommentMention] Error:', err);
+  }
+}
+
+/**
+ * Notify the task assignee when someone comments on their task
+ */
+export async function notifyTaskCommentAdded(
+  params: TaskCommentNotificationParams & { assigneeId?: string }
+): Promise<void> {
+  try {
+    // Don't notify if there's no assignee or if the commenter is the assignee
+    if (!params.assigneeId || params.assigneeId === params.commenterId) return;
+
+    // Create in-app notification
+    await createNotification({
+      user_id: params.assigneeId,
+      organization_id: params.organizationId,
+      type: 'update_reply',
+      title: 'New comment on your task',
+      message: `${params.commenterName} commented on "${params.taskTitle}"`,
+      link: `/board?task=${params.taskId}`,
+      metadata: {
+        task_id: params.taskId,
+        task_reference: params.taskReference,
+        comment_id: params.commentId,
+        assigned_by_name: params.commenterName,
+      },
+    });
+  } catch (err) {
+    console.error('[notifyTaskCommentAdded] Error:', err);
+  }
+}
+
+/**
+ * Notify when someone replies to a comment
+ */
+export async function notifyTaskCommentReply(
+  params: TaskCommentNotificationParams & { parentCommentUserId: string }
+): Promise<void> {
+  try {
+    // Don't notify if replying to own comment
+    if (params.parentCommentUserId === params.commenterId) return;
+
+    // Create in-app notification
+    await createNotification({
+      user_id: params.parentCommentUserId,
+      organization_id: params.organizationId,
+      type: 'update_reply',
+      title: 'Reply to your comment',
+      message: `${params.commenterName} replied to your comment on "${params.taskTitle}"`,
+      link: `/board?task=${params.taskId}`,
+      metadata: {
+        task_id: params.taskId,
+        task_reference: params.taskReference,
+        comment_id: params.commentId,
+        assigned_by_name: params.commenterName,
+      },
+    });
+  } catch (err) {
+    console.error('[notifyTaskCommentReply] Error:', err);
+  }
+}
+
+/**
+ * Send email notification for mentions
+ */
+async function sendMentionEmail(params: {
+  userId: string;
+  organizationId: string;
+  taskId: string;
+  taskTitle: string;
+  commentContent: string;
+  commenterName: string;
+}): Promise<void> {
+  try {
+    // Get user's email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', params.userId)
+      .single<{ email: string | null; full_name: string | null }>();
+
+    if (!profile?.email) {
+      console.warn('[sendMentionEmail] User has no email');
+      return;
+    }
+
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.userId,
+        organizationId: params.organizationId,
+        notificationType: 'update_mention',
+        recipientEmail: profile.email,
+        recipientName: profile.full_name || 'User',
+        data: {
+          taskTitle: params.taskTitle,
+          commentPreview: params.commentContent.slice(0, 200),
+          actorName: params.commenterName,
+          link: `/board?task=${params.taskId}`,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendMentionEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendMentionEmail] Failed to send email:', err);
+  }
+}

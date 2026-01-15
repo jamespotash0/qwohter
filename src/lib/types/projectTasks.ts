@@ -20,6 +20,7 @@ export interface ProjectTask {
   priority: TaskPriority;
   due_date: string | null;
   reference: string | null; // Auto-generated reference (e.g., CW-1, TES-2)
+  position: number; // Position within column for drag/drop ordering
   created_at: string;
   updated_at: string;
   // Joined data
@@ -61,6 +62,13 @@ export interface UpdateProjectTaskInput {
   priority?: TaskPriority;
   assigned_to?: string | null;
   due_date?: string | null;
+  position?: number;
+}
+
+export interface ReorderTasksInput {
+  taskId: string;
+  newStatus: string;
+  newPosition: number;
 }
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {

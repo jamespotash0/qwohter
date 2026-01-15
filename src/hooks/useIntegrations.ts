@@ -16,7 +16,8 @@ import {
  * Hook to fetch available integrations (catalog)
  *
  * Features:
- * - Automatic caching (5 minutes via React Query defaults)
+ * - Automatic caching with 30-second staleTime
+ * - Polls every 2 minutes for database updates
  * - Automatic refetch on window focus
  * - Stale-while-revalidate pattern
  * - Deduplication of concurrent requests
@@ -27,8 +28,9 @@ export function useAvailableIntegrations(organizationPlan?: string) {
   return useQuery({
     queryKey: queryKeys.integrations.available(organizationPlan),
     queryFn: () => getAvailableIntegrations(organizationPlan),
-    staleTime: 30 * 1000, // 30 seconds - faster updates for admin changes
-    gcTime: 60 * 1000, // 1 minute cache
+    staleTime: 30 * 1000, // 30 seconds - data considered fresh
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes for catalog updates
   });
 }
 

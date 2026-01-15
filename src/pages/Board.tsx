@@ -189,9 +189,7 @@ export default function Board() {
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
-
-    // Set board_order to null when picking up the card
-    updateProject({ id: projectId, updates: { board_order: null } });
+    // Don't update board_order here - just track visually until drop
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -211,6 +209,7 @@ export default function Board() {
   const handleCardDragOver = (e: React.DragEvent, cardId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
 
     // Don't show card drop indicators if we're dragging a column
     if (draggedColumnId) return;
@@ -242,10 +241,9 @@ export default function Board() {
 
     const isSameColumn = sourceProject.workflow_status === targetStatus;
 
-    // STEP 1: Get all projects in target column with non-null board_order
-    // (dragged card already has null board_order from handleDragStart)
+    // STEP 1: Get all projects in target column excluding the dragged card
     let cardsInTargetColumn = getProjectsByStatus(targetStatus)
-      .filter(p => p.board_order !== null) // Only cards with valid positions
+      .filter(p => p.id !== draggedProject) // Exclude the card being dragged
       .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
 
 
@@ -268,6 +266,20 @@ export default function Board() {
     } else {
       // Dropped in empty space - add to end
       insertPosition = cardsInTargetColumn.length + 1;
+    }
+
+    // Check if position actually changed - skip reorder if same position in same column
+    if (isSameColumn) {
+      const oldPosition = sourceProject.board_order ?? 0;
+      const effectivelySamePosition =
+        insertPosition === oldPosition ||
+        insertPosition === oldPosition + 1; // Dropping right after self
+
+      if (effectivelySamePosition) {
+        setDraggedProject(null);
+        setDropPosition('before');
+        return;
+      }
     }
 
     // STEP 3: Build the final order array by inserting dragged card at the calculated position
@@ -316,7 +328,7 @@ export default function Board() {
     // STEP 5: If moving between columns, reorder the source column
     if (!isSameColumn) {
       const sourceColumnCards = getProjectsByStatus(sourceProject.workflow_status)
-        .filter(p => p.board_order !== null) // Only cards with valid positions (dragged card is null)
+        .filter(p => p.id !== draggedProject) // Exclude the card being moved
         .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
 
 
@@ -682,10 +694,10 @@ export default function Board() {
                   )}
 
                   <div
-                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col max-h-[calc(100vh-10rem)] ${
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-10rem)] ${
                       isCollapsed ? 'w-12' : 'w-72'
                     } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
-                      dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
+                      dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50/50' : ''
                     }`}
                     onDragOver={(e) => handleDragOver(e, column.name)}
                     onDragLeave={handleDragLeave}
@@ -842,7 +854,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto"
+                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto min-h-[120px]"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -876,10 +888,7 @@ export default function Board() {
                           <div key={project.id} className="relative">
                             {/* Drop indicator above card */}
                             {dragOverCard === project.id && draggedProject !== project.id && (
-                              <div className="h-0.5 bg-blue-500 rounded-full mb-2 shadow-sm relative">
-                                <div className="absolute -top-1 left-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                <div className="absolute -top-1 right-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                              </div>
+                              <div className="h-0.5 bg-blue-500 rounded-full mb-2" />
                             )}
                             <div
                               draggable
@@ -1067,10 +1076,7 @@ export default function Board() {
 
                       {/* Drop zone at the end of column - only show when column has cards */}
                       {columnProjects.length > 0 && draggedProject && dragOverColumn === column.name && !dragOverCard && (
-                        <div className="h-0.5 bg-blue-500 rounded-full mt-2 shadow-sm relative">
-                          <div className="absolute -top-1 left-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                          <div className="absolute -top-1 right-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                        </div>
+                        <div className="h-0.5 bg-blue-500 rounded-full mt-2" />
                       )}
 
                       {/* Empty state message - only show when not dragging */}
