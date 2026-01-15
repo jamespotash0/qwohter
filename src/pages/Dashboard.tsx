@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { parseLocalDate } from "@/lib/utils";
 import { PageContent } from "@/components/common/layout";
@@ -42,6 +42,58 @@ import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
+ * Real-time clock component - isolated to prevent parent re-renders
+ */
+const DashboardClock = memo(() => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-end gap-1 ml-6">
+      <div className="flex items-baseline gap-2">
+        <span className="text-3xl font-bold text-[var(--content-header-text)] tabular-nums">
+          {currentTime.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+          })}
+        </span>
+        <span className="text-lg font-medium text-[var(--content-muted-text)]">
+          {currentTime.toLocaleDateString('en-US', {
+            year: 'numeric'
+          })}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-[var(--content-muted-text)]">
+          {currentTime.toLocaleDateString('en-US', {
+            weekday: 'long'
+          })}
+        </span>
+        <span className="text-sm text-[var(--content-muted-text)]">•</span>
+        <span className="text-sm font-medium text-[var(--content-header-text)] tabular-nums">
+          {currentTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })}
+        </span>
+        <span className="text-xs text-[var(--content-muted-text)]">
+          {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ')}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+DashboardClock.displayName = 'DashboardClock';
+
+/**
  * Dashboard - Executive Overview
  *
  * Shows key metrics, quick actions, reminders
@@ -62,8 +114,6 @@ const Dashboard = () => {
   // Notifications hooks
   const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(user?.id);
   const markNotificationAsRead = useMarkNotificationAsRead(user?.id || '');
-
-  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -414,24 +464,13 @@ const Dashboard = () => {
     };
   }, [proposals, reminders]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount);
-  };
-
-  // Real-time clock for dashboard header
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
   }, []);
 
   return (
@@ -468,39 +507,7 @@ const Dashboard = () => {
             Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}
           </h1>
         </div>
-        <div className="flex flex-col items-end gap-1 ml-6">
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[var(--content-header-text)] tabular-nums">
-              {currentTime.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-              })}
-            </span>
-            <span className="text-lg font-medium text-[var(--content-muted-text)]">
-              {currentTime.toLocaleDateString('en-US', {
-                year: 'numeric'
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-[var(--content-muted-text)]">
-              {currentTime.toLocaleDateString('en-US', {
-                weekday: 'long'
-              })}
-            </span>
-            <span className="text-sm text-[var(--content-muted-text)]">•</span>
-            <span className="text-sm font-medium text-[var(--content-header-text)] tabular-nums">
-              {currentTime.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-              })}
-            </span>
-            <span className="text-xs text-[var(--content-muted-text)]">
-              {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ')}
-            </span>
-          </div>
-        </div>
+        <DashboardClock />
       </div>
 
       {/* Key Metrics Row */}
