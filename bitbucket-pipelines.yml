@@ -1,0 +1,91 @@
+# Bitbucket Pipelines CI/CD Configuration
+# Runs tests on every push and PR
+
+image: node:20
+
+definitions:
+  caches:
+    node: node_modules
+    playwright: ~/.cache/ms-playwright
+
+pipelines:
+  # Default pipeline for all branches
+  default:
+    - step:
+        name: Lint & Unit Tests
+        caches:
+          - node
+        script:
+          - npm ci
+          - npm run lint
+          - npm run test:run -- --coverage
+        artifacts:
+          - coverage/**
+
+  # Pull request pipeline
+  pull-requests:
+    '**':
+      - step:
+          name: Lint & Unit Tests
+          caches:
+            - node
+          script:
+            - npm ci
+            - npm run lint
+            - npm run test:run -- --coverage
+          artifacts:
+            - coverage/**
+
+  # Main branch pipeline with E2E tests
+  branches:
+    main:
+      - step:
+          name: Lint & Unit Tests
+          caches:
+            - node
+          script:
+            - npm ci
+            - npm run lint
+            - npm run test:run -- --coverage
+          artifacts:
+            - coverage/**
+
+      - step:
+          name: E2E Tests
+          caches:
+            - node
+            - playwright
+          script:
+            - npm ci
+            - npx playwright install --with-deps chromium
+            - npm run build
+            - npm run preview &
+            - npx wait-on http://localhost:4173 --timeout 60000
+            - npx playwright test --project=chromium
+          artifacts:
+            - playwright-report/**
+            - test-results/**
+
+    # Development branch
+    develop:
+      - step:
+          name: Lint & Unit Tests
+          caches:
+            - node
+          script:
+            - npm ci
+            - npm run lint
+            - npm run test:run -- --coverage
+          artifacts:
+            - coverage/**
+
+    # Feature branches
+    'feature/**':
+      - step:
+          name: Lint & Unit Tests
+          caches:
+            - node
+          script:
+            - npm ci
+            - npm run lint
+            - npm run test:run

@@ -46,3 +46,8 @@ TASK.md
 HOTFIX_WORKFLOW.md
 MULTI_AGENT_GUIDE.md
 .claude/context.md
+
+# E2E test auth state
+tests/.auth/
+playwright-report/
+test-results/
