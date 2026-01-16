@@ -40,61 +40,112 @@ interface TaskCommentRow {
  * Fetch all comments for a task (with replies)
  */
 export async function fetchTaskComments(taskId: string): Promise<TaskComment[]> {
+  // Fetch top-level comments
   const { data, error } = await supabase
     .from('task_comments')
-    .select(`
-      *,
-      user:profiles!task_comments_user_id_fkey (
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
+    .select('*')
     .eq('task_id', taskId)
-    .is('parent_id', null) // Only top-level comments
+    .is('parent_id', null)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
 
-  // Fetch reply counts for each comment
-  const comments = data as unknown as TaskComment[];
+  const comments = (data || []) as unknown as TaskCommentRow[];
+
+  // Get all unique user IDs from comments
+  const userIds = [...new Set(comments.map(c => c.user_id))];
+
+  // Fetch user profiles separately (profiles.id = auth.users.id via FK)
+  type UserProfile = { id: string; full_name: string | null; email: string | null };
+  let userMap: Record<string, UserProfile> = {};
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds);
+
+    if (profilesError) {
+      console.error('Failed to fetch user profiles:', profilesError);
+    }
+
+    if (profiles) {
+      (profiles as UserProfile[]).forEach(p => {
+        userMap[p.id] = p;
+      });
+    }
+  }
+
+  // Helper to get display name from profile
+  const getDisplayName = (profile: UserProfile | undefined, fallbackId: string): { id: string; full_name: string; email: string } => {
+    if (!profile) {
+      return { id: fallbackId, full_name: 'Unknown User', email: '' };
+    }
+    const displayName = profile.full_name || profile.email?.split('@')[0] || 'Unknown User';
+    return {
+      id: profile.id,
+      full_name: displayName,
+      email: profile.email || '',
+    };
+  };
+
+  // Map comments with user data
+  const commentsWithUsers: TaskComment[] = comments.map(c => ({
+    ...c,
+    user: getDisplayName(userMap[c.user_id], c.user_id),
+    replies: [],
+    reply_count: 0,
+  }));
 
   // Get replies for each comment
-  const commentIds = comments.map(c => c.id);
+  const commentIds = commentsWithUsers.map(c => c.id);
   if (commentIds.length > 0) {
     const { data: replies } = await supabase
       .from('task_comments')
-      .select(`
-        *,
-        user:profiles!task_comments_user_id_fkey (
-          id,
-          full_name,
-          email,
-          avatar_url
-        )
-      `)
+      .select('*')
       .in('parent_id', commentIds)
       .order('created_at', { ascending: true });
 
-    // Attach replies to their parent comments
     const typedReplies = (replies || []) as unknown as TaskCommentRow[];
+
+    // Get user IDs from replies
+    const replyUserIds = [...new Set(typedReplies.map(r => r.user_id))];
+    const newUserIds = replyUserIds.filter(id => !userMap[id]);
+
+    if (newUserIds.length > 0) {
+      const { data: replyProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', newUserIds);
+
+      if (replyProfiles) {
+        (replyProfiles as UserProfile[]).forEach(p => {
+          userMap[p.id] = p;
+        });
+      }
+    }
+
+    // Attach replies to their parent comments
     const repliesByParent = typedReplies.reduce((acc, reply) => {
       const parentId = reply.parent_id;
       if (parentId) {
         if (!acc[parentId]) acc[parentId] = [];
-        acc[parentId].push(reply as unknown as TaskComment);
+        acc[parentId].push({
+          ...reply,
+          user: getDisplayName(userMap[reply.user_id], reply.user_id),
+          replies: [],
+          reply_count: 0,
+        } as TaskComment);
       }
       return acc;
     }, {} as Record<string, TaskComment[]>);
 
-    comments.forEach(comment => {
+    commentsWithUsers.forEach(comment => {
       comment.replies = repliesByParent[comment.id] || [];
       comment.reply_count = comment.replies.length;
     });
   }
 
-  return comments;
+  return commentsWithUsers;
 }
 
 /**
@@ -106,7 +157,7 @@ export async function createTaskComment(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Type assertion needed until migration is applied and types regenerated
+  // Insert the comment
   const { data, error } = await (supabase
     .from('task_comments') as ReturnType<typeof supabase.from>)
     .insert({
@@ -117,19 +168,34 @@ export async function createTaskComment(
       mentions: input.mentions || [],
       parent_id: input.parent_id || null,
     } as Record<string, unknown>)
-    .select(`
-      *,
-      user:profiles!task_comments_user_id_fkey (
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
+    .select('*')
     .single();
 
   if (error) throw error;
-  return data as unknown as TaskComment;
+
+  // Fetch the user's profile separately (profiles.id = auth.users.id)
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('id', user.id)
+    .single();
+
+  const comment = data as unknown as TaskCommentRow;
+  const profile = profileData as { id: string; full_name: string | null; email: string | null } | null;
+
+  // Build user object with fallbacks for null values
+  const displayName = profile?.full_name || profile?.email?.split('@')[0] || user.email?.split('@')[0] || 'Unknown User';
+
+  return {
+    ...comment,
+    user: {
+      id: user.id,
+      full_name: displayName,
+      email: profile?.email || user.email || '',
+    },
+    replies: [],
+    reply_count: 0,
+  } as TaskComment;
 }
 
 /**
@@ -139,7 +205,7 @@ export async function updateTaskComment(
   commentId: string,
   input: UpdateTaskCommentInput
 ): Promise<TaskComment> {
-  // Type assertion needed until migration is applied and types regenerated
+  // Update the comment
   const { data, error } = await (supabase
     .from('task_comments') as ReturnType<typeof supabase.from>)
     .update({
@@ -149,19 +215,35 @@ export async function updateTaskComment(
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>)
     .eq('id', commentId)
-    .select(`
-      *,
-      user:profiles!task_comments_user_id_fkey (
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
+    .select('*')
     .single();
 
   if (error) throw error;
-  return data as unknown as TaskComment;
+
+  const comment = data as unknown as TaskCommentRow;
+
+  // Fetch the user's profile separately (profiles.id = auth.users.id)
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('id', comment.user_id)
+    .single();
+
+  const profile = profileData as { id: string; full_name: string | null; email: string | null } | null;
+
+  // Build user object with fallbacks for null values
+  const displayName = profile?.full_name || profile?.email?.split('@')[0] || 'Unknown User';
+
+  return {
+    ...comment,
+    user: {
+      id: comment.user_id,
+      full_name: displayName,
+      email: profile?.email || '',
+    },
+    replies: [],
+    reply_count: 0,
+  } as TaskComment;
 }
 
 /**
@@ -305,20 +387,36 @@ export async function deleteTaskAttachment(attachment: TaskAttachment): Promise<
 export async function fetchTaskActivity(taskId: string): Promise<TaskActivity[]> {
   const { data, error } = await supabase
     .from('task_activities')
-    .select(`
-      *,
-      user:profiles!task_activities_user_id_fkey (
-        id,
-        full_name,
-        email
-      )
-    `)
+    .select('*')
     .eq('task_id', taskId)
     .order('created_at', { ascending: false })
     .limit(50);
 
   if (error) throw error;
-  return (data || []) as unknown as TaskActivity[];
+
+  const activities = (data || []) as unknown as Array<TaskActivity & { user_id: string }>;
+
+  // Get unique user IDs and fetch profiles separately
+  const userIds = [...new Set(activities.map(a => a.user_id))];
+  let userMap: Record<string, { id: string; full_name: string; email: string }> = {};
+
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds);
+
+    if (profiles) {
+      (profiles as Array<{ id: string; full_name: string; email: string }>).forEach(p => {
+        userMap[p.id] = p;
+      });
+    }
+  }
+
+  return activities.map(a => ({
+    ...a,
+    user: userMap[a.user_id] || { id: a.user_id, full_name: 'Unknown', email: '' },
+  }));
 }
 
 /**

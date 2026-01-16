@@ -22,12 +22,11 @@ export interface TaskComment {
   is_edited: boolean;
   created_at: string;
   updated_at: string;
-  // Joined data
+  // Joined data (from profiles table where profiles.id = auth.users.id)
   user?: {
     id: string;
-    full_name: string | null;
+    full_name: string;
     email: string;
-    avatar_url?: string | null;
   };
   replies?: TaskComment[];
   reply_count?: number;
@@ -65,10 +64,10 @@ export interface TaskAttachment {
   attachment_type: AttachmentType;
   thumbnail_url?: string | null;
   created_at: string;
-  // Joined data
+  // Joined data (from profiles table)
   uploader?: {
     id: string;
-    full_name: string | null;
+    full_name: string;
     email: string;
   };
 }
@@ -112,10 +111,10 @@ export interface TaskActivity {
   activity_type: TaskActivityType;
   metadata: TaskActivityMetadata;
   created_at: string;
-  // Joined data
+  // Joined data (from profiles table)
   user?: {
     id: string;
-    full_name: string | null;
+    full_name: string;
     email: string;
   };
 }

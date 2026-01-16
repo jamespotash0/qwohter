@@ -52,9 +52,20 @@ export function TaskCommentItem({
 
   const isOwner = currentUserId === comment.user_id;
 
+  // Get display name with fallbacks
+  const displayName = useMemo(() => {
+    if (comment.user?.full_name && comment.user.full_name !== 'Unknown User') {
+      return comment.user.full_name;
+    }
+    if (comment.user?.email) {
+      return comment.user.email.split('@')[0];
+    }
+    return 'Unknown User';
+  }, [comment.user]);
+
   // Get initials from name
   const getInitials = (name?: string | null) => {
-    if (!name) return '?';
+    if (!name || name === 'Unknown User') return '?';
     return name
       .split(' ')
       .map((n) => n[0])
@@ -66,18 +77,21 @@ export function TaskCommentItem({
   // Render content with styled mentions
   const renderContent = useMemo(() => {
     const content = isEditing ? editContent : comment.content;
-    // Replace mention format with styled spans
-    const parts = content.split(/(@\[[^\]]+\]\([^)]+\))/g);
+    // Split on @mentions - matches @Name or @First Last patterns
+    const mentionRegex = /(@\w+(?:\s+\w+)?)/g;
+    const parts = content.split(mentionRegex);
 
     return parts.map((part, index) => {
-      const mentionMatch = part.match(/@\[([^\]]+)\]\(([^)]+)\)/);
-      if (mentionMatch) {
+      // Check if this part is a mention (starts with @)
+      if (part.startsWith('@') && part.length > 1) {
+        const name = part.slice(1); // Remove the @
         return (
           <span
             key={index}
-            className="inline-flex items-center px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium text-[13px]"
+            className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-semibold text-[13px] cursor-default"
+            title={name}
           >
-            @{mentionMatch[1]}
+            @{name}
           </span>
         );
       }
@@ -124,7 +138,7 @@ export function TaskCommentItem({
               'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-700'
             )}
           >
-            {getInitials(comment.user?.full_name)}
+            {getInitials(displayName)}
           </AvatarFallback>
         </Avatar>
 
@@ -133,7 +147,7 @@ export function TaskCommentItem({
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
             <span className={cn('font-semibold text-gray-900', isReply ? 'text-[13px]' : 'text-sm')}>
-              {comment.user?.full_name || 'Unknown'}
+              {displayName}
             </span>
             <span className="text-xs text-gray-400">
               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
