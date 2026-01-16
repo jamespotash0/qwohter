@@ -1,10 +1,17 @@
 /**
  * handleAuth Action
  * Handles sign-in and sign-up authentication
+ * Includes rate limiting to prevent brute force attacks
  */
 
 import { authFlowHelpers } from '@/utils/authFlowHelpers';
 import { NavigateFunction } from 'react-router-dom';
+import {
+  checkLoginRateLimit,
+  recordFailedLogin,
+  clearRateLimit,
+  getRateLimitMessage,
+} from '@/services/authRateLimitService';
 
 interface HandleAuthParams {
   email: string;
@@ -67,12 +74,37 @@ export const handleAuth = async (params: HandleAuthParams) => {
         saveAuthState({ step: 'verify-otp', email, fullName: combinedFullName });
       }
     } else {
-      // Handle sign-in
+      // Handle sign-in with rate limiting
+      console.log('Checking login rate limit...');
+      const rateCheck = await checkLoginRateLimit(email);
+
+      if (!rateCheck.allowed) {
+        toast({
+          title: 'Too Many Attempts',
+          description: getRateLimitMessage(rateCheck),
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Show warning if close to limit
+      if (rateCheck.remaining_attempts && rateCheck.remaining_attempts <= 2) {
+        toast({
+          title: 'Warning',
+          description: `${rateCheck.remaining_attempts} login attempt${rateCheck.remaining_attempts !== 1 ? 's' : ''} remaining before temporary lockout.`,
+          variant: 'destructive',
+        });
+      }
+
       console.log('Calling handleSignIn...');
       result = await authFlowHelpers.handleSignIn(email, password);
       console.log('SignIn result:', result);
 
       if (result.success) {
+        // Clear rate limit on successful login
+        await clearRateLimit(email, 'login');
+
         console.log('Auth form: signin success with nextStep:', result.nextStep);
 
         // Handle different nextStep outcomes
@@ -92,6 +124,9 @@ export const handleAuth = async (params: HandleAuthParams) => {
           setStep('organization');
           saveAuthState({ step: 'organization', email, userId: result.data?.userId });
         }
+      } else {
+        // Record failed login attempt
+        await recordFailedLogin(email);
       }
     }
 
@@ -103,6 +138,10 @@ export const handleAuth = async (params: HandleAuthParams) => {
       });
     }
   } catch (error: any) {
+    // Record failed attempt on exception (for sign-in only)
+    if (!isSignUp) {
+      await recordFailedLogin(email);
+    }
     toast({
       title: 'Authentication Error',
       description: error.message,

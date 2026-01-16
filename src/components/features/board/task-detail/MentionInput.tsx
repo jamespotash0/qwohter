@@ -39,6 +39,7 @@ export function MentionInput({
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionStartPos, setMentionStartPos] = useState<number | null>(null);
+  const [mentionMap, setMentionMap] = useState<Record<string, string>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -81,35 +82,45 @@ export function MentionInput({
         setMentionStartPos(null);
       }
 
-      // Extract all mentioned user IDs from the value
-      const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+      // Extract all mentioned names and map to IDs using mentionMap
+      const nameRegex = /@(\w+(?:\s+\w+)*)/g;
       const mentions: string[] = [];
       let match;
-      while ((match = mentionRegex.exec(newValue)) !== null) {
-        if (match[2]) mentions.push(match[2]);
+      while ((match = nameRegex.exec(newValue)) !== null) {
+        const name = match[1];
+        if (name && mentionMap[name]) {
+          mentions.push(mentionMap[name]);
+        }
       }
 
       onChange(newValue, mentions);
     },
-    [onChange]
+    [onChange, mentionMap]
   );
 
-  // Insert mention at cursor position
+  // Insert mention at cursor position - just shows @Name, stores ID separately
   const insertMention = useCallback(
     (member: MentionSuggestion) => {
       if (mentionStartPos === null || !textareaRef.current) return;
 
       const beforeMention = value.slice(0, mentionStartPos);
       const afterMention = value.slice(textareaRef.current.selectionStart || mentionStartPos);
-      const mentionText = `@[${member.display}](${member.id}) `;
+      const mentionText = `@${member.display} `;
       const newValue = beforeMention + mentionText + afterMention;
 
-      // Extract all mentions
-      const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+      // Update mention map
+      const newMentionMap = { ...mentionMap, [member.display]: member.id };
+      setMentionMap(newMentionMap);
+
+      // Extract all mentioned names and map to IDs
+      const nameRegex = /@(\w+(?:\s+\w+)*)/g;
       const mentions: string[] = [];
       let match;
-      while ((match = mentionRegex.exec(newValue)) !== null) {
-        if (match[2]) mentions.push(match[2]);
+      while ((match = nameRegex.exec(newValue)) !== null) {
+        const name = match[1];
+        if (name && newMentionMap[name]) {
+          mentions.push(newMentionMap[name]);
+        }
       }
 
       onChange(newValue, mentions);
@@ -126,7 +137,7 @@ export function MentionInput({
         }
       }, 0);
     },
-    [value, mentionStartPos, onChange]
+    [value, mentionStartPos, onChange, mentionMap]
   );
 
   // Handle keyboard navigation
@@ -230,12 +241,7 @@ export function MentionInput({
                     {getInitials(member.display)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{member.display}</p>
-                  {member.email && (
-                    <p className="text-xs text-gray-500 truncate">{member.email}</p>
-                  )}
-                </div>
+                <span className="text-sm font-medium truncate">{member.display}</span>
               </button>
             ))}
           </div>

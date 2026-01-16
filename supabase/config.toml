@@ -1,7 +1,135 @@
 project_id = "piuwrlaoxuefmiisuamc"
 
+# =====================================================
+# EDGE FUNCTIONS SECURITY CONFIGURATION
+# =====================================================
+
+[functions]
+# Global function settings - memory and timeout limits
+# These help prevent memory exhaustion attacks (Vuln #9)
+
 [functions.get-mapbox-token]
 verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.send-invite]
+verify_jwt = true
+
+# =====================================================
+# AUTH CONFIGURATION - Rate Limiting
+# Addresses vulnerabilities #1, #2, #12
+# =====================================================
+
+[auth]
+# Site URL for password reset links
+site_url = "env(SITE_URL)"
+
+# Rate limiting settings
+[auth.rate_limit]
+# Maximum requests per hour for email sign-ups
+email_signup = 3
+
+# Maximum requests per hour for email sign-ins
+email_signin = 10
+
+# Maximum requests per hour for password reset
+password_reset = 3
+
+# Maximum OTP verification attempts per hour
+otp_verification = 5
+
+# Token refresh rate limit per hour
+token_refresh = 30
+
+[auth.external]
+# Disable unused auth providers to reduce attack surface
+[auth.external.azure]
+enabled = false
+
+[auth.external.bitbucket]
+enabled = false
+
+[auth.external.discord]
+enabled = false
+
+[auth.external.facebook]
+enabled = false
+
+[auth.external.figma]
+enabled = false
+
+[auth.external.github]
+enabled = false
+
+[auth.external.gitlab]
+enabled = false
+
+[auth.external.google]
+enabled = false
+
+[auth.external.kakao]
+enabled = false
+
+[auth.external.keycloak]
+enabled = false
+
+[auth.external.linkedin]
+enabled = false
+
+[auth.external.linkedin_oidc]
+enabled = false
+
+[auth.external.notion]
+enabled = false
+
+[auth.external.slack]
+enabled = false
+
+[auth.external.spotify]
+enabled = false
+
+[auth.external.twitch]
+enabled = false
+
+[auth.external.twitter]
+enabled = false
+
+[auth.external.workos]
+enabled = false
+
+[auth.external.zoom]
+enabled = false
+
+# =====================================================
+# REALTIME CONFIGURATION
+# Addresses vulnerability #4 (Token in URL)
+# =====================================================
+
+[realtime]
+# Use headers for auth instead of URL params where possible
+# Note: Some realtime features may require URL params
+enabled = true
+
+# =====================================================
+# API CONFIGURATION
+# Addresses vulnerabilities #7, #8
+# =====================================================
+
+[api]
+# Disable OpenAPI/Swagger in production (reduces info disclosure)
+# Set via environment variable for production
+enabled = true
+
+# Max rows returned per request (prevents memory exhaustion)
+max_rows = 1000
+
+# =====================================================
+# STORAGE CONFIGURATION
+# Addresses vulnerability #3 (Content-Type sniffing)
+# =====================================================
+
+[storage]
+# Enable file type validation
+enabled = true

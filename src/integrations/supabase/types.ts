@@ -2,6 +2,108 @@
 export interface Database {
   public: {
     Tables: {
+      // ============================================================================
+      // Security Tables
+      // ============================================================================
+      auth_rate_limits: {
+        Row: {
+          id: string;
+          identifier: string;
+          identifier_type: 'email' | 'ip';
+          attempt_type: 'login' | 'otp' | 'password_reset' | 'signup';
+          attempt_count: number;
+          first_attempt_at: string;
+          last_attempt_at: string;
+          blocked_until: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          identifier: string;
+          identifier_type: 'email' | 'ip';
+          attempt_type: 'login' | 'otp' | 'password_reset' | 'signup';
+          attempt_count?: number;
+          first_attempt_at?: string;
+          last_attempt_at?: string;
+          blocked_until?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          identifier?: string;
+          identifier_type?: 'email' | 'ip';
+          attempt_type?: 'login' | 'otp' | 'password_reset' | 'signup';
+          attempt_count?: number;
+          first_attempt_at?: string;
+          last_attempt_at?: string;
+          blocked_until?: string | null;
+          created_at?: string;
+        };
+      };
+      security_audit_log: {
+        Row: {
+          id: string;
+          event_type: string;
+          user_id: string | null;
+          organization_id: string | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          details: Record<string, any>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_type: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          details?: Record<string, any>;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_type?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          details?: Record<string, any>;
+          created_at?: string;
+        };
+      };
+      password_reset_audit: {
+        Row: {
+          id: string;
+          email: string;
+          ip_address: string | null;
+          user_agent: string | null;
+          requested_at: string;
+          completed_at: string | null;
+          success: boolean | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          requested_at?: string;
+          completed_at?: string | null;
+          success?: boolean | null;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          requested_at?: string;
+          completed_at?: string | null;
+          success?: boolean | null;
+        };
+      };
+      // ============================================================================
+      // User & Auth Tables
+      // ============================================================================
       profiles: {
         Row: {
           id: string;
@@ -1268,6 +1370,100 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      // ============================================================================
+      // Auth Rate Limiting Functions (Security)
+      // ============================================================================
+      check_login_rate_limit: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          allowed: boolean;
+          blocked: boolean;
+          remaining_attempts: number | null;
+          remaining_seconds: number | null;
+          blocked_until: string | null;
+          message: string | null;
+        };
+      };
+      check_otp_rate_limit: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          allowed: boolean;
+          blocked: boolean;
+          remaining_attempts: number | null;
+          remaining_seconds: number | null;
+          blocked_until: string | null;
+          message: string | null;
+        };
+      };
+      record_failed_login: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          recorded: boolean;
+          blocked: boolean;
+          attempt_count: number;
+        };
+      };
+      record_failed_otp: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          recorded: boolean;
+          blocked: boolean;
+          attempt_count: number;
+        };
+      };
+      clear_auth_rate_limit: {
+        Args: {
+          p_email: string;
+          p_attempt_type: string;
+        };
+        Returns: void;
+      };
+      check_auth_rate_limit: {
+        Args: {
+          p_identifier: string;
+          p_identifier_type: string;
+          p_attempt_type: string;
+          p_max_attempts: number;
+          p_window_minutes: number;
+          p_block_duration_minutes: number;
+        };
+        Returns: {
+          allowed: boolean;
+          blocked: boolean;
+          remaining_attempts: number | null;
+          blocked_until: string | null;
+          message: string | null;
+        };
+      };
+      record_auth_attempt: {
+        Args: {
+          p_identifier: string;
+          p_identifier_type: string;
+          p_attempt_type: string;
+          p_success: boolean;
+          p_max_attempts: number;
+          p_window_minutes: number;
+          p_block_duration_minutes: number;
+        };
+        Returns: {
+          success: boolean;
+          attempt_count: number | null;
+          blocked: boolean | null;
+          blocked_until: string | null;
+          cleared: boolean | null;
+        };
+      };
+      // ============================================================================
+      // User & Organization Functions
+      // ============================================================================
       update_user_profile: {
         Args: {
           user_id: string;
@@ -1285,11 +1481,11 @@ export interface Database {
         Returns: any;
       };
       get_current_user_organization: {
-        Args: {};
+        Args: Record<string, never>;
         Returns: string;
       };
       cleanup_expired_onboarding: {
-        Args: {};
+        Args: Record<string, never>;
         Returns: void;
       };
       check_invite_rate_limit: {
