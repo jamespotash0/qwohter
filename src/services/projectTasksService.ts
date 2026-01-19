@@ -182,7 +182,7 @@ export async function createProjectTask(
       status: input.status || 'todo',
       priority: input.priority || null,
       due_date: input.due_date || null,
-      assigned_to: input.assigned_to || null,
+      assigned_to: input.assigned_to ?? user.id, // Default to creator if not specified
     };
 
     // Only include project_id if it's truthy (not null/undefined)
