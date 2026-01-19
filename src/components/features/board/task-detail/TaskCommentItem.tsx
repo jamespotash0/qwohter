@@ -1,12 +1,81 @@
 /**
  * TaskCommentItem Component
  *
- * Displays a single comment with edit/delete actions and replies.
+ * Displays a single comment with collapsible threaded replies,
+ * inline edit/delete actions, and refined compact styling.
  */
 
-import { useState, useMemo } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Format time elapsed in compact format
+ * Returns formatted string and refresh interval in ms
+ */
+function getTimeAgo(date: Date): { text: string; interval: number } {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+
+  if (diffSeconds < 60) {
+    return { text: `${Math.max(1, diffSeconds)}s`, interval: 1000 }; // Update every second
+  }
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return { text: `${diffMinutes}m`, interval: 60000 }; // Update every minute
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return { text: `${diffHours}h`, interval: 60000 }; // Update every minute to catch hour changes
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) {
+    return { text: `${diffDays}d`, interval: 3600000 }; // Update every hour
+  }
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 52) {
+    return { text: `${diffWeeks}w`, interval: 86400000 }; // Update every day
+  }
+
+  const diffYears = Math.floor(diffDays / 365);
+  return { text: `${diffYears}y`, interval: 86400000 }; // Update every day
+}
+
+/**
+ * Hook for real-time updating time ago display
+ */
+function useTimeAgo(dateString: string): string {
+  const [timeAgo, setTimeAgo] = useState(() => getTimeAgo(new Date(dateString)).text);
+
+  useEffect(() => {
+    const update = () => {
+      const { text, interval } = getTimeAgo(new Date(dateString));
+      setTimeAgo(text);
+      return interval;
+    };
+
+    // Initial update
+    let nextInterval = update();
+
+    // Set up recurring updates with dynamic interval
+    let timeoutId: NodeJS.Timeout;
+    const scheduleNext = () => {
+      timeoutId = setTimeout(() => {
+        nextInterval = update();
+        scheduleNext();
+      }, nextInterval);
+    };
+    scheduleNext();
+
+    return () => clearTimeout(timeoutId);
+  }, [dateString]);
+
+  return timeAgo;
+}
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +89,8 @@ import {
   PencilSimple,
   Trash,
   ChatCircle,
+  CaretDown,
+  CaretRight,
 } from '@phosphor-icons/react';
 import { MentionInput } from './MentionInput';
 import type { TaskComment, MentionSuggestion } from '@/lib/types/taskComments';
@@ -32,6 +103,7 @@ interface TaskCommentItemProps {
   onDelete: (commentId: string) => void;
   onReply: (parentId: string, content: string, mentions: string[]) => void;
   isReply?: boolean;
+  depth?: number;
 }
 
 export function TaskCommentItem({
@@ -42,6 +114,7 @@ export function TaskCommentItem({
   onDelete,
   onReply,
   isReply = false,
+  depth = 0,
 }: TaskCommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -49,8 +122,14 @@ export function TaskCommentItem({
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [replyMentions, setReplyMentions] = useState<string[]>([]);
+  const [isThreadCollapsed, setIsThreadCollapsed] = useState(false);
 
   const isOwner = currentUserId === comment.user_id;
+  const hasReplies = comment.replies && comment.replies.length > 0;
+  const replyCount = comment.replies?.length || 0;
+
+  // Real-time updating timestamp
+  const timeAgo = useTimeAgo(comment.created_at);
 
   // Get display name with fallbacks
   const displayName = useMemo(() => {
@@ -74,9 +153,26 @@ export function TaskCommentItem({
       .slice(0, 2);
   };
 
+  // Generate a consistent color based on user id
+  const getAvatarColor = (userId?: string) => {
+    const colors = [
+      'from-violet-100 to-purple-100 text-violet-700',
+      'from-blue-100 to-indigo-100 text-blue-700',
+      'from-emerald-100 to-teal-100 text-emerald-700',
+      'from-amber-100 to-orange-100 text-amber-700',
+      'from-rose-100 to-pink-100 text-rose-700',
+      'from-cyan-100 to-sky-100 text-cyan-700',
+    ];
+    if (!userId) return colors[0];
+    const hash = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   // Render content with styled mentions
   const renderContent = useMemo(() => {
     const content = isEditing ? editContent : comment.content;
+    // Handle undefined/null content
+    if (!content) return null;
     // Split on @mentions - matches @Name or @First Last patterns
     const mentionRegex = /(@\w+(?:\s+\w+)?)/g;
     const parts = content.split(mentionRegex);
@@ -88,7 +184,7 @@ export function TaskCommentItem({
         return (
           <span
             key={index}
-            className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-semibold text-[13px] cursor-default"
+            className="inline-flex items-center px-1 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium text-[11px] cursor-default"
             title={name}
           >
             @{name}
@@ -121,21 +217,30 @@ export function TaskCommentItem({
     }
   };
 
+  // Calculate left margin for nested replies (max visual indentation at depth 4)
+  const getMarginClass = () => {
+    if (!isReply) return '';
+    if (depth >= 4) return 'ml-4'; // Cap indentation at depth 4
+    if (depth >= 2) return 'ml-5';
+    return 'ml-6';
+  };
+  const marginClass = getMarginClass();
+
   return (
-    <div className={cn('group', isReply ? 'ml-10 mt-3' : '')}>
-      <div className="flex gap-3">
+    <div className={cn('group/comment', marginClass)}>
+      <div className="flex gap-2">
         {/* Avatar */}
         <Avatar
           className={cn(
-            'ring-2 ring-white shadow-sm flex-shrink-0',
-            isReply ? 'h-7 w-7' : 'h-8 w-8'
+            'ring-1 ring-white/80 shadow-sm flex-shrink-0',
+            isReply ? 'h-5 w-5' : 'h-6 w-6'
           )}
         >
           <AvatarFallback
             className={cn(
-              'font-medium',
-              isReply ? 'text-[9px]' : 'text-[10px]',
-              'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-700'
+              'font-medium bg-gradient-to-br',
+              isReply ? 'text-[7px]' : 'text-[8px]',
+              getAvatarColor(comment.user_id)
             )}
           >
             {getInitials(displayName)}
@@ -144,22 +249,63 @@ export function TaskCommentItem({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className={cn('font-semibold text-gray-900', isReply ? 'text-[13px]' : 'text-sm')}>
+          {/* Header Row - Name, Time, Reply, Menu inline */}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={cn('font-medium text-gray-800', isReply ? 'text-[11px]' : 'text-xs')}>
               {displayName}
             </span>
-            <span className="text-xs text-gray-400">
-              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+            <span className="text-[10px] text-gray-400">
+              {timeAgo}
             </span>
             {comment.is_edited && (
-              <span className="text-xs text-gray-400 italic">(edited)</span>
+              <span className="text-[9px] text-gray-400">(edited)</span>
+            )}
+
+            {/* Inline Actions - Next to time, always visible */}
+            {!isEditing && (
+              <div className="flex items-center gap-0.5">
+                {/* Reply button - always available for infinite nesting */}
+                <button
+                  onClick={() => setIsReplying(!isReplying)}
+                  className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-indigo-600 transition-colors"
+                  title="Reply"
+                >
+                  <ChatCircle className="w-3 h-3" />
+                </button>
+
+                {/* Edit/Delete menu (only for owner) */}
+                {isOwner && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                        <DotsThree className="w-3 h-3" weight="bold" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-24 min-w-0">
+                      <DropdownMenuItem
+                        onClick={() => setIsEditing(true)}
+                        className="gap-1.5 text-[11px] py-1"
+                      >
+                        <PencilSimple className="w-3 h-3" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onDelete(comment.id)}
+                        className="gap-1.5 text-[11px] py-1 text-red-600 focus:text-red-600"
+                      >
+                        <Trash className="w-3 h-3" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             )}
           </div>
 
           {/* Comment body */}
           {isEditing ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5 mt-1">
               <MentionInput
                 value={editContent}
                 onChange={(val, mentions) => {
@@ -167,14 +313,15 @@ export function TaskCommentItem({
                   setEditMentions(mentions);
                 }}
                 members={members}
-                minRows={2}
+                minRows={1}
                 autoFocus
+                className="text-[11px]"
               />
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button
                   size="sm"
                   onClick={handleSaveEdit}
-                  className="h-7 text-xs"
+                  className="h-5 text-[10px] px-2"
                 >
                   Save
                 </Button>
@@ -182,7 +329,7 @@ export function TaskCommentItem({
                   size="sm"
                   variant="ghost"
                   onClick={handleCancelEdit}
-                  className="h-7 text-xs"
+                  className="h-5 text-[10px] px-2"
                 >
                   Cancel
                 </Button>
@@ -191,60 +338,17 @@ export function TaskCommentItem({
           ) : (
             <div
               className={cn(
-                'text-gray-700 whitespace-pre-wrap break-words',
-                isReply ? 'text-[13px] leading-relaxed' : 'text-sm leading-relaxed'
+                'text-gray-600 whitespace-pre-wrap break-words leading-relaxed',
+                isReply ? 'text-[11px]' : 'text-xs'
               )}
             >
               {renderContent}
             </div>
           )}
 
-          {/* Actions */}
-          {!isEditing && (
-            <div className="flex items-center gap-3 mt-2">
-              {/* Reply button (only for top-level comments) */}
-              {!isReply && (
-                <button
-                  onClick={() => setIsReplying(!isReplying)}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 transition-colors"
-                >
-                  <ChatCircle className="w-3.5 h-3.5" />
-                  Reply
-                </button>
-              )}
-
-              {/* Edit/Delete menu (only for owner) */}
-              {isOwner && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-100 transition-all">
-                      <DotsThree className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-32">
-                    <DropdownMenuItem
-                      onClick={() => setIsEditing(true)}
-                      className="gap-2 text-sm"
-                    >
-                      <PencilSimple className="w-3.5 h-3.5" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onDelete(comment.id)}
-                      className="gap-2 text-sm text-red-600 focus:text-red-600"
-                    >
-                      <Trash className="w-3.5 h-3.5" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          )}
-
           {/* Reply input */}
           {isReplying && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-1.5">
               <MentionInput
                 value={replyContent}
                 onChange={(val, mentions) => {
@@ -256,13 +360,14 @@ export function TaskCommentItem({
                 minRows={1}
                 autoFocus
                 onSubmit={handleSubmitReply}
+                className="text-[11px]"
               />
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button
                   size="sm"
                   onClick={handleSubmitReply}
                   disabled={!replyContent.trim()}
-                  className="h-7 text-xs"
+                  className="h-5 text-[10px] px-2"
                 >
                   Reply
                 </Button>
@@ -273,7 +378,7 @@ export function TaskCommentItem({
                     setIsReplying(false);
                     setReplyContent('');
                   }}
-                  className="h-7 text-xs"
+                  className="h-5 text-[10px] px-2"
                 >
                   Cancel
                 </Button>
@@ -281,21 +386,45 @@ export function TaskCommentItem({
             </div>
           )}
 
-          {/* Replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-3 space-y-3">
-              {comment.replies.map((reply) => (
-                <TaskCommentItem
-                  key={reply.id}
-                  comment={reply}
-                  currentUserId={currentUserId}
-                  members={members}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onReply={onReply}
-                  isReply
-                />
-              ))}
+          {/* Threaded Replies with Collapse Toggle */}
+          {hasReplies && (
+            <div className="mt-2">
+              {/* Thread collapse toggle */}
+              <button
+                onClick={() => setIsThreadCollapsed(!isThreadCollapsed)}
+                className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 transition-colors mb-1.5 py-0.5"
+              >
+                {isThreadCollapsed ? (
+                  <>
+                    <CaretRight className="w-3 h-3" weight="bold" />
+                    <span>{replyCount} {replyCount === 1 ? 'reply' : 'replies'}</span>
+                  </>
+                ) : (
+                  <>
+                    <CaretDown className="w-3 h-3" weight="bold" />
+                    <span>Hide {replyCount === 1 ? 'reply' : 'replies'}</span>
+                  </>
+                )}
+              </button>
+
+              {/* Replies */}
+              {!isThreadCollapsed && (
+                <div className="space-y-2 pt-1">
+                  {comment.replies!.map((reply) => (
+                    <TaskCommentItem
+                      key={reply.id}
+                      comment={reply}
+                      currentUserId={currentUserId}
+                      members={members}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onReply={onReply}
+                      isReply
+                      depth={depth + 1}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

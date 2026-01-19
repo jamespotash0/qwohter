@@ -46,9 +46,22 @@ export function useTaskComments(taskId: string | undefined) {
 }
 
 /**
+ * User info for optimistic updates
+ */
+interface CurrentUserInfo {
+  id: string;
+  full_name?: string | null;
+  email?: string;
+}
+
+/**
  * Create a new comment
  */
-export function useCreateTaskComment(taskId: string, organizationId: string) {
+export function useCreateTaskComment(
+  taskId: string,
+  organizationId: string,
+  currentUser?: CurrentUserInfo
+) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -62,10 +75,11 @@ export function useCreateTaskComment(taskId: string, organizationId: string) {
       // Snapshot previous value
       const previousComments = queryClient.getQueryData<TaskComment[]>([COMMENTS_KEY, taskId]);
 
-      // Optimistically add new comment
+      // Optimistically add new comment with user info for immediate display
       const optimisticComment: Partial<TaskComment> = {
         id: `temp-${Date.now()}`,
         task_id: taskId,
+        user_id: currentUser?.id,
         content: newComment.content,
         mentions: newComment.mentions || [],
         parent_id: newComment.parent_id || null,
@@ -74,6 +88,14 @@ export function useCreateTaskComment(taskId: string, organizationId: string) {
         updated_at: new Date().toISOString(),
         replies: [],
         reply_count: 0,
+        // Include user info so comment displays correctly immediately
+        user: currentUser
+          ? {
+              id: currentUser.id,
+              full_name: currentUser.full_name || currentUser.email || 'You',
+              email: currentUser.email || '',
+            }
+          : undefined,
       };
 
       if (newComment.parent_id) {

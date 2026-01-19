@@ -52,7 +52,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { formatDateEST } from '@/utils/dateUtils';
-import { Button } from '@/components/ui/button';
 import { File as FileIcon } from '@phosphor-icons/react';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
@@ -1135,214 +1134,216 @@ export default function Board() {
         </div>
       )}
 
-      {/* Simplified Sidebar */}
+      {/* Project Sidebar Overlay */}
       {selectedProject && (
         <>
+          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 z-40"
+            className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40 animate-in fade-in-0 duration-150"
             onClick={() => setSelectedProjectId(null)}
           />
 
-          <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
+          {/* Sidebar Panel */}
+          <div className="fixed top-0 right-0 h-full w-[40%] min-w-[400px] max-w-[95vw] bg-white shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-200">
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
-                  <span className="text-base font-semibold text-gray-900">
+            <div className="flex-shrink-0 border-b border-gray-100 px-5 py-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-sm font-semibold text-gray-900 truncate">
                     {selectedProject.proposal?.project_name || 'Untitled Project'}
-                  </span>
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-mono text-gray-400 uppercase">
+                      {selectedProject.proposal?.proposal_number || 'No #'}
+                    </span>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-[11px] text-gray-500">{selectedProject.workflow_status}</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Proposal #:</span>
-                  <span className="text-sm text-gray-700">
-                    {selectedProject.proposal?.proposal_number || 'N/A'}
-                  </span>
-                </div>
+                <button
+                  onClick={() => setSelectedProjectId(null)}
+                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedProjectId(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <XIcon className="w-5 h-5 text-gray-500" />
-              </button>
+
+              {/* Inline Properties */}
+              <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                {/* Priority */}
+                <select
+                  value={selectedProject.priority || ''}
+                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
+                  className={`h-6 text-[11px] px-2 rounded-md border-0 bg-gray-50 hover:bg-gray-100 cursor-pointer ${
+                    selectedProject.priority === 'High' || selectedProject.priority === 'Highest'
+                      ? 'text-red-600'
+                      : selectedProject.priority === 'Medium'
+                      ? 'text-amber-600'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  <option value="">Priority</option>
+                  <option value="Lowest">Lowest</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Highest">Highest</option>
+                </select>
+
+                {/* Completion Date */}
+                <Input
+                  type="date"
+                  value={selectedProject.completion_date || ''}
+                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
+                  className="h-6 text-[11px] w-28 border-0 bg-gray-50 hover:bg-gray-100 px-2"
+                  placeholder="Due date"
+                />
+
+                {/* View Proposal Button */}
+                {selectedProject.proposal?.id && (
+                  <button
+                    onClick={() => { window.location.href = `/proposals/${selectedProject.proposal!.id}/edit`; }}
+                    className="h-6 px-2.5 text-[11px] rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors flex items-center gap-1"
+                  >
+                    <FileIcon className="w-3 h-3" />
+                    Proposal
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="px-6 py-4 space-y-5">
-              {/* Status Section - No card background */}
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Status:</span>
-                  <span className="text-sm text-gray-900">{selectedProject.workflow_status}</span>
-                </div>
-                <span className="text-gray-300">|</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Priority:</span>
-                  <select
-                    value={selectedProject.priority || ''}
-                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
-                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer w-24`}
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-5 py-4 space-y-4">
+                {/* Project Summary Section */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('summary')}
+                    className="w-full flex items-center gap-1.5 mb-2 group"
                   >
-                    <option value="">None</option>
-                    <option value="Lowest">Lowest</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Highest">Highest</option>
-                  </select>
+                    {collapsedSections.has('summary') ? (
+                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
+                    ) : (
+                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
+                    )}
+                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                      Project Details
+                    </span>
+                  </button>
+                  {!collapsedSections.has('summary') && (
+                    <div className="space-y-1.5 pl-4">
+                      {selectedProject.proposal?.client_name && (
+                        <div className="flex items-baseline gap-2 text-xs">
+                          <span className="text-gray-400 w-20 flex-shrink-0">Client</span>
+                          <span className="text-gray-700">{selectedProject.proposal.client_name}</span>
+                        </div>
+                      )}
+                      {selectedProject.proposal?.client_company && (
+                        <div className="flex items-baseline gap-2 text-xs">
+                          <span className="text-gray-400 w-20 flex-shrink-0">Company</span>
+                          <span className="text-gray-700">{selectedProject.proposal.client_company}</span>
+                        </div>
+                      )}
+                      {selectedProject.proposal?.job_location && (
+                        <div className="flex items-baseline gap-2 text-xs">
+                          <span className="text-gray-400 w-20 flex-shrink-0">Location</span>
+                          <span className="text-gray-700">{selectedProject.proposal.job_location}</span>
+                        </div>
+                      )}
+                      {selectedProject.proposal?.total_value && (
+                        <div className="flex items-baseline gap-2 text-xs">
+                          <span className="text-gray-400 w-20 flex-shrink-0">Value</span>
+                          <span className="text-gray-900 font-semibold">{formatCurrency(selectedProject.proposal.total_value)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <span className="text-gray-300">|</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Completion:</span>
-                  <Input
-                    type="date"
-                    value={selectedProject.completion_date || ''}
-                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
-                    className="text-xs h-7 w-32"
-                  />
-                </div>
-              </div>
 
-              {/* Project Summary */}
-              <div>
-                <button
-                  onClick={() => toggleSection('summary')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Project Summary</span>
-                  {collapsedSections.has('summary') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
-                  )}
-                </button>
-                {!collapsedSections.has('summary') && (
-                  <div className="space-y-2 text-sm">
-                  {selectedProject.proposal?.client_name && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Client:</span>
-                      <span className="text-gray-900">
-                        {selectedProject.proposal.client_name}
-                      </span>
-                    </div>
-                  )}
-                  {selectedProject.proposal?.client_company && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Company:</span>
-                      <span className="text-gray-900">
-                        {selectedProject.proposal.client_company}
-                      </span>
-                    </div>
-                  )}
-                  {selectedProject.proposal?.job_location && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
-                      <span className="text-gray-900">
-                        {selectedProject.proposal.job_location}
-                      </span>
-                    </div>
-                  )}
-                  {selectedProject.proposal?.total_value && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Total Price:</span>
-                      <span className="text-gray-900 font-semibold text-blue-600">
-                        {formatCurrency(selectedProject.proposal.total_value)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Quick Actions */}
-                  {selectedProject.proposal?.id && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full h-8 text-xs justify-start"
-                        onClick={() => {
-                          window.location.href = `/proposals/${selectedProject.proposal!.id}/edit`;
+                {/* Timeline Section */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('timeline')}
+                    className="w-full flex items-center gap-1.5 mb-2 group"
+                  >
+                    {collapsedSections.has('timeline') ? (
+                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
+                    ) : (
+                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
+                    )}
+                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                      Timeline
+                    </span>
+                  </button>
+                  {!collapsedSections.has('timeline') && (
+                    <div className="pl-4">
+                      <TimelineVisualizer
+                        milestones={selectedProject.timeline_milestones || []}
+                        wonDate={selectedProject.created_at}
+                        onMilestoneUpdate={(updatedMilestones) => {
+                          updateProject({
+                            id: selectedProject.id,
+                            updates: { timeline_milestones: updatedMilestones }
+                          });
                         }}
-                      >
-                        <FileIcon className="w-3.5 h-3.5 mr-1.5" />
-                        View Proposal
-                      </Button>
+                        onRequestAISuggestions={handleRequestAISuggestions}
+                        isGeneratingAI={isGeneratingAI}
+                      />
                     </div>
                   )}
                 </div>
-                )}
-              </div>
 
-              {/* Project Timeline */}
-              <div>
-                <button
-                  onClick={() => toggleSection('timeline')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Project Timeline</span>
-                  {collapsedSections.has('timeline') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
+                {/* Tasks Section */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('tasks')}
+                    className="w-full flex items-center gap-1.5 mb-2 group"
+                  >
+                    {collapsedSections.has('tasks') ? (
+                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
+                    ) : (
+                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
+                    )}
+                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                      Tasks
+                    </span>
+                  </button>
+                  {!collapsedSections.has('tasks') && (
+                    <div className="pl-4">
+                      <ProjectTasks
+                        projectId={selectedProject.id}
+                        organizationId={organizationId}
+                        projectName={selectedProject.proposal?.project_name || 'Project'}
+                      />
+                    </div>
                   )}
-                </button>
-                {!collapsedSections.has('timeline') && (
-                  <TimelineVisualizer
-                    milestones={selectedProject.timeline_milestones || []}
-                    wonDate={selectedProject.created_at}
-                    onMilestoneUpdate={(updatedMilestones) => {
-                      updateProject({
-                        id: selectedProject.id,
-                        updates: { timeline_milestones: updatedMilestones }
-                      });
-                    }}
-                    onRequestAISuggestions={handleRequestAISuggestions}
-                    isGeneratingAI={isGeneratingAI}
-                  />
-                )}
-              </div>
+                </div>
 
-              {/* Project Tasks */}
-              <div>
-                <button
-                  onClick={() => toggleSection('tasks')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Tasks</span>
-                  {collapsedSections.has('tasks') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
+                {/* Documents Section */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('documents')}
+                    className="w-full flex items-center gap-1.5 mb-2 group"
+                  >
+                    {collapsedSections.has('documents') ? (
+                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
+                    ) : (
+                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
+                    )}
+                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                      Documents
+                    </span>
+                  </button>
+                  {!collapsedSections.has('documents') && (
+                    <div className="pl-4">
+                      <ProjectAttachments
+                        projectId={selectedProject.id}
+                        attachments={attachments}
+                        onAttachmentsChange={refetchAttachments}
+                      />
+                    </div>
                   )}
-                </button>
-                {!collapsedSections.has('tasks') && (
-                  <ProjectTasks
-                    projectId={selectedProject.id}
-                    organizationId={organizationId}
-                    projectName={selectedProject.proposal?.project_name || 'Project'}
-                  />
-                )}
-              </div>
-
-              {/* Documents/Links */}
-              <div>
-                <button
-                  onClick={() => toggleSection('documents')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Documents</span>
-                  {collapsedSections.has('documents') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
-                  )}
-                </button>
-                {!collapsedSections.has('documents') && (
-                  <ProjectAttachments
-                    projectId={selectedProject.id}
-                    attachments={attachments}
-                    onAttachmentsChange={refetchAttachments}
-                  />
-                )}
+                </div>
               </div>
             </div>
           </div>

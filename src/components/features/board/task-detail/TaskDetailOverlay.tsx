@@ -1,13 +1,14 @@
 /**
- * TaskDetailOverlay Component (Condensed Design)
+ * TaskDetailOverlay Component
  *
- * A sleek overlay panel for viewing and editing task details.
- * Compact inline properties, description, attachments, and nested comments.
+ * A refined overlay panel for viewing and editing task details.
+ * Features compact inline properties, collapsible comments with threads,
+ * and a clean, minimal aesthetic.
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
+import { format, isPast, isToday, isTomorrow } from 'date-fns';
 import { cn, parseLocalDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +40,8 @@ import {
   PaperPlaneTilt,
   File,
   DownloadSimple,
-  Plus,
+  CaretDown,
+  CaretRight,
 } from '@phosphor-icons/react';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { MentionInput } from './MentionInput';
@@ -97,42 +99,6 @@ interface TaskDetailOverlayProps {
 // Helper Components
 // =============================================================================
 
-function CompactSelect({
-  icon: Icon,
-  iconColor,
-  iconWeight,
-  value,
-  placeholder,
-  children,
-  onValueChange,
-  className,
-}: {
-  icon?: React.ElementType;
-  iconColor?: string;
-  iconWeight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
-  value: string;
-  placeholder?: string;
-  children: React.ReactNode;
-  onValueChange: (value: string) => void;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger
-        className={cn(
-          'h-7 text-xs border-0 bg-gray-100 hover:bg-gray-200 px-2 gap-1.5 rounded-md',
-          'focus:ring-1 focus:ring-gray-300',
-          className
-        )}
-      >
-        {Icon && <Icon weight={iconWeight} className={cn('w-3.5 h-3.5', iconColor || 'text-gray-500')} />}
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>{children}</SelectContent>
-    </Select>
-  );
-}
-
 function AttachmentChip({
   attachment,
   onDelete,
@@ -148,16 +114,16 @@ function AttachmentChip({
     : '';
 
   return (
-    <div className="group flex items-center gap-2 px-2 py-1.5 rounded-md bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-colors">
+    <div className="group flex items-center gap-1.5 px-2 py-1 rounded bg-gray-50 border border-gray-100 hover:border-gray-200 transition-colors">
       {isImage ? (
-        <div className="w-6 h-6 rounded overflow-hidden bg-gray-200 flex-shrink-0">
+        <div className="w-5 h-5 rounded overflow-hidden bg-gray-200 flex-shrink-0">
           <img src={attachment.file_url} alt="" className="w-full h-full object-cover" />
         </div>
       ) : (
-        <File className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
       )}
-      <span className="text-xs text-gray-600 truncate max-w-[120px]">{attachment.file_name}</span>
-      <span className="text-[10px] text-gray-400">{fileSize}</span>
+      <span className="text-[10px] text-gray-600 truncate max-w-[100px]">{attachment.file_name}</span>
+      <span className="text-[9px] text-gray-400">{fileSize}</span>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <a
           href={attachment.file_url}
@@ -165,11 +131,11 @@ function AttachmentChip({
           rel="noopener noreferrer"
           className="p-0.5 hover:bg-gray-200 rounded text-gray-400"
         >
-          <DownloadSimple className="w-3 h-3" />
+          <DownloadSimple className="w-2.5 h-2.5" />
         </a>
         {onDelete && (
           <button onClick={onDelete} className="p-0.5 hover:bg-red-100 rounded text-gray-400 hover:text-red-500">
-            <X className="w-3 h-3" />
+            <X className="w-2.5 h-2.5" />
           </button>
         )}
       </div>
@@ -198,7 +164,6 @@ export function TaskDetailOverlay({
   onEditComment,
   onDeleteComment,
   attachments = [],
-  isLoadingAttachments = false,
   isUploadingAttachment = false,
   onUploadAttachment,
   onDeleteAttachment,
@@ -218,6 +183,7 @@ export function TaskDetailOverlay({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [newCommentMentions, setNewCommentMentions] = useState<string[]>([]);
+  const [isCommentsCollapsed, setIsCommentsCollapsed] = useState(false);
 
   // Sync local state when task changes
   useEffect(() => {
@@ -227,7 +193,7 @@ export function TaskDetailOverlay({
     setDueDate(task.due_date || '');
     setAssignee(task.assigned_to || '');
     setDescriptionChanged(false);
-  }, [task.id]);
+  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to]);
 
   const activeMembers = members.filter((m) => m.status === 'Active');
 
@@ -313,127 +279,135 @@ export function TaskDetailOverlay({
 
   const dueDateInfo = getDueDateInfo();
 
-  // Group top-level comments (no parent) and nest replies
+  // Group top-level comments (no parent)
   const topLevelComments = useMemo(() => {
     return comments.filter((c) => !c.parent_id);
   }, [comments]);
+
+  const totalComments = comments.length;
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-in fade-in-0 duration-200"
+        className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40 animate-in fade-in-0 duration-150"
         onClick={onClose}
       />
 
       {/* Overlay Panel */}
       <div
         className={cn(
-          'fixed top-0 right-0 h-full w-[480px] max-w-[95vw] z-50',
+          'fixed top-0 right-0 h-full w-[40%] min-w-[400px] max-w-[95vw] z-50',
           'bg-white shadow-2xl flex flex-col',
-          'animate-in slide-in-from-right duration-300'
+          'animate-in slide-in-from-right duration-200'
         )}
       >
-        {/* ─────────────────────────────────────────────────────────────────── */}
-        {/* Header - Compact */}
-        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* Header */}
         <div className="flex-shrink-0 border-b border-gray-100 px-4 py-3">
-          {/* Top row: Status + Reference + Actions */}
+          {/* Top row: Task ID + Status + Actions */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              {/* Status dropdown */}
-              <CompactSelect
-                value={task.status}
-                onValueChange={(value) => onStatusChange(task.id, value)}
-                className="w-auto min-w-[90px]"
-              >
-                {columns.map((col) => (
-                  <SelectItem key={col.id} value={col.slug}>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color }} />
-                      <span className="text-xs">{col.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </CompactSelect>
+              {/* Task reference first */}
               {task.reference && (
-                <span className="text-[11px] font-mono text-gray-400 uppercase">
+                <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wide whitespace-nowrap">
                   {task.reference}
                 </span>
               )}
+
+              {/* Status pill */}
+              <Select value={task.status} onValueChange={(value) => onStatusChange(task.id, value)}>
+                <SelectTrigger className="h-6 text-[11px] border-0 bg-gray-50 hover:bg-gray-100 px-2 gap-1 rounded-md w-auto min-w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {columns.map((col) => (
+                    <SelectItem key={col.id} value={col.slug}>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color }} />
+                        <span className="text-xs">{col.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+              <button
+                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                 onClick={() => setShowDeleteDialog(true)}
+                title="Delete task"
               >
                 <Trash className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+              </button>
+              <button
+                className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
                 onClick={onClose}
+                title="Close"
               >
                 <X className="w-4 h-4" />
-              </Button>
+              </button>
             </div>
           </div>
 
           {/* Title */}
-          {isEditingTitle ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTitleSave();
-                if (e.key === 'Escape') {
-                  setTitle(task.title);
-                  setIsEditingTitle(false);
-                }
-              }}
-              onBlur={handleTitleSave}
-              className="text-base font-semibold border-0 px-0 shadow-none focus-visible:ring-0 h-auto py-0"
-              autoFocus
-            />
-          ) : (
-            <h2
-              className="text-base font-semibold text-gray-900 cursor-text hover:bg-gray-50 -mx-1 px-1 py-0.5 rounded"
-              onClick={() => setIsEditingTitle(true)}
-            >
-              {task.title}
-            </h2>
-          )}
+          <div className="min-h-[24px]">
+            {isEditingTitle ? (
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleTitleSave();
+                  if (e.key === 'Escape') {
+                    setTitle(task.title);
+                    setIsEditingTitle(false);
+                  }
+                }}
+                onBlur={handleTitleSave}
+                className="text-sm font-semibold border-0 px-1 shadow-none focus-visible:ring-0 h-[24px] py-0 -mx-1 bg-gray-50"
+                autoFocus
+              />
+            ) : (
+              <h2
+                className="text-sm font-semibold text-gray-900 cursor-text hover:bg-gray-50 -mx-1 px-1 h-[24px] leading-[24px] rounded transition-colors"
+                onClick={() => setIsEditingTitle(true)}
+              >
+                {task.title}
+              </h2>
+            )}
+          </div>
 
-          {/* Inline Properties Row */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          {/* Properties Row */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
             {/* Priority */}
-            <CompactSelect
+            <Select
               value={priority || 'low'}
               onValueChange={(value) => {
                 const newPriority = value as TaskPriority;
                 setPriority(newPriority);
                 handleSave('priority', newPriority);
               }}
-              className="w-auto min-w-[80px]"
             >
-              {(Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[]).map((p) => (
-                <SelectItem key={p} value={p}>
-                  <div className="flex items-center gap-1.5">
-                    <Flag
-                      weight="fill"
-                      className={cn(
-                        'w-3 h-3',
-                        p === 'high' ? 'text-red-500' : p === 'medium' ? 'text-amber-500' : 'text-gray-400'
-                      )}
-                    />
-                    <span className="text-xs">{TASK_PRIORITY_LABELS[p]}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </CompactSelect>
+              <SelectTrigger className="h-6 text-[11px] border-0 bg-gray-50 hover:bg-gray-100 px-2 gap-1 rounded-md w-auto min-w-[80px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[]).map((p) => (
+                  <SelectItem key={p} value={p}>
+                    <div className="flex items-center gap-1.5">
+                      <Flag
+                        weight="fill"
+                        className={cn(
+                          'w-3 h-3',
+                          p === 'high' ? 'text-red-500' : p === 'medium' ? 'text-amber-500' : 'text-gray-400'
+                        )}
+                      />
+                      <span className="text-xs">{TASK_PRIORITY_LABELS[p]}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* Assignee */}
             <Select
@@ -444,26 +418,28 @@ export function TaskDetailOverlay({
                 handleSave('assigned_to', newValue || null);
               }}
             >
-              <SelectTrigger
-                className={cn(
-                  'h-7 text-xs border-0 bg-gray-100 hover:bg-gray-200 px-2 gap-1.5 rounded-md',
-                  'focus:ring-1 focus:ring-gray-300 w-auto min-w-[100px] max-w-[140px]'
-                )}
-              >
-                <Avatar className="h-4 w-4 flex-shrink-0">
-                  <AvatarFallback className="bg-indigo-100 text-indigo-700 text-[7px]">
-                    {assignee ? getInitials(activeMembers.find((m) => m.user_id === assignee)?.full_name) : '?'}
-                  </AvatarFallback>
-                </Avatar>
+              <SelectTrigger className="h-6 text-[11px] border-0 bg-gray-50 hover:bg-gray-100 px-2 gap-1 rounded-md w-auto min-w-[100px] max-w-[140px]">
                 <SelectValue placeholder="Unassigned" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="unassigned">
-                  <span className="text-xs text-gray-400">Unassigned</span>
+                  <div className="flex items-center gap-1.5">
+                    <Avatar className="h-4 w-4 flex-shrink-0">
+                      <AvatarFallback className="bg-gray-200 text-gray-500 text-[7px]">?</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-gray-400">Unassigned</span>
+                  </div>
                 </SelectItem>
                 {activeMembers.map((member) => (
                   <SelectItem key={member.user_id} value={member.user_id}>
-                    <span className="text-xs truncate">{member.full_name || member.email}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Avatar className="h-4 w-4 flex-shrink-0">
+                        <AvatarFallback className="bg-indigo-100 text-indigo-700 text-[7px]">
+                          {getInitials(member.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs truncate">{member.full_name || member.email}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -474,13 +450,13 @@ export function TaskDetailOverlay({
               <PopoverTrigger asChild>
                 <button
                   className={cn(
-                    'h-7 px-2 text-xs rounded-md flex items-center gap-1.5',
-                    'bg-gray-100 hover:bg-gray-200 transition-colors',
-                    dueDateInfo?.isOverdue && 'bg-red-100 text-red-700 hover:bg-red-200',
-                    dueDateInfo?.isDueToday && 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    'h-6 px-2 text-[11px] rounded-md flex items-center gap-1',
+                    'bg-gray-50 hover:bg-gray-100 transition-colors',
+                    dueDateInfo?.isOverdue && 'bg-red-50 text-red-600 hover:bg-red-100',
+                    dueDateInfo?.isDueToday && 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                   )}
                 >
-                  <CalendarBlank className="w-3.5 h-3.5" />
+                  <CalendarBlank className="w-3 h-3" />
                   <span>{dueDateInfo?.label || 'No date'}</span>
                 </button>
               </PopoverTrigger>
@@ -492,86 +468,76 @@ export function TaskDetailOverlay({
                     setDueDate(e.target.value);
                     handleSave('due_date', e.target.value || null);
                   }}
-                  className="h-8 text-sm"
+                  className="h-7 text-xs"
                 />
                 {dueDate && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full mt-1 h-7 text-xs text-gray-500"
+                    className="w-full mt-1 h-6 text-[10px] text-gray-500"
                     onClick={() => {
                       setDueDate('');
                       handleSave('due_date', null);
                     }}
                   >
-                    Clear date
+                    Clear
                   </Button>
                 )}
               </PopoverContent>
             </Popover>
 
-            {/* Project */}
+            {/* Project Link */}
             <div className="flex items-center gap-0.5">
-              <CompactSelect
-                icon={FolderOpen}
-                iconColor="text-purple-500"
+              <Select
                 value={task.project_id || 'none'}
                 onValueChange={(value) => {
                   const newProjectId = value === 'none' ? null : value;
                   onLinkProject(task.id, newProjectId);
                 }}
-                className="w-auto min-w-[100px] max-w-[150px]"
               >
-                <SelectItem value="none">
-                  <span className="text-xs text-gray-400">No project</span>
-                </SelectItem>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    <span className="text-xs truncate">{project.proposal?.project_name || 'Unnamed'}</span>
+                <SelectTrigger className="h-6 text-[11px] border-0 bg-gray-50 hover:bg-gray-100 px-2 gap-1 rounded-md w-auto min-w-[80px] max-w-[120px]">
+                  <FolderOpen className="w-3 h-3 text-purple-500" />
+                  <SelectValue placeholder="No project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="text-xs text-gray-400">No project</span>
                   </SelectItem>
-                ))}
-              </CompactSelect>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <span className="text-xs truncate">{project.proposal?.project_name || 'Unnamed'}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {task.project_id && proposalId && (
                 <button
                   onClick={() => navigate(`/proposals/${proposalId}/edit`)}
                   className="p-1 hover:bg-purple-100 rounded text-purple-600"
+                  title="Open proposal"
                 >
-                  <ArrowSquareOut className="w-3.5 h-3.5" />
+                  <ArrowSquareOut className="w-3 h-3" />
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────────── */}
         {/* Scrollable Content */}
-        {/* ─────────────────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-4 space-y-5">
-            {/* Description with inline attachments */}
+          <div className="px-4 py-3 space-y-4">
+            {/* Description */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Description</span>
-                {descriptionChanged && (
-                  <Button
-                    size="sm"
-                    onClick={handleDescriptionSave}
-                    disabled={isSaving}
-                    className="h-6 text-[10px] gap-1 px-2"
-                  >
-                    <Check className="w-3 h-3" />
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </Button>
-                )}
+              <div className="flex items-center mb-1.5">
+                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Description</span>
               </div>
 
-              {/* Description box with + button inside */}
               <div className="relative">
                 <Textarea
-                  placeholder="What's this task about?"
+                  placeholder="Add a description..."
                   value={description}
                   onChange={(e) => handleDescriptionChange(e.target.value)}
-                  className="min-h-[80px] resize-none text-sm bg-gray-50 border-gray-200 focus:bg-white pb-8 rounded-md"
+                  className="min-h-[100px] resize-none text-xs bg-gray-50 border-gray-100 focus:bg-white pb-8 rounded-sm"
                 />
 
                 {/* Hidden file input */}
@@ -583,39 +549,39 @@ export function TaskDetailOverlay({
                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                 />
 
-                {/* + button with dropdown - bottom right inside textarea */}
-                <div className="absolute bottom-2 right-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        disabled={isUploadingAttachment}
-                        className="h-6 w-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 bg-gray-100 rounded transition-colors"
-                        title="Add attachment"
-                      >
-                        {isUploadingAttachment ? (
-                          <div className="animate-spin w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full" />
-                        ) : (
-                          <Plus className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-40 p-1" align="end">
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingAttachment}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                      >
-                        <Paperclip className="w-3.5 h-3.5 text-gray-500" />
-                        Attach file
-                      </button>
-                    </PopoverContent>
-                  </Popover>
+                {/* Bottom row: Paperclip + Save button */}
+                <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+                  {/* Paperclip attachment button */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingAttachment}
+                    className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Add attachment"
+                  >
+                    {isUploadingAttachment ? (
+                      <div className="animate-spin w-3 h-3 border border-gray-300 border-t-gray-600 rounded-full" />
+                    ) : (
+                      <Paperclip className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+
+                  {/* Save button (only when changed) */}
+                  {descriptionChanged && (
+                    <button
+                      onClick={handleDescriptionSave}
+                      disabled={isSaving}
+                      className="h-5 px-2 flex items-center gap-0.5 text-[9px] font-medium text-white bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 rounded-sm transition-colors"
+                    >
+                      <Check className="w-2.5 h-2.5" />
+                      {isSaving ? 'Saving' : 'Save'}
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Attachments display - below textarea */}
+              {/* Attachments */}
               {(attachments.length > 0 || isUploadingAttachment) && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap gap-1 mt-1.5">
                   {attachments.map((attachment) => (
                     <AttachmentChip
                       key={attachment.id}
@@ -624,117 +590,121 @@ export function TaskDetailOverlay({
                     />
                   ))}
                   {isUploadingAttachment && (
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-blue-50 border border-blue-200">
-                      <div className="animate-spin w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full" />
-                      <span className="text-[10px] text-blue-600">Uploading...</span>
+                    <div className="flex items-center gap-1 px-2 py-1 rounded bg-blue-50 border border-blue-100">
+                      <div className="animate-spin w-2.5 h-2.5 border border-blue-300 border-t-blue-600 rounded-full" />
+                      <span className="text-[9px] text-blue-600">Uploading...</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Comments */}
+            {/* Comments Section */}
             <div>
-              <div className="flex items-center gap-1.5 mb-3">
-                <ChatCircle className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Comments {topLevelComments.length > 0 && `(${topLevelComments.length})`}
-                </span>
-              </div>
+              {/* Section Header - Collapsible */}
+              <button
+                onClick={() => setIsCommentsCollapsed(!isCommentsCollapsed)}
+                className="w-full flex items-center justify-between mb-2 group"
+              >
+                <div className="flex items-center gap-1.5">
+                  {isCommentsCollapsed ? (
+                    <CaretRight className="w-3 h-3 text-gray-400" weight="bold" />
+                  ) : (
+                    <CaretDown className="w-3 h-3 text-gray-400" weight="bold" />
+                  )}
+                  <ChatCircle className="w-3 h-3 text-gray-400" />
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                    Comments
+                  </span>
+                  {totalComments > 0 && (
+                    <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                      {totalComments}
+                    </span>
+                  )}
+                </div>
+              </button>
 
-              {/* New Comment Input */}
-              <div className="flex gap-2 mb-4">
-                <Avatar className="h-6 w-6 flex-shrink-0 mt-1">
-                  <AvatarFallback className="bg-indigo-100 text-indigo-700 text-[8px]">
-                    {getInitials(activeMembers.find((m) => m.user_id === currentUserId)?.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 relative">
-                  <MentionInput
-                    value={newComment}
-                    onChange={(val, mentions) => {
-                      setNewComment(val);
-                      setNewCommentMentions(mentions);
-                    }}
-                    members={mentionSuggestions}
-                    placeholder="Leave a note or @mention someone..."
-                    minRows={1}
-                    onSubmit={handleAddComment}
-                    className="text-sm pr-16"
-                  />
-                  {/* Action buttons - bottom right inside input */}
-                  <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          disabled={isUploadingAttachment}
-                          className="h-5 w-5 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 bg-gray-100 rounded transition-colors"
-                          title="Attach file"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-40 p-1" align="end">
+              {!isCommentsCollapsed && (
+                <>
+                  {/* New Comment Input */}
+                  <div className="flex gap-2 mb-3">
+                    <Avatar className="h-5 w-5 flex-shrink-0 mt-1">
+                      <AvatarFallback className="bg-indigo-100 text-indigo-700 text-[7px]">
+                        {getInitials(activeMembers.find((m) => m.user_id === currentUserId)?.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 relative">
+                      <MentionInput
+                        value={newComment}
+                        onChange={(val, mentions) => {
+                          setNewComment(val);
+                          setNewCommentMentions(mentions);
+                        }}
+                        members={mentionSuggestions}
+                        placeholder="Add a comment..."
+                        minRows={1}
+                        onSubmit={handleAddComment}
+                        className="text-xs pr-16"
+                      />
+                      {/* Paperclip + Send button */}
+                      <div className="absolute bottom-2 right-2 flex items-center gap-1">
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          disabled={isUploadingAttachment}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Add attachment"
                         >
-                          <Paperclip className="w-3.5 h-3.5 text-gray-500" />
-                          Attach file
+                          <Paperclip className="w-3.5 h-3.5" />
                         </button>
-                      </PopoverContent>
-                    </Popover>
-                    {newComment.trim() && (
-                      <button
-                        onClick={handleAddComment}
-                        className="h-5 w-5 flex items-center justify-center text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors"
-                      >
-                        <PaperPlaneTilt className="w-3 h-3" />
-                      </button>
-                    )}
+                        {newComment.trim() && (
+                          <button
+                            onClick={handleAddComment}
+                            className="h-5 w-5 flex items-center justify-center text-white bg-indigo-500 hover:bg-indigo-600 rounded-sm transition-colors"
+                          >
+                            <PaperPlaneTilt className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Comments List */}
-              {isLoadingComments ? (
-                <div className="flex items-center justify-center py-6">
-                  <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full" />
-                </div>
-              ) : topLevelComments.length > 0 ? (
-                <div className="space-y-4">
-                  {topLevelComments.map((comment) => (
-                    <TaskCommentItem
-                      key={comment.id}
-                      comment={comment}
-                      currentUserId={currentUserId}
-                      members={mentionSuggestions}
-                      onEdit={(commentId, content, mentions) => {
-                        onEditComment?.(commentId, content, mentions);
-                      }}
-                      onDelete={(commentId) => {
-                        onDeleteComment?.(commentId);
-                      }}
-                      onReply={(parentId, content, mentions) => {
-                        onAddComment?.(content, mentions, parentId);
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 text-center py-4">No comments yet</p>
+                  {/* Comments List */}
+                  {isLoadingComments ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full" />
+                    </div>
+                  ) : topLevelComments.length > 0 ? (
+                    <div className="space-y-3">
+                      {topLevelComments.map((comment) => (
+                        <TaskCommentItem
+                          key={comment.id}
+                          comment={comment}
+                          currentUserId={currentUserId}
+                          members={mentionSuggestions}
+                          onEdit={(commentId, content, mentions) => {
+                            onEditComment?.(commentId, content, mentions);
+                          }}
+                          onDelete={(commentId) => {
+                            onDeleteComment?.(commentId);
+                          }}
+                          onReply={(parentId, content, mentions) => {
+                            onAddComment?.(content, mentions, parentId);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-gray-400 text-center py-3">No comments yet</p>
+                  )}
+                </>
               )}
             </div>
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────────── */}
         {/* Footer */}
-        {/* ─────────────────────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 px-4 py-2 border-t border-gray-100 bg-gray-50/50">
-          <div className="flex items-center text-[10px] text-gray-400">
-            <Clock className="w-3 h-3 mr-1" />
+        <div className="flex-shrink-0 px-4 py-2 border-t border-gray-50 bg-gray-50/50">
+          <div className="flex items-center text-[9px] text-gray-400">
+            <Clock className="w-2.5 h-2.5 mr-1" />
             Created {format(new Date(task.created_at), 'MMM d, yyyy')}
             {task.creator && <span className="ml-1">by {task.creator.full_name || task.creator.email}</span>}
           </div>
@@ -751,7 +721,7 @@ export function TaskDetailOverlay({
           onClose();
         }}
         title="Delete Task"
-        description="This action cannot be undone. This task will be permanently deleted."
+        description="This action cannot be undone."
         itemName={task.title}
       />
     </>

@@ -174,7 +174,13 @@ export default function TaskBoard() {
   // Task comments and attachments hooks (only fetch when task is selected)
   const { data: taskComments = [], isLoading: isLoadingComments } = useTaskComments(selectedTask?.id);
   const { data: taskAttachments = [], isLoading: isLoadingAttachments } = useTaskAttachments(selectedTask?.id);
-  const createComment = useCreateTaskComment(selectedTask?.id || '', organizationId);
+  // Get current user's profile for optimistic comment updates
+  const currentUserProfile = members.find((m) => m.user_id === user?.id);
+  const createComment = useCreateTaskComment(selectedTask?.id || '', organizationId, {
+    id: user?.id || '',
+    full_name: currentUserProfile?.full_name,
+    email: user?.email,
+  });
   const updateComment = useUpdateTaskComment(selectedTask?.id || '');
   const deleteComment = useDeleteTaskComment(selectedTask?.id || '');
   const uploadAttachment = useUploadTaskAttachment(selectedTask?.id || '', organizationId);

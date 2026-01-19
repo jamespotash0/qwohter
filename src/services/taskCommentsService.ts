@@ -37,27 +37,28 @@ interface TaskCommentRow {
 // =============================================================================
 
 /**
- * Fetch all comments for a task (with replies)
+ * Fetch all comments for a task (with nested replies - supports unlimited depth like Jira)
  */
 export async function fetchTaskComments(taskId: string): Promise<TaskComment[]> {
-  // Fetch top-level comments
+  // Fetch ALL comments for this task in a single query
   const { data, error } = await supabase
     .from('task_comments')
     .select('*')
     .eq('task_id', taskId)
-    .is('parent_id', null)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
 
-  const comments = (data || []) as unknown as TaskCommentRow[];
+  const allComments = (data || []) as unknown as TaskCommentRow[];
+  if (allComments.length === 0) return [];
 
-  // Get all unique user IDs from comments
-  const userIds = [...new Set(comments.map(c => c.user_id))];
+  // Get all unique user IDs from all comments
+  const userIds = [...new Set(allComments.map(c => c.user_id))];
 
   // Fetch user profiles separately (profiles.id = auth.users.id via FK)
   type UserProfile = { id: string; full_name: string | null; email: string | null };
-  let userMap: Record<string, UserProfile> = {};
+  const userMap: Record<string, UserProfile> = {};
+
   if (userIds.length > 0) {
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
@@ -88,64 +89,38 @@ export async function fetchTaskComments(taskId: string): Promise<TaskComment[]> 
     };
   };
 
-  // Map comments with user data
-  const commentsWithUsers: TaskComment[] = comments.map(c => ({
-    ...c,
-    user: getDisplayName(userMap[c.user_id], c.user_id),
-    replies: [],
-    reply_count: 0,
-  }));
+  // Convert all comments to TaskComment objects with user data
+  const commentMap: Record<string, TaskComment> = {};
+  allComments.forEach(c => {
+    commentMap[c.id] = {
+      ...c,
+      user: getDisplayName(userMap[c.user_id], c.user_id),
+      replies: [],
+      reply_count: 0,
+    };
+  });
 
-  // Get replies for each comment
-  const commentIds = commentsWithUsers.map(c => c.id);
-  if (commentIds.length > 0) {
-    const { data: replies } = await supabase
-      .from('task_comments')
-      .select('*')
-      .in('parent_id', commentIds)
-      .order('created_at', { ascending: true });
+  // Build the nested tree structure
+  const topLevelComments: TaskComment[] = [];
 
-    const typedReplies = (replies || []) as unknown as TaskCommentRow[];
+  allComments.forEach(c => {
+    const comment = commentMap[c.id];
+    if (!comment) return;
 
-    // Get user IDs from replies
-    const replyUserIds = [...new Set(typedReplies.map(r => r.user_id))];
-    const newUserIds = replyUserIds.filter(id => !userMap[id]);
-
-    if (newUserIds.length > 0) {
-      const { data: replyProfiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', newUserIds);
-
-      if (replyProfiles) {
-        (replyProfiles as UserProfile[]).forEach(p => {
-          userMap[p.id] = p;
-        });
-      }
+    const parent = c.parent_id ? commentMap[c.parent_id] : null;
+    if (parent) {
+      // This is a reply - attach to parent
+      parent.replies = parent.replies || [];
+      parent.replies.push(comment);
+      parent.reply_count = parent.replies.length;
+    } else if (!c.parent_id) {
+      // This is a top-level comment
+      topLevelComments.push(comment);
     }
+    // Note: If parent_id exists but parent is not found, comment is orphaned and ignored
+  });
 
-    // Attach replies to their parent comments
-    const repliesByParent = typedReplies.reduce((acc, reply) => {
-      const parentId = reply.parent_id;
-      if (parentId) {
-        if (!acc[parentId]) acc[parentId] = [];
-        acc[parentId].push({
-          ...reply,
-          user: getDisplayName(userMap[reply.user_id], reply.user_id),
-          replies: [],
-          reply_count: 0,
-        } as TaskComment);
-      }
-      return acc;
-    }, {} as Record<string, TaskComment[]>);
-
-    commentsWithUsers.forEach(comment => {
-      comment.replies = repliesByParent[comment.id] || [];
-      comment.reply_count = comment.replies.length;
-    });
-  }
-
-  return commentsWithUsers;
+  return topLevelComments;
 }
 
 /**

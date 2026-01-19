@@ -193,7 +193,7 @@ export function MentionInput({
         disabled={disabled}
         autoFocus={autoFocus}
         className={cn(
-          'w-full resize-none rounded-md border border-gray-200 bg-gray-50/50',
+          'w-full resize-none rounded-sm border border-gray-200 bg-gray-50/50',
           'px-3 py-2.5 text-sm leading-6',
           'placeholder:text-gray-400',
           'focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100',
@@ -245,15 +245,6 @@ export function MentionInput({
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Keyboard hint */}
-      {value.length > 0 && !showSuggestions && (
-        <div className="absolute bottom-2 right-2 pointer-events-none">
-          <span className="text-[10px] text-gray-400">
-            {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Enter to send
-          </span>
         </div>
       )}
     </div>
