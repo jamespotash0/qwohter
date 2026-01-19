@@ -5,8 +5,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Clock, PaperPlaneTilt, Eye, PenNib, CheckCircle, XCircle, At, UserPlus, Users } from '@phosphor-icons/react';
-import { BellRing, CalendarClock, CreditCard, AlertTriangle, Sparkles, Ban, RefreshCw, UserPlus2 } from 'lucide-react';
+import { Clock, PaperPlaneTilt, Eye, PenNib, CheckCircle, XCircle, At, UserPlus, Users, Phone } from '@phosphor-icons/react';
+import { BellRing, CalendarClock, CreditCard, AlertTriangle, Sparkles, Ban, RefreshCw, UserPlus2, Mail, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -77,6 +77,8 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
   const [localPrefs, setLocalPrefs] = useState<Partial<NotificationPreferences>>({});
   const [emailInput, setEmailInput] = useState('');
   const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
   const hasInitialized = useRef(false);
 
   // Sync local state with server data - only on initial load
@@ -85,6 +87,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
       hasInitialized.current = true;
       setLocalPrefs(preferences);
       setEmailInput(preferences.notification_email || userEmail || '');
+      setPhoneInput(preferences.sms_phone || '');
     }
   }, [preferences, userEmail]);
 
@@ -133,11 +136,29 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
     setIsEditingEmail(false);
   }, [emailInput, userEmail, savePreference]);
 
+  // Handle phone save
+  const handlePhoneSave = useCallback(() => {
+    const trimmedPhone = phoneInput.trim();
+    if (!trimmedPhone) {
+      savePreference('sms_phone', null);
+      // Disable SMS if no phone number
+      if (localPrefs.sms_enabled) {
+        savePreference('sms_enabled', false);
+      }
+    } else {
+      savePreference('sms_phone', trimmedPhone);
+    }
+    setIsEditingPhone(false);
+  }, [phoneInput, savePreference, localPrefs.sms_enabled]);
+
   // Toggle all events on or off - must be before early returns to maintain hooks order
   const handleToggleAllEvents = useCallback((enabled: boolean) => {
     if (!userId || !organizationId) return;
 
-    const updates = {
+    const isAdminOrOwner = userRole === 'Owner' || userRole === 'Admin';
+
+    // Base updates for all users (Members see these)
+    const updates: Record<string, boolean> = {
       email_on_signature_sent: enabled,
       email_on_signature_viewed: enabled,
       email_on_signature_signed: enabled,
@@ -146,18 +167,22 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
       email_on_proposal_rejected: enabled,
       email_on_mention: enabled,
       email_on_task_assigned: enabled,
-      email_on_member_joined: enabled,
       email_on_reminder_due: enabled,
       email_on_task_due: enabled,
-      // Payment/Subscription
-      email_on_payment_success: enabled,
-      email_on_payment_failed: enabled,
-      email_on_trial_ending: enabled,
-      email_on_subscription_activated: enabled,
-      email_on_subscription_canceled: enabled,
-      email_on_subscription_renewed: enabled,
-      email_on_seat_count_changed: enabled,
     };
+
+    // Admin/Owner only notifications
+    if (isAdminOrOwner) {
+      updates.email_on_member_joined = enabled;
+      // Payment/Subscription
+      updates.email_on_payment_success = enabled;
+      updates.email_on_payment_failed = enabled;
+      updates.email_on_trial_ending = enabled;
+      updates.email_on_subscription_activated = enabled;
+      updates.email_on_subscription_canceled = enabled;
+      updates.email_on_subscription_renewed = enabled;
+      updates.email_on_seat_count_changed = enabled;
+    }
 
     // Update local state immediately
     setLocalPrefs((prev) => ({ ...prev, ...updates }));
@@ -202,8 +227,11 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
     );
   }
 
-  // Check if all events are enabled
-  const allEventsEnabled =
+  // Check if all events are enabled (role-aware)
+  const isAdminOrOwner = userRole === 'Owner' || userRole === 'Admin';
+
+  // Base events all users can toggle
+  const baseEventsEnabled =
     (localPrefs.email_on_signature_sent ?? true) &&
     (localPrefs.email_on_signature_viewed ?? true) &&
     (localPrefs.email_on_signature_signed ?? true) &&
@@ -212,17 +240,22 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
     (localPrefs.email_on_proposal_rejected ?? false) &&
     (localPrefs.email_on_mention ?? true) &&
     (localPrefs.email_on_task_assigned ?? true) &&
-    (localPrefs.email_on_member_joined ?? true) &&
     (localPrefs.email_on_reminder_due ?? true) &&
-    (localPrefs.email_on_task_due ?? true) &&
-    // Payment/Subscription
-    (localPrefs.email_on_payment_success ?? true) &&
-    (localPrefs.email_on_payment_failed ?? true) &&
-    (localPrefs.email_on_trial_ending ?? true) &&
-    (localPrefs.email_on_subscription_activated ?? true) &&
-    (localPrefs.email_on_subscription_canceled ?? true) &&
-    (localPrefs.email_on_subscription_renewed ?? true) &&
-    (localPrefs.email_on_seat_count_changed ?? false);
+    (localPrefs.email_on_task_due ?? true);
+
+  // Admin/Owner events
+  const adminEventsEnabled = isAdminOrOwner
+    ? (localPrefs.email_on_member_joined ?? true) &&
+      (localPrefs.email_on_payment_success ?? true) &&
+      (localPrefs.email_on_payment_failed ?? true) &&
+      (localPrefs.email_on_trial_ending ?? true) &&
+      (localPrefs.email_on_subscription_activated ?? true) &&
+      (localPrefs.email_on_subscription_canceled ?? true) &&
+      (localPrefs.email_on_subscription_renewed ?? true) &&
+      (localPrefs.email_on_seat_count_changed ?? false)
+    : true; // For members, admin events don't affect "all" status
+
+  const allEventsEnabled = baseEventsEnabled && adminEventsEnabled;
 
   return (
     <div className="w-full max-w-5xl min-w-[640px]">
@@ -234,91 +267,159 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
       </div>
 
-      {/* Delivery Mode */}
+      {/* Delivery Channels */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-5 mb-6">
         <div className="flex items-start gap-3 mb-4">
           <Clock className="w-5 h-5 text-gray-500 dark:text-gray-400 mt-0.5" />
           <div>
             <Label className="text-base font-semibold text-gray-900 dark:text-white">
-              Delivery Mode
+              Delivery Channels
             </Label>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Choose when to receive email notifications
+              Choose how you want to receive notifications
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 ml-8">
-          <Select
-            value={localPrefs.digest_mode || 'instant'}
-            onValueChange={(value: DigestMode) => {
-              savePreference('digest_mode', value);
-              // Set default digest time when switching to daily if not already set
-              if (value === 'daily' && !localPrefs.digest_time) {
-                savePreference('digest_time', '09:00:00');
-              }
-            }}
-            disabled={isPending}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="instant">Send immediately</SelectItem>
-              <SelectItem value="daily">Daily digest</SelectItem>
-            </SelectContent>
-          </Select>
-          {localPrefs.digest_mode === 'daily' && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <span>at</span>
+
+        {/* Email Delivery */}
+        <div className="ml-8 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">Email</span>
+            </div>
+            <Switch
+              checked={localPrefs.email_enabled ?? true}
+              onCheckedChange={(checked) => savePreference('email_enabled', checked)}
+              disabled={isPending}
+            />
+          </div>
+          {(localPrefs.email_enabled ?? true) && (
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               <Select
-                value={localPrefs.digest_time || '09:00:00'}
-                onValueChange={(value) => savePreference('digest_time', value)}
+                value={localPrefs.digest_mode || 'instant'}
+                onValueChange={(value: DigestMode) => {
+                  savePreference('digest_mode', value);
+                  if (value === 'daily' && !localPrefs.digest_time) {
+                    savePreference('digest_time', '09:00:00');
+                  }
+                }}
                 disabled={isPending}
               >
-                <SelectTrigger className="w-28 text-gray-900 dark:text-white">
+                <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="06:00:00">6:00 AM</SelectItem>
-                  <SelectItem value="07:00:00">7:00 AM</SelectItem>
-                  <SelectItem value="08:00:00">8:00 AM</SelectItem>
-                  <SelectItem value="09:00:00">9:00 AM</SelectItem>
-                  <SelectItem value="10:00:00">10:00 AM</SelectItem>
-                  <SelectItem value="12:00:00">12:00 PM</SelectItem>
-                  <SelectItem value="17:00:00">5:00 PM</SelectItem>
-                  <SelectItem value="18:00:00">6:00 PM</SelectItem>
+                  <SelectItem value="instant">Send immediately</SelectItem>
+                  <SelectItem value="daily">Daily digest</SelectItem>
                 </SelectContent>
               </Select>
+              {localPrefs.digest_mode === 'daily' && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span>at</span>
+                  <Select
+                    value={localPrefs.digest_time || '09:00:00'}
+                    onValueChange={(value) => savePreference('digest_time', value)}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger className="w-28 text-gray-900 dark:text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="06:00:00">6:00 AM</SelectItem>
+                      <SelectItem value="07:00:00">7:00 AM</SelectItem>
+                      <SelectItem value="08:00:00">8:00 AM</SelectItem>
+                      <SelectItem value="09:00:00">9:00 AM</SelectItem>
+                      <SelectItem value="10:00:00">10:00 AM</SelectItem>
+                      <SelectItem value="12:00:00">12:00 PM</SelectItem>
+                      <SelectItem value="17:00:00">5:00 PM</SelectItem>
+                      <SelectItem value="18:00:00">6:00 PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <span className="text-sm text-gray-500">to</span>
+              {isEditingEmail ? (
+                <Input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onBlur={handleEmailSave}
+                  onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
+                  className="w-64 h-9"
+                  placeholder="Enter email address"
+                  autoFocus
+                  disabled={isPending}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailInput(currentEmail);
+                    setIsEditingEmail(true);
+                  }}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  disabled={isPending}
+                >
+                  {currentEmail || 'Add email'}
+                </button>
+              )}
             </div>
           )}
-          <span className="text-sm text-gray-500">@</span>
-          {isEditingEmail ? (
+        </div>
+
+        {/* SMS Delivery */}
+        <div className="ml-8">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Input
-                type="email"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                onBlur={handleEmailSave}
-                onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
-                className="w-64 h-9"
-                placeholder="Enter email address"
-                autoFocus
-                disabled={isPending}
-              />
+              <MessageSquare className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white">SMS</span>
+              <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">Coming Soon</span>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setEmailInput(currentEmail);
-                setIsEditingEmail(true);
+            <Switch
+              checked={localPrefs.sms_enabled ?? false}
+              onCheckedChange={(checked) => {
+                if (checked && !localPrefs.sms_phone) {
+                  toast.error('Please add a phone number first');
+                  setIsEditingPhone(true);
+                  return;
+                }
+                savePreference('sms_enabled', checked);
               }}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              disabled={isPending}
-            >
-              {currentEmail || 'Add email'}
-            </button>
-          )}
+              disabled={isPending || true} // Disabled until SMS is implemented
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <Phone className="w-4 h-4 text-gray-400" />
+            {isEditingPhone ? (
+              <Input
+                type="tel"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                onBlur={handlePhoneSave}
+                onKeyDown={(e) => e.key === 'Enter' && handlePhoneSave()}
+                className="w-48 h-9"
+                placeholder="+1 (555) 123-4567"
+                autoFocus
+                disabled={isPending || true} // Disabled until SMS is implemented
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setPhoneInput(localPrefs.sms_phone || '');
+                  setIsEditingPhone(true);
+                }}
+                className="text-sm text-gray-400 cursor-not-allowed"
+                disabled={true} // Disabled until SMS is implemented
+              >
+                {localPrefs.sms_phone || 'Add phone number'}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mt-2 ml-6">
+            SMS notifications will be available in a future update
+          </p>
         </div>
       </div>
 
@@ -437,16 +538,25 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
             onCheckedChange={(checked) => savePreference('email_on_task_due', checked)}
             disabled={isPending}
           />
-          <NotificationToggle
-            id="email_on_member_joined"
-            label="Member Joined"
-            description="When a new member joins your organization (Admin/Owner only)"
-            icon={<Users className="w-4 h-4" />}
-            checked={localPrefs.email_on_member_joined ?? true}
-            onCheckedChange={(checked) => savePreference('email_on_member_joined', checked)}
-            disabled={isPending}
-          />
         </div>
+
+        {/* Admin & Organization Section - Only show to Owners and Admins */}
+        {(userRole === 'Owner' || userRole === 'Admin') && (
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              Organization
+            </h4>
+            <NotificationToggle
+              id="email_on_member_joined"
+              label="Member Joined"
+              description="When a new member joins your organization"
+              icon={<Users className="w-4 h-4" />}
+              checked={localPrefs.email_on_member_joined ?? true}
+              onCheckedChange={(checked) => savePreference('email_on_member_joined', checked)}
+              disabled={isPending}
+            />
+          </div>
+        )}
 
         {/* Billing & Subscription Section - Only show to Owners and Admins */}
         {(userRole === 'Owner' || userRole === 'Admin') && (

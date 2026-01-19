@@ -124,6 +124,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
 // =============================================================================
 
 export type DigestMode = 'instant' | 'daily';
+export type DeliveryChannel = 'email' | 'sms' | 'both';
 
 export interface NotificationPreferences {
   id: string;
@@ -132,6 +133,8 @@ export interface NotificationPreferences {
 
   // Delivery settings
   email_enabled: boolean;
+  sms_enabled: boolean;
+  sms_phone?: string | null;
   digest_mode: DigestMode;
   digest_time: string;
   notification_email?: string | null;
@@ -173,6 +176,8 @@ export interface UpdateNotificationPreferencesInput {
   user_id: string;
   organization_id: string;
   email_enabled?: boolean;
+  sms_enabled?: boolean;
+  sms_phone?: string | null;
   digest_mode?: DigestMode;
   digest_time?: string;
   notification_email?: string | null;
@@ -199,6 +204,8 @@ export interface UpdateNotificationPreferencesInput {
 // Default preferences for new users
 export const DEFAULT_NOTIFICATION_PREFERENCES: Omit<NotificationPreferences, 'id' | 'user_id' | 'organization_id' | 'created_at' | 'updated_at'> = {
   email_enabled: true,
+  sms_enabled: false,
+  sms_phone: null,
   digest_mode: 'instant',
   digest_time: '09:00:00',
   notification_email: null,
