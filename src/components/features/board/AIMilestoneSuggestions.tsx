@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { formatLocalDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -63,15 +64,6 @@ export const AIMilestoneSuggestions: React.FC<AIMilestoneSuggestionsProps> = ({
     const selectedMilestones = suggestions.filter(s => selectedIds.has(s.id));
     onAddMilestones(selectedMilestones);
     onClose();
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
   };
 
   return (
@@ -144,7 +136,7 @@ export const AIMilestoneSuggestions: React.FC<AIMilestoneSuggestionsProps> = ({
                     {milestone.date && (
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        <span>{formatDate(milestone.date)}</span>
+                        <span>{formatLocalDate(milestone.date)}</span>
                       </div>
                     )}
                   </div>

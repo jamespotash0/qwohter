@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isPast, isToday, isTomorrow } from 'date-fns';
-import { cn, parseLocalDate } from '@/lib/utils';
+import { cn, parseLocalDate, localTimeToUTC, utcTimeToLocal } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,11 +42,12 @@ import {
   DownloadSimple,
   CaretDown,
   CaretRight,
+  BellSimple,
 } from '@phosphor-icons/react';
 import { TaskDeleteDialog } from './TaskDeleteDialog';
 import { MentionInput } from './MentionInput';
 import { TaskCommentItem } from './TaskCommentItem';
-import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
+import type { ProjectTask, TaskPriority, ReminderRecurrence } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import type { TaskComment, TaskAttachment, MentionSuggestion } from '@/lib/types/taskComments';
 import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
@@ -184,6 +185,10 @@ export function TaskDetailOverlay({
   const [newComment, setNewComment] = useState('');
   const [newCommentMentions, setNewCommentMentions] = useState<string[]>([]);
   const [isCommentsCollapsed, setIsCommentsCollapsed] = useState(false);
+  const [remindBeforeDays, setRemindBeforeDays] = useState<number | null>(task.remind_before_days ?? null);
+  const [reminderTime, setReminderTime] = useState(task.reminder_time || '09:00');
+  const [reminderRecurrence, setReminderRecurrence] = useState<ReminderRecurrence>(task.reminder_recurrence || 'once');
+  const [reminderHoursBefore, setReminderHoursBefore] = useState<number | null>(task.reminder_hours_before ?? null);
 
   // Sync local state when task changes
   useEffect(() => {
@@ -192,8 +197,14 @@ export function TaskDetailOverlay({
     setPriority(task.priority);
     setDueDate(task.due_date || '');
     setAssignee(task.assigned_to || '');
+    setRemindBeforeDays(task.remind_before_days ?? null);
+    // Convert UTC time from database to user's local time for display
+    const utcTime = task.reminder_time?.substring(0, 5) || '09:00';
+    setReminderTime(utcTimeToLocal(utcTime));
+    setReminderRecurrence(task.reminder_recurrence || 'once');
+    setReminderHoursBefore(task.reminder_hours_before ?? null);
     setDescriptionChanged(false);
-  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to]);
+  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to, task.remind_before_days, task.reminder_time, task.reminder_recurrence, task.reminder_hours_before]);
 
   const activeMembers = members.filter((m) => m.status === 'Active');
 
@@ -483,6 +494,189 @@ export function TaskDetailOverlay({
                     Clear
                   </Button>
                 )}
+              </PopoverContent>
+            </Popover>
+
+            {/* Reminder */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    'h-6 px-2 text-[11px] rounded-md flex items-center gap-1',
+                    'bg-gray-50 hover:bg-gray-100 transition-colors',
+                    (remindBeforeDays !== null || reminderHoursBefore !== null) && 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                  )}
+                  disabled={!dueDate}
+                  title={!dueDate ? 'Set a due date first' : undefined}
+                >
+                  <BellSimple className="w-3 h-3" />
+                  <span>
+                    {reminderRecurrence === 'hourly' && reminderHoursBefore !== null
+                      ? `${reminderHoursBefore}h before`
+                      : remindBeforeDays === null
+                      ? 'No reminder'
+                      : reminderRecurrence === 'daily'
+                      ? `Daily (${remindBeforeDays}d before)`
+                      : remindBeforeDays === 0
+                      ? 'On due date'
+                      : remindBeforeDays === 1
+                      ? '1 day before'
+                      : `${remindBeforeDays} days before`}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-3" align="start">
+                <div className="space-y-3">
+                  {/* Recurrence Type */}
+                  <div>
+                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                      Reminder type
+                    </label>
+                    <Select
+                      value={reminderRecurrence}
+                      onValueChange={(value: ReminderRecurrence) => {
+                        setReminderRecurrence(value);
+                        handleSave('reminder_recurrence', value);
+                        // Reset sent flags when changing type
+                        handleSave('reminder_sent', false);
+                        handleSave('last_reminder_sent_at', null);
+                        // Set defaults based on type
+                        if (value === 'hourly') {
+                          setRemindBeforeDays(null);
+                          handleSave('remind_before_days', null);
+                          if (reminderHoursBefore === null) {
+                            setReminderHoursBefore(2);
+                            handleSave('reminder_hours_before', 2);
+                          }
+                        } else {
+                          setReminderHoursBefore(null);
+                          handleSave('reminder_hours_before', null);
+                          if (remindBeforeDays === null) {
+                            setRemindBeforeDays(1);
+                            handleSave('remind_before_days', 1);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="once">Once</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="hourly">Hours before</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Days before (for once/daily) */}
+                  {reminderRecurrence !== 'hourly' && (
+                    <div>
+                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        {reminderRecurrence === 'daily' ? 'Start reminding' : 'Remind me'}
+                      </label>
+                      <Select
+                        value={remindBeforeDays?.toString() ?? 'none'}
+                        onValueChange={(value) => {
+                          const days = value === 'none' ? null : parseInt(value, 10);
+                          setRemindBeforeDays(days);
+                          handleSave('remind_before_days', days);
+                          handleSave('reminder_sent', false);
+                          handleSave('last_reminder_sent_at', null);
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No reminder</SelectItem>
+                          <SelectItem value="0">On due date</SelectItem>
+                          <SelectItem value="1">1 day before</SelectItem>
+                          <SelectItem value="2">2 days before</SelectItem>
+                          <SelectItem value="3">3 days before</SelectItem>
+                          <SelectItem value="7">1 week before</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Hours before (for hourly) */}
+                  {reminderRecurrence === 'hourly' && (
+                    <div>
+                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        Hours before due time
+                      </label>
+                      <Select
+                        value={reminderHoursBefore?.toString() ?? '2'}
+                        onValueChange={(value) => {
+                          const hours = parseInt(value, 10);
+                          setReminderHoursBefore(hours);
+                          handleSave('reminder_hours_before', hours);
+                          handleSave('reminder_sent', false);
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 hour before</SelectItem>
+                          <SelectItem value="2">2 hours before</SelectItem>
+                          <SelectItem value="4">4 hours before</SelectItem>
+                          <SelectItem value="8">8 hours before</SelectItem>
+                          <SelectItem value="12">12 hours before</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Time (for all types) */}
+                  {(remindBeforeDays !== null || reminderRecurrence === 'hourly') && (
+                    <div>
+                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                        {reminderRecurrence === 'hourly' ? 'Due time' : 'At time'}
+                      </label>
+                      <Input
+                        type="time"
+                        value={reminderTime}
+                        onChange={(e) => {
+                          const localTime = e.target.value;
+                          setReminderTime(localTime);
+                          // Convert local time to UTC before saving to database
+                          const utcTime = localTimeToUTC(localTime);
+                          handleSave('reminder_time', utcTime);
+                          handleSave('reminder_sent', false);
+                          handleSave('last_reminder_sent_at', null);
+                        }}
+                        className="h-7 text-xs mt-1"
+                      />
+                      <p className="text-[9px] text-gray-400 mt-1">
+                        {reminderRecurrence === 'daily' && 'Reminder sent daily at this time (your local time)'}
+                        {reminderRecurrence === 'hourly' && 'Reminder sent X hours before this time'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Clear reminder button */}
+                  {(remindBeforeDays !== null || reminderHoursBefore !== null) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-6 text-[10px] text-gray-500"
+                      onClick={() => {
+                        setRemindBeforeDays(null);
+                        setReminderHoursBefore(null);
+                        setReminderRecurrence('once');
+                        handleSave('remind_before_days', null);
+                        handleSave('reminder_hours_before', null);
+                        handleSave('reminder_recurrence', 'once');
+                        handleSave('reminder_sent', false);
+                        handleSave('last_reminder_sent_at', null);
+                      }}
+                    >
+                      Clear reminder
+                    </Button>
+                  )}
+                </div>
               </PopoverContent>
             </Popover>
 

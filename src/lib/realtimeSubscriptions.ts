@@ -24,7 +24,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 // Channel registry to prevent duplicate subscriptions
 const channelRegistry = new Map<string, { channel: RealtimeChannel; refCount: number }>();
 
-type TableName = 'reminders' | 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'contacts' | 'profiles' | 'subscription_plans' | 'project_tasks' | 'task_board_columns' | 'project_workflow_columns' | 'products' | 'proposals' | 'proposal_activities' | 'proposal_status_transitions' | 'forms' | 'document_templates' | 'form_document_templates' | 'notifications' | 'proposal_approval_requests';
+type TableName = 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'contacts' | 'profiles' | 'subscription_plans' | 'project_tasks' | 'task_board_columns' | 'project_workflow_columns' | 'products' | 'proposals' | 'proposal_activities' | 'proposal_status_transitions' | 'forms' | 'document_templates' | 'form_document_templates' | 'notifications' | 'proposal_approval_requests';
 
 interface SubscriptionOptions {
   /**

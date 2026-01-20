@@ -157,14 +157,6 @@ export const queryKeys = {
       [...queryKeys.board.all, 'tasks', organizationId] as const,
   },
 
-  // Reminders
-  reminders: {
-    all: ['reminders'] as const,
-    lists: () => [...queryKeys.reminders.all, 'list'] as const,
-    list: (organizationId: string) =>
-      [...queryKeys.reminders.lists(), organizationId] as const,
-  },
-
   // Integrations
   integrations: {
     all: ['integrations'] as const,

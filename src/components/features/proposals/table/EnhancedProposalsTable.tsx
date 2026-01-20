@@ -40,7 +40,7 @@ import { toast } from "sonner";
 import { invalidateQueries } from "@/lib/queryClient";
 import { ProposalsTableToolbar } from './components/ProposalsTableToolbar';
 import { groupProposalsByVersion, getBaseProposalNumber, type ProposalVersionGroup } from '@/utils/proposalVersionGrouping';
-import { formatDateEST } from '@/utils/dateUtils';
+import { formatTimestamp } from '@/lib/utils';
 import useEnhancedProposalSearch from '@/hooks/useEnhancedProposalSearch';
 import { usePagePreferences } from '@/stores';
 
@@ -589,7 +589,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
         }
         return (
           <div className="text-[13px] text-gray-900 dark:text-gray-100">
-            {proposal.created_at ? formatDateEST(proposal.created_at) : '—'}
+            {proposal.created_at ? formatTimestamp(proposal.created_at) : '—'}
           </div>
         );
       },
@@ -1050,7 +1050,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                               )}
                             </td>
                             <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700" style={{ width: table.getColumn('created_at')?.getSize() }}>
-                              {version.created_at ? formatDateEST(version.created_at) : '—'}
+                              {version.created_at ? formatTimestamp(version.created_at) : '—'}
                             </td>
                             <td className="px-3 py-1" style={{ width: table.getColumn('actions')?.getSize() }}>
                               <DropdownMenu>

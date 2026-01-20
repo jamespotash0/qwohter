@@ -12,7 +12,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, formatLocalDate } from '@/lib/utils';
 
 interface DatePickerInputProps {
   value: string; // ISO date string (YYYY-MM-DD)
@@ -22,27 +22,12 @@ interface DatePickerInputProps {
   disabled?: boolean;
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  try {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
-}
-
 // Convert YYYY-MM-DD string to Date object (local time)
 function parseToDate(dateStr: string): Date | undefined {
   if (!dateStr) return undefined;
   try {
     const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    return new Date(year as any, month - 1, day);
   } catch {
     return undefined;
   }
@@ -67,7 +52,7 @@ export function DatePickerInput({
 
   const displayText = useMemo(() => {
     if (!value) return placeholder;
-    return formatDate(value);
+    return formatLocalDate(value);
   }, [value, placeholder]);
 
   const selectedDate = useMemo(() => parseToDate(value), [value]);

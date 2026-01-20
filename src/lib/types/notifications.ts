@@ -8,6 +8,7 @@ export type NotificationType =
   // Existing types
   | 'task_assigned'
   | 'task_due'
+  | 'task_reminder'
   | 'update_mention'
   | 'update_reply'
   | 'general'
@@ -94,6 +95,7 @@ export interface CreateNotificationInput {
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   task_assigned: 'Task Assigned',
   task_due: 'Task Due',
+  task_reminder: 'Task Reminder',
   update_mention: 'Mentioned',
   update_reply: 'Reply',
   general: 'Notification',
@@ -157,6 +159,8 @@ export interface NotificationPreferences {
   // Reminders & Due Dates
   email_on_reminder_due: boolean;
   email_on_task_due: boolean;
+  email_on_task_reminder: boolean;
+  sms_on_task_reminder: boolean;
 
   // Payment/Subscription events
   email_on_payment_success: boolean;
@@ -192,6 +196,8 @@ export interface UpdateNotificationPreferencesInput {
   email_on_member_joined?: boolean;
   email_on_reminder_due?: boolean;
   email_on_task_due?: boolean;
+  email_on_task_reminder?: boolean;
+  sms_on_task_reminder?: boolean;
   email_on_payment_success?: boolean;
   email_on_payment_failed?: boolean;
   email_on_trial_ending?: boolean;
@@ -220,6 +226,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Omit<NotificationPreferences, 'id
   email_on_member_joined: true,
   email_on_reminder_due: true,
   email_on_task_due: true,
+  email_on_task_reminder: true,
+  sms_on_task_reminder: false,
   // Payment/Subscription defaults
   email_on_payment_success: true,
   email_on_payment_failed: true,

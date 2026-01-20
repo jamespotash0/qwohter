@@ -51,7 +51,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatDateEST } from '@/utils/dateUtils';
+import { formatLocalDate } from '@/lib/utils';
 import { File as FileIcon } from '@phosphor-icons/react';
 import { ProjectDeleteDialog } from '@/components/features/board/ProjectDeleteDialog';
 
@@ -994,7 +994,7 @@ export default function Board() {
                                     <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                       <button className="flex items-center gap-1 text-purple-600 cursor-pointer hover:opacity-80">
                                         <CalendarIcon className="w-3 h-3" />
-                                        <span>{formatDateEST(project.completion_date)}</span>
+                                        <span>{formatLocalDate(project.completion_date)}</span>
                                       </button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>

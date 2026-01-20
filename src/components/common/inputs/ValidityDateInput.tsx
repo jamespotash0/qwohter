@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, formatLocalDate } from '@/lib/utils';
 
 type ReferenceDate = 'proposal' | 'today' | 'custom';
 
@@ -34,7 +34,7 @@ interface ValidityDateInputProps {
 
 function addDays(dateStr: string, days: number): string {
   const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
+  const date = new Date(year as any, month - 1, day);
   date.setDate(date.getDate() + days);
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -45,32 +45,17 @@ function addDays(dateStr: string, days: number): string {
 function daysBetween(date1: string, date2: string): number {
   const [y1, m1, d1] = date1.split('-').map(Number);
   const [y2, m2, d2] = date2.split('-').map(Number);
-  const start = new Date(y1, m1 - 1, d1);
-  const end = new Date(y2, m2 - 1, d2);
+  const start = new Date(y1 as any, m1 - 1, d1);
+  const end = new Date(y2 as any, m2 - 1, d2);
   const diffTime = end.getTime() - start.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  try {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 function parseToDate(dateStr: string): Date | undefined {
   if (!dateStr) return undefined;
   try {
     const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    return new Date(year as any, month - 1, day);
   } catch {
     return undefined;
   }
@@ -178,7 +163,7 @@ export function ValidityDateInput({
 
   const displayText = useMemo(() => {
     if (!value) return 'Set validity...';
-    return formatDate(value);
+    return formatLocalDate(value);
   }, [value]);
 
   const selectedDate = useMemo(() => parseToDate(value), [value]);
@@ -244,7 +229,7 @@ export function ValidityDateInput({
               onClick={() => setShowCalendar(true)}
             >
               <CalendarBlank className="mr-1.5 h-3 w-3" />
-              {customDate ? formatDate(customDate) : 'Select reference date...'}
+              {customDate ? formatLocalDate(customDate) : 'Select reference date...'}
             </Button>
           )}
 
@@ -282,7 +267,7 @@ export function ValidityDateInput({
                 onClick={() => setShowCalendar(true)}
               >
                 <CalendarBlank className="mr-1.5 h-3 w-3" />
-                {value ? `Change: ${formatDate(value)}` : 'Or pick specific date...'}
+                {value ? `Change: ${formatLocalDate(value)}` : 'Or pick specific date...'}
               </Button>
             </div>
           )}
@@ -319,7 +304,7 @@ export function ValidityDateInput({
                   <CalendarBlank className="w-3.5 h-3.5 text-gray-400" />
                   <span className="text-gray-500">Valid until:</span>
                   <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {formatDate(value)}
+                    {formatLocalDate(value)}
                   </span>
                 </div>
                 <Button

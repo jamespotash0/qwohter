@@ -491,50 +491,6 @@ export interface Database {
           updated_at?: string;
         };
       };
-      reminders: {
-        Row: {
-          id: string;
-          organization_id: string;
-          title: string;
-          description: string | null;
-          due_date: string;
-          priority: 'High' | 'Medium' | 'Low';
-          reminder_status: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
-          assigned_to: string | null;
-          created_by: string;
-          created_at: string;
-          updated_at: string;
-          completed_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          title: string;
-          description?: string | null;
-          due_date: string;
-          priority?: 'High' | 'Medium' | 'Low';
-          reminder_status?: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
-          assigned_to?: string | null;
-          created_by: string;
-          created_at?: string;
-          updated_at?: string;
-          completed_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          title?: string;
-          description?: string | null;
-          due_date?: string;
-          priority?: 'High' | 'Medium' | 'Low';
-          reminder_status?: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
-          assigned_to?: string | null;
-          created_by?: string;
-          created_at?: string;
-          updated_at?: string;
-          completed_at?: string | null;
-        };
-      };
       invite_token_attempts: {
         Row: {
           id: string;

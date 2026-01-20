@@ -75,7 +75,14 @@ import {
   CaretDown,
   CaretRight,
   User,
+  BellSimple,
 } from '@phosphor-icons/react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Format date as local ISO string (without UTC conversion)
@@ -88,6 +95,34 @@ function toLocalISOString(date: Date): string {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Get reminder display text for tooltip
+ */
+function getReminderDisplayText(task: ProjectTask): string | null {
+  if (!task.remind_before_days && task.remind_before_days !== 0 && !task.reminder_hours_before) {
+    return null;
+  }
+
+  const recurrence = task.reminder_recurrence || 'once';
+  const time = task.reminder_time?.substring(0, 5) || '09:00';
+
+  if (recurrence === 'hourly' && task.reminder_hours_before) {
+    return `Reminder: ${task.reminder_hours_before}h before @ ${time}`;
+  }
+
+  const daysText = task.remind_before_days === 0
+    ? 'on due date'
+    : task.remind_before_days === 1
+    ? '1 day before'
+    : `${task.remind_before_days} days before`;
+
+  if (recurrence === 'daily') {
+    return `Daily reminder @ ${time} (starting ${daysText})`;
+  }
+
+  return `Reminder: ${daysText} @ ${time}`;
 }
 
 /**
@@ -1102,6 +1137,26 @@ export default function TaskBoard() {
                                   </PopoverContent>
                                 </Popover>
                               )}
+
+                              {/* Reminder Indicator */}
+                              {(() => {
+                                const reminderText = getReminderDisplayText(task);
+                                if (!reminderText) return null;
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <button className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600">
+                                          <BellSimple className="w-3 h-3" weight="fill" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {reminderText}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })()}
                             </div>
 
                             {/* Assignee */}

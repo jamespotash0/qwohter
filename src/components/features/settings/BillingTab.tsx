@@ -15,7 +15,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
-import { formatDateEST } from "@/utils/dateUtils";
+import { formatTimestamp } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStripe } from '@stripe/stripe-js';
 import { useQueryClient } from "@tanstack/react-query";
@@ -727,7 +727,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const formatDate = (dateString: string): string => {
-    return formatDateEST(dateString, {
+    return formatTimestamp(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

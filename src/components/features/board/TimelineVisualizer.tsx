@@ -19,7 +19,7 @@ import {
   updateMilestone,
   deleteMilestone
 } from '@/lib/timelineMilestones';
-import { formatDateEST } from '@/utils/dateUtils';
+import { formatLocalDate } from '@/lib/utils';
 import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 interface TimelineVisualizerProps {
@@ -228,7 +228,7 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
                       <div className="flex items-center gap-1.5 mt-1">
                         <Calendar className="w-3 h-3 text-gray-400" />
                         <span className="text-xs text-gray-600">
-                          {formatDateEST(item.date)}
+                          {formatLocalDate(item.date)}
                         </span>
                       </div>
 

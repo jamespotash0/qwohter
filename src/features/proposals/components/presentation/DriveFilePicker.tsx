@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, formatTimestamp } from '@/lib/utils';
 import { useDriveFiles, type DriveFile } from '@/hooks/queries/useDriveFiles';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useQueryClient } from '@tanstack/react-query';
@@ -88,16 +88,6 @@ export function DriveFilePicker({
     setOpen(false);
     setSearchQuery('');
   }, [onSelect]);
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -248,7 +238,7 @@ export function DriveFilePicker({
                       )}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Modified {formatDate(file.modifiedTime)}
+                      Modified {formatTimestamp(file.modifiedTime, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
                   <a

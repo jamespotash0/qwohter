@@ -38,16 +38,6 @@ export {
   useSession,
 } from './useAuth';
 
-// Reminders
-export {
-  useReminders,
-  useUpcomingReminders,
-  useCreateReminder,
-  useUpdateReminder,
-  useCompleteReminder,
-  useDeleteReminder,
-} from './useReminders';
-
 // Board
 export {
   useProjects,

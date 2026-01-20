@@ -31,7 +31,25 @@ interface NotificationPreferences {
   digest_mode: 'instant' | 'daily';
   email_on_reminder_due: boolean;
   email_on_task_due: boolean;
+  email_on_task_reminder: boolean;
   notification_email?: string | null;
+}
+
+// Format date for email display (uses Eastern Time as server default)
+function formatDateForEmail(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    // Fallback if date is invalid
+    return new Date(dateStr).toLocaleDateString();
+  }
 }
 
 // Generate email content for due notifications
@@ -40,9 +58,9 @@ function generateDueNotificationEmail(
   data: DueNotification,
   appUrl: string
 ): { subject: string; html: string; text: string } {
-  const isReminder = type === 'reminder_due';
+  const isReminder = type === 'reminder_due' || type === 'task_reminder';
   const headerColor = isReminder ? '#F59E0B' : '#EF4444';
-  const headerTitle = isReminder ? 'Reminder Due' : 'Task Due';
+  const headerTitle = type === 'task_reminder' ? 'Task Reminder' : (type === 'reminder_due' ? 'Reminder Due' : 'Task Due');
 
   return {
     subject: data.title,
@@ -74,7 +92,7 @@ function generateDueNotificationEmail(
               <p>${data.message}</p>
               ${data.metadata?.due_date ? `
                 <div class="info-box">
-                  <strong>Due:</strong> ${new Date(data.metadata.due_date as string).toLocaleString()}
+                  <strong>Due:</strong> ${formatDateForEmail(data.metadata.due_date as string)}
                   ${data.metadata.priority ? `<br><strong>Priority:</strong> ${data.metadata.priority}` : ''}
                 </div>
               ` : ''}
@@ -152,6 +170,7 @@ serve(async (req) => {
     let processed = 0;
     let errors = 0;
     let skipped = 0;
+    const taskReminderIds: string[] = []; // Track task IDs for marking as sent
 
     for (const notification of dueNotifications as DueNotification[]) {
       try {
@@ -178,7 +197,7 @@ serve(async (req) => {
         // Check user's email preferences
         const { data: preferences } = await supabase
           .from('notification_preferences')
-          .select('email_enabled, digest_mode, email_on_reminder_due, email_on_task_due, notification_email')
+          .select('email_enabled, digest_mode, email_on_reminder_due, email_on_task_due, email_on_task_reminder, notification_email')
           .eq('user_id', notification.user_id)
           .eq('organization_id', notification.organization_id)
           .single();
@@ -189,6 +208,7 @@ serve(async (req) => {
           digest_mode: 'instant',
           email_on_reminder_due: true,
           email_on_task_due: true,
+          email_on_task_reminder: true,
         };
 
         // Check if email is enabled globally
@@ -200,9 +220,18 @@ serve(async (req) => {
         }
 
         // Check if this specific notification type is enabled
-        const isEnabled = notification.notification_type === 'reminder_due'
-          ? userPrefs.email_on_reminder_due
-          : userPrefs.email_on_task_due;
+        let isEnabled = true;
+        switch (notification.notification_type) {
+          case 'reminder_due':
+            isEnabled = userPrefs.email_on_reminder_due;
+            break;
+          case 'task_reminder':
+            isEnabled = userPrefs.email_on_task_reminder;
+            break;
+          case 'task_due':
+            isEnabled = userPrefs.email_on_task_due;
+            break;
+        }
 
         if (!isEnabled) {
           console.log(`${notification.notification_type} emails disabled for user ${notification.user_id}`);
@@ -284,10 +313,27 @@ serve(async (req) => {
           console.log(`Sent ${notification.notification_type} email to ${recipientEmail}`);
         }
 
+        // Track task reminder IDs to mark as sent
+        if (notification.notification_type === 'task_reminder' && notification.metadata?.task_id) {
+          taskReminderIds.push(notification.metadata.task_id as string);
+        }
+
         processed++;
       } catch (notifError) {
         console.error(`Error processing notification:`, notifError);
         errors++;
+      }
+    }
+
+    // Mark task reminders as sent to prevent duplicates
+    if (taskReminderIds.length > 0) {
+      const { data: markedCount, error: markError } = await supabase
+        .rpc('mark_task_reminder_sent', { task_ids: taskReminderIds });
+
+      if (markError) {
+        console.error('Error marking task reminders as sent:', markError);
+      } else {
+        console.log(`Marked ${markedCount} task reminders as sent`);
       }
     }
 
@@ -299,6 +345,7 @@ serve(async (req) => {
         processed,
         skipped,
         errors,
+        taskRemindersMarked: taskReminderIds.length,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

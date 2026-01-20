@@ -26,7 +26,7 @@ import { EnhancedProposalsTable } from '@/components/features/proposals/table/En
 import CreateProposalDialog, { type ProposalInitialData } from '@/components/features/proposals/creation/CreateProposalDialog';
 import { ImportProposalDialog } from '@/components/features/proposals/import';
 import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
-import { formatDateEST } from '@/utils/dateUtils';
+import { formatTimestamp } from '@/lib/utils';
 import { createProposal, type CreateProposalData } from '@/services/proposalsService';
 import { checkApprovalRequired, requestApproval, approveProposal, getLatestApprovalRequest } from '@/services/proposalApprovalService';
 import { ApprovalRequestDialog } from '@/components/features/proposals/ApprovalRequestDialog';
@@ -326,7 +326,7 @@ export default function Proposals() {
         formatCurrency(p.total_value || 0),
         p.status || 'Draft',
         p.proposal_source || '',
-        formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
+        formatTimestamp(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
       ].map(escapeCsvField).join(',');
     });
 
@@ -352,7 +352,7 @@ export default function Proposals() {
       doc.setFontSize(16);
       doc.text('Proposals Export', 14, 15);
       doc.setFontSize(10);
-      doc.text(`Exported on: ${formatDateEST(new Date().toISOString(), {
+      doc.text(`Exported on: ${formatTimestamp(new Date().toISOString(), {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -373,7 +373,7 @@ export default function Proposals() {
         formatCurrency(p.total_value || 0),
         p.status || 'Draft',
         p.proposal_source || '',
-        formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
+        formatTimestamp(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
       ]);
 
       autoTable(doc, {
