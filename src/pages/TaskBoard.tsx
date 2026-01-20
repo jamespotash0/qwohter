@@ -57,7 +57,7 @@ import {
   notifyTaskCommentAdded,
   notifyTaskCommentReply,
 } from '@/services/notificationService';
-import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { TaskDeleteDialog } from '@/components/features/board/task-detail/TaskDeleteDialog';
 import type { ProjectTask } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import type { TaskAttachment } from '@/lib/types/taskComments';
@@ -1461,7 +1461,7 @@ export default function TaskBoard() {
       )}
 
       {/* Delete Task Confirmation Dialog */}
-      <ConfirmDeleteDialog
+      <TaskDeleteDialog
         open={deleteTaskDialog.open}
         onOpenChange={(open) => setDeleteTaskDialog({ open, task: open ? deleteTaskDialog.task : null })}
         onConfirm={() => {
@@ -1470,9 +1470,8 @@ export default function TaskBoard() {
           }
           setDeleteTaskDialog({ open: false, task: null });
         }}
-        title="Delete Task"
-        description="This action cannot be undone. This task will be permanently deleted."
-        itemName={deleteTaskDialog.task?.title}
+        taskTitle={deleteTaskDialog.task?.title || ''}
+        taskReference={deleteTaskDialog.task?.reference ?? undefined}
       />
     </PageContent>
   );

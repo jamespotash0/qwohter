@@ -53,7 +53,7 @@ import {
 } from '@/components/ui/popover';
 import { formatDateEST } from '@/utils/dateUtils';
 import { File as FileIcon } from '@phosphor-icons/react';
-import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { ProjectDeleteDialog } from '@/components/features/board/ProjectDeleteDialog';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -1360,7 +1360,7 @@ export default function Board() {
       />
 
       {/* Delete Project Confirmation Dialog */}
-      <ConfirmDeleteDialog
+      <ProjectDeleteDialog
         open={deleteProjectDialog.open}
         onOpenChange={(open) => setDeleteProjectDialog({ open, project: open ? deleteProjectDialog.project : null })}
         onConfirm={() => {
@@ -1369,9 +1369,8 @@ export default function Board() {
             setDeleteProjectDialog({ open: false, project: null });
           }
         }}
-        title="Delete Project"
-        description="This action cannot be undone. All tasks, attachments, and milestones associated with this project will be permanently removed."
-        itemName={deleteProjectDialog.project?.proposal?.project_name || 'Untitled Project'}
+        projectName={deleteProjectDialog.project?.proposal?.project_name || 'Untitled Project'}
+        proposalNumber={deleteProjectDialog.project?.proposal?.proposal_number ?? undefined}
       />
     </PageContent>
   );

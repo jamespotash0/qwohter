@@ -55,7 +55,7 @@ import {
   Flag,
   User,
 } from '@phosphor-icons/react';
-import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { TaskDeleteDialog } from '@/components/features/board/task-detail/TaskDeleteDialog';
 
 interface ProjectTasksProps {
   projectId: string;
@@ -388,7 +388,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
       )}
 
       {/* Delete Task Confirmation Dialog */}
-      <ConfirmDeleteDialog
+      <TaskDeleteDialog
         open={deleteTaskDialog.open}
         onOpenChange={(open) => setDeleteTaskDialog({ open, task: open ? deleteTaskDialog.task : null })}
         onConfirm={() => {
@@ -397,9 +397,8 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
             setDeleteTaskDialog({ open: false, task: null });
           }
         }}
-        title="Delete Task"
-        description="This action cannot be undone. This task will be permanently deleted."
-        itemName={deleteTaskDialog.task?.title}
+        taskTitle={deleteTaskDialog.task?.title || ''}
+        taskReference={deleteTaskDialog.task?.reference ?? undefined}
       />
     </div>
   );

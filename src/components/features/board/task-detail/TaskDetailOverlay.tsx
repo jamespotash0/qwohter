@@ -43,7 +43,7 @@ import {
   CaretDown,
   CaretRight,
 } from '@phosphor-icons/react';
-import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { TaskDeleteDialog } from './TaskDeleteDialog';
 import { MentionInput } from './MentionInput';
 import { TaskCommentItem } from './TaskCommentItem';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
@@ -712,7 +712,7 @@ export function TaskDetailOverlay({
       </div>
 
       {/* Delete Confirmation */}
-      <ConfirmDeleteDialog
+      <TaskDeleteDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onConfirm={() => {
@@ -720,9 +720,8 @@ export function TaskDetailOverlay({
           setShowDeleteDialog(false);
           onClose();
         }}
-        title="Delete Task"
-        description="This action cannot be undone."
-        itemName={task.title}
+        taskTitle={task.title}
+        taskReference={task.reference ?? undefined}
       />
     </>
   );
