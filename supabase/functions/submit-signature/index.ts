@@ -24,6 +24,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface RequestBody {
   token: string;              // Signing token for validation
   signatureData: string;      // Base64 PNG image of signature
@@ -650,11 +663,11 @@ async function sendSignatureNotifications(
           </div>
 
           <div class="content">
-            <p>Great news! <strong>${signerName}</strong> has signed the proposal.</p>
+            <p>Great news! <strong>${escapeHtml(signerName)}</strong> has signed the proposal.</p>
 
             <div class="info-box">
-              <p style="margin: 0;"><strong>Proposal:</strong> ${proposalNumber}</p>
-              <p style="margin: 5px 0 0 0;"><strong>Project:</strong> ${projectName || 'N/A'}</p>
+              <p style="margin: 0;"><strong>Proposal:</strong> ${escapeHtml(proposalNumber)}</p>
+              <p style="margin: 5px 0 0 0;"><strong>Project:</strong> ${escapeHtml(projectName) || 'N/A'}</p>
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
@@ -685,7 +698,7 @@ async function sendSignatureNotifications(
     body: JSON.stringify({
       from: 'Qwohter <notifications@qwohter.com>',
       to: [orgEmail],
-      subject: `✓ Proposal ${proposalNumber} Signed by ${signerName}`,
+      subject: `✓ Proposal ${escapeHtml(proposalNumber)} Signed by ${escapeHtml(signerName)}`,
       html: emailHtml,
     }),
   });
@@ -695,7 +708,7 @@ async function sendSignatureNotifications(
     'Great news!',
     'Thank you for signing!'
   ).replace(
-    `<strong>${signerName}</strong> has signed the proposal.`,
+    `<strong>${escapeHtml(signerName)}</strong> has signed the proposal.`,
     `You have successfully signed the proposal. A copy is attached for your records.`
   );
 
@@ -708,7 +721,7 @@ async function sendSignatureNotifications(
     body: JSON.stringify({
       from: 'Qwohter <notifications@qwohter.com>',
       to: [clientEmail],
-      subject: `Your Signed Proposal - ${proposalNumber}`,
+      subject: `Your Signed Proposal - ${escapeHtml(proposalNumber)}`,
       html: clientHtml,
     }),
   });

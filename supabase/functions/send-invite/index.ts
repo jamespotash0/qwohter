@@ -9,6 +9,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface InviteData {
   email: string;
   organizationName: string;
@@ -153,15 +166,15 @@ serve(async (req) => {
                 <div class="logo">Qwohter</div>
 
                 <div class="invite-box">
-                  <p class="inviter">${requestData.inviterName} invited you to join</p>
-                  <p class="org-name">${requestData.organizationName}</p>
+                  <p class="inviter">${escapeHtml(requestData.inviterName)} invited you to join</p>
+                  <p class="org-name">${escapeHtml(requestData.organizationName)}</p>
                 </div>
 
                 <a href="${inviteUrl}" class="button">Accept Invitation</a>
               </div>
 
               <div class="footer">
-                <p style="margin: 0 0 8px 0;">Sent to ${requestData.email}</p>
+                <p style="margin: 0 0 8px 0;">Sent to ${escapeHtml(requestData.email)}</p>
                 <p style="margin: 0;">If you didn't expect this, you can ignore it.</p>
               </div>
             </div>
@@ -171,6 +184,7 @@ serve(async (req) => {
     `;
 
     // Prepare plain text version for email clients that don't support HTML
+    // Note: Plain text doesn't need HTML escaping, but we keep original values
     const emailText = `
 ${requestData.inviterName} invited you to join ${requestData.organizationName}
 
@@ -189,7 +203,7 @@ Sent to ${requestData.email}
       body: JSON.stringify({
         from: 'Qwohter Team <invites@qwohter.com>',
         to: [requestData.email],
-        subject: `Join ${requestData.organizationName} on Qwohter`,
+        subject: `Join ${escapeHtml(requestData.organizationName)} on Qwohter`,
         html: emailHtml,
         text: emailText,
       }),

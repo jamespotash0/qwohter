@@ -17,6 +17,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 type NotificationType =
   | 'signature_sent'
   | 'signature_viewed'
@@ -107,10 +120,10 @@ function generateEmailContent(
 ): { subject: string; html: string; text: string } {
   const templates: Record<NotificationType, () => { subject: string; html: string; text: string }> = {
     signature_sent: () => ({
-      subject: `[Notification] Signature Request Sent - ${data.proposalNumber || 'Proposal'}`,
+      subject: `[Notification] Signature Request Sent - ${escapeHtml(data.proposalNumber) || 'Proposal'}`,
       html: createEmailHtml({
         bodyContent: `
-          <p>Your document <strong>${data.proposalNumber || 'proposal'}</strong> has been sent to <strong>${data.signerEmail}</strong> for signature.</p>
+          <p>Your document <strong>${escapeHtml(data.proposalNumber) || 'proposal'}</strong> has been sent to <strong>${escapeHtml(data.signerEmail)}</strong> for signature.</p>
           <p>You'll be notified when they view or sign the document.</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
@@ -119,10 +132,10 @@ function generateEmailContent(
     }),
 
     signature_viewed: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Viewed`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Viewed`,
       html: createEmailHtml({
         bodyContent: `
-          <p><strong>${data.signerName || 'Your client'}</strong> has opened and viewed your document <strong>${data.proposalNumber}</strong>.</p>
+          <p><strong>${escapeHtml(data.signerName) || 'Your client'}</strong> has opened and viewed your document <strong>${escapeHtml(data.proposalNumber)}</strong>.</p>
           <p>They may sign it soon!</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
@@ -131,10 +144,10 @@ function generateEmailContent(
     }),
 
     signature_signed: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Signed`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Signed`,
       html: createEmailHtml({
         bodyContent: `
-          <p>Great news! <strong>${data.signerName || 'Your client'}</strong> (${data.signerEmail}) has signed your document <strong>${data.proposalNumber}</strong>.</p>
+          <p>Great news! <strong>${escapeHtml(data.signerName) || 'Your client'}</strong> (${escapeHtml(data.signerEmail)}) has signed your document <strong>${escapeHtml(data.proposalNumber)}</strong>.</p>
           <p>The signed copy is now available in your dashboard.</p>
         `,
         ctaButton: data.link ? { text: 'View Signed Document', url: `${appUrl}${data.link}` } : undefined,
@@ -143,10 +156,10 @@ function generateEmailContent(
     }),
 
     proposal_submitted: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Submitted`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Submitted`,
       html: createEmailHtml({
         bodyContent: `
-          <p>Proposal <strong>${data.proposalNumber}</strong> ${data.proposalName ? `(${data.proposalName})` : ''} has been submitted.</p>
+          <p>Proposal <strong>${escapeHtml(data.proposalNumber)}</strong> ${data.proposalName ? `(${escapeHtml(data.proposalName)})` : ''} has been submitted.</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
       }),
@@ -154,10 +167,10 @@ function generateEmailContent(
     }),
 
     proposal_won: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Won`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Won`,
       html: createEmailHtml({
         bodyContent: `
-          <p>Congratulations! Proposal <strong>${data.proposalNumber}</strong> ${data.proposalName ? `(${data.proposalName})` : ''} has been marked as won!</p>
+          <p>Congratulations! Proposal <strong>${escapeHtml(data.proposalNumber)}</strong> ${data.proposalName ? `(${escapeHtml(data.proposalName)})` : ''} has been marked as won!</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
       }),
@@ -165,10 +178,10 @@ function generateEmailContent(
     }),
 
     proposal_rejected: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Rejected`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Rejected`,
       html: createEmailHtml({
         bodyContent: `
-          <p>Proposal <strong>${data.proposalNumber}</strong> ${data.proposalName ? `(${data.proposalName})` : ''} has been marked as rejected.</p>
+          <p>Proposal <strong>${escapeHtml(data.proposalNumber)}</strong> ${data.proposalName ? `(${escapeHtml(data.proposalName)})` : ''} has been marked as rejected.</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
       }),
@@ -176,12 +189,12 @@ function generateEmailContent(
     }),
 
     task_assigned: () => ({
-      subject: `[Notification] Task Assigned - ${data.taskTitle || 'New Task'}`,
+      subject: `[Notification] Task Assigned - ${escapeHtml(data.taskTitle) || 'New Task'}`,
       html: createEmailHtml({
         bodyContent: `
-          <p><strong>${data.actorName || 'A team member'}</strong> assigned you a task:</p>
-          <p style="padding: 12px; background: #f3f4f6; border-radius: 6px;"><strong>${data.taskTitle}</strong></p>
-          ${data.projectName ? `<p>Project: ${data.projectName}</p>` : ''}
+          <p><strong>${escapeHtml(data.actorName) || 'A team member'}</strong> assigned you a task:</p>
+          <p style="padding: 12px; background: #f3f4f6; border-radius: 6px;"><strong>${escapeHtml(data.taskTitle)}</strong></p>
+          ${data.projectName ? `<p>Project: ${escapeHtml(data.projectName)}</p>` : ''}
         `,
         ctaButton: data.link ? { text: 'View Task', url: `${appUrl}${data.link}` } : undefined,
       }),
@@ -192,8 +205,8 @@ function generateEmailContent(
       subject: `[Notification] You Were Mentioned`,
       html: createEmailHtml({
         bodyContent: `
-          <p><strong>${data.mentionedBy || 'A team member'}</strong> mentioned you in a comment:</p>
-          ${data.commentPreview ? `<p style="padding: 12px; background: #f3f4f6; border-radius: 6px; font-style: italic;">"${data.commentPreview}"</p>` : ''}
+          <p><strong>${escapeHtml(data.mentionedBy) || 'A team member'}</strong> mentioned you in a comment:</p>
+          ${data.commentPreview ? `<p style="padding: 12px; background: #f3f4f6; border-radius: 6px; font-style: italic;">"${escapeHtml(data.commentPreview)}"</p>` : ''}
         `,
         ctaButton: data.link ? { text: 'View Comment', url: `${appUrl}${data.link}` } : undefined,
       }),
@@ -201,10 +214,10 @@ function generateEmailContent(
     }),
 
     approval_requested: () => ({
-      subject: `[Notification] Approval Requested - ${data.proposalNumber || 'Proposal'}`,
+      subject: `[Notification] Approval Requested - ${escapeHtml(data.proposalNumber) || 'Proposal'}`,
       html: createEmailHtml({
         bodyContent: `
-          <p><strong>${data.actorName || 'A team member'}</strong> has requested approval for proposal <strong>${data.proposalNumber}</strong>${data.proposalName ? ` (${data.proposalName})` : ''}.</p>
+          <p><strong>${escapeHtml(data.actorName) || 'A team member'}</strong> has requested approval for proposal <strong>${escapeHtml(data.proposalNumber)}</strong>${data.proposalName ? ` (${escapeHtml(data.proposalName)})` : ''}.</p>
           <p>Please review and approve or reject this proposal.</p>
         `,
         ctaButton: data.link ? { text: 'Review Proposal', url: `${appUrl}${data.link}` } : undefined,
@@ -213,10 +226,10 @@ function generateEmailContent(
     }),
 
     approval_approved: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Approved`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Approved`,
       html: createEmailHtml({
         bodyContent: `
-          <p>Great news! <strong>${data.actorName || 'An admin'}</strong> has approved your proposal <strong>${data.proposalNumber}</strong>${data.proposalName ? ` (${data.proposalName})` : ''}.</p>
+          <p>Great news! <strong>${escapeHtml(data.actorName) || 'An admin'}</strong> has approved your proposal <strong>${escapeHtml(data.proposalNumber)}</strong>${data.proposalName ? ` (${escapeHtml(data.proposalName)})` : ''}.</p>
           <p>The proposal has been submitted.</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
@@ -225,10 +238,10 @@ function generateEmailContent(
     }),
 
     approval_rejected: () => ({
-      subject: `[Notification] ${data.proposalNumber || 'Proposal'} Not Approved`,
+      subject: `[Notification] ${escapeHtml(data.proposalNumber) || 'Proposal'} Not Approved`,
       html: createEmailHtml({
         bodyContent: `
-          <p><strong>${data.actorName || 'An admin'}</strong> has not approved your proposal <strong>${data.proposalNumber}</strong>${data.proposalName ? ` (${data.proposalName})` : ''}.</p>
+          <p><strong>${escapeHtml(data.actorName) || 'An admin'}</strong> has not approved your proposal <strong>${escapeHtml(data.proposalNumber)}</strong>${data.proposalName ? ` (${escapeHtml(data.proposalName)})` : ''}.</p>
           <p>The proposal has been returned to draft status for revisions.</p>
         `,
         ctaButton: data.link ? { text: 'View Proposal', url: `${appUrl}${data.link}` } : undefined,
@@ -241,7 +254,7 @@ function generateEmailContent(
       subject: `[Notification] New Team Member Joined`,
       html: createEmailHtml({
         bodyContent: `
-          <p><strong>${data.memberName || 'A new member'}</strong> (${data.memberEmail}) has joined your team as <strong>${data.memberRole || 'Member'}</strong>.</p>
+          <p><strong>${escapeHtml(data.memberName) || 'A new member'}</strong> (${escapeHtml(data.memberEmail)}) has joined your team as <strong>${escapeHtml(data.memberRole) || 'Member'}</strong>.</p>
           <p>You can view and manage your team in Settings.</p>
         `,
         ctaButton: { text: 'View Team', url: `${appUrl}/settings?tab=team` },
@@ -301,7 +314,7 @@ function generateEmailContent(
       html: createEmailHtml({
         bodyContent: `
           <p style="color: #22c55e;"><strong>Your subscription is now active!</strong></p>
-          ${data.planName ? `<p>Plan: ${data.planName}</p>` : ''}
+          ${data.planName ? `<p>Plan: ${escapeHtml(data.planName)}</p>` : ''}
           <p>Thank you for subscribing! You now have full access to all features.</p>
         `,
         ctaButton: { text: 'Go to Dashboard', url: `${appUrl}/dashboard` },

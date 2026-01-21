@@ -24,6 +24,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface DueNotification {
   notification_type: string;
   user_id: string;
@@ -79,19 +92,19 @@ function generateDueNotificationEmail(
   const taskName = formatTaskName(data.title, data.metadata);
 
   // Subject: "Task Reminder - Testing [BO-1]"
-  const subject = `${typeLabel} - ${taskName}`;
+  const subject = `${typeLabel} - ${escapeHtml(taskName)}`;
 
   // Clean message: "Reminder on Testing [BO-1]"
   const bodyMessage = isReminder
-    ? `Reminder on ${taskName}`
-    : `Your task ${taskName} is due`;
+    ? `Reminder on ${escapeHtml(taskName)}`
+    : `Your task ${escapeHtml(taskName)} is due`;
 
   // Build due date info if available
   let dueDateText = '';
   if (data.metadata?.due_date) {
     dueDateText = `Due: ${formatDateForEmail(data.metadata.due_date as string)}`;
     if (data.metadata.priority) {
-      dueDateText += ` · Priority: ${data.metadata.priority}`;
+      dueDateText += ` · Priority: ${escapeHtml(data.metadata.priority as string)}`;
     }
   }
 

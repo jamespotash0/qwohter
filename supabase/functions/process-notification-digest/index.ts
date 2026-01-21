@@ -16,6 +16,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface QueuedNotification {
   id: string;
   user_id: string;
@@ -67,7 +80,7 @@ function generateDigestHtml(notifications: QueuedNotification[], userName: strin
         <div style="background: #f9fafb; border-radius: 8px; padding: 16px;">
           ${items.map(item => `
             <div style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #1f2937; font-size: 14px;">${item.subject}</p>
+              <p style="margin: 0; color: #1f2937; font-size: 14px;">${escapeHtml(item.subject)}</p>
               <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 12px;">
                 ${new Date(item.created_at).toLocaleString()}
               </p>
@@ -102,7 +115,7 @@ function generateDigestHtml(notifications: QueuedNotification[], userName: strin
           </div>
           <div class="content">
             <p style="font-size: 16px; margin-bottom: 24px;">
-              Hi ${userName || 'there'},
+              Hi ${escapeHtml(userName) || 'there'},
             </p>
             <div class="summary">
               <strong>Summary:</strong> You have ${notifications.length} notification${notifications.length === 1 ? '' : 's'} from yesterday.
