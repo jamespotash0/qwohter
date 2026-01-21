@@ -339,19 +339,14 @@ export function TeamTab() {
     if (!currentOrganization || !user?.id) return;
 
     try {
-      // Transfer ownership: Set new member to Owner and current user to Admin
-      const { error: newOwnerError } = await (supabase.from('memberships') as any)
-        .update({ role: 'Owner', updated_at: new Date().toISOString() })
-        .eq('id', transferDialog.memberId);
+      // Use atomic RPC function for secure ownership transfer
+      // This ensures both role changes succeed or both fail
+      const { error } = await (supabase.rpc as any)('transfer_ownership', {
+        p_new_owner_id: transferDialog.memberId, // This is actually user_id from line 747
+        p_organization_id: currentOrganization.id,
+      });
 
-      if (newOwnerError) throw newOwnerError;
-
-      const { error: currentUserError } = await (supabase.from('memberships') as any)
-        .update({ role: 'Admin', updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .eq('organization_id', currentOrganization.id);
-
-      if (currentUserError) throw currentUserError;
+      if (error) throw error;
 
       toast({
         title: "Ownership transferred",
