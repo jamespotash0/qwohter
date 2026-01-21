@@ -26,6 +26,9 @@ export interface TaskReminder {
   status: 'pending' | 'sent' | 'cancelled' | 'failed';
   sentAt: string | null;
   lastSentAt: string | null;
+  title: string;
+  message: string;
+  metadata: Record<string, unknown> | null;
 }
 
 interface ScheduleTaskReminderInput {
@@ -166,6 +169,7 @@ export async function getUserReminders(
     .from('scheduled_notifications') as any)
     .select('*')
     .eq('entity_type', 'task')
+    .eq('notification_type', 'reminder')
     .eq('user_id', userId)
     .order('scheduled_for', { ascending: true });
 
@@ -230,6 +234,9 @@ function mapToTaskReminder(data: ScheduledNotification): TaskReminder {
     status: data.status,
     sentAt: data.sent_at,
     lastSentAt: data.last_sent_at,
+    title: data.title || 'Task Reminder',
+    message: data.message || '',
+    metadata: data.metadata,
   };
 }
 

@@ -1,8 +1,16 @@
 /**
  * Check Due Notifications Edge Function
  *
- * Checks for reminders and tasks that are due and creates notifications.
- * Should be triggered via cron job at regular intervals (e.g., every hour).
+ * SINGLE SOURCE OF TRUTH for processing scheduled notifications.
+ * Handles BOTH in-app notifications AND emails to avoid race conditions.
+ *
+ * Flow:
+ * 1. Query due notifications from scheduled_notifications table
+ * 2. Create in-app notification for each
+ * 3. Send email (respecting user preferences)
+ * 4. Mark scheduled notification as sent
+ *
+ * Triggered via pg_cron every 5 minutes.
  */
 
 // @ts-ignore
@@ -24,6 +32,7 @@ interface DueNotification {
   message: string;
   link: string;
   metadata: Record<string, unknown>;
+  scheduled_notification_id: string;
 }
 
 interface NotificationPreferences {
@@ -57,9 +66,9 @@ function generateDueNotificationEmail(
   data: DueNotification,
   appUrl: string
 ): { subject: string; html: string; text: string } {
-  const isReminder = type === 'reminder_due' || type === 'task_reminder';
+  const isReminder = type === 'reminder_due' || type === 'task_reminder' || type === 'reminder';
   const headerColor = isReminder ? '#F59E0B' : '#EF4444';
-  const headerTitle = type === 'task_reminder' ? 'Task Reminder' : (type === 'reminder_due' ? 'Reminder Due' : 'Task Due');
+  const headerTitle = type === 'task_reminder' || type === 'reminder' ? 'Task Reminder' : (type === 'reminder_due' ? 'Reminder Due' : 'Task Due');
 
   return {
     subject: data.title,
@@ -135,6 +144,20 @@ serve(async (req) => {
     // @ts-ignore
     const appUrl = Deno.env.get('APP_URL') || 'https://www.qwohter.com';
 
+    // Parse request body to check source
+    let body: { source?: string } = {};
+    try {
+      const clonedReq = req.clone();
+      body = await clonedReq.json();
+    } catch {
+      // No body or invalid JSON - that's fine
+    }
+
+    const isFromCron = body?.source === 'pg_cron';
+    if (isFromCron) {
+      console.log('Called from pg_cron');
+    }
+
     if (!resendApiKey) {
       console.error('RESEND_API_KEY not configured');
       return new Response(
@@ -145,9 +168,9 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('Checking for due notifications...');
+    console.log('Checking for due notifications from scheduled_notifications...');
 
-    // Call the database function to get due notifications
+    // Call the database function to get due notifications from scheduled_notifications
     const { data: dueNotifications, error: dueError } = await supabase
       .rpc('check_due_notifications');
 
@@ -167,33 +190,43 @@ serve(async (req) => {
     console.log(`Found ${dueNotifications.length} due notifications`);
 
     let processed = 0;
+    let inAppCreated = 0;
+    let emailsSent = 0;
     let errors = 0;
     let skipped = 0;
-    const taskReminderIds: string[] = []; // Track task IDs for marking as sent
+    const processedNotificationIds: string[] = [];
 
     for (const notification of dueNotifications as DueNotification[]) {
       try {
-        // Create in-app notification
-        const { error: notifError } = await supabase
+        // =================================================================
+        // STEP 1: Create in-app notification (always, regardless of email prefs)
+        // =================================================================
+        const { error: inAppError } = await supabase
           .from('notifications')
           .insert({
             user_id: notification.user_id,
             organization_id: notification.organization_id,
             type: notification.notification_type,
             title: notification.title,
-            message: notification.message,
+            message: notification.message || '',
             link: notification.link,
             metadata: notification.metadata,
             is_read: false,
+            created_at: new Date().toISOString(),
           });
 
-        if (notifError) {
-          console.error('Error creating in-app notification:', notifError);
-          errors++;
-          continue;
+        if (inAppError) {
+          // Log but don't fail - might be duplicate
+          if (!inAppError.message?.includes('duplicate')) {
+            console.error(`Error creating in-app notification:`, inAppError);
+          }
+        } else {
+          inAppCreated++;
+          console.log(`Created in-app notification for user ${notification.user_id}`);
         }
 
-        // Check user's email preferences
+        // =================================================================
+        // STEP 2: Check user's email preferences
         const { data: preferences } = await supabase
           .from('notification_preferences')
           .select('email_enabled, email_on_reminder_due, email_on_task_due, email_on_task_reminder, notification_email')
@@ -212,6 +245,10 @@ serve(async (req) => {
         // Check if email is enabled globally
         if (!userPrefs.email_enabled) {
           console.log(`Email disabled for user ${notification.user_id}`);
+          // Still count as processed - mark the notification as sent
+          if (notification.scheduled_notification_id) {
+            processedNotificationIds.push(notification.scheduled_notification_id);
+          }
           skipped++;
           processed++;
           continue;
@@ -221,7 +258,8 @@ serve(async (req) => {
         let isEnabled = true;
         switch (notification.notification_type) {
           case 'reminder_due':
-            isEnabled = userPrefs.email_on_reminder_due;
+          case 'reminder':
+            isEnabled = userPrefs.email_on_reminder_due || userPrefs.email_on_task_reminder;
             break;
           case 'task_reminder':
             isEnabled = userPrefs.email_on_task_reminder;
@@ -233,6 +271,10 @@ serve(async (req) => {
 
         if (!isEnabled) {
           console.log(`${notification.notification_type} emails disabled for user ${notification.user_id}`);
+          // Still mark as processed
+          if (notification.scheduled_notification_id) {
+            processedNotificationIds.push(notification.scheduled_notification_id);
+          }
           skipped++;
           processed++;
           continue;
@@ -261,7 +303,7 @@ serve(async (req) => {
           appUrl
         );
 
-        // Always send immediately - queue for retry on failure
+        // Send email via Resend
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -304,10 +346,11 @@ serve(async (req) => {
         }
 
         console.log(`Sent ${notification.notification_type} email to ${recipientEmail}`);
+        emailsSent++;
 
-        // Track task reminder IDs to mark as sent
-        if (notification.notification_type === 'task_reminder' && notification.metadata?.task_id) {
-          taskReminderIds.push(notification.metadata.task_id as string);
+        // Track processed notification ID
+        if (notification.scheduled_notification_id) {
+          processedNotificationIds.push(notification.scheduled_notification_id);
         }
 
         processed++;
@@ -317,27 +360,29 @@ serve(async (req) => {
       }
     }
 
-    // Mark task reminders as sent to prevent duplicates
-    if (taskReminderIds.length > 0) {
+    // Mark scheduled notifications as sent using the new function
+    if (processedNotificationIds.length > 0) {
       const { data: markedCount, error: markError } = await supabase
-        .rpc('mark_task_reminder_sent', { task_ids: taskReminderIds });
+        .rpc('mark_scheduled_notifications_sent', { notification_ids: processedNotificationIds });
 
       if (markError) {
-        console.error('Error marking task reminders as sent:', markError);
+        console.error('Error marking scheduled notifications as sent:', markError);
       } else {
-        console.log(`Marked ${markedCount} task reminders as sent`);
+        console.log(`Marked ${markedCount} scheduled notifications as sent`);
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Processed ${processed} notifications, ${skipped} skipped (disabled), ${errors} errors`,
+        message: `Processed ${processed} notifications: ${inAppCreated} in-app, ${emailsSent} emails, ${skipped} skipped, ${errors} errors`,
         total: dueNotifications.length,
         processed,
+        inAppCreated,
+        emailsSent,
         skipped,
         errors,
-        taskRemindersMarked: taskReminderIds.length,
+        notificationsMarked: processedNotificationIds.length,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

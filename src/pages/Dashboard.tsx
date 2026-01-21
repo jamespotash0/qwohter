@@ -19,6 +19,7 @@ import { useUser, useProfile } from "@/auth";
 import { formatDistanceToNow } from "date-fns";
 import { useNotifications, useMarkNotificationAsRead } from "@/hooks/useNotifications";
 import type { Notification } from "@/lib/types/notifications";
+import { useUpcomingReminders, type TaskReminder } from "@/hooks/useUpcomingReminders";
 import { toast } from "sonner";
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
 import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
@@ -98,6 +99,9 @@ const Dashboard = () => {
   // Notifications hooks
   const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(user?.id);
   const markNotificationAsRead = useMarkNotificationAsRead(user?.id || '');
+
+  // Upcoming reminders from scheduled_notifications
+  const { data: upcomingReminders = [], isLoading: remindersLoading } = useUpcomingReminders(user?.id);
 
   const [showNewProposalDialog, setShowNewProposalDialog] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
@@ -487,23 +491,17 @@ const Dashboard = () => {
             </CardContent>
             </Card>
 
-            {/* Reminders Card - Shows upcoming reminders */}
+            {/* Reminders Card - Shows upcoming scheduled reminders */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col h-[300px]">
               <CardHeader className="pb-4 flex-shrink-0">
                 <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
                   <Clock className="w-5 h-5" />
-                  Reminders
+                  Upcoming Reminders
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col overflow-hidden">
                 {(() => {
-                  // Filter notifications to only show reminder-related types
-                  const REMINDER_TYPES = ['task_reminder', 'reminder_due', 'task_due'];
-                  const reminderNotifications = notifications.filter(
-                    (n: Notification) => REMINDER_TYPES.includes(n.type)
-                  );
-
-                  if (notificationsLoading) {
+                  if (remindersLoading) {
                     return (
                       <div className="flex-1 flex items-center justify-center">
                         <div className="animate-pulse">
@@ -514,7 +512,7 @@ const Dashboard = () => {
                     );
                   }
 
-                  if (reminderNotifications.length === 0) {
+                  if (upcomingReminders.length === 0) {
                     return (
                       <div className="flex-1 flex items-center justify-center">
                         <div className="text-center">
@@ -532,46 +530,56 @@ const Dashboard = () => {
 
                   return (
                     <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
-                      {reminderNotifications.map((reminder: Notification) => {
+                      {upcomingReminders.map((reminder: TaskReminder) => {
+                        // Extract task reference for navigation
+                        const taskReference = reminder.metadata?.task_reference as string | undefined;
+
                         const handleReminderClick = () => {
-                          // Mark as read if unread
-                          if (!reminder.is_read) {
-                            markNotificationAsRead.mutate(reminder.id);
-                          }
-                          // Navigate to task board with task reference/id
-                          // Use metadata to construct correct URL (existing links may have old format)
-                          const taskRef = reminder.metadata?.task_reference || reminder.metadata?.task_id;
-                          if (taskRef) {
-                            navigate(`/task-board?task=${taskRef}`);
-                          } else if (reminder.link) {
-                            // Fallback to stored link if no task metadata
-                            navigate(reminder.link);
-                          }
+                          // Navigate to task board with task reference (preferred) or task id
+                          const taskParam = taskReference || reminder.taskId;
+                          navigate(`/task-board?task=${taskParam}`);
                         };
+
+                        const scheduledDate = new Date(reminder.scheduledFor);
+                        const isPast = scheduledDate < new Date();
+
+                        // Extract task title from "Reminder: {title}" format
+                        const taskTitle = (reminder.title || 'Task Reminder').replace(/^Reminder:\s*/i, '') || 'Task';
 
                         return (
                           <div
                             key={reminder.id}
                             onClick={handleReminderClick}
                             className={`p-3 rounded-lg border transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 ${
-                              !reminder.is_read
-                                ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
-                                : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700'
+                              isPast
+                                ? 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
+                                : 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
                             }`}
                           >
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-0.5">
-                                <Clock className={`w-4 h-4 ${!reminder.is_read ? 'text-amber-500' : 'text-gray-400'}`} />
+                                <Clock className={`w-4 h-4 ${isPast ? 'text-red-500' : 'text-amber-500'}`} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm ${!reminder.is_read ? 'font-semibold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
-                                  {reminder.title}
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                                  {taskReference && <span>{taskReference} - </span>}
+                                  {taskTitle}
                                 </p>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">
-                                  {reminder.message}
+                                  {reminder.recurrence !== 'once' && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 mr-1">
+                                      {reminder.recurrence}
+                                    </span>
+                                  )}
+                                  {scheduledDate.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })}
                                 </p>
                                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                                  {formatDistanceToNow(new Date(reminder.created_at), { addSuffix: true })}
+                                  {formatDistanceToNow(scheduledDate, { addSuffix: true })}
                                 </p>
                               </div>
                             </div>
