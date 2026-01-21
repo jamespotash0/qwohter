@@ -5,6 +5,7 @@ import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { useUser, useAuthStatus } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { AdaFloatingWidget } from "@/components/features/ada";
 
 import React from "react";
 
@@ -151,6 +152,9 @@ const PageLoader = () => (
 export const AppRouter = () => (
   <ErrorBoundary>
     <BrowserRouter>
+      {/* Ada - Global AI Assistant */}
+      <AdaFloatingWidget />
+
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Landing page (public) */}
