@@ -4,10 +4,8 @@ import { Project, ProjectPriority } from '@/services/boardService';
 import { type TimelineMilestone } from '@/lib/timelineMilestones';
 import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
 import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
-import { AIMilestoneSuggestions } from '@/components/features/board/AIMilestoneSuggestions';
 import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { useProjectAttachments } from '@/hooks/useProjectAttachments';
-import { AIMilestoneService } from '@/services/aiMilestoneService';
 import {
   useProjects,
   useWorkflowColumns,
@@ -110,10 +108,6 @@ export default function Board() {
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
   // AI Milestone Suggestions state
-  const [showAISuggestions, setShowAISuggestions] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<TimelineMilestone[]>([]);
-  const [aiReasoning, setAiReasoning] = useState<string>('');
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   // Delete confirmation state
   const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({
@@ -145,44 +139,6 @@ export default function Board() {
       }
       return newSet;
     });
-  };
-
-  const handleRequestAISuggestions = async () => {
-    if (!selectedProject?.proposal) {
-      alert('No proposal data found for this project. AI suggestions require project information.');
-      return;
-    }
-
-    setIsGeneratingAI(true);
-    try {
-      const result = await AIMilestoneService.generateMilestones(
-        selectedProject.proposal,
-        selectedProject.created_at
-      );
-      setAiSuggestions(result.milestones);
-      setAiReasoning(result.reasoning);
-      setShowAISuggestions(true);
-    } catch (error) {
-      console.error('Failed to generate AI suggestions:', error);
-      alert('Failed to generate milestone suggestions. Please check your API key and try again.');
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
-
-  const handleAddAIMilestones = (selectedMilestones: TimelineMilestone[]) => {
-    if (!selectedProject) return;
-
-    const existingMilestones = selectedProject.timeline_milestones || [];
-    const updatedMilestones = [...existingMilestones, ...selectedMilestones];
-
-    updateProject({
-      id: selectedProject.id,
-      updates: { timeline_milestones: updatedMilestones }
-    });
-
-    setShowAISuggestions(false);
-    setAiSuggestions([]);
   };
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
@@ -1286,8 +1242,6 @@ export default function Board() {
                             updates: { timeline_milestones: updatedMilestones }
                           });
                         }}
-                        onRequestAISuggestions={handleRequestAISuggestions}
-                        isGeneratingAI={isGeneratingAI}
                       />
                     </div>
                   )}
@@ -1349,15 +1303,6 @@ export default function Board() {
           </div>
         </>
       )}
-
-      {/* AI Milestone Suggestions Dialog */}
-      <AIMilestoneSuggestions
-        suggestions={aiSuggestions}
-        reasoning={aiReasoning}
-        isOpen={showAISuggestions}
-        onClose={() => setShowAISuggestions(false)}
-        onAddMilestones={handleAddAIMilestones}
-      />
 
       {/* Delete Project Confirmation Dialog */}
       <ProjectDeleteDialog

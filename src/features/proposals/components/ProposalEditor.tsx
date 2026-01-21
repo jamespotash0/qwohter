@@ -55,6 +55,9 @@ import { DocumentsTab } from './tabs/DocumentsTab';
 import { ProductsTab } from './tabs/ProductsTab';
 import { PresentationTab } from './tabs/PresentationTab';
 
+// AI Assistant
+import { AIAssistantPanel, AIAssistantTrigger } from '@/components/features/ai-assistant';
+
 // Editor mode determines the behavior of tabs
 export type EditorMode = 'builder' | 'filler';
 
@@ -165,6 +168,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   // Confirmation dialog for unsaved changes
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+
+  // AI Assistant panel state (only relevant in filler mode)
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   // Update form name and load builder data when form data is loaded
   useEffect(() => {
@@ -653,8 +659,15 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             </nav>
           </div>
 
-          {/* Right: Auto-save status indicator (both modes) */}
-          <div className="flex items-center gap-2 text-sm">
+          {/* Right: AI Assistant button (filler mode only) + Auto-save status indicator */}
+          <div className="flex items-center gap-3 text-sm">
+            {/* AI Assistant Button - only in filler mode with a proposal */}
+            {!isBuilderMode && proposalId && currentOrganization?.id && user?.id && (
+              <AIAssistantTrigger
+                proposalId={proposalId}
+                onClick={() => setIsAIAssistantOpen(true)}
+              />
+            )}
             {saveStatus === 'saving' && (
               <motion.div
                 className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"
@@ -713,6 +726,19 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           ))}
         </div>
       </main>
+
+      {/* AI Assistant Panel - only in filler mode */}
+      {!isBuilderMode && proposalId && currentOrganization?.id && user?.id && (
+        <AIAssistantPanel
+          isOpen={isAIAssistantOpen}
+          onClose={() => setIsAIAssistantOpen(false)}
+          proposalId={proposalId}
+          organizationId={currentOrganization.id}
+          userId={user.id}
+          proposalStatus={proposalData?.status ?? undefined}
+          proposalName={proposalName}
+        />
+      )}
 
       {/* Exit Confirmation Dialog */}
       <AlertDialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
