@@ -175,8 +175,15 @@ export function ReminderPicker({
         const presetDate = allPresetOptions.find(p => p.preset === preset)?.date;
         if (presetDate) {
           if (isToday(presetDate)) {
-            // For today: default to current time (next minute)
-            setCustomTime(getMinTimeForDate(presetDate));
+            // For today: default to 9:00 AM if still in future, otherwise current time
+            const now = new Date();
+            const nineAM = new Date();
+            nineAM.setHours(9, 0, 0, 0);
+            if (now < nineAM) {
+              setCustomTime('09:00');
+            } else {
+              setCustomTime(getMinTimeForDate(presetDate));
+            }
           } else {
             // For other days: default to 9:00 AM
             setCustomTime('09:00');
@@ -310,18 +317,24 @@ export function ReminderPicker({
     { preset: '1_week' as ReminderPreset, label: '1 week before', date: subDays(parseLocalDate(dueDate), 7) },
   ] : [];
 
+  // Get default time for a date (9:00 AM if in future, otherwise current time for today)
+  const getDefaultTimeForDate = (date: Date): string => {
+    if (!isToday(date)) return '09:00';
+    const now = new Date();
+    const nineAM = new Date();
+    nineAM.setHours(9, 0, 0, 0);
+    return now < nineAM ? '09:00' : getMinTimeForDate(date);
+  };
+
   // Filter to only show today or future dates (allow today even if time has passed - user can adjust time)
   const presetOptions = allPresetOptions
     .filter(opt => !isDateBeforeToday(opt.date))
     .map(opt => {
       const dayIndicator = getDayIndicator(opt.date);
       const isTodayDate = isToday(opt.date);
-      // For today: show current time (next minute); for other days: show 9:00 AM
-      // If this preset is selected, show the customTime instead
       const isSelected = opt.preset === selectedPreset;
-      const displayTime = isTodayDate
-        ? (isSelected ? customTime : getMinTimeForDate(opt.date))
-        : '09:00';
+      // Show customTime if selected, otherwise show default time for the date
+      const displayTime = isSelected ? customTime : getDefaultTimeForDate(opt.date);
       return {
         ...opt,
         // Append (Today)/(Tomorrow) to the label if applicable
