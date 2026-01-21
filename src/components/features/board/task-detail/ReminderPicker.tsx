@@ -30,6 +30,8 @@ interface ReminderPickerProps {
   dueDate: string | null;
   reminderDate: string | null;
   reminderRecurrence: ReminderRecurrence;
+  reminderSent?: boolean;
+  lastReminderSentAt?: string | null;
   onReminderChange: (reminderDate: string | null, recurrence: ReminderRecurrence) => void;
   disabled?: boolean;
 }
@@ -38,6 +40,8 @@ export function ReminderPicker({
   dueDate,
   reminderDate,
   reminderRecurrence,
+  reminderSent = false,
+  lastReminderSentAt,
   onReminderChange,
   disabled = false,
 }: ReminderPickerProps) {
@@ -102,6 +106,31 @@ export function ReminderPicker({
       return null;
     }
   }, [reminderDate]);
+
+  // Determine reminder status: 'sent', 'expired', 'scheduled', or null
+  const reminderStatus = useMemo((): 'sent' | 'expired' | 'scheduled' | null => {
+    if (!currentReminder) return null;
+
+    // For one-time reminders: check if sent
+    if (reminderRecurrence === 'once' && reminderSent) {
+      return 'sent';
+    }
+
+    // For daily reminders: check last_reminder_sent_at for today
+    if (reminderRecurrence === 'daily' && lastReminderSentAt) {
+      const lastSent = parseISO(lastReminderSentAt);
+      if (isValid(lastSent) && isToday(lastSent)) {
+        return 'sent'; // Already sent today
+      }
+    }
+
+    // Check if reminder time has passed (for one-time reminders)
+    if (reminderRecurrence === 'once' && isBefore(currentReminder, new Date())) {
+      return 'expired';
+    }
+
+    return 'scheduled';
+  }, [currentReminder, reminderSent, reminderRecurrence, lastReminderSentAt]);
 
   // Determine current preset based on reminder date and due date
   const currentPreset = useMemo((): ReminderPreset => {
@@ -225,6 +254,21 @@ export function ReminderPicker({
 
   // Get display label - shows preview when popover is open with unsaved changes
   const getDisplayLabel = (): string => {
+    // Show status for sent/expired reminders when popover is closed
+    if (!isOpen && reminderStatus === 'sent') {
+      if (lastReminderSentAt) {
+        const sentDate = parseISO(lastReminderSentAt);
+        if (isValid(sentDate)) {
+          return `Sent ${format(sentDate, 'MMM d, h:mm a')}`;
+        }
+      }
+      return 'Reminder sent';
+    }
+
+    if (!isOpen && reminderStatus === 'expired') {
+      return 'Reminder expired';
+    }
+
     // When popover is open and user has selected a different preset, show preview
     if (isOpen && selectedPreset !== currentPreset) {
       if (selectedPreset === 'none') return 'No reminder';
@@ -451,7 +495,12 @@ export function ReminderPicker({
           className={cn(
             'h-6 px-2 text-[11px] rounded-md flex items-center gap-1',
             'bg-gray-50 hover:bg-gray-100 transition-colors',
-            hasReminder && 'bg-amber-50 text-amber-600 hover:bg-amber-100',
+            // Active scheduled reminder
+            hasReminder && reminderStatus === 'scheduled' && 'bg-amber-50 text-amber-600 hover:bg-amber-100',
+            // Sent reminder - green
+            reminderStatus === 'sent' && 'bg-green-50 text-green-600 hover:bg-green-100',
+            // Expired reminder - gray/muted
+            reminderStatus === 'expired' && 'bg-gray-100 text-gray-500 hover:bg-gray-200',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
           disabled={disabled}
@@ -483,6 +532,37 @@ export function ReminderPicker({
             )}
           </div>
         </div>
+
+        {/* Status banner for sent/expired reminders */}
+        {(reminderStatus === 'sent' || reminderStatus === 'expired') && (
+          <div className={cn(
+            'px-3 py-2 text-xs border-b',
+            reminderStatus === 'sent' && 'bg-green-50 text-green-700 border-green-100',
+            reminderStatus === 'expired' && 'bg-gray-50 text-gray-600 border-gray-100'
+          )}>
+            <div className="flex items-center justify-between">
+              <span>
+                {reminderStatus === 'sent' ? (
+                  <>
+                    Reminder sent
+                    {lastReminderSentAt && (
+                      <span className="text-[10px] ml-1 opacity-75">
+                        ({format(parseISO(lastReminderSentAt), 'MMM d, h:mm a')})
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  'Reminder expired (time passed)'
+                )}
+              </span>
+            </div>
+            <p className="text-[10px] mt-1 opacity-75">
+              {reminderStatus === 'sent'
+                ? 'Set a new reminder below if needed.'
+                : 'Clear and set a new reminder below.'}
+            </p>
+          </div>
+        )}
 
         {/* Presets */}
         {!showCustom && (

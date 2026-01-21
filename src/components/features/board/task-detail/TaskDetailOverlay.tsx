@@ -542,6 +542,8 @@ export function TaskDetailOverlay({
               dueDate={dueDate}
               reminderDate={reminderDate}
               reminderRecurrence={reminderRecurrence}
+              reminderSent={task.reminder_sent}
+              lastReminderSentAt={task.last_reminder_sent_at}
               onReminderChange={(newReminderDate, newRecurrence) => {
                 setReminderDate(newReminderDate);
                 setReminderRecurrence(newRecurrence);
