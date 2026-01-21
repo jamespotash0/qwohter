@@ -60,6 +60,14 @@ function formatDateForEmail(dateStr: string): string {
   }
 }
 
+// Build formatted task name with reference
+function formatTaskName(title: string, metadata: Record<string, unknown>): string {
+  // Remove "Reminder: " prefix if present
+  const cleanTitle = title.replace(/^Reminder:\s*/i, '');
+  const reference = metadata?.task_reference as string | undefined;
+  return reference ? `${cleanTitle} [${reference}]` : cleanTitle;
+}
+
 // Generate email content for due notifications
 function generateDueNotificationEmail(
   type: string,
@@ -67,63 +75,68 @@ function generateDueNotificationEmail(
   appUrl: string
 ): { subject: string; html: string; text: string } {
   const isReminder = type === 'reminder_due' || type === 'task_reminder' || type === 'reminder';
-  const headerColor = isReminder ? '#F59E0B' : '#EF4444';
-  const headerTitle = type === 'task_reminder' || type === 'reminder' ? 'Task Reminder' : (type === 'reminder_due' ? 'Reminder Due' : 'Task Due');
+  const typeLabel = isReminder ? 'Task Reminder' : 'Task Due';
+  const taskName = formatTaskName(data.title, data.metadata);
+
+  // Subject: "Task Reminder - Testing [BO-1]"
+  const subject = `${typeLabel} - ${taskName}`;
+
+  // Clean message: "Reminder on Testing [BO-1]"
+  const bodyMessage = isReminder
+    ? `Reminder on ${taskName}`
+    : `Your task ${taskName} is due`;
+
+  // Build due date info if available
+  let dueDateText = '';
+  if (data.metadata?.due_date) {
+    dueDateText = `Due: ${formatDateForEmail(data.metadata.due_date as string)}`;
+    if (data.metadata.priority) {
+      dueDateText += ` · Priority: ${data.metadata.priority}`;
+    }
+  }
 
   return {
-    subject: data.title,
+    subject,
     html: `
       <!DOCTYPE html>
       <html>
         <head>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 0 auto; }
-            .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; }
-            .logo { font-size: 24px; font-weight: bold; margin: 0 0 8px 0; }
-            .header-title { font-size: 18px; margin: 0; opacity: 0.95; }
-            .content { background-color: #ffffff; padding: 30px; }
-            .button { display: inline-block; background-color: ${headerColor}; color: white !important; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 20px 0; }
-            .footer { background-color: #f8f9fa; padding: 24px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #e9ecef; }
-            .footer a { color: #EE6C4D; text-decoration: none; }
-            .info-box { background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+            .header { padding: 32px 24px; border-bottom: 1px solid #e5e5e5; }
+            .logo { font-size: 20px; font-weight: 600; color: #111; margin: 0; }
+            .content { padding: 32px 24px; }
+            .type-label { font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+            .message { font-size: 18px; font-weight: 500; color: #111; margin: 0 0 16px 0; }
+            .due-info { font-size: 14px; color: #666; margin-bottom: 24px; }
+            .button { display: inline-block; background-color: #111; color: #fff !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; font-size: 14px; }
+            .footer { padding: 24px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #e5e5e5; }
+            .footer a { color: #666; text-decoration: none; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <h1 class="logo">Qwohter</h1>
-              <p class="header-title">${headerTitle}</p>
+              <p class="logo">Qwohter</p>
             </div>
             <div class="content">
-              <h2 style="margin-top: 0;">${data.title}</h2>
-              <p>${data.message}</p>
-              ${data.metadata?.due_date ? `
-                <div class="info-box">
-                  <strong>Due:</strong> ${formatDateForEmail(data.metadata.due_date as string)}
-                  ${data.metadata.priority ? `<br><strong>Priority:</strong> ${data.metadata.priority}` : ''}
-                </div>
-              ` : ''}
-              ${data.link ? `
-                <div style="text-align: center; margin: 24px 0;">
-                  <a href="${appUrl}${data.link}" class="button" style="color: white !important;">View Details</a>
-                </div>
-              ` : ''}
+              <p class="type-label">${typeLabel}</p>
+              <p class="message">${bodyMessage}</p>
+              ${dueDateText ? `<p class="due-info">${dueDateText}</p>` : ''}
+              ${data.link ? `<a href="${appUrl}${data.link}" class="button">View Details</a>` : ''}
             </div>
             <div class="footer">
-              <p>This notification was sent from <a href="https://www.qwohter.com">Qwohter</a></p>
-              <p style="margin-top: 12px;">
-                <a href="https://www.qwohter.com/settings?tab=notifications">Manage notification preferences</a>
-              </p>
-              <p style="margin-top: 16px; font-size: 11px; color: #adb5bd;">
-                © ${new Date().getFullYear()} Qwohter. All rights reserved.
+              <p>Sent from <a href="${appUrl}">Qwohter</a></p>
+              <p style="margin-top: 8px;">
+                <a href="${appUrl}/settings?tab=notifications">Manage preferences</a>
               </p>
             </div>
           </div>
         </body>
       </html>
     `,
-    text: `${data.title}\n\n${data.message}\n\nView in Qwohter: ${appUrl}${data.link || '/dashboard'}`,
+    text: `${typeLabel}\n\n${bodyMessage}\n\n${dueDateText ? dueDateText + '\n\n' : ''}View Details: ${appUrl}${data.link || '/dashboard'}`,
   };
 }
 

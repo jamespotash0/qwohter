@@ -51,7 +51,7 @@ import { ReminderPicker } from './ReminderPicker';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import type { TaskComment, TaskAttachment, TaskActivity, MentionSuggestion } from '@/lib/types/taskComments';
-import type { ScheduledNotificationRecurrence } from '@/lib/types/scheduledNotifications';
+// import type { ScheduledNotificationRecurrence } from '@/lib/types/scheduledNotifications';
 import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
 import {
   getTaskReminder,

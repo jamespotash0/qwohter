@@ -112,8 +112,8 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
       recurrence_end_date: dueDate || null,
       notification_type: 'reminder',
       title: `Reminder: ${taskTitle}`,
-      message: buildReminderMessage(taskTitle, dueDate),
-      link: `/task-board?task=${taskId}`,
+      message: buildReminderMessage(taskTitle, taskReference),
+      link: `/task-board?task=${taskReference || taskId}`,
       metadata: {
         task_reference: taskReference,
         due_date: dueDate,
@@ -240,9 +240,7 @@ function mapToTaskReminder(data: ScheduledNotification): TaskReminder {
   };
 }
 
-function buildReminderMessage(taskTitle: string, dueDate?: string | null): string {
-  if (!dueDate) {
-    return `Reminder for your task "${taskTitle}"`;
-  }
-  return `Your task "${taskTitle}" is coming up!`;
+function buildReminderMessage(taskTitle: string, taskReference?: string | null): string {
+  const formattedName = taskReference ? `${taskTitle} [${taskReference}]` : taskTitle;
+  return `Reminder on ${formattedName}`;
 }
