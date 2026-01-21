@@ -1321,6 +1321,77 @@ export interface Database {
           created_at?: string;
         };
       };
+      // ============================================================================
+      // Scheduled Notifications Table
+      // ============================================================================
+      scheduled_notifications: {
+        Row: {
+          id: string;
+          entity_type: 'task' | 'proposal' | 'invoice' | 'project';
+          entity_id: string;
+          user_id: string;
+          organization_id: string;
+          scheduled_for: string;
+          recurrence: 'once' | 'daily' | 'weekly';
+          recurrence_end_date: string | null;
+          notification_type: string;
+          title: string;
+          message: string | null;
+          link: string | null;
+          metadata: Record<string, any>;
+          status: 'pending' | 'sent' | 'cancelled' | 'failed';
+          sent_at: string | null;
+          last_sent_at: string | null;
+          failure_reason: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          entity_type: 'task' | 'proposal' | 'invoice' | 'project';
+          entity_id: string;
+          user_id: string;
+          organization_id: string;
+          scheduled_for: string;
+          recurrence?: 'once' | 'daily' | 'weekly';
+          recurrence_end_date?: string | null;
+          notification_type?: string;
+          title: string;
+          message?: string | null;
+          link?: string | null;
+          metadata?: Record<string, any>;
+          status?: 'pending' | 'sent' | 'cancelled' | 'failed';
+          sent_at?: string | null;
+          last_sent_at?: string | null;
+          failure_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          entity_type?: 'task' | 'proposal' | 'invoice' | 'project';
+          entity_id?: string;
+          user_id?: string;
+          organization_id?: string;
+          scheduled_for?: string;
+          recurrence?: 'once' | 'daily' | 'weekly';
+          recurrence_end_date?: string | null;
+          notification_type?: string;
+          title?: string;
+          message?: string | null;
+          link?: string | null;
+          metadata?: Record<string, any>;
+          status?: 'pending' | 'sent' | 'cancelled' | 'failed';
+          sent_at?: string | null;
+          last_sent_at?: string | null;
+          failure_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

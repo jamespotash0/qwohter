@@ -48,10 +48,17 @@ import { TaskDeleteDialog } from './TaskDeleteDialog';
 import { MentionInput } from './MentionInput';
 import { TaskCommentItem } from './TaskCommentItem';
 import { ReminderPicker } from './ReminderPicker';
-import type { ProjectTask, TaskPriority, ReminderRecurrence } from '@/lib/types/projectTasks';
+import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import type { TaskComment, TaskAttachment, TaskActivity, MentionSuggestion } from '@/lib/types/taskComments';
+import type { ScheduledNotificationRecurrence } from '@/lib/types/scheduledNotifications';
 import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
+import {
+  getTaskReminder,
+  scheduleTaskReminder,
+  cancelTaskReminder,
+  type TaskReminder,
+} from '@/services/scheduledNotificationsService';
 
 // =============================================================================
 // Types
@@ -157,6 +164,7 @@ export function TaskDetailOverlay({
   members,
   projects,
   currentUserId,
+  organizationId,
   onClose,
   onUpdate,
   onDelete,
@@ -192,8 +200,8 @@ export function TaskDetailOverlay({
   const [isCommentsCollapsed, setIsCommentsCollapsed] = useState(false);
   const [isAttachmentsCollapsed, setIsAttachmentsCollapsed] = useState(false);
   const [isActivityCollapsed, setIsActivityCollapsed] = useState(true); // Collapsed by default
-  const [reminderDate, setReminderDate] = useState<string | null>(task.reminder_date || null);
-  const [reminderRecurrence, setReminderRecurrence] = useState<ReminderRecurrence>(task.reminder_recurrence || 'once');
+  const [taskReminder, setTaskReminder] = useState<TaskReminder | null>(null);
+  const [isLoadingReminder, setIsLoadingReminder] = useState(false);
   const [descriptionDragOver, setDescriptionDragOver] = useState(false);
   const [commentDragOver, setCommentDragOver] = useState(false);
 
@@ -204,10 +212,26 @@ export function TaskDetailOverlay({
     setPriority(task.priority);
     setDueDate(task.due_date || '');
     setAssignee(task.assigned_to || '');
-    setReminderDate(task.reminder_date || null);
-    setReminderRecurrence(task.reminder_recurrence || 'once');
     setDescriptionChanged(false);
-  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to, task.reminder_date, task.reminder_recurrence]);
+  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to]);
+
+  // Fetch reminder from scheduled_notifications when task changes
+  useEffect(() => {
+    const fetchReminder = async () => {
+      setIsLoadingReminder(true);
+      try {
+        const reminder = await getTaskReminder(task.id);
+        setTaskReminder(reminder);
+      } catch (error) {
+        console.error('Failed to fetch task reminder:', error);
+        setTaskReminder(null);
+      } finally {
+        setIsLoadingReminder(false);
+      }
+    };
+
+    fetchReminder();
+  }, [task.id]);
 
   const activeMembers = members.filter((m) => m.status === 'Active');
 
@@ -542,17 +566,37 @@ export function TaskDetailOverlay({
             {/* Reminder */}
             <ReminderPicker
               dueDate={dueDate}
-              reminderDate={reminderDate}
-              reminderRecurrence={reminderRecurrence}
-              reminderSent={task.reminder_sent}
-              lastReminderSentAt={task.last_reminder_sent_at}
-              onReminderChange={(newReminderDate, newRecurrence) => {
-                setReminderDate(newReminderDate);
-                setReminderRecurrence(newRecurrence);
-                handleSave('reminder_date', newReminderDate);
-                handleSave('reminder_recurrence', newRecurrence);
-                handleSave('reminder_sent', false);
-                handleSave('last_reminder_sent_at', null);
+              reminderDate={taskReminder?.scheduledFor ?? null}
+              reminderRecurrence={taskReminder?.recurrence ?? 'once'}
+              reminderSent={taskReminder?.status === 'sent'}
+              lastReminderSentAt={taskReminder?.lastSentAt ?? null}
+              disabled={isLoadingReminder}
+              onReminderChange={async (newReminderDate, newRecurrence) => {
+                if (!currentUserId) return;
+
+                try {
+                  if (newReminderDate) {
+                    // Schedule or update reminder
+                    const newReminder = await scheduleTaskReminder({
+                      taskId: task.id,
+                      userId: currentUserId,
+                      organizationId,
+                      scheduledFor: newReminderDate,
+                      recurrence: newRecurrence,
+                      dueDate: dueDate || undefined,
+                      taskTitle: task.title,
+                      taskReference: task.reference,
+                      priority: task.priority,
+                    });
+                    setTaskReminder(newReminder);
+                  } else {
+                    // Cancel reminder
+                    await cancelTaskReminder(task.id, currentUserId);
+                    setTaskReminder(null);
+                  }
+                } catch (error) {
+                  console.error('Failed to update reminder:', error);
+                }
               }}
             />
 

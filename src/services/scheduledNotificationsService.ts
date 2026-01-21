@@ -1,0 +1,241 @@
+/**
+ * Scheduled Notifications Service
+ *
+ * Handles CRUD operations for scheduled notifications (task reminders).
+ * Uses the scheduled_notifications table for better architecture.
+ */
+
+import { supabase } from '@/integrations/supabase/client';
+import type {
+  ScheduledNotification,
+  ScheduledNotificationRecurrence,
+} from '@/lib/types/scheduledNotifications';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface TaskReminder {
+  id: string;
+  taskId: string;
+  userId: string;
+  organizationId: string;
+  scheduledFor: string;
+  recurrence: ScheduledNotificationRecurrence;
+  recurrenceEndDate: string | null;
+  status: 'pending' | 'sent' | 'cancelled' | 'failed';
+  sentAt: string | null;
+  lastSentAt: string | null;
+}
+
+interface ScheduleTaskReminderInput {
+  taskId: string;
+  userId: string;
+  organizationId: string;
+  scheduledFor: string;
+  recurrence?: ScheduledNotificationRecurrence;
+  dueDate?: string | null;
+  taskTitle: string;
+  taskReference?: string | null;
+  priority?: string;
+  proposalId?: string | null;
+}
+
+// =============================================================================
+// Service Functions
+// =============================================================================
+
+/**
+ * Get the current reminder for a task (if any)
+ */
+export async function getTaskReminder(taskId: string): Promise<TaskReminder | null> {
+  const { data, error } = await (supabase
+    .from('scheduled_notifications') as any)
+    .select('*')
+    .eq('entity_type', 'task')
+    .eq('entity_id', taskId)
+    .in('status', ['pending', 'sent'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // No rows found
+    console.error('Error fetching task reminder:', error);
+    return null;
+  }
+
+  return mapToTaskReminder(data);
+}
+
+/**
+ * Schedule a reminder for a task
+ * Cancels any existing pending reminders for the same task/user
+ */
+export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Promise<TaskReminder | null> {
+  const {
+    taskId,
+    userId,
+    organizationId,
+    scheduledFor,
+    recurrence = 'once',
+    dueDate,
+    taskTitle,
+    taskReference,
+    priority,
+    proposalId,
+  } = input;
+
+  // First, cancel any existing pending reminders for this task/user
+  await (supabase
+    .from('scheduled_notifications') as any)
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('entity_type', 'task')
+    .eq('entity_id', taskId)
+    .eq('user_id', userId)
+    .eq('status', 'pending');
+
+  // Create the new reminder
+  const { data, error } = await (supabase
+    .from('scheduled_notifications') as any)
+    .insert({
+      entity_type: 'task',
+      entity_id: taskId,
+      user_id: userId,
+      organization_id: organizationId,
+      created_by: userId, // Same as user_id when setting own reminder
+      scheduled_for: scheduledFor,
+      recurrence,
+      recurrence_end_date: dueDate || null,
+      notification_type: 'reminder',
+      title: `Reminder: ${taskTitle}`,
+      message: buildReminderMessage(taskTitle, dueDate),
+      link: `/task-board?task=${taskId}`,
+      metadata: {
+        task_reference: taskReference,
+        due_date: dueDate,
+        priority,
+        proposal_id: proposalId,
+      },
+      status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error scheduling task reminder:', error);
+    throw new Error(`Failed to schedule reminder: ${error.message}`);
+  }
+
+  return mapToTaskReminder(data);
+}
+
+/**
+ * Cancel a task reminder
+ */
+export async function cancelTaskReminder(taskId: string, userId?: string): Promise<boolean> {
+  let query = (supabase
+    .from('scheduled_notifications') as any)
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('entity_type', 'task')
+    .eq('entity_id', taskId)
+    .eq('status', 'pending');
+
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  const { error } = await query;
+
+  if (error) {
+    console.error('Error cancelling task reminder:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get all reminders for a user
+ */
+export async function getUserReminders(
+  userId: string,
+  status?: 'pending' | 'sent' | 'cancelled'
+): Promise<TaskReminder[]> {
+  let query = (supabase
+    .from('scheduled_notifications') as any)
+    .select('*')
+    .eq('entity_type', 'task')
+    .eq('user_id', userId)
+    .order('scheduled_for', { ascending: true });
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching user reminders:', error);
+    return [];
+  }
+
+  return (data || []).map(mapToTaskReminder);
+}
+
+/**
+ * Get reminders for multiple tasks (for TaskBoard display)
+ * Returns a map of taskId -> TaskReminder
+ */
+export async function getTaskReminders(taskIds: string[]): Promise<Map<string, TaskReminder>> {
+  if (taskIds.length === 0) return new Map();
+
+  const { data, error } = await (supabase
+    .from('scheduled_notifications') as any)
+    .select('*')
+    .eq('entity_type', 'task')
+    .in('entity_id', taskIds)
+    .in('status', ['pending', 'sent'])
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching task reminders:', error);
+    return new Map();
+  }
+
+  // Group by entity_id (taskId), keeping only the most recent for each task
+  const reminderMap = new Map<string, TaskReminder>();
+  for (const item of data || []) {
+    if (!reminderMap.has(item.entity_id)) {
+      reminderMap.set(item.entity_id, mapToTaskReminder(item));
+    }
+  }
+
+  return reminderMap;
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+function mapToTaskReminder(data: ScheduledNotification): TaskReminder {
+  return {
+    id: data.id,
+    taskId: data.entity_id,
+    userId: data.user_id,
+    organizationId: data.organization_id,
+    scheduledFor: data.scheduled_for,
+    recurrence: data.recurrence,
+    recurrenceEndDate: data.recurrence_end_date,
+    status: data.status,
+    sentAt: data.sent_at,
+    lastSentAt: data.last_sent_at,
+  };
+}
+
+function buildReminderMessage(taskTitle: string, dueDate?: string | null): string {
+  if (!dueDate) {
+    return `Reminder for your task "${taskTitle}"`;
+  }
+  return `Your task "${taskTitle}" is coming up!`;
+}

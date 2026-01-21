@@ -60,6 +60,7 @@ import {
   notifyTaskCommentReply,
 } from '@/services/notificationService';
 import { TaskDeleteDialog } from '@/components/features/board/task-detail/TaskDeleteDialog';
+import { getTaskReminders, type TaskReminder } from '@/services/scheduledNotificationsService';
 import type { ProjectTask } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import type { TaskAttachment } from '@/lib/types/taskComments';
@@ -100,21 +101,21 @@ function toLocalISOString(date: Date): string {
 }
 
 /**
- * Get reminder display text for tooltip
+ * Get reminder display text for tooltip (from scheduled_notifications)
  */
-function getReminderDisplayText(task: ProjectTask): string | null {
-  if (!task.reminder_date) {
-    return null;
-  }
+function getReminderDisplayText(reminder: TaskReminder | undefined): string | null {
+  if (!reminder) return null;
 
   try {
-    const reminderDate = new Date(task.reminder_date);
+    const reminderDate = new Date(reminder.scheduledFor);
     const dateStr = reminderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const timeStr = reminderDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-    const recurrence = task.reminder_recurrence || 'once';
+    if (reminder.status === 'sent') {
+      return `Reminder sent: ${dateStr} @ ${timeStr}`;
+    }
 
-    if (recurrence === 'daily') {
+    if (reminder.recurrence === 'daily') {
       return `Daily reminder starting ${dateStr} @ ${timeStr}`;
     }
 
@@ -210,6 +211,21 @@ export default function TaskBoard() {
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
   // Track if user manually closed (to prevent useEffect from re-opening)
   const userClosedRef = useRef(false);
+
+  // State for task reminders (from scheduled_notifications)
+  const [taskReminders, setTaskReminders] = useState<Map<string, TaskReminder>>(new Map());
+
+  // Fetch reminders for all tasks
+  useEffect(() => {
+    const fetchReminders = async () => {
+      if (tasks.length > 0) {
+        const taskIds = tasks.map(t => t.id);
+        const reminders = await getTaskReminders(taskIds);
+        setTaskReminders(reminders);
+      }
+    };
+    fetchReminders();
+  }, [tasks]);
 
   // Open task from URL param on load (e.g., ?task=TASK-123)
   useEffect(() => {
@@ -1179,13 +1195,17 @@ export default function TaskBoard() {
 
                               {/* Reminder Indicator */}
                               {(() => {
-                                const reminderText = getReminderDisplayText(task);
+                                const reminder = taskReminders.get(task.id);
+                                const reminderText = getReminderDisplayText(reminder);
                                 if (!reminderText) return null;
+                                const isSent = reminder?.status === 'sent';
                                 return (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                        <button className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600">
+                                        <button className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${
+                                          isSent ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                                        }`}>
                                           <BellSimple className="w-3 h-3" weight="fill" />
                                         </button>
                                       </TooltipTrigger>

@@ -24,7 +24,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BellSimple, BellRinging, CalendarBlank, Clock, X, CheckCircle, Warning } from '@phosphor-icons/react';
-import type { ReminderPreset, ReminderRecurrence } from '@/lib/types/projectTasks';
+import type { ReminderPreset, ScheduledNotificationRecurrence } from '@/lib/types/scheduledNotifications';
+
+// Alias for cleaner code
+type ReminderRecurrence = ScheduledNotificationRecurrence;
 
 interface ReminderPickerProps {
   dueDate: string | null;
