@@ -5,12 +5,10 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { format, subDays, setHours, setMinutes, parseISO, isValid, isBefore, isToday, isTomorrow } from 'date-fns';
+import { format, subDays, setHours, setMinutes, parseISO, isValid, isBefore, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { cn, parseLocalDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   Popover,
   PopoverContent,
@@ -23,7 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BellSimple, BellRinging, CalendarBlank, Clock, X, CheckCircle, Warning } from '@phosphor-icons/react';
+import { BellSimple, BellRinging, CalendarBlank, Clock, X, CheckCircle, Check, Warning, Info } from '@phosphor-icons/react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { ReminderPreset, ScheduledNotificationRecurrence } from '@/lib/types/scheduledNotifications';
 
 // Alias for cleaner code
@@ -52,52 +56,27 @@ export function ReminderPicker({
   const [showCustom, setShowCustom] = useState(false);
   const [customDate, setCustomDate] = useState('');
   const [customTime, setCustomTime] = useState('09:00');
-  const [repeatDaily, setRepeatDaily] = useState(reminderRecurrence === 'daily');
+  const [selectedRecurrence, setSelectedRecurrence] = useState<ReminderRecurrence>(reminderRecurrence);
   const [selectedPreset, setSelectedPreset] = useState<ReminderPreset>('none');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  // Sync repeatDaily when prop changes
+  // Sync selectedRecurrence when prop changes
   useEffect(() => {
-    setRepeatDaily(reminderRecurrence === 'daily');
+    setSelectedRecurrence(reminderRecurrence);
   }, [reminderRecurrence]);
 
-  // Sync selectedPreset and customTime when popover opens
+  // Reset to fresh state when popover opens (don't try to match saved reminder)
   useEffect(() => {
     if (isOpen) {
-      // Sync the time from saved reminder, or default to 9:00 AM
-      if (reminderDate) {
-        const reminderObj = parseISO(reminderDate);
-        if (isValid(reminderObj)) {
-          setCustomTime(format(reminderObj, 'HH:mm'));
-        } else {
-          setCustomTime('09:00'); // Default to 9:00 AM
-        }
-      } else {
-        setCustomTime('09:00'); // Default to 9:00 AM when no reminder
-      }
-
-      // Determine current preset when opening
-      if (!reminderDate) {
-        setSelectedPreset('none');
-      } else if (dueDate) {
-        const dueDateObj = parseLocalDate(dueDate);
-        const reminderObj = parseISO(reminderDate);
-        if (!isValid(reminderObj)) {
-          setSelectedPreset('custom');
-          return;
-        }
-        const reminderDateOnly = format(reminderObj, 'yyyy-MM-dd');
-        const dueDateOnly = format(dueDateObj, 'yyyy-MM-dd');
-
-        if (reminderDateOnly === dueDateOnly) setSelectedPreset('day_of');
-        else if (reminderDateOnly === format(subDays(dueDateObj, 1), 'yyyy-MM-dd')) setSelectedPreset('1_day');
-        else if (reminderDateOnly === format(subDays(dueDateObj, 2), 'yyyy-MM-dd')) setSelectedPreset('2_days');
-        else if (reminderDateOnly === format(subDays(dueDateObj, 7), 'yyyy-MM-dd')) setSelectedPreset('1_week');
-        else setSelectedPreset('custom');
-      } else {
-        setSelectedPreset('custom');
-      }
+      // Start fresh - default to 'none' selected and 9:00 AM time
+      setSelectedPreset('none');
+      setSelectedRecurrence('once');
+      setCustomTime('09:00');
+      setShowCustom(false);
+      setCustomDate('');
+      setShowCancelConfirm(false);
     }
-  }, [isOpen, reminderDate, dueDate]);
+  }, [isOpen]);
 
   // Parse current reminder date
   const currentReminder = useMemo(() => {
@@ -134,23 +113,6 @@ export function ReminderPicker({
 
     return 'scheduled';
   }, [currentReminder, reminderSent, reminderRecurrence, lastReminderSentAt]);
-
-  // Determine current preset based on reminder date and due date
-  const currentPreset = useMemo((): ReminderPreset => {
-    if (!reminderDate || !currentReminder) return 'none';
-    if (!dueDate) return 'custom';
-
-    const dueDateObj = parseLocalDate(dueDate);
-    const reminderDateOnly = format(currentReminder, 'yyyy-MM-dd');
-    const dueDateOnly = format(dueDateObj, 'yyyy-MM-dd');
-
-    if (reminderDateOnly === dueDateOnly) return 'day_of';
-    if (reminderDateOnly === format(subDays(dueDateObj, 1), 'yyyy-MM-dd')) return '1_day';
-    if (reminderDateOnly === format(subDays(dueDateObj, 2), 'yyyy-MM-dd')) return '2_days';
-    if (reminderDateOnly === format(subDays(dueDateObj, 7), 'yyyy-MM-dd')) return '1_week';
-
-    return 'custom';
-  }, [reminderDate, currentReminder, dueDate]);
 
   // Generate reminder date from preset
   const calculateReminderDate = (preset: ReminderPreset, time: string = '09:00'): string | null => {
@@ -198,9 +160,14 @@ export function ReminderPicker({
     } else {
       setSelectedPreset(preset);
       setShowCustom(false);
-      // Disable repeat daily for "day_of" since there are no days to repeat
+      // Reset recurrence to 'once' only for day_of (no days left to repeat)
+      // For 1_day, daily is valid (fires day before + day of)
       if (preset === 'day_of') {
-        setRepeatDaily(false);
+        setSelectedRecurrence('once');
+      }
+      // Reset weekly to daily for presets with < 7 days
+      if ((preset === '1_day' || preset === '2_days') && selectedRecurrence === 'weekly') {
+        setSelectedRecurrence('daily');
       }
       // Set appropriate default time based on preset date
       if (preset !== 'none') {
@@ -229,11 +196,11 @@ export function ReminderPicker({
   const handlePresetSave = () => {
     if (selectedPreset === 'none') {
       onReminderChange(null, 'once');
-      setRepeatDaily(false);
+      setSelectedRecurrence('once');
     } else {
       const newReminderDate = calculateReminderDate(selectedPreset, customTime || '09:00');
-      // For "day_of", always use 'once' since there are no days to repeat
-      const recurrence = selectedPreset === 'day_of' ? 'once' : (repeatDaily ? 'daily' : 'once');
+      // For presets with limited days, force 'once'
+      const recurrence = (selectedPreset === 'day_of' || selectedPreset === '1_day') ? 'once' : selectedRecurrence;
       onReminderChange(newReminderDate, recurrence);
     }
     setIsOpen(false);
@@ -250,15 +217,15 @@ export function ReminderPicker({
     targetDate = setHours(targetDate, hours);
     targetDate = setMinutes(targetDate, minutes);
 
-    onReminderChange(targetDate.toISOString(), repeatDaily ? 'daily' : 'once');
+    onReminderChange(targetDate.toISOString(), selectedRecurrence);
     setShowCustom(false);
     setIsOpen(false);
   };
 
-  // Get display label - shows preview when popover is open with unsaved changes
+  // Get display label - always shows the SAVED reminder, not preview
   const getDisplayLabel = (): string => {
-    // Show status for sent/expired reminders when popover is closed
-    if (!isOpen && reminderStatus === 'sent') {
+    // Show status for sent/expired reminders
+    if (reminderStatus === 'sent') {
       if (lastReminderSentAt) {
         const sentDate = parseISO(lastReminderSentAt);
         if (isValid(sentDate)) {
@@ -268,55 +235,25 @@ export function ReminderPicker({
       return 'Sent';
     }
 
-    if (!isOpen && reminderStatus === 'expired') {
+    if (reminderStatus === 'expired') {
       return 'Expired';
     }
 
     // Show "Scheduled" status for active reminders
-    if (!isOpen && reminderStatus === 'scheduled' && currentReminder) {
+    if (reminderStatus === 'scheduled' && currentReminder) {
       const dateStr = format(currentReminder, 'MMM d');
       const timeStr = format(currentReminder, 'h:mm a');
       if (reminderRecurrence === 'daily') {
         return `Daily from ${dateStr}, ${timeStr}`;
       }
+      if (reminderRecurrence === 'weekly') {
+        return `Weekly from ${dateStr}, ${timeStr}`;
+      }
       return `${dateStr}, ${timeStr}`;
     }
 
-    // When popover is open and user has selected a different preset, show preview
-    if (isOpen && selectedPreset !== currentPreset) {
-      if (selectedPreset === 'none') return 'No reminder';
-      if (selectedPreset === 'custom') return 'Custom...';
-
-      // Calculate and show the preview date
-      const previewDate = calculateReminderDate(selectedPreset, customTime);
-      if (previewDate) {
-        try {
-          const date = parseISO(previewDate);
-          if (isValid(date)) {
-            const dateStr = format(date, 'MMM d');
-            const timeStr = format(date, 'h:mm a');
-            if (repeatDaily) {
-              return `Daily from ${dateStr}, ${timeStr}`;
-            }
-            return `${dateStr}, ${timeStr}`;
-          }
-        } catch {
-          // Fall through to saved value
-        }
-      }
-    }
-
-    // Show saved value
-    if (!reminderDate || !currentReminder) return 'No reminder';
-
-    const dateStr = format(currentReminder, 'MMM d');
-    const timeStr = format(currentReminder, 'h:mm a');
-
-    if (reminderRecurrence === 'daily') {
-      return `Daily from ${dateStr}, ${timeStr}`;
-    }
-
-    return `${dateStr}, ${timeStr}`;
+    // No reminder set
+    return 'No reminder';
   };
 
   const hasReminder = reminderDate !== null;
@@ -403,8 +340,115 @@ export function ReminderPicker({
       };
     });
 
-  // Check if repeat daily should be disabled (when reminder is on due date, no days to repeat)
-  const isRepeatDailyDisabled = selectedPreset === 'day_of';
+  // Determine available recurrence options based on days until due date
+  const getAvailableRecurrenceOptions = (forCustomDate?: string): ReminderRecurrence[] => {
+    // For presets
+    if (!forCustomDate) {
+      // For day_of preset, only 'once' makes sense (no days left to repeat)
+      if (selectedPreset === 'day_of') {
+        return ['once'];
+      }
+
+      // For 1_day preset, 'once' or 'daily' (fires day before + day of = 2 days)
+      if (selectedPreset === '1_day') {
+        return ['once', 'daily'];
+      }
+
+      // For 2_days preset, 'once' and 'daily' (weekly doesn't make sense for 3 days)
+      if (selectedPreset === '2_days') {
+        return ['once', 'daily'];
+      }
+
+      // For 1_week or custom, all options available
+      return ['once', 'daily', 'weekly'];
+    }
+
+    // For custom date - calculate days until due date
+    // If no custom date selected yet, show all options
+    if (!forCustomDate) {
+      return ['once', 'daily', 'weekly'];
+    }
+
+    // If no due date, all options available (no end date for recurrence)
+    if (!dueDate) {
+      return ['once', 'daily', 'weekly'];
+    }
+
+    const customDateObj = parseLocalDate(forCustomDate);
+    const dueDateObj = parseLocalDate(dueDate);
+    const daysUntilDue = differenceInDays(dueDateObj, customDateObj);
+
+    if (daysUntilDue <= 0) {
+      return ['once']; // Same day or past due
+    }
+    if (daysUntilDue === 1) {
+      return ['once']; // Only 1 day, no repeat needed
+    }
+    if (daysUntilDue < 7) {
+      return ['once', 'daily']; // Less than a week, daily makes sense
+    }
+    return ['once', 'daily', 'weekly']; // Week or more, all options
+  };
+
+  const availableRecurrenceOptions = getAvailableRecurrenceOptions();
+  const showRecurrenceDropdown = availableRecurrenceOptions.length > 1;
+
+  // Calculate recurrence options for custom date based on days until due
+  const getCustomRecurrenceOptions = (): ReminderRecurrence[] => {
+    // No custom date yet - show all options
+    if (!customDate) {
+      return ['once', 'daily', 'weekly'];
+    }
+
+    // No due date on task - show all options (no end constraint)
+    if (!dueDate) {
+      return ['once', 'daily', 'weekly'];
+    }
+
+    const customDateObj = parseLocalDate(customDate);
+    const dueDateObj = parseLocalDate(dueDate);
+    const daysUntilDue = differenceInDays(dueDateObj, customDateObj);
+
+    if (daysUntilDue <= 0) {
+      return ['once']; // Same day or past - no point repeating
+    }
+    if (daysUntilDue < 7) {
+      return ['once', 'daily']; // 1-6 days - daily ok (fires on reminder day + remaining days until due)
+    }
+    return ['once', 'daily', 'weekly']; // Week or more - all options
+  };
+
+  const customRecurrenceOptions = getCustomRecurrenceOptions();
+  const showCustomRecurrenceDropdown = customRecurrenceOptions.length > 1;
+
+  // Generate preview text for reminder
+  const getPreviewText = (dateStr: string, time: string, recurrence: ReminderRecurrence): string => {
+    const dateObj = parseLocalDate(dateStr);
+    const timeParts = time.split(':').map(Number);
+    const hours = timeParts[0] ?? 9;
+    const minutes = timeParts[1] ?? 0;
+    const dateWithTime = setMinutes(setHours(dateObj, hours), minutes);
+
+    const formattedDate = format(dateWithTime, 'MMM d');
+    const formattedTime = format(dateWithTime, 'h:mm a');
+    const dayIndicator = isToday(dateObj) ? ' (Today)' : isTomorrow(dateObj) ? ' (Tomorrow)' : '';
+
+    if (recurrence === 'daily') {
+      return `${formattedDate}${dayIndicator}, ${formattedTime} - Daily until due`;
+    }
+    if (recurrence === 'weekly') {
+      return `${formattedDate}${dayIndicator}, ${formattedTime} - Weekly until due`;
+    }
+    return `${formattedDate}${dayIndicator}, ${formattedTime} - Once`;
+  };
+
+  // Get preview date for current preset selection
+  const getPresetPreviewDate = (): string | null => {
+    if (selectedPreset === 'none' || selectedPreset === 'custom') return null;
+    const presetOption = allPresetOptions.find(p => p.preset === selectedPreset);
+    if (!presetOption) return null;
+    return format(presetOption.date, 'yyyy-MM-dd');
+  };
 
   // Check if all presets are in the past
   const allPresetsInPast = dueDate && presetOptions.length === 0;
@@ -535,23 +579,61 @@ export function ReminderPicker({
         {/* Header */}
         <div className="px-3 py-2 border-b border-gray-100">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-700">Reminder</span>
-            {hasReminder && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-medium text-gray-700">Reminder</span>
+              {dueDate && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[200px] text-xs">
+                      Reminders are based on the task's due date. To change available reminder dates, update the due date.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            {hasReminder && !showCancelConfirm && (
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(true)}
+                className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-0.5"
+              >
+                <X className="w-3 h-3" />
+                Cancel
+              </button>
+            )}
+          </div>
+          {/* Cancel confirmation - inline */}
+          {showCancelConfirm && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[11px] text-red-600">Cancel this reminder?</span>
               <button
                 type="button"
                 onClick={() => {
                   onReminderChange(null, 'once');
                   setShowCustom(false);
-                  setRepeatDaily(false);
+                  setSelectedRecurrence('once');
                   setSelectedPreset('none');
+                  setShowCancelConfirm(false);
+                  setIsOpen(false);
                 }}
-                className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-0.5"
+                className="p-0.5 rounded border border-gray-200 text-red-500 hover:text-red-700 hover:border-red-200 transition-colors"
+                title="Yes, cancel reminder"
+              >
+                <Check className="w-3 h-3" weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                className="p-0.5 rounded border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
+                title="No, keep reminder"
               >
                 <X className="w-3 h-3" />
-                Clear
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Status banner for sent/expired reminders */}
@@ -588,18 +670,6 @@ export function ReminderPicker({
         {/* Presets */}
         {!showCustom && (
           <div className="p-2 space-y-0.5">
-            {/* No reminder */}
-            <button
-              type="button"
-              onClick={() => handlePresetSelect('none')}
-              className={cn(
-                'w-full flex items-center px-2 py-1.5 rounded text-left text-xs transition-colors',
-                selectedPreset === 'none' ? 'bg-amber-50 text-amber-700' : 'hover:bg-gray-50 text-gray-700'
-              )}
-            >
-              No reminder
-            </button>
-
             {/* Preset options */}
             {presetOptions.map((opt) => (
               <button
@@ -635,6 +705,20 @@ export function ReminderPicker({
               <CalendarBlank className="w-3.5 h-3.5 text-gray-400" />
               Custom date & time...
             </button>
+
+            {/* Clear reminder button - only when no option selected and reminder exists */}
+            {selectedPreset === 'none' && hasReminder && !showCancelConfirm && (
+              <div className="pt-2 mt-2 border-t border-gray-100">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  Clear reminder
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -705,31 +789,49 @@ export function ReminderPicker({
               </div>
             </div>
 
-            {/* Repeat daily */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BellSimple className="w-3.5 h-3.5 text-gray-400" />
-                <span className={cn("text-[11px]", isRepeatDailyDisabled ? "text-gray-400" : "text-gray-600")}>
-                  Repeat daily{isRepeatDailyDisabled ? ' (N/A for day of)' : ''}
-                </span>
+            {/* Recurrence dropdown - only show when options available */}
+            {showRecurrenceDropdown && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <BellSimple className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] text-gray-600">Repeat</span>
+                </div>
+                <Select
+                  value={selectedRecurrence}
+                  onValueChange={(value: ReminderRecurrence) => {
+                    setSelectedRecurrence(value);
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    {availableRecurrenceOptions.map((option) => (
+                      <SelectItem key={option} value={option} className="text-xs">
+                        {option === 'once' ? 'Once (no repeat)' : option === 'daily' ? 'Daily until due' : 'Weekly until due'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Switch
-                checked={repeatDaily && !isRepeatDailyDisabled}
-                onCheckedChange={(checked) => {
-                  setRepeatDaily(checked);
-                  if (reminderDate) {
-                    onReminderChange(reminderDate, checked ? 'daily' : 'once');
-                  }
-                }}
-                disabled={isRepeatDailyDisabled}
-                className="scale-75"
-              />
-            </div>
+            )}
 
             {/* Time in past warning */}
             {isSelectedTimeInPast && (
               <div className="text-[10px] text-red-500 text-center py-1">
                 Selected time has passed. Please choose a future time.
+              </div>
+            )}
+
+            {/* Preview box */}
+            {getPresetPreviewDate() && !isSelectedTimeInPast && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <BellRinging className="w-3.5 h-3.5 text-amber-600" weight="fill" />
+                  <span className="text-[11px] font-medium text-amber-700">
+                    {getPreviewText(getPresetPreviewDate()!, customTime, selectedRecurrence)}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -745,54 +847,55 @@ export function ReminderPicker({
           </div>
         )}
 
-        {/* Save button when no reminder selected */}
-        {!showCustom && selectedPreset === 'none' && hasReminder && (
-          <div className="px-3 py-2 border-t border-gray-100">
-            <Button
-              size="sm"
-              className="w-full h-7 text-xs"
-              onClick={handlePresetSave}
-            >
-              Clear reminder
-            </Button>
-          </div>
-        )}
-
         {/* Custom date/time picker */}
         {showCustom && (
-          <div className="p-3 space-y-3">
-            <button
-              type="button"
-              onClick={() => setShowCustom(false)}
-              className="text-[10px] text-gray-400 hover:text-gray-600"
-            >
-              ← Back to presets
-            </button>
+          <div className="p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider">Custom Date</span>
+              <button
+                type="button"
+                onClick={() => setShowCustom(false)}
+                className="text-[10px] text-gray-400 hover:text-gray-600"
+              >
+                ← Presets
+              </button>
+            </div>
 
-            <div className="space-y-3">
-              <div>
-                <Label className="text-[10px] text-gray-500 uppercase tracking-wider">Date</Label>
-                <Input
-                  type="date"
-                  value={customDate}
-                  min={todayStr}
-                  onChange={(e) => {
-                    setCustomDate(e.target.value);
-                    // If selecting today, update time to current time
-                    if (e.target.value === todayStr) {
-                      setCustomTime(getMinTimeForDate(new Date()));
-                    } else {
-                      setCustomTime('09:00');
+            <div className="space-y-2">
+              <Input
+                type="date"
+                value={customDate}
+                min={todayStr}
+                max={dueDate || undefined}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setCustomDate(newDate);
+                  // If selecting today, update time to current time
+                  if (newDate === todayStr) {
+                    setCustomTime(getMinTimeForDate(new Date()));
+                  } else {
+                    setCustomTime('09:00');
+                  }
+                  // Reset recurrence if current selection is no longer valid for new date
+                  if (dueDate && newDate) {
+                    const newDateObj = parseLocalDate(newDate);
+                    const dueDateObj = parseLocalDate(dueDate);
+                    const daysUntilDue = differenceInDays(dueDateObj, newDateObj);
+                    // If less than 7 days and weekly selected, reset to daily or once
+                    if (daysUntilDue < 7 && selectedRecurrence === 'weekly') {
+                      setSelectedRecurrence(daysUntilDue > 0 ? 'daily' : 'once');
                     }
-                  }}
-                  className="h-8 text-xs mt-1"
-                />
-              </div>
+                    // If same day or past and daily selected, reset to once
+                    if (daysUntilDue <= 0 && selectedRecurrence !== 'once') {
+                      setSelectedRecurrence('once');
+                    }
+                  }
+                }}
+                className="h-7 text-xs"
+              />
 
               {/* Time selection with dropdowns */}
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-gray-500 uppercase tracking-wider">Time</Label>
-                <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1">
                   {/* Hour */}
                   <Select
                     value={timeComponents.hour}
@@ -847,23 +950,49 @@ export function ReminderPicker({
                       <SelectItem value="PM" className="text-xs">PM</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-gray-600">Repeat daily until done</span>
-                <Switch
-                  checked={repeatDaily}
-                  onCheckedChange={setRepeatDaily}
-                  className="scale-75"
-                />
-              </div>
+              {/* Recurrence dropdown for custom date - only show when options available */}
+              {showCustomRecurrenceDropdown && (
+                <div className="space-y-1">
+                  <span className="text-[11px] text-gray-600">Repeat</span>
+                  <Select
+                    value={selectedRecurrence}
+                    onValueChange={(value: ReminderRecurrence) => {
+                      setSelectedRecurrence(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-full text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200]">
+                      {customRecurrenceOptions.map((option) => (
+                        <SelectItem key={option} value={option} className="text-xs">
+                          {option === 'once' ? 'Once (no repeat)' : option === 'daily' ? 'Daily until due' : 'Weekly until due'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Time in past warning for custom */}
             {customDate === todayStr && isSelectedTimeInPast && (
               <div className="text-[10px] text-red-500 text-center py-1">
                 Selected time has passed. Please choose a future time.
+              </div>
+            )}
+
+            {/* Preview box for custom */}
+            {customDate && !(customDate === todayStr && isSelectedTimeInPast) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <BellRinging className="w-3.5 h-3.5 text-amber-600" weight="fill" />
+                  <span className="text-[11px] font-medium text-amber-700">
+                    {getPreviewText(customDate, customTime, selectedRecurrence)}
+                  </span>
+                </div>
               </div>
             )}
 
