@@ -227,7 +227,9 @@ export function TaskDetailOverlay({
   const handleSave = async (field: string, value: unknown) => {
     setIsSaving(true);
     try {
-      await onUpdate(task.id, { [field]: value || null });
+      // Only convert empty strings to null, preserve false/0 as valid values
+      const normalizedValue = value === '' ? null : value;
+      await onUpdate(task.id, { [field]: normalizedValue });
     } finally {
       setIsSaving(false);
     }

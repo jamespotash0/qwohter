@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BellSimple, CalendarBlank, Clock, X } from '@phosphor-icons/react';
+import { BellSimple, BellRinging, CalendarBlank, Clock, X, CheckCircle, Warning } from '@phosphor-icons/react';
 import type { ReminderPreset, ReminderRecurrence } from '@/lib/types/projectTasks';
 
 interface ReminderPickerProps {
@@ -262,11 +262,21 @@ export function ReminderPicker({
           return `Sent ${format(sentDate, 'MMM d, h:mm a')}`;
         }
       }
-      return 'Reminder sent';
+      return 'Sent';
     }
 
     if (!isOpen && reminderStatus === 'expired') {
-      return 'Reminder expired';
+      return 'Expired';
+    }
+
+    // Show "Scheduled" status for active reminders
+    if (!isOpen && reminderStatus === 'scheduled' && currentReminder) {
+      const dateStr = format(currentReminder, 'MMM d');
+      const timeStr = format(currentReminder, 'h:mm a');
+      if (reminderRecurrence === 'daily') {
+        return `Daily from ${dateStr}, ${timeStr}`;
+      }
+      return `${dateStr}, ${timeStr}`;
     }
 
     // When popover is open and user has selected a different preset, show preview
@@ -495,17 +505,25 @@ export function ReminderPicker({
           className={cn(
             'h-6 px-2 text-[11px] rounded-md flex items-center gap-1',
             'bg-gray-50 hover:bg-gray-100 transition-colors',
-            // Active scheduled reminder
+            // Active scheduled reminder - amber with bell ringing
             hasReminder && reminderStatus === 'scheduled' && 'bg-amber-50 text-amber-600 hover:bg-amber-100',
-            // Sent reminder - green
+            // Sent reminder - green with check
             reminderStatus === 'sent' && 'bg-green-50 text-green-600 hover:bg-green-100',
-            // Expired reminder - gray/muted
-            reminderStatus === 'expired' && 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+            // Expired reminder - muted with warning
+            reminderStatus === 'expired' && 'bg-orange-50 text-orange-500 hover:bg-orange-100',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
           disabled={disabled}
         >
-          <BellSimple className="w-3 h-3" />
+          {reminderStatus === 'sent' ? (
+            <CheckCircle className="w-3 h-3" weight="fill" />
+          ) : reminderStatus === 'expired' ? (
+            <Warning className="w-3 h-3" weight="fill" />
+          ) : reminderStatus === 'scheduled' ? (
+            <BellRinging className="w-3 h-3" weight="fill" />
+          ) : (
+            <BellSimple className="w-3 h-3" />
+          )}
           <span>{getDisplayLabel()}</span>
         </button>
       </PopoverTrigger>
