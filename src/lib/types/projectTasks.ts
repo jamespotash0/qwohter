@@ -4,11 +4,14 @@
  * Type definitions for project task management system
  */
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
 
-export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskPriority = 'Low' | 'Medium' | 'High';
 
-export type ReminderRecurrence = 'once' | 'daily' | 'hourly';
+export type ReminderRecurrence = 'once' | 'daily';
+
+// Reminder preset types for quick selection in UI
+export type ReminderPreset = 'none' | 'day_of' | '1_day' | '2_days' | '1_week' | 'custom';
 
 export interface ProjectTask {
   id: string;
@@ -25,12 +28,10 @@ export interface ProjectTask {
   reference: string | null; // Auto-generated reference (e.g., CW-1, TES-2)
   position: number; // Position within column for drag/drop ordering
   // Reminder fields
-  remind_before_days: number | null; // Days before due_date to start reminders (null = no reminder)
-  reminder_time: string | null; // Time of day to send reminder (e.g., "09:00:00")
-  reminder_recurrence: ReminderRecurrence; // 'once', 'daily', or 'hourly'
-  reminder_hours_before: number | null; // For hourly: hours before due time to remind
+  reminder_date: string | null; // Exact date/time for reminder (ISO 8601 / TIMESTAMPTZ)
+  reminder_recurrence: ReminderRecurrence; // 'once' or 'daily'
   last_reminder_sent_at: string | null; // Timestamp of last sent reminder
-  reminder_sent: boolean; // Legacy: whether one-time reminder was sent
+  reminder_sent: boolean; // Whether reminder was sent
   created_at: string;
   updated_at: string;
   // Joined data
@@ -64,10 +65,8 @@ export interface CreateProjectTaskInput {
   assigned_to?: string;
   due_date?: string;
   // Reminder fields
-  remind_before_days?: number | null;
-  reminder_time?: string;
+  reminder_date?: string | null;
   reminder_recurrence?: ReminderRecurrence;
-  reminder_hours_before?: number | null;
 }
 
 export interface UpdateProjectTaskInput {
@@ -79,10 +78,8 @@ export interface UpdateProjectTaskInput {
   due_date?: string | null;
   position?: number;
   // Reminder fields
-  remind_before_days?: number | null;
-  reminder_time?: string | null;
+  reminder_date?: string | null;
   reminder_recurrence?: ReminderRecurrence;
-  reminder_hours_before?: number | null;
   last_reminder_sent_at?: string | null;
   reminder_sent?: boolean;
 }
@@ -94,25 +91,25 @@ export interface ReorderTasksInput {
 }
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  done: 'Done',
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  'Done': 'Done',
 };
 
 export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
-  todo: 'bg-gray-100 text-gray-700 border-gray-200',
-  in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
-  done: 'bg-green-100 text-green-700 border-green-200',
+  'To Do': 'bg-gray-100 text-gray-700 border-gray-200',
+  'In Progress': 'bg-blue-100 text-blue-700 border-blue-200',
+  'Done': 'bg-green-100 text-green-700 border-green-200',
 };
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
+  'Low': 'Low',
+  'Medium': 'Medium',
+  'High': 'High',
 };
 
 export const TASK_PRIORITY_COLORS: Record<TaskPriority, string> = {
-  low: 'bg-gray-100 text-gray-600',
-  medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-red-100 text-red-700',
+  'Low': 'bg-gray-100 text-gray-600',
+  'Medium': 'bg-yellow-100 text-yellow-700',
+  'High': 'bg-red-100 text-red-700',
 };

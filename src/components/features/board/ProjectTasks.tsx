@@ -66,7 +66,7 @@ interface ProjectTasksProps {
 export function ProjectTasks({ projectId, organizationId, projectName }: ProjectTasksProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [priority, setPriority] = useState<TaskPriority>('Medium');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState<string>('');
   const [deleteTaskDialog, setDeleteTaskDialog] = useState<{ open: boolean; task: ProjectTask | null }>({
@@ -98,14 +98,14 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
     });
 
     setTitle('');
-    setPriority('medium');
+    setPriority('Medium');
     setDueDate('');
     setAssigneeId('');
     setIsAdding(false);
   };
 
   const handleToggleComplete = (task: ProjectTask) => {
-    const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
+    const newStatus: TaskStatus = task.status === 'Done' ? 'To Do' : 'Done';
     updateStatus.mutate({ taskId: task.id, status: newStatus });
   };
 
@@ -120,9 +120,9 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
   };
 
   // Group tasks by status
-  const todoTasks = tasks.filter((t: ProjectTask) => t.status === 'todo');
-  const inProgressTasks = tasks.filter((t: ProjectTask) => t.status === 'in_progress');
-  const doneTasks = tasks.filter((t: ProjectTask) => t.status === 'done');
+  const todoTasks = tasks.filter((t: ProjectTask) => t.status === 'To Do');
+  const inProgressTasks = tasks.filter((t: ProjectTask) => t.status === 'In Progress');
+  const doneTasks = tasks.filter((t: ProjectTask) => t.status === 'Done');
 
   if (isLoading) {
     return (
@@ -135,11 +135,11 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
   const TaskItem = ({ task }: { task: ProjectTask }) => (
     <div
       className={`flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-gray-50 group ${
-        task.status === 'done' ? 'opacity-60' : ''
+        task.status === 'Done' ? 'opacity-60' : ''
       }`}
     >
       <Checkbox
-        checked={task.status === 'done'}
+        checked={task.status === 'Done'}
         onCheckedChange={() => handleToggleComplete(task)}
         className="mt-0.5"
       />
@@ -147,7 +147,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className={`text-sm ${
-              task.status === 'done' ? 'line-through text-gray-500' : 'text-gray-900'
+              task.status === 'Done' ? 'line-through text-gray-500' : 'text-gray-900'
             }`}
           >
             {task.title}
@@ -187,20 +187,20 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            onClick={() => updateStatus.mutate({ taskId: task.id, status: 'todo' })}
-            disabled={task.status === 'todo'}
+            onClick={() => updateStatus.mutate({ taskId: task.id, status: 'To Do' })}
+            disabled={task.status === 'To Do'}
           >
             Move to To Do
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => updateStatus.mutate({ taskId: task.id, status: 'in_progress' })}
-            disabled={task.status === 'in_progress'}
+            onClick={() => updateStatus.mutate({ taskId: task.id, status: 'In Progress' })}
+            disabled={task.status === 'In Progress'}
           >
             Move to In Progress
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => updateStatus.mutate({ taskId: task.id, status: 'done' })}
-            disabled={task.status === 'done'}
+            onClick={() => updateStatus.mutate({ taskId: task.id, status: 'Done' })}
+            disabled={task.status === 'Done'}
           >
             Move to Done
           </DropdownMenuItem>
@@ -297,7 +297,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
                 onClick={() => {
                   setIsAdding(false);
                   setTitle('');
-                  setPriority('medium');
+                  setPriority('Medium');
                   setDueDate('');
                   setAssigneeId('');
                 }}
@@ -323,8 +323,8 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
           {todoTasks.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className={TASK_STATUS_COLORS.todo}>
-                  {TASK_STATUS_LABELS.todo}
+                <Badge variant="outline" className={TASK_STATUS_COLORS['To Do']}>
+                  {TASK_STATUS_LABELS['To Do']}
                 </Badge>
                 <span className="text-xs text-gray-500">{todoTasks.length}</span>
               </div>
@@ -340,8 +340,8 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
           {inProgressTasks.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className={TASK_STATUS_COLORS.in_progress}>
-                  {TASK_STATUS_LABELS.in_progress}
+                <Badge variant="outline" className={TASK_STATUS_COLORS['In Progress']}>
+                  {TASK_STATUS_LABELS['In Progress']}
                 </Badge>
                 <span className="text-xs text-gray-500">{inProgressTasks.length}</span>
               </div>
@@ -357,8 +357,8 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
           {doneTasks.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Badge variant="outline" className={TASK_STATUS_COLORS.done}>
-                  {TASK_STATUS_LABELS.done}
+                <Badge variant="outline" className={TASK_STATUS_COLORS['Done']}>
+                  {TASK_STATUS_LABELS['Done']}
                 </Badge>
                 <span className="text-xs text-gray-500">{doneTasks.length}</span>
               </div>

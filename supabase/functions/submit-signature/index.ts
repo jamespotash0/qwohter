@@ -1058,7 +1058,7 @@ serve(async (req) => {
           // Get creator's notification preferences
           const { data: prefs } = await supabase
             .from('notification_preferences')
-            .select('email_enabled, email_on_signature_signed, digest_mode')
+            .select('email_enabled, email_on_signature_signed')
             .eq('user_id', proposal.created_by)
             .eq('organization_id', organizationId)
             .single();
@@ -1075,59 +1075,38 @@ serve(async (req) => {
               .single();
 
             if (creatorProfile?.email && creatorProfile.email !== orgEmail) {
-              const isDigestMode = prefs?.digest_mode === 'daily';
-
-              if (isDigestMode) {
-                // Queue for digest
-                await supabase.from('email_notification_queue').insert({
-                  user_id: proposal.created_by,
-                  organization_id: organizationId,
-                  notification_type: 'signature_signed',
+              // Send immediate notification to creator
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${resendApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'Qwohter Notifications <notifications@qwohter.com>',
+                  to: [creatorProfile.email],
                   subject: `${signerName} signed ${proposal.proposal_number}!`,
-                  body_html: `<p><strong>${signerName}</strong> has signed your document <strong>${proposal.proposal_number}</strong>.</p>`,
-                  metadata: {
-                    proposal_number: proposal.proposal_number,
-                    signer_name: signerName,
-                    signer_email: signerEmail,
-                    signed_pdf_url: signedPdfUrl,
-                  },
-                  status: 'pending',
-                });
-                console.log('[submit-signature] Creator notification queued for digest');
-              } else {
-                // Send immediate notification to creator
-                await fetch('https://api.resend.com/emails', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${resendApiKey}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    from: 'Qwohter Notifications <notifications@qwohter.com>',
-                    to: [creatorProfile.email],
-                    subject: `${signerName} signed ${proposal.proposal_number}!`,
-                    html: `
-                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <div style="background: #10b981; color: white; padding: 24px; text-align: center;">
-                          <h1 style="margin: 0; font-size: 20px;">Document Signed!</h1>
-                        </div>
-                        <div style="padding: 24px;">
-                          <p>Hi ${creatorProfile.first_name || 'there'},</p>
-                          <p>Great news! <strong>${signerName}</strong> (${signerEmail}) has signed your document <strong>${proposal.proposal_number}</strong>.</p>
-                          <div style="text-align: center; margin: 24px 0;">
-                            <a href="${signedPdfUrl}" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">View Signed Document</a>
-                          </div>
-                        </div>
-                        <div style="background: #f8f9fa; padding: 16px; text-align: center; font-size: 12px; color: #6b7280;">
-                          <p style="margin: 0;">Sent from <a href="https://www.qwohter.com" style="color: #EE6C4D;">Qwohter</a></p>
-                          <p style="margin: 8px 0 0 0;"><a href="https://www.qwohter.com/settings?tab=notifications" style="color: #EE6C4D;">Manage preferences</a></p>
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: #10b981; color: white; padding: 24px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 20px;">Document Signed!</h1>
+                      </div>
+                      <div style="padding: 24px;">
+                        <p>Hi ${creatorProfile.first_name || 'there'},</p>
+                        <p>Great news! <strong>${signerName}</strong> (${signerEmail}) has signed your document <strong>${proposal.proposal_number}</strong>.</p>
+                        <div style="text-align: center; margin: 24px 0;">
+                          <a href="${signedPdfUrl}" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">View Signed Document</a>
                         </div>
                       </div>
-                    `,
-                  }),
-                });
-                console.log('[submit-signature] Creator notification sent');
-              }
+                      <div style="background: #f8f9fa; padding: 16px; text-align: center; font-size: 12px; color: #6b7280;">
+                        <p style="margin: 0;">Sent from <a href="https://www.qwohter.com" style="color: #EE6C4D;">Qwohter</a></p>
+                        <p style="margin: 8px 0 0 0;"><a href="https://www.qwohter.com/settings?tab=notifications" style="color: #EE6C4D;">Manage preferences</a></p>
+                      </div>
+                    </div>
+                  `,
+                }),
+              });
+              console.log('[submit-signature] Creator notification sent');
             }
           }
         } catch (notifError) {

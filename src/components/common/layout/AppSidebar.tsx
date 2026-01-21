@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile, useAuthStatus, useSignOut } from "@/auth";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { stripeService } from "@/services/stripeService";
 import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,7 +137,10 @@ export function AppSidebar({
 
   // Get current organization and role from React Query
   const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id || '');
-  const { data: members = [] } = useOrganizationMembers(currentOrganization?.id || '', !!currentOrganization?.id); 
+  const { data: members = [] } = useOrganizationMembers(currentOrganization?.id || '', !!currentOrganization?.id);
+
+  // Get unread notification count for badge
+  const { data: unreadNotificationCount = 0 } = useUnreadNotificationCount(user?.id); 
 
   // Memoize user initials calculation
   const userInitials = useMemo(() => {
@@ -410,7 +414,7 @@ export function AppSidebar({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="p-0 rounded-lg transition-all duration-200 focus:outline-none focus-visible:outline-none" style={{ backgroundColor: 'transparent' }}>
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
+                    <div className="h-9 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
                       <Buildings size={18} weight="fill" className="text-orange-800 dark:text-orange-700" />
                     </div>
                   </button>
@@ -629,7 +633,7 @@ export function AppSidebar({
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:scale-[1.02] active:scale-[0.98]'
                       } transition-all duration-300 ease-out`}
                       style={{
-                        borderRadius: 'var(--sidebar-nav-border-radius)',
+                        borderRadius: isCollapsed ? '10px' : 'var(--sidebar-nav-border-radius)',
                         ...(isActive && !isDisabled
                           ? {
                               backgroundColor: 'var(--sidebar-nav-bg-active)',
@@ -668,7 +672,7 @@ export function AppSidebar({
                       )}
 
                       <div className="relative flex items-center gap-3 z-10">
-                        <div className={`transition-all duration-300 ${
+                        <div className={`relative transition-all duration-300 ${
                           isActive && !isDisabled ? 'scale-110' : isClicked ? 'scale-95' : 'scale-100'
                         }`}>
                           <Icon
@@ -683,6 +687,12 @@ export function AppSidebar({
                             }`}
                             style={isActive && !isDisabled ? { color: 'var(--sidebar-icon-active)' } : {}}
                           />
+                          {/* Notification badge for Dashboard */}
+                          {item.title === 'Dashboard' && unreadNotificationCount > 0 && (
+                            <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 px-0.5 flex items-center justify-center text-[8px] font-semibold text-white bg-red-500 rounded-full">
+                              {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                            </span>
+                          )}
                         </div>
                         {isDisabled && (
                           <Lock

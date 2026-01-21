@@ -10,18 +10,23 @@ import type {
   CreateProjectTaskInput,
   UpdateProjectTaskInput,
 } from '@/lib/types/projectTasks';
+import { logTaskActivity } from './taskCommentsService';
 
 // =============================================================================
 // Task Reference Generation (app-side with retry)
 // =============================================================================
 
 /**
- * Generate org initials from name (e.g., "Acme Corp" -> "AC", "WallQu" -> "WAL")
+ * Generate org initials from name (e.g., "Acme Corp" -> "AC", "WallQu" -> "WAL", "B-Office" -> "BOF")
+ * Removes special characters before processing to avoid hyphens/symbols in reference
  */
 function getOrgInitials(orgName: string): string {
   if (!orgName?.trim()) return 'TSK';
 
-  const words = orgName.trim().toUpperCase().split(/\s+/).filter(w => w.length > 0);
+  // Remove special characters (keep only letters, numbers, spaces)
+  const cleanedName = orgName.replace(/[^a-zA-Z0-9\s]/g, '');
+
+  const words = cleanedName.trim().toUpperCase().split(/\s+/).filter(w => w.length > 0);
 
   if (words.length === 0) return 'TSK';
 
@@ -179,7 +184,7 @@ export async function createProjectTask(
       reference, // App-generated reference
       title: input.title,
       description: input.description || null,
-      status: input.status || 'todo',
+      status: input.status || 'To Do',
       priority: input.priority || null,
       due_date: input.due_date || null,
       assigned_to: input.assigned_to ?? user.id, // Default to creator if not specified
@@ -209,7 +214,16 @@ export async function createProjectTask(
       .single();
 
     if (!error) {
-      return data as unknown as ProjectTask;
+      const task = data as unknown as ProjectTask;
+
+      // Log task creation activity (fire-and-forget)
+      logTaskActivity(task.id, organizationId, 'created', {
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+      }).catch(() => {}); // Silent fail - don't block task creation
+
+      return task;
     }
 
     // Check if it's a duplicate reference error (code 23505)
@@ -232,6 +246,23 @@ export async function updateProjectTask(
   taskId: string,
   input: UpdateProjectTaskInput
 ): Promise<ProjectTask> {
+  // First, get the current task values for change detection
+  const { data: oldTaskData } = await supabase
+    .from('project_tasks')
+    .select('organization_id, title, description, status, priority, due_date, assigned_to')
+    .eq('id', taskId)
+    .single();
+
+  const oldTask = oldTaskData as {
+    organization_id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    priority: string | null;
+    due_date: string | null;
+    assigned_to: string | null;
+  } | null;
+
   // Type assertion needed until migration is applied and types regenerated
   const { data, error } = await (supabase
     .from('project_tasks') as ReturnType<typeof supabase.from>)
@@ -256,7 +287,64 @@ export async function updateProjectTask(
     .single();
 
   if (error) throw error;
-  return data as unknown as ProjectTask;
+
+  const newTask = data as unknown as ProjectTask;
+
+  // Log activities for changes (fire-and-forget)
+  if (oldTask) {
+    const orgId = oldTask.organization_id;
+
+    // Status changed
+    if (input.status && input.status !== oldTask.status) {
+      logTaskActivity(taskId, orgId, 'status_changed', {
+        from_status: oldTask.status,
+        to_status: input.status,
+      }).catch(() => {});
+    }
+
+    // Priority changed
+    if (input.priority !== undefined && input.priority !== oldTask.priority) {
+      logTaskActivity(taskId, orgId, 'priority_changed', {
+        from_priority: oldTask.priority || 'none',
+        to_priority: input.priority || 'none',
+      }).catch(() => {});
+    }
+
+    // Due date changed
+    if (input.due_date !== undefined && input.due_date !== oldTask.due_date) {
+      logTaskActivity(taskId, orgId, 'due_date_changed', {
+        from_due_date: oldTask.due_date,
+        to_due_date: input.due_date,
+      }).catch(() => {});
+    }
+
+    // Title changed
+    if (input.title && input.title !== oldTask.title) {
+      logTaskActivity(taskId, orgId, 'title_updated', {
+        from_title: oldTask.title,
+        to_title: input.title,
+      }).catch(() => {});
+    }
+
+    // Description changed
+    if (input.description !== undefined && input.description !== oldTask.description) {
+      logTaskActivity(taskId, orgId, 'description_updated', {}).catch(() => {});
+    }
+
+    // Assignment changed
+    if (input.assigned_to !== undefined && input.assigned_to !== oldTask.assigned_to) {
+      if (input.assigned_to) {
+        logTaskActivity(taskId, orgId, 'assigned', {
+          assigned_to: input.assigned_to,
+          assigned_to_name: newTask.assignee?.full_name || newTask.assignee?.email,
+        }).catch(() => {});
+      } else {
+        logTaskActivity(taskId, orgId, 'unassigned', {}).catch(() => {});
+      }
+    }
+  }
+
+  return newTask;
 }
 
 export async function deleteProjectTask(taskId: string): Promise<void> {
@@ -274,14 +362,14 @@ export async function assignTask(taskId: string, userId: string | null): Promise
 
 export async function updateTaskStatus(
   taskId: string,
-  status: 'todo' | 'in_progress' | 'done'
+  status: 'To Do' | 'In Progress' | 'Done'
 ): Promise<ProjectTask> {
   return updateProjectTask(taskId, { status });
 }
 
 export async function updateTaskPriority(
   taskId: string,
-  priority: 'low' | 'medium' | 'high'
+  priority: 'Low' | 'Medium' | 'High'
 ): Promise<ProjectTask> {
   return updateProjectTask(taskId, { priority });
 }
@@ -392,4 +480,12 @@ export async function reorderTask(
     .eq('id', taskId);
 
   if (updateError) throw updateError;
+
+  // Log status change activity if status changed (fire-and-forget)
+  if (!isSameColumn) {
+    logTaskActivity(taskId, organizationId, 'status_changed', {
+      from_status: oldStatus,
+      to_status: newStatus,
+    }).catch(() => {});
+  }
 }

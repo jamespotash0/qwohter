@@ -161,7 +161,7 @@ export async function createTaskComment(
   // Build user object with fallbacks for null values
   const displayName = profile?.full_name || profile?.email?.split('@')[0] || user.email?.split('@')[0] || 'Unknown User';
 
-  return {
+  const result = {
     ...comment,
     user: {
       id: user.id,
@@ -171,6 +171,14 @@ export async function createTaskComment(
     replies: [],
     reply_count: 0,
   } as TaskComment;
+
+  // Log comment activity (fire-and-forget)
+  logTaskActivity(input.task_id, input.organization_id, 'comment_added', {
+    comment_id: result.id,
+    comment_preview: input.content.substring(0, 100),
+  }).catch(() => {});
+
+  return result;
 }
 
 /**
@@ -327,7 +335,16 @@ export async function uploadTaskAttachment(
     .single();
 
   if (error) throw error;
-  return data as unknown as TaskAttachment;
+
+  const attachment = data as unknown as TaskAttachment;
+
+  // Log attachment activity (fire-and-forget)
+  logTaskActivity(taskId, organizationId, 'attachment_added', {
+    attachment_id: attachment.id,
+    file_name: file.name,
+  }).catch(() => {});
+
+  return attachment;
 }
 
 /**
@@ -350,6 +367,12 @@ export async function deleteTaskAttachment(attachment: TaskAttachment): Promise<
     .eq('id', attachment.id);
 
   if (error) throw error;
+
+  // Log attachment removal activity (fire-and-forget)
+  logTaskActivity(attachment.task_id, attachment.organization_id, 'attachment_removed', {
+    attachment_id: attachment.id,
+    file_name: attachment.file_name,
+  }).catch(() => {});
 }
 
 // =============================================================================
@@ -395,6 +418,43 @@ export async function fetchTaskActivity(taskId: string): Promise<TaskActivity[]>
 }
 
 /**
+ * Generate a human-readable description for an activity
+ */
+function getActivityDescription(
+  activityType: TaskActivity['activity_type'],
+  metadata: TaskActivity['metadata']
+): string {
+  switch (activityType) {
+    case 'created':
+      return 'created this task';
+    case 'status_changed':
+      return `changed status from ${metadata.from_status || 'unknown'} to ${metadata.to_status || 'unknown'}`;
+    case 'priority_changed':
+      return `changed priority from ${metadata.from_priority || 'none'} to ${metadata.to_priority || 'none'}`;
+    case 'due_date_changed':
+      return metadata.to_due_date
+        ? `set due date to ${metadata.to_due_date}`
+        : 'removed the due date';
+    case 'title_updated':
+      return 'updated the title';
+    case 'description_updated':
+      return 'updated the description';
+    case 'assigned':
+      return `assigned to ${metadata.assigned_to_name || 'someone'}`;
+    case 'unassigned':
+      return 'removed the assignee';
+    case 'comment_added':
+      return 'added a comment';
+    case 'attachment_added':
+      return `uploaded ${metadata.file_name || 'a file'}`;
+    case 'attachment_removed':
+      return `removed ${metadata.file_name || 'an attachment'}`;
+    default:
+      return activityType.replace(/_/g, ' ');
+  }
+}
+
+/**
  * Log a task activity
  */
 export async function logTaskActivity(
@@ -406,6 +466,8 @@ export async function logTaskActivity(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  const description = getActivityDescription(activityType, metadata);
+
   // Type assertion needed until migration is applied and types regenerated
   const { error } = await (supabase
     .from('task_activities') as ReturnType<typeof supabase.from>)
@@ -414,6 +476,7 @@ export async function logTaskActivity(
       organization_id: organizationId,
       user_id: user.id,
       activity_type: activityType,
+      description,
       metadata,
     } as Record<string, unknown>);
 

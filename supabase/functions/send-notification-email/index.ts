@@ -480,35 +480,6 @@ serve(async (req) => {
     // Determine recipient email (custom notification_email or default)
     const recipientEmail = preferences?.notification_email || requestData.recipientEmail;
 
-    // Check digest mode
-    const digestMode = preferences?.digest_mode || 'instant';
-
-    if (digestMode === 'daily') {
-      // Queue for digest
-      const { error: queueError } = await supabase
-        .from('email_notification_queue')
-        .insert({
-          user_id: requestData.userId,
-          organization_id: requestData.organizationId,
-          notification_type: requestData.notificationType,
-          subject: emailContent.subject,
-          body_html: emailContent.html,
-          body_text: emailContent.text,
-          metadata: requestData.data,
-          status: 'pending',
-        });
-
-      if (queueError) {
-        console.error('Failed to queue notification:', queueError);
-        throw queueError;
-      }
-
-      return new Response(
-        JSON.stringify({ success: true, message: 'Notification queued for digest' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Send immediately via Resend
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -529,9 +500,27 @@ serve(async (req) => {
 
     if (!resendResponse.ok) {
       console.error('Resend API error:', resendData);
+
+      // Queue for retry
+      await supabase
+        .from('notification_retry_queue')
+        .insert({
+          user_id: requestData.userId,
+          organization_id: requestData.organizationId,
+          channel: 'email',
+          notification_type: requestData.notificationType,
+          subject: emailContent.subject,
+          body_html: emailContent.html,
+          body_text: emailContent.text,
+          metadata: requestData.data,
+          status: 'pending',
+          last_error: JSON.stringify(resendData),
+          next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // Retry in 5 min
+        });
+
       return new Response(
-        JSON.stringify({ error: 'Failed to send email', details: resendData }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true, message: 'Failed to send, queued for retry' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

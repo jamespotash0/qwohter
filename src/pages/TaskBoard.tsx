@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Link2 } from 'lucide-react';
 import { parseLocalDate } from '@/lib/utils';
@@ -51,6 +52,7 @@ import {
   useTaskAttachments,
   useUploadTaskAttachment,
   useDeleteTaskAttachment,
+  useTaskActivity,
 } from '@/hooks/useTaskComments';
 import {
   notifyTaskCommentMention,
@@ -101,28 +103,25 @@ function toLocalISOString(date: Date): string {
  * Get reminder display text for tooltip
  */
 function getReminderDisplayText(task: ProjectTask): string | null {
-  if (!task.remind_before_days && task.remind_before_days !== 0 && !task.reminder_hours_before) {
+  if (!task.reminder_date) {
     return null;
   }
 
-  const recurrence = task.reminder_recurrence || 'once';
-  const time = task.reminder_time?.substring(0, 5) || '09:00';
+  try {
+    const reminderDate = new Date(task.reminder_date);
+    const dateStr = reminderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const timeStr = reminderDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-  if (recurrence === 'hourly' && task.reminder_hours_before) {
-    return `Reminder: ${task.reminder_hours_before}h before @ ${time}`;
+    const recurrence = task.reminder_recurrence || 'once';
+
+    if (recurrence === 'daily') {
+      return `Daily reminder starting ${dateStr} @ ${timeStr}`;
+    }
+
+    return `Reminder: ${dateStr} @ ${timeStr}`;
+  } catch {
+    return null;
   }
-
-  const daysText = task.remind_before_days === 0
-    ? 'on due date'
-    : task.remind_before_days === 1
-    ? '1 day before'
-    : `${task.remind_before_days} days before`;
-
-  if (recurrence === 'daily') {
-    return `Daily reminder @ ${time} (starting ${daysText})`;
-  }
-
-  return `Reminder: ${daysText} @ ${time}`;
 }
 
 /**
@@ -183,6 +182,10 @@ export default function TaskBoard() {
   const { organization } = useCurrentOrganization(user?.id || '');
   const organizationId = organization?.id || '';
 
+  // URL-based task selection (like Jira's ?selectedIssue=TASK-123)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const taskFromUrl = searchParams.get('task');
+
   // Fetch columns, tasks, and projects
   const { data: columns = [], isLoading: columnsLoading } = useTaskBoardColumns(organizationId);
   const { data: tasks = [], isLoading: tasksLoading } = useOrganizationTasks(organizationId);
@@ -200,15 +203,51 @@ export default function TaskBoard() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskPriority, setNewTaskPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const addTaskInputRef = useRef<HTMLInputElement>(null);
 
   // State for task detail overlay
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+  // Track if user manually closed (to prevent useEffect from re-opening)
+  const userClosedRef = useRef(false);
+
+  // Open task from URL param on load (e.g., ?task=TASK-123)
+  useEffect(() => {
+    // Don't re-open if user just closed the overlay
+    if (userClosedRef.current) {
+      userClosedRef.current = false;
+      return;
+    }
+    if (taskFromUrl && tasks.length > 0 && !selectedTask) {
+      // Try to find by reference first, then by ID
+      const foundTask = tasks.find(
+        (t) => t.reference === taskFromUrl || t.id === taskFromUrl
+      );
+      if (foundTask) {
+        setSelectedTask(foundTask);
+      }
+    }
+  }, [taskFromUrl, tasks, selectedTask]);
+
+  // Helper to open task and update URL
+  const openTaskOverlay = (task: ProjectTask) => {
+    setSelectedTask(task);
+    setSearchParams({ task: task.reference || task.id });
+  };
+
+  // Helper to close task and clear URL
+  const closeTaskOverlay = () => {
+    userClosedRef.current = true;
+    setSelectedTask(null);
+    // Clear the task param from URL
+    searchParams.delete('task');
+    setSearchParams(searchParams);
+  };
 
   // Task comments and attachments hooks (only fetch when task is selected)
   const { data: taskComments = [], isLoading: isLoadingComments } = useTaskComments(selectedTask?.id);
   const { data: taskAttachments = [], isLoading: isLoadingAttachments } = useTaskAttachments(selectedTask?.id);
+  const { data: taskActivities = [], isLoading: isLoadingActivities } = useTaskActivity(selectedTask?.id);
   // Get current user's profile for optimistic comment updates
   const currentUserProfile = members.find((m) => m.user_id === user?.id);
   const createComment = useCreateTaskComment(selectedTask?.id || '', organizationId, {
@@ -560,7 +599,7 @@ export default function TaskBoard() {
     setNewTaskTitle('');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
-    setNewTaskPriority('medium');
+    setNewTaskPriority('Medium');
     setAddingToColumn(null);
   };
 
@@ -568,7 +607,7 @@ export default function TaskBoard() {
     setNewTaskTitle('');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
-    setNewTaskPriority('medium');
+    setNewTaskPriority('Medium');
     setAddingToColumn(null);
   };
 
@@ -924,7 +963,7 @@ export default function TaskBoard() {
                             onDragStart={(e) => handleDragStart(e, task.id)}
                             onDragOver={(e) => handleCardDragOver(e, task.id)}
                             onDragLeave={handleCardDragLeave}
-                            onClick={() => setSelectedTask(task)}
+                            onClick={() => openTaskOverlay(task)}
                             className={`group bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200 relative ${
                               draggedTask === task.id ? 'opacity-50 scale-95' : ''
                             }`}
@@ -1033,9 +1072,9 @@ export default function TaskBoard() {
                                     <Flag
                                       weight="fill"
                                       className={`w-3.5 h-3.5 ${
-                                        task.priority === 'high' ? 'text-red-500' :
-                                        task.priority === 'medium' ? 'text-yellow-500' :
-                                        task.priority === 'low' ? 'text-gray-400' : 'text-gray-300'
+                                        task.priority === 'High' ? 'text-red-500' :
+                                        task.priority === 'Medium' ? 'text-yellow-500' :
+                                        task.priority === 'Low' ? 'text-gray-400' : 'text-gray-300'
                                       }`}
                                     />
                                   </button>
@@ -1043,7 +1082,7 @@ export default function TaskBoard() {
                                 <PopoverContent className="w-32 p-2" align="start" onClick={(e) => e.stopPropagation()}>
                                   <div className="space-y-1">
                                     <p className="text-xs font-medium text-gray-500 px-2 pb-1">Priority</p>
-                                    {(['high', 'medium', 'low'] as const).map((priority) => (
+                                    {(['High', 'Medium', 'Low'] as const).map((priority) => (
                                       <button
                                         key={priority}
                                         onClick={() => handleUpdateTask(task.id, { priority } as any)}
@@ -1054,11 +1093,11 @@ export default function TaskBoard() {
                                         <Flag
                                           weight="fill"
                                           className={`w-3.5 h-3.5 ${
-                                            priority === 'high' ? 'text-red-500' :
-                                            priority === 'medium' ? 'text-yellow-500' : 'text-gray-400'
+                                            priority === 'High' ? 'text-red-500' :
+                                            priority === 'Medium' ? 'text-yellow-500' : 'text-gray-400'
                                           }`}
                                         />
-                                        <span className="capitalize">{priority}</span>
+                                        <span>{priority}</span>
                                       </button>
                                     ))}
                                     {task.priority && (
@@ -1356,8 +1395,8 @@ export default function TaskBoard() {
                                 >
                                   <Flag
                                     className={`w-4 h-4 ${
-                                      newTaskPriority === 'high' ? 'text-red-500' :
-                                      newTaskPriority === 'medium' ? 'text-yellow-500' :
+                                      newTaskPriority === 'High' ? 'text-red-500' :
+                                      newTaskPriority === 'Medium' ? 'text-yellow-500' :
                                       'text-gray-400'
                                     }`}
                                     weight="fill"
@@ -1366,7 +1405,7 @@ export default function TaskBoard() {
                               </PopoverTrigger>
                               <PopoverContent className="w-32 p-2" align="start">
                                 <div className="space-y-1">
-                                  {(['high', 'medium', 'low'] as const).map((priority) => (
+                                  {(['High', 'Medium', 'Low'] as const).map((priority) => (
                                     <button
                                       key={priority}
                                       onClick={() => setNewTaskPriority(priority)}
@@ -1376,13 +1415,13 @@ export default function TaskBoard() {
                                     >
                                       <Flag
                                         className={`w-3 h-3 ${
-                                          priority === 'high' ? 'text-red-500' :
-                                          priority === 'medium' ? 'text-yellow-500' :
+                                          priority === 'High' ? 'text-red-500' :
+                                          priority === 'Medium' ? 'text-yellow-500' :
                                           'text-gray-400'
                                         }`}
                                         weight="fill"
                                       />
-                                      <span className="capitalize">{priority}</span>
+                                      <span>{priority}</span>
                                     </button>
                                   ))}
                                 </div>
@@ -1488,11 +1527,11 @@ export default function TaskBoard() {
           projects={projects}
           currentUserId={user?.id}
           organizationId={organizationId}
-          onClose={() => setSelectedTask(null)}
+          onClose={closeTaskOverlay}
           onUpdate={handleUpdateTask}
           onDelete={(taskId) => {
             handleDeleteTask(taskId, selectedTask.project_id);
-            setSelectedTask(null);
+            closeTaskOverlay();
           }}
           onStatusChange={(taskId, newStatus) => {
             handleStatusUpdate(taskId, newStatus, selectedTask.project_id);
@@ -1512,6 +1551,9 @@ export default function TaskBoard() {
           isUploadingAttachment={uploadAttachment.isPending}
           onUploadAttachment={handleUploadAttachment}
           onDeleteAttachment={handleDeleteAttachment}
+          // Activity
+          activities={taskActivities}
+          isLoadingActivities={isLoadingActivities}
         />
       )}
 

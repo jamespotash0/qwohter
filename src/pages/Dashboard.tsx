@@ -487,38 +487,100 @@ const Dashboard = () => {
             </CardContent>
             </Card>
 
-            {/* Tasks Card - Links to Task Board */}
+            {/* Reminders Card - Shows upcoming reminders */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col h-[300px]">
               <CardHeader className="pb-4 flex-shrink-0">
-                <CardTitle className="flex items-center justify-between text-[var(--content-header-text)]">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5" />
-                    Tasks & Reminders
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => navigate('/task-board')}
-                    className="h-8 px-3 bg-dark-gray hover:bg-charcoal"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    New Task
-                  </Button>
+                <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
+                  <Clock className="w-5 h-5" />
+                  Reminders
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col items-center justify-center">
-                <div className="text-center">
-                  <Clock className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                  <p className="text-[var(--content-muted-text)] mb-4">
-                    Manage all your tasks and reminders in one place
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/task-board')}
-                    className="gap-2"
-                  >
-                    Go to Task Board
-                  </Button>
-                </div>
+              <CardContent className="flex-1 flex flex-col overflow-hidden">
+                {(() => {
+                  // Filter notifications to only show reminder-related types
+                  const REMINDER_TYPES = ['task_reminder', 'reminder_due', 'task_due'];
+                  const reminderNotifications = notifications.filter(
+                    (n: Notification) => REMINDER_TYPES.includes(n.type)
+                  );
+
+                  if (notificationsLoading) {
+                    return (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="animate-pulse">
+                          <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-3"></div>
+                          <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mx-auto"></div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (reminderNotifications.length === 0) {
+                    return (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center">
+                          <Clock className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                          <p className="text-[var(--content-muted-text)]">
+                            No upcoming reminders
+                          </p>
+                          <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                            Set reminders on tasks to see them here
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
+                      {reminderNotifications.map((reminder: Notification) => {
+                        const handleReminderClick = () => {
+                          // Mark as read if unread
+                          if (!reminder.is_read) {
+                            markNotificationAsRead.mutate(reminder.id);
+                          }
+                          // Navigate to task board with task reference/id
+                          // Use metadata to construct correct URL (existing links may have old format)
+                          const taskRef = reminder.metadata?.task_reference || reminder.metadata?.task_id;
+                          if (taskRef) {
+                            navigate(`/task-board?task=${taskRef}`);
+                          } else if (reminder.link) {
+                            // Fallback to stored link if no task metadata
+                            navigate(reminder.link);
+                          }
+                        };
+
+                        return (
+                          <div
+                            key={reminder.id}
+                            onClick={handleReminderClick}
+                            className={`p-3 rounded-lg border transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 ${
+                              !reminder.is_read
+                                ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
+                                : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <Clock className={`w-4 h-4 ${!reminder.is_read ? 'text-amber-500' : 'text-gray-400'}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${!reminder.is_read ? 'font-semibold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
+                                  {reminder.title}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">
+                                  {reminder.message}
+                                </p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                  {formatDistanceToNow(new Date(reminder.created_at), { addSuffix: true })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>

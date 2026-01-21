@@ -28,7 +28,6 @@ interface DueNotification {
 
 interface NotificationPreferences {
   email_enabled: boolean;
-  digest_mode: 'instant' | 'daily';
   email_on_reminder_due: boolean;
   email_on_task_due: boolean;
   email_on_task_reminder: boolean;
@@ -197,7 +196,7 @@ serve(async (req) => {
         // Check user's email preferences
         const { data: preferences } = await supabase
           .from('notification_preferences')
-          .select('email_enabled, digest_mode, email_on_reminder_due, email_on_task_due, email_on_task_reminder, notification_email')
+          .select('email_enabled, email_on_reminder_due, email_on_task_due, email_on_task_reminder, notification_email')
           .eq('user_id', notification.user_id)
           .eq('organization_id', notification.organization_id)
           .single();
@@ -205,7 +204,6 @@ serve(async (req) => {
         // Apply default preferences if none exist
         const userPrefs: NotificationPreferences = preferences || {
           email_enabled: true,
-          digest_mode: 'instant',
           email_on_reminder_due: true,
           email_on_task_due: true,
           email_on_task_reminder: true,
@@ -263,55 +261,49 @@ serve(async (req) => {
           appUrl
         );
 
-        // Check digest mode
-        if (userPrefs.digest_mode === 'daily') {
-          // Queue for digest
-          const { error: queueError } = await supabase
-            .from('email_notification_queue')
+        // Always send immediately - queue for retry on failure
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Qwohter Notifications <notifications@qwohter.com>',
+            to: [recipientEmail],
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+          }),
+        });
+
+        if (!resendResponse.ok) {
+          const errorData = await resendResponse.json();
+          console.error(`Failed to send email to ${recipientEmail}:`, errorData);
+
+          // Queue for retry
+          await supabase
+            .from('notification_retry_queue')
             .insert({
               user_id: notification.user_id,
               organization_id: notification.organization_id,
+              channel: 'email',
               notification_type: notification.notification_type,
               subject: emailContent.subject,
               body_html: emailContent.html,
               body_text: emailContent.text,
               metadata: notification.metadata,
               status: 'pending',
+              last_error: JSON.stringify(errorData),
+              next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // Retry in 5 min
             });
 
-          if (queueError) {
-            console.error('Failed to queue notification:', queueError);
-            errors++;
-            continue;
-          }
-
-          console.log(`Queued ${notification.notification_type} for user ${recipientEmail}`);
-        } else {
-          // Send immediately via Resend
-          const resendResponse = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: 'Qwohter Notifications <notifications@qwohter.com>',
-              to: [recipientEmail],
-              subject: emailContent.subject,
-              html: emailContent.html,
-              text: emailContent.text,
-            }),
-          });
-
-          if (!resendResponse.ok) {
-            const errorData = await resendResponse.json();
-            console.error(`Failed to send email to ${recipientEmail}:`, errorData);
-            errors++;
-            continue;
-          }
-
-          console.log(`Sent ${notification.notification_type} email to ${recipientEmail}`);
+          console.log(`Queued ${notification.notification_type} for retry`);
+          errors++;
+          continue;
         }
+
+        console.log(`Sent ${notification.notification_type} email to ${recipientEmail}`);
 
         // Track task reminder IDs to mark as sent
         if (notification.notification_type === 'task_reminder' && notification.metadata?.task_id) {

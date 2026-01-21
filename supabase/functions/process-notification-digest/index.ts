@@ -202,12 +202,13 @@ serve(async (req) => {
 
     for (const userPref of eligibleUsers) {
       try {
-        // Get pending notifications for this user
+        // Get pending email notifications for this user
         const { data: notifications, error: notifError } = await supabase
-          .from('email_notification_queue')
+          .from('notification_queue')
           .select('*')
           .eq('user_id', userPref.user_id)
           .eq('organization_id', userPref.organization_id)
+          .eq('channel', 'email')
           .eq('status', 'pending')
           .order('created_at', { ascending: false });
 
@@ -260,7 +261,7 @@ serve(async (req) => {
         // Mark notifications as sent
         const notificationIds = notifications.map(n => n.id);
         await supabase
-          .from('email_notification_queue')
+          .from('notification_queue')
           .update({ status: 'sent', sent_at: new Date().toISOString() })
           .in('id', notificationIds);
 

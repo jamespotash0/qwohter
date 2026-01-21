@@ -10,13 +10,12 @@ import { BellRing, CalendarClock, CreditCard, AlertTriangle, Sparkles, Ban, Refr
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   useNotificationPreferencesWithDefaults,
   useUpdateNotificationPreferences,
 } from '@/hooks/queries/useNotificationPreferences';
-import type { NotificationPreferences, DigestMode } from '@/lib/types/notifications';
+import type { NotificationPreferences } from '@/lib/types/notifications';
 
 interface NotificationsTabProps {
   userId?: string;
@@ -296,49 +295,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           </div>
           {(localPrefs.email_enabled ?? true) && (
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Select
-                value={localPrefs.digest_mode || 'instant'}
-                onValueChange={(value: DigestMode) => {
-                  savePreference('digest_mode', value);
-                  if (value === 'daily' && !localPrefs.digest_time) {
-                    savePreference('digest_time', '09:00:00');
-                  }
-                }}
-                disabled={isPending}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="instant">Send immediately</SelectItem>
-                  <SelectItem value="daily">Daily digest</SelectItem>
-                </SelectContent>
-              </Select>
-              {localPrefs.digest_mode === 'daily' && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>at</span>
-                  <Select
-                    value={localPrefs.digest_time || '09:00:00'}
-                    onValueChange={(value) => savePreference('digest_time', value)}
-                    disabled={isPending}
-                  >
-                    <SelectTrigger className="w-28 text-gray-900 dark:text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="06:00:00">6:00 AM</SelectItem>
-                      <SelectItem value="07:00:00">7:00 AM</SelectItem>
-                      <SelectItem value="08:00:00">8:00 AM</SelectItem>
-                      <SelectItem value="09:00:00">9:00 AM</SelectItem>
-                      <SelectItem value="10:00:00">10:00 AM</SelectItem>
-                      <SelectItem value="12:00:00">12:00 PM</SelectItem>
-                      <SelectItem value="17:00:00">5:00 PM</SelectItem>
-                      <SelectItem value="18:00:00">6:00 PM</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <span className="text-sm text-gray-500">to</span>
+              <span className="text-sm text-gray-500">Send to</span>
               {isEditingEmail ? (
                 <Input
                   type="email"

@@ -125,7 +125,6 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
 // Notification Preferences Types
 // =============================================================================
 
-export type DigestMode = 'instant' | 'daily';
 export type DeliveryChannel = 'email' | 'sms' | 'both';
 
 export interface NotificationPreferences {
@@ -137,8 +136,6 @@ export interface NotificationPreferences {
   email_enabled: boolean;
   sms_enabled: boolean;
   sms_phone?: string | null;
-  digest_mode: DigestMode;
-  digest_time: string;
   notification_email?: string | null;
 
   // Signature events
@@ -182,8 +179,6 @@ export interface UpdateNotificationPreferencesInput {
   email_enabled?: boolean;
   sms_enabled?: boolean;
   sms_phone?: string | null;
-  digest_mode?: DigestMode;
-  digest_time?: string;
   notification_email?: string | null;
   email_on_signature_sent?: boolean;
   email_on_signature_viewed?: boolean;
@@ -212,8 +207,6 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Omit<NotificationPreferences, 'id
   email_enabled: true,
   sms_enabled: false,
   sms_phone: null,
-  digest_mode: 'instant',
-  digest_time: '09:00:00',
   notification_email: null,
   email_on_signature_sent: true,
   email_on_signature_viewed: true,

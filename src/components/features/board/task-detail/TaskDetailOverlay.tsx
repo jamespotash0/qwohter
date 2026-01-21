@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isPast, isToday, isTomorrow } from 'date-fns';
-import { cn, parseLocalDate, localTimeToUTC, utcTimeToLocal } from '@/lib/utils';
+import { cn, parseLocalDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,14 +42,15 @@ import {
   DownloadSimple,
   CaretDown,
   CaretRight,
-  BellSimple,
+  ClockCounterClockwise,
 } from '@phosphor-icons/react';
 import { TaskDeleteDialog } from './TaskDeleteDialog';
 import { MentionInput } from './MentionInput';
 import { TaskCommentItem } from './TaskCommentItem';
+import { ReminderPicker } from './ReminderPicker';
 import type { ProjectTask, TaskPriority, ReminderRecurrence } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
-import type { TaskComment, TaskAttachment, MentionSuggestion } from '@/lib/types/taskComments';
+import type { TaskComment, TaskAttachment, TaskActivity, MentionSuggestion } from '@/lib/types/taskComments';
 import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
 
 // =============================================================================
@@ -94,6 +95,8 @@ interface TaskDetailOverlayProps {
   isUploadingAttachment?: boolean;
   onUploadAttachment?: (file: File) => void;
   onDeleteAttachment?: (attachment: TaskAttachment) => void;
+  activities?: TaskActivity[];
+  isLoadingActivities?: boolean;
 }
 
 // =============================================================================
@@ -168,6 +171,8 @@ export function TaskDetailOverlay({
   isUploadingAttachment = false,
   onUploadAttachment,
   onDeleteAttachment,
+  activities = [],
+  isLoadingActivities = false,
 }: TaskDetailOverlayProps) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -185,10 +190,12 @@ export function TaskDetailOverlay({
   const [newComment, setNewComment] = useState('');
   const [newCommentMentions, setNewCommentMentions] = useState<string[]>([]);
   const [isCommentsCollapsed, setIsCommentsCollapsed] = useState(false);
-  const [remindBeforeDays, setRemindBeforeDays] = useState<number | null>(task.remind_before_days ?? null);
-  const [reminderTime, setReminderTime] = useState(task.reminder_time || '09:00');
+  const [isAttachmentsCollapsed, setIsAttachmentsCollapsed] = useState(false);
+  const [isActivityCollapsed, setIsActivityCollapsed] = useState(true); // Collapsed by default
+  const [reminderDate, setReminderDate] = useState<string | null>(task.reminder_date || null);
   const [reminderRecurrence, setReminderRecurrence] = useState<ReminderRecurrence>(task.reminder_recurrence || 'once');
-  const [reminderHoursBefore, setReminderHoursBefore] = useState<number | null>(task.reminder_hours_before ?? null);
+  const [descriptionDragOver, setDescriptionDragOver] = useState(false);
+  const [commentDragOver, setCommentDragOver] = useState(false);
 
   // Sync local state when task changes
   useEffect(() => {
@@ -197,14 +204,10 @@ export function TaskDetailOverlay({
     setPriority(task.priority);
     setDueDate(task.due_date || '');
     setAssignee(task.assigned_to || '');
-    setRemindBeforeDays(task.remind_before_days ?? null);
-    // Convert UTC time from database to user's local time for display
-    const utcTime = task.reminder_time?.substring(0, 5) || '09:00';
-    setReminderTime(utcTimeToLocal(utcTime));
+    setReminderDate(task.reminder_date || null);
     setReminderRecurrence(task.reminder_recurrence || 'once');
-    setReminderHoursBefore(task.reminder_hours_before ?? null);
     setDescriptionChanged(false);
-  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to, task.remind_before_days, task.reminder_time, task.reminder_recurrence, task.reminder_hours_before]);
+  }, [task.id, task.title, task.description, task.priority, task.due_date, task.assigned_to, task.reminder_date, task.reminder_recurrence]);
 
   const activeMembers = members.filter((m) => m.status === 'Active');
 
@@ -263,6 +266,43 @@ export function TaskDetailOverlay({
       onUploadAttachment(file);
     }
     e.target.value = '';
+  };
+
+  // Drag-and-drop file upload handlers
+  const ALLOWED_FILE_TYPES = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+  ];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const handleFileDrop = (e: React.DragEvent, setDragOver: (v: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+
+    if (!onUploadAttachment) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach((file) => {
+      if (file.size <= MAX_FILE_SIZE && ALLOWED_FILE_TYPES.includes(file.type)) {
+        onUploadAttachment(file);
+      }
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent, setDragOver: (v: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent, setDragOver: (v: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
   };
 
   const linkedProject = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
@@ -392,7 +432,7 @@ export function TaskDetailOverlay({
           <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
             {/* Priority */}
             <Select
-              value={priority || 'low'}
+              value={priority || 'Low'}
               onValueChange={(value) => {
                 const newPriority = value as TaskPriority;
                 setPriority(newPriority);
@@ -410,7 +450,7 @@ export function TaskDetailOverlay({
                         weight="fill"
                         className={cn(
                           'w-3 h-3',
-                          p === 'high' ? 'text-red-500' : p === 'medium' ? 'text-amber-500' : 'text-gray-400'
+                          p === 'High' ? 'text-red-500' : p === 'Medium' ? 'text-amber-500' : 'text-gray-400'
                         )}
                       />
                       <span className="text-xs">{TASK_PRIORITY_LABELS[p]}</span>
@@ -498,187 +538,19 @@ export function TaskDetailOverlay({
             </Popover>
 
             {/* Reminder */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className={cn(
-                    'h-6 px-2 text-[11px] rounded-md flex items-center gap-1',
-                    'bg-gray-50 hover:bg-gray-100 transition-colors',
-                    (remindBeforeDays !== null || reminderHoursBefore !== null) && 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                  )}
-                  disabled={!dueDate}
-                  title={!dueDate ? 'Set a due date first' : undefined}
-                >
-                  <BellSimple className="w-3 h-3" />
-                  <span>
-                    {reminderRecurrence === 'hourly' && reminderHoursBefore !== null
-                      ? `${reminderHoursBefore}h before`
-                      : remindBeforeDays === null
-                      ? 'No reminder'
-                      : reminderRecurrence === 'daily'
-                      ? `Daily (${remindBeforeDays}d before)`
-                      : remindBeforeDays === 0
-                      ? 'On due date'
-                      : remindBeforeDays === 1
-                      ? '1 day before'
-                      : `${remindBeforeDays} days before`}
-                  </span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="start">
-                <div className="space-y-3">
-                  {/* Recurrence Type */}
-                  <div>
-                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                      Reminder type
-                    </label>
-                    <Select
-                      value={reminderRecurrence}
-                      onValueChange={(value: ReminderRecurrence) => {
-                        setReminderRecurrence(value);
-                        handleSave('reminder_recurrence', value);
-                        // Reset sent flags when changing type
-                        handleSave('reminder_sent', false);
-                        handleSave('last_reminder_sent_at', null);
-                        // Set defaults based on type
-                        if (value === 'hourly') {
-                          setRemindBeforeDays(null);
-                          handleSave('remind_before_days', null);
-                          if (reminderHoursBefore === null) {
-                            setReminderHoursBefore(2);
-                            handleSave('reminder_hours_before', 2);
-                          }
-                        } else {
-                          setReminderHoursBefore(null);
-                          handleSave('reminder_hours_before', null);
-                          if (remindBeforeDays === null) {
-                            setRemindBeforeDays(1);
-                            handleSave('remind_before_days', 1);
-                          }
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="once">Once</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="hourly">Hours before</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Days before (for once/daily) */}
-                  {reminderRecurrence !== 'hourly' && (
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                        {reminderRecurrence === 'daily' ? 'Start reminding' : 'Remind me'}
-                      </label>
-                      <Select
-                        value={remindBeforeDays?.toString() ?? 'none'}
-                        onValueChange={(value) => {
-                          const days = value === 'none' ? null : parseInt(value, 10);
-                          setRemindBeforeDays(days);
-                          handleSave('remind_before_days', days);
-                          handleSave('reminder_sent', false);
-                          handleSave('last_reminder_sent_at', null);
-                        }}
-                      >
-                        <SelectTrigger className="h-7 text-xs mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No reminder</SelectItem>
-                          <SelectItem value="0">On due date</SelectItem>
-                          <SelectItem value="1">1 day before</SelectItem>
-                          <SelectItem value="2">2 days before</SelectItem>
-                          <SelectItem value="3">3 days before</SelectItem>
-                          <SelectItem value="7">1 week before</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Hours before (for hourly) */}
-                  {reminderRecurrence === 'hourly' && (
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                        Hours before due time
-                      </label>
-                      <Select
-                        value={reminderHoursBefore?.toString() ?? '2'}
-                        onValueChange={(value) => {
-                          const hours = parseInt(value, 10);
-                          setReminderHoursBefore(hours);
-                          handleSave('reminder_hours_before', hours);
-                          handleSave('reminder_sent', false);
-                        }}
-                      >
-                        <SelectTrigger className="h-7 text-xs mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 hour before</SelectItem>
-                          <SelectItem value="2">2 hours before</SelectItem>
-                          <SelectItem value="4">4 hours before</SelectItem>
-                          <SelectItem value="8">8 hours before</SelectItem>
-                          <SelectItem value="12">12 hours before</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Time (for all types) */}
-                  {(remindBeforeDays !== null || reminderRecurrence === 'hourly') && (
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                        {reminderRecurrence === 'hourly' ? 'Due time' : 'At time'}
-                      </label>
-                      <Input
-                        type="time"
-                        value={reminderTime}
-                        onChange={(e) => {
-                          const localTime = e.target.value;
-                          setReminderTime(localTime);
-                          // Convert local time to UTC before saving to database
-                          const utcTime = localTimeToUTC(localTime);
-                          handleSave('reminder_time', utcTime);
-                          handleSave('reminder_sent', false);
-                          handleSave('last_reminder_sent_at', null);
-                        }}
-                        className="h-7 text-xs mt-1"
-                      />
-                      <p className="text-[9px] text-gray-400 mt-1">
-                        {reminderRecurrence === 'daily' && 'Reminder sent daily at this time (your local time)'}
-                        {reminderRecurrence === 'hourly' && 'Reminder sent X hours before this time'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Clear reminder button */}
-                  {(remindBeforeDays !== null || reminderHoursBefore !== null) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full h-6 text-[10px] text-gray-500"
-                      onClick={() => {
-                        setRemindBeforeDays(null);
-                        setReminderHoursBefore(null);
-                        setReminderRecurrence('once');
-                        handleSave('remind_before_days', null);
-                        handleSave('reminder_hours_before', null);
-                        handleSave('reminder_recurrence', 'once');
-                        handleSave('reminder_sent', false);
-                        handleSave('last_reminder_sent_at', null);
-                      }}
-                    >
-                      Clear reminder
-                    </Button>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <ReminderPicker
+              dueDate={dueDate}
+              reminderDate={reminderDate}
+              reminderRecurrence={reminderRecurrence}
+              onReminderChange={(newReminderDate, newRecurrence) => {
+                setReminderDate(newReminderDate);
+                setReminderRecurrence(newRecurrence);
+                handleSave('reminder_date', newReminderDate);
+                handleSave('reminder_recurrence', newRecurrence);
+                handleSave('reminder_sent', false);
+                handleSave('last_reminder_sent_at', null);
+              }}
+            />
 
             {/* Project Link */}
             <div className="flex items-center gap-0.5">
@@ -726,69 +598,154 @@ export function TaskDetailOverlay({
                 <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Description</span>
               </div>
 
-              <div className="relative">
-                <Textarea
-                  placeholder="Add a description..."
-                  value={description}
-                  onChange={(e) => handleDescriptionChange(e.target.value)}
-                  className="min-h-[100px] resize-none text-xs bg-gray-50 border-gray-100 focus:bg-white pb-8 rounded-sm"
-                />
-
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                />
-
-                {/* Bottom row: Paperclip + Save button */}
-                <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
-                  {/* Paperclip attachment button */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingAttachment}
-                    className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
-                    title="Add attachment"
-                  >
-                    {isUploadingAttachment ? (
-                      <div className="animate-spin w-3 h-3 border border-gray-300 border-t-gray-600 rounded-full" />
-                    ) : (
-                      <Paperclip className="w-3.5 h-3.5" />
+              <div
+                onDragOver={(e) => handleDragOver(e, setDescriptionDragOver)}
+                onDragLeave={(e) => handleDragLeave(e, setDescriptionDragOver)}
+                onDrop={(e) => handleFileDrop(e, setDescriptionDragOver)}
+              >
+                {/* Textarea with relative positioning for action buttons */}
+                <div className="relative">
+                  <Textarea
+                    placeholder="Add a description..."
+                    value={description}
+                    onChange={(e) => handleDescriptionChange(e.target.value)}
+                    className={cn(
+                      "min-h-[100px] resize-none text-xs bg-gray-50 border-gray-100 focus:bg-white pb-8",
+                      // Remove bottom rounding when attachments or drag overlay shown
+                      (attachments.length > 0 || isUploadingAttachment || descriptionDragOver)
+                        ? "rounded-t-sm rounded-b-none border-b-0"
+                        : "rounded-sm",
+                      descriptionDragOver && "border-indigo-400"
                     )}
-                  </button>
+                  />
 
-                  {/* Save button (only when changed) */}
-                  {descriptionChanged && (
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  />
+
+                  {/* Bottom row: Paperclip + Save button */}
+                  <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
                     <button
-                      onClick={handleDescriptionSave}
-                      disabled={isSaving}
-                      className="h-5 px-2 flex items-center gap-0.5 text-[9px] font-medium text-white bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 rounded-sm transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingAttachment}
+                      className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="Add attachment"
                     >
-                      <Check className="w-2.5 h-2.5" />
-                      {isSaving ? 'Saving' : 'Save'}
+                      {isUploadingAttachment ? (
+                        <div className="animate-spin w-3 h-3 border border-gray-300 border-t-gray-600 rounded-full" />
+                      ) : (
+                        <Paperclip className="w-3.5 h-3.5" />
+                      )}
                     </button>
+                    {descriptionChanged && (
+                      <button
+                        onClick={handleDescriptionSave}
+                        disabled={isSaving}
+                        className="h-5 px-2 flex items-center gap-0.5 text-[9px] font-medium text-white bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 rounded-sm transition-colors"
+                      >
+                        <Check className="w-2.5 h-2.5" />
+                        {isSaving ? 'Saving' : 'Save'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inline attachments strip - connected to textarea */}
+                {(attachments.length > 0 || isUploadingAttachment) && !descriptionDragOver && (
+                  <div className="flex flex-wrap gap-1.5 px-2.5 py-2 bg-gray-50 border border-t-0 border-gray-100 rounded-b-sm">
+                    {attachments.map((attachment) => (
+                      <AttachmentChip
+                        key={attachment.id}
+                        attachment={attachment}
+                        onDelete={() => onDeleteAttachment?.(attachment)}
+                      />
+                    ))}
+                    {isUploadingAttachment && (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-blue-50 border border-blue-100">
+                        <div className="animate-spin w-2.5 h-2.5 border border-blue-300 border-t-blue-600 rounded-full" />
+                        <span className="text-[9px] text-blue-600">Uploading...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Drop zone strip at bottom */}
+                {descriptionDragOver && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border-2 border-t-0 border-dashed border-indigo-400 rounded-b-sm">
+                    <Paperclip className="w-4 h-4 text-indigo-500" />
+                    <p className="text-[11px] text-indigo-600 font-medium">Drop files here to attach</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Attachments Section - Collapsible like Jira */}
+            <div>
+              <button
+                onClick={() => setIsAttachmentsCollapsed(!isAttachmentsCollapsed)}
+                className="w-full flex items-center justify-between mb-2 group"
+              >
+                <div className="flex items-center gap-1.5">
+                  {isAttachmentsCollapsed ? (
+                    <CaretRight className="w-3 h-3 text-gray-400" weight="bold" />
+                  ) : (
+                    <CaretDown className="w-3 h-3 text-gray-400" weight="bold" />
+                  )}
+                  <Paperclip className="w-3 h-3 text-gray-400" />
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                    Attachments
+                  </span>
+                  {attachments.length > 0 && (
+                    <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                      {attachments.length}
+                    </span>
                   )}
                 </div>
-              </div>
+                {!isAttachmentsCollapsed && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={isUploadingAttachment}
+                    className="text-[10px] text-indigo-500 hover:text-indigo-600 font-medium"
+                  >
+                    + Add
+                  </button>
+                )}
+              </button>
 
-              {/* Attachments */}
-              {(attachments.length > 0 || isUploadingAttachment) && (
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {attachments.map((attachment) => (
-                    <AttachmentChip
-                      key={attachment.id}
-                      attachment={attachment}
-                      onDelete={() => onDeleteAttachment?.(attachment)}
-                    />
-                  ))}
+              {!isAttachmentsCollapsed && (
+                <div className="space-y-2">
+                  {/* Uploading indicator */}
                   {isUploadingAttachment && (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded bg-blue-50 border border-blue-100">
-                      <div className="animate-spin w-2.5 h-2.5 border border-blue-300 border-t-blue-600 rounded-full" />
-                      <span className="text-[9px] text-blue-600">Uploading...</span>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-blue-50 border border-blue-100">
+                      <div className="animate-spin w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full" />
+                      <span className="text-xs text-blue-600">Uploading...</span>
                     </div>
                   )}
+
+                  {/* Attachments list */}
+                  {attachments.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {attachments.map((attachment) => (
+                        <AttachmentChip
+                          key={attachment.id}
+                          attachment={attachment}
+                          onDelete={() => onDeleteAttachment?.(attachment)}
+                        />
+                      ))}
+                    </div>
+                  ) : !isUploadingAttachment ? (
+                    <p className="text-[10px] text-gray-400 text-center py-2">
+                      No attachments. Drag files to description or click + Add
+                    </p>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -827,37 +784,51 @@ export function TaskDetailOverlay({
                         {getInitials(activeMembers.find((m) => m.user_id === currentUserId)?.full_name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 relative">
-                      <MentionInput
-                        value={newComment}
-                        onChange={(val, mentions) => {
-                          setNewComment(val);
-                          setNewCommentMentions(mentions);
-                        }}
-                        members={mentionSuggestions}
-                        placeholder="Add a comment..."
-                        minRows={1}
-                        onSubmit={handleAddComment}
-                        className="text-xs pr-16"
-                      />
-                      {/* Paperclip + Send button */}
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1">
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
-                          title="Add attachment"
-                        >
-                          <Paperclip className="w-3.5 h-3.5" />
-                        </button>
-                        {newComment.trim() && (
+                    <div
+                      className="flex-1"
+                      onDragOver={(e) => handleDragOver(e, setCommentDragOver)}
+                      onDragLeave={(e) => handleDragLeave(e, setCommentDragOver)}
+                      onDrop={(e) => handleFileDrop(e, setCommentDragOver)}
+                    >
+                      <div className="relative">
+                        <MentionInput
+                          value={newComment}
+                          onChange={(val, mentions) => {
+                            setNewComment(val);
+                            setNewCommentMentions(mentions);
+                          }}
+                          members={mentionSuggestions}
+                          placeholder="Add a comment..."
+                          minRows={1}
+                          onSubmit={handleAddComment}
+                          className={cn("text-xs pr-16", commentDragOver && "border-indigo-400 border-b-0 rounded-b-none")}
+                        />
+                        {/* Paperclip + Send button */}
+                        <div className="absolute bottom-2 right-2 flex items-center gap-1">
                           <button
-                            onClick={handleAddComment}
-                            className="h-5 w-5 flex items-center justify-center text-white bg-indigo-500 hover:bg-indigo-600 rounded-sm transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                            title="Add attachment"
                           >
-                            <PaperPlaneTilt className="w-3 h-3" />
+                            <Paperclip className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                          {newComment.trim() && (
+                            <button
+                              onClick={handleAddComment}
+                              className="h-5 w-5 flex items-center justify-center text-white bg-indigo-500 hover:bg-indigo-600 rounded-sm transition-colors"
+                            >
+                              <PaperPlaneTilt className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      {/* Drop zone strip at bottom */}
+                      {commentDragOver && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border-2 border-t-0 border-dashed border-indigo-400 rounded-b-md">
+                          <Paperclip className="w-3.5 h-3.5 text-indigo-500" />
+                          <p className="text-[10px] text-indigo-600 font-medium">Drop files here</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -890,6 +861,85 @@ export function TaskDetailOverlay({
                     <p className="text-[10px] text-gray-400 text-center py-3">No comments yet</p>
                   )}
                 </>
+              )}
+            </div>
+
+            {/* Activity Section - Collapsible */}
+            <div>
+              <button
+                onClick={() => setIsActivityCollapsed(!isActivityCollapsed)}
+                className="w-full flex items-center justify-between mb-2 group"
+              >
+                <div className="flex items-center gap-1.5">
+                  {isActivityCollapsed ? (
+                    <CaretRight className="w-3 h-3 text-gray-400" weight="bold" />
+                  ) : (
+                    <CaretDown className="w-3 h-3 text-gray-400" weight="bold" />
+                  )}
+                  <ClockCounterClockwise className="w-3 h-3 text-gray-400" />
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                    Activity
+                  </span>
+                  {activities.length > 0 && (
+                    <span className="text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                      {activities.length}
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              {!isActivityCollapsed && (
+                <div className="space-y-2">
+                  {isLoadingActivities ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin w-4 h-4 border-2 border-gray-200 border-t-gray-600 rounded-full" />
+                    </div>
+                  ) : activities.length > 0 ? (
+                    <div className="space-y-2">
+                      {activities.map((activity) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-start gap-2 text-[10px] text-gray-500 py-1"
+                        >
+                          <Avatar className="h-4 w-4 flex-shrink-0 mt-0.5">
+                            <AvatarFallback className="bg-gray-100 text-gray-500 text-[6px]">
+                              {activity.user?.full_name?.[0] || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-gray-700">
+                              {activity.user?.full_name || 'Someone'}
+                            </span>{' '}
+                            <span className="text-gray-500">
+                              {activity.activity_type === 'status_changed' && activity.metadata?.from_status && activity.metadata?.to_status
+                                ? `moved from ${activity.metadata.from_status} to ${activity.metadata.to_status}`
+                                : activity.activity_type === 'assigned' && activity.metadata?.assigned_to_name
+                                ? `assigned to ${activity.metadata.assigned_to_name}`
+                                : activity.activity_type === 'priority_changed' && activity.metadata?.to_priority
+                                ? `set priority to ${activity.metadata.to_priority}`
+                                : activity.activity_type === 'attachment_added' && activity.metadata?.file_name
+                                ? `uploaded ${activity.metadata.file_name}`
+                                : activity.activity_type === 'attachment_removed' && activity.metadata?.file_name
+                                ? `removed ${activity.metadata.file_name}`
+                                : activity.activity_type === 'comment_added'
+                                ? 'added a comment'
+                                : activity.activity_type === 'created'
+                                ? 'created this task'
+                                : activity.activity_type === 'due_date_changed'
+                                ? activity.metadata?.to_due_date ? `set due date to ${activity.metadata.to_due_date}` : 'removed the due date'
+                                : activity.activity_type.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-gray-400 ml-1">
+                              · {format(new Date(activity.created_at), 'MMM d, h:mm a')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-gray-400 text-center py-2">No activity yet</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
