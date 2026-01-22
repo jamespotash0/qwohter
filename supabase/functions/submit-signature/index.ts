@@ -40,7 +40,7 @@ function escapeHtml(text: string | undefined | null): string {
 interface RequestBody {
   token: string;              // Signing token for validation
   signatureData: string;      // Base64 PNG image of signature
-  signatureType: 'draw' | 'type';
+  signatureType: 'Draw' | 'Type';
   signatureFont?: string;     // Font name if typed
   signerName: string;
   signerEmail: string;
@@ -782,14 +782,14 @@ serve(async (req) => {
     }
 
     // Check token status
-    if (signingToken.status === 'signed') {
+    if (signingToken.status === 'Signed') {
       return new Response(
         JSON.stringify({ error: 'This proposal has already been signed' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (signingToken.status === 'expired' || signingToken.status === 'revoked') {
+    if (signingToken.status === 'Expired' || signingToken.status === 'Revoked') {
       return new Response(
         JSON.stringify({ error: 'This signing link is no longer valid' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -800,7 +800,7 @@ serve(async (req) => {
     if (signingToken.expires_at && new Date(signingToken.expires_at) < new Date()) {
       await supabase
         .from('proposal_signing_tokens')
-        .update({ status: 'expired' })
+        .update({ status: 'Expired' })
         .eq('id', signingToken.id);
 
       return new Response(
@@ -999,7 +999,7 @@ serve(async (req) => {
     await supabase
       .from('proposal_signing_tokens')
       .update({
-        status: 'signed',
+        status: 'Signed',
         signed_at: signedAt.toISOString(),
       })
       .eq('id', signingToken.id);
@@ -1037,7 +1037,7 @@ serve(async (req) => {
         organization_id: organizationId,
         proposal_id: proposal.id,
         signing_token_id: signingToken.id,
-        event_type: 'signed',
+        event_type: 'Signed',
         event_data: {
           signer_name: signerName,
           signer_email: signerEmail,

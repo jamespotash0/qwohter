@@ -566,7 +566,7 @@ const Dashboard = () => {
                                   {taskTitle}
                                 </p>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">
-                                  {reminder.recurrence !== 'once' && (
+                                  {reminder.recurrence !== 'Once' && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 mr-1">
                                       {reminder.recurrence}
                                     </span>

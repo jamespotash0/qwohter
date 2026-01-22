@@ -237,7 +237,7 @@ export async function countPendingSuggestions(proposalId: string): Promise<numbe
     .from('ai_suggestions')
     .select('*', { count: 'exact', head: true })
     .eq('proposal_id', proposalId)
-    .eq('status', 'pending');
+    .eq('status', 'Pending');
 
   if (error) {
     console.error('[aiWorkflowService] countPendingSuggestions error:', error);
@@ -258,7 +258,7 @@ export async function applySuggestion(suggestionId: string): Promise<boolean> {
   const { error } = await supabase
     .from('ai_suggestions')
     .update({
-      status: 'applied',
+      status: 'Applied',
       applied_at: new Date().toISOString(),
     })
     .eq('id', suggestionId);
@@ -281,7 +281,7 @@ export async function dismissSuggestion(
   const { error } = await supabase
     .from('ai_suggestions')
     .update({
-      status: 'dismissed',
+      status: 'Dismissed',
       dismissed_at: new Date().toISOString(),
       dismissed_reason: reason || null,
     })
@@ -308,10 +308,10 @@ export async function expireOldSuggestions(
   const { data, error } = await supabase
     .from('ai_suggestions')
     .update({
-      status: 'expired',
+      status: 'Expired',
     })
     .eq('proposal_id', proposalId)
-    .eq('status', 'pending')
+    .eq('status', 'Pending')
     .lt('created_at', cutoffDate.toISOString())
     .select('id');
 
@@ -551,7 +551,7 @@ export async function fetchOrganizationPendingCount(
     .from('ai_suggestions')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
-    .eq('status', 'pending');
+    .eq('status', 'Pending');
 
   if (error) {
     console.error('[aiWorkflowService] fetchOrganizationPendingCount error:', error);
@@ -572,14 +572,14 @@ export async function fetchNotificationSummary(
     .from('ai_suggestions')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
-    .eq('status', 'pending');
+    .eq('status', 'Pending');
 
   // Get counts by proposal with a simpler query
   const { data: suggestions } = await supabase
     .from('ai_suggestions')
     .select('proposal_id, suggestion_type')
     .eq('organization_id', organizationId)
-    .eq('status', 'pending');
+    .eq('status', 'Pending');
 
   // Type assertion for the query result
   const suggestionItems = (suggestions || []) as Array<{
@@ -645,7 +645,7 @@ export async function fetchProposalsWithSuggestions(
       .from('ai_suggestions')
       .select('*', { count: 'exact', head: true })
       .eq('proposal_id', p.id)
-      .eq('status', 'pending');
+      .eq('status', 'Pending');
 
     if (count && count > 0) {
       results.push({ proposal_id: p.id, count });

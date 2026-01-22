@@ -361,7 +361,7 @@ serve(async (req) => {
               body_html: emailContent.html,
               body_text: emailContent.text,
               metadata: notification.metadata,
-              status: 'pending',
+              status: 'Pending',
               last_error: JSON.stringify(errorData),
               next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // Retry in 5 min
             });

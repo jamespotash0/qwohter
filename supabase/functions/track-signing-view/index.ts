@@ -61,7 +61,7 @@ serve(async (req) => {
     }
 
     // Only track if not already signed/revoked/expired
-    if (!['pending', 'viewed'].includes(signingToken.status)) {
+    if (!['Pending', 'Viewed'].includes(signingToken.status)) {
       return new Response(
         JSON.stringify({ success: true, message: 'Token already processed' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -80,7 +80,7 @@ serve(async (req) => {
     // Update signing token
     const updateData: Record<string, unknown> = {
       last_viewed_at: now,
-      status: 'viewed',
+      status: 'Viewed',
     };
 
     if (isFirstView) {
@@ -98,7 +98,7 @@ serve(async (req) => {
         organization_id: signingToken.organization_id,
         proposal_id: signingToken.proposal_id,
         signing_token_id: signingToken.id,
-        event_type: 'viewed',
+        event_type: 'Viewed',
         event_data: { first_view: true },
         ip_address: ipAddress,
         user_agent: userAgent,

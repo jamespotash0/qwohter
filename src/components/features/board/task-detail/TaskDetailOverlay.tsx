@@ -567,8 +567,8 @@ export function TaskDetailOverlay({
             <ReminderPicker
               dueDate={dueDate}
               reminderDate={taskReminder?.scheduledFor ?? null}
-              reminderRecurrence={taskReminder?.recurrence ?? 'once'}
-              reminderSent={taskReminder?.status === 'sent'}
+              reminderRecurrence={taskReminder?.recurrence ?? 'Once'}
+              reminderSent={taskReminder?.status === 'Sent'}
               lastReminderSentAt={taskReminder?.lastSentAt ?? null}
               disabled={isLoadingReminder}
               onReminderChange={async (newReminderDate, newRecurrence) => {

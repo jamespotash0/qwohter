@@ -123,9 +123,9 @@ describe('TaskReminder Type Mapping', () => {
     user_id: 'user-789',
     organization_id: 'org-001',
     scheduled_for: '2026-01-22T10:00:00Z',
-    recurrence: 'once' as const,
+    recurrence: 'Once' as const,
     recurrence_end_date: null,
-    status: 'pending' as const,
+    status: 'Pending' as const,
     sent_at: null,
     last_sent_at: null,
     title: 'Reminder: Test Task',
@@ -160,8 +160,8 @@ describe('TaskReminder Type Mapping', () => {
     expect(mapped.userId).toBe('user-789');
     expect(mapped.organizationId).toBe('org-001');
     expect(mapped.scheduledFor).toBe('2026-01-22T10:00:00Z');
-    expect(mapped.recurrence).toBe('once');
-    expect(mapped.status).toBe('pending');
+    expect(mapped.recurrence).toBe('Once');
+    expect(mapped.status).toBe('Pending');
     expect(mapped.title).toBe('Reminder: Test Task');
     expect(mapped.message).toBe('Reminder on Test Task [BO-1]');
     expect(mapped.metadata?.task_reference).toBe('BO-1');
@@ -196,15 +196,15 @@ describe('TaskReminder Type Mapping', () => {
 // =============================================================================
 
 describe('Reminder Recurrence Validation', () => {
-  const validRecurrences = ['once', 'daily', 'weekly', 'monthly'];
+  const validRecurrences = ['Once', 'Daily', 'Weekly', 'Monthly'];
 
   it.each(validRecurrences)('should accept valid recurrence: %s', (recurrence) => {
     expect(validRecurrences).toContain(recurrence);
   });
 
-  it('should default to "once" when recurrence not provided', () => {
-    const defaultRecurrence = undefined ?? 'once';
-    expect(defaultRecurrence).toBe('once');
+  it('should default to "Once" when recurrence not provided', () => {
+    const defaultRecurrence = undefined ?? 'Once';
+    expect(defaultRecurrence).toBe('Once');
   });
 });
 
@@ -318,36 +318,36 @@ describe('Schedule Reminder Input Validation', () => {
 // =============================================================================
 
 describe('Reminder Status Transitions', () => {
-  const validStatuses = ['pending', 'sent', 'cancelled', 'failed'];
+  const validStatuses = ['Pending', 'Sent', 'Cancelled', 'Failed'];
 
-  it('should start with pending status', () => {
-    const initialStatus = 'pending';
+  it('should start with Pending status', () => {
+    const initialStatus = 'Pending';
     expect(validStatuses).toContain(initialStatus);
   });
 
-  it('should allow transition from pending to sent', () => {
-    const fromStatus = 'pending';
-    const toStatus = 'sent';
+  it('should allow transition from Pending to Sent', () => {
+    const fromStatus = 'Pending';
+    const toStatus = 'Sent';
 
     expect(validStatuses).toContain(fromStatus);
     expect(validStatuses).toContain(toStatus);
   });
 
-  it('should allow transition from pending to cancelled', () => {
-    const fromStatus = 'pending';
-    const toStatus = 'cancelled';
+  it('should allow transition from Pending to Cancelled', () => {
+    const fromStatus = 'Pending';
+    const toStatus = 'Cancelled';
 
     expect(validStatuses).toContain(fromStatus);
     expect(validStatuses).toContain(toStatus);
   });
 
-  it('should only fetch pending or sent reminders for active display', () => {
-    const activeStatuses = ['pending', 'sent'];
+  it('should only fetch Pending or Sent reminders for active display', () => {
+    const activeStatuses = ['Pending', 'Sent'];
 
-    expect(activeStatuses).toContain('pending');
-    expect(activeStatuses).toContain('sent');
-    expect(activeStatuses).not.toContain('cancelled');
-    expect(activeStatuses).not.toContain('failed');
+    expect(activeStatuses).toContain('Pending');
+    expect(activeStatuses).toContain('Sent');
+    expect(activeStatuses).not.toContain('Cancelled');
+    expect(activeStatuses).not.toContain('Failed');
   });
 });
 

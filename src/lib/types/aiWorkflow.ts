@@ -16,7 +16,7 @@ export type AISuggestionType =
   | 'win_loss_insight'
   | 'pricing_suggestion';
 
-export type AISuggestionStatus = 'pending' | 'applied' | 'dismissed' | 'expired';
+export type AISuggestionStatus = 'Pending' | 'Applied' | 'Dismissed' | 'Expired';
 
 export interface AISuggestion {
   id: string;
@@ -55,7 +55,7 @@ export type AIAgentType =
 
 export type AIAgentTrigger = 'manual' | 'status_change' | 'scheduled' | 'proposal_age';
 
-export type AIAgentRunStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type AIAgentRunStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
 
 export interface AIAgentRun {
   id: string;
@@ -172,7 +172,7 @@ export interface SuggestionCardProps {
 // Chat/Conversation Types
 // ============================================================================
 
-export type AIMessageRole = 'user' | 'assistant' | 'system';
+export type AIMessageRole = 'User' | 'Assistant' | 'System';
 
 export interface AIMessage {
   id: string;

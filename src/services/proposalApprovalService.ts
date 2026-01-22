@@ -13,7 +13,7 @@ export interface ApprovalRequest {
   requested_at: string;
   responded_by: string | null;
   responded_at: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'Pending' | 'Approved' | 'Rejected';
   request_comment: string | null;
   response_comment: string | null;
   created_at: string;
@@ -77,7 +77,7 @@ export async function requestApproval(data: CreateApprovalRequestData): Promise<
         organization_id: data.organizationId,
         requested_by: data.requestedBy,
         request_comment: data.comment || null,
-        status: 'pending',
+        status: 'Pending',
       })
       .select()
       .single();
@@ -131,7 +131,7 @@ export async function approveProposal(
     const { error: updateError } = await supabase
       .from('proposal_approval_requests')
       .update({
-        status: 'approved',
+        status: 'Approved',
         responded_by: respondedBy,
         responded_at: new Date().toISOString(),
         response_comment: comment || null,
@@ -201,7 +201,7 @@ export async function rejectProposal(
     const { error: updateError } = await supabase
       .from('proposal_approval_requests')
       .update({
-        status: 'rejected',
+        status: 'Rejected',
         responded_by: respondedBy,
         responded_at: new Date().toISOString(),
         response_comment: comment || null,
@@ -255,7 +255,7 @@ export async function getPendingApprovalRequests(
     .from('proposal_approval_requests')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('status', 'pending')
+    .eq('status', 'Pending')
     .order('created_at', { ascending: false });
 
   if (error) {

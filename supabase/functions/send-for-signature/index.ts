@@ -560,7 +560,7 @@ serve(async (req) => {
         client_email: clientEmail,
         client_name: clientName || proposal.client_name,
         client_company: clientCompany || proposal.client_company,
-        status: 'pending',
+        status: 'Pending',
         unsigned_pdf_url: pdfUrl,
         unsigned_pdf_path: pdfPath,
         expires_at: expiresAt,
@@ -617,7 +617,7 @@ serve(async (req) => {
       organization_id: organizationId,
       proposal_id: proposalId,
       signing_token_id: signingToken.id,
-      event_type: 'sent',
+      event_type: 'Sent',
       event_data: {
         sent_to: clientEmail,
         sent_by_user_id: user.id,

@@ -71,7 +71,7 @@ serve(async (req) => {
     const { data: pendingNotifications, error: fetchError } = await supabase
       .from('notification_retry_queue')
       .select('*')
-      .in('status', ['pending', 'retrying'])
+      .in('status', ['Pending', 'Retrying'])
       .lte('next_retry_at', now)
       .lt('retry_count', MAX_RETRIES)
       .order('next_retry_at', { ascending: true })
@@ -153,7 +153,7 @@ serve(async (req) => {
           await supabase
             .from('notification_retry_queue')
             .update({
-              status: 'sent',
+              status: 'Sent',
               sent_at: new Date().toISOString(),
             })
             .eq('id', notification.id);
@@ -170,7 +170,7 @@ serve(async (req) => {
             await supabase
               .from('notification_retry_queue')
               .update({
-                status: 'failed',
+                status: 'Failed',
                 retry_count: newRetryCount,
                 last_error: JSON.stringify(errorData),
               })
@@ -186,7 +186,7 @@ serve(async (req) => {
             await supabase
               .from('notification_retry_queue')
               .update({
-                status: 'retrying',
+                status: 'Retrying',
                 retry_count: newRetryCount,
                 next_retry_at: nextRetryAt,
                 last_error: JSON.stringify(errorData),

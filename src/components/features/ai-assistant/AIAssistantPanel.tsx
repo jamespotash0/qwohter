@@ -84,7 +84,7 @@ export const AIAssistantPanel: React.FC<AIAssistantPanelProps> = ({
     data: suggestions,
     isLoading: suggestionsLoading,
     refetch: refetchSuggestions,
-  } = useAISuggestions(proposalId, 'pending', isOpen);
+  } = useAISuggestions(proposalId, 'Pending', isOpen);
 
   const {
     data: conversation,

@@ -32,7 +32,7 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
   isLatest = false,
   onSuggestionClick,
 }) => {
-  const isUser = message.role === 'user';
+  const isUser = message.role === 'User';
   const isProactive = 'is_proactive' in message ? message.is_proactive : false;
 
   // Parse message content to separate text and bullet suggestions

@@ -111,11 +111,11 @@ function getReminderDisplayText(reminder: TaskReminder | undefined): string | nu
     const dateStr = reminderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const timeStr = reminderDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-    if (reminder.status === 'sent') {
+    if (reminder.status === 'Sent') {
       return `Reminder sent: ${dateStr} @ ${timeStr}`;
     }
 
-    if (reminder.recurrence === 'daily') {
+    if (reminder.recurrence === 'Daily') {
       return `Daily reminder starting ${dateStr} @ ${timeStr}`;
     }
 
@@ -1198,7 +1198,7 @@ export default function TaskBoard() {
                                 const reminder = taskReminders.get(task.id);
                                 const reminderText = getReminderDisplayText(reminder);
                                 if (!reminderText) return null;
-                                const isSent = reminder?.status === 'sent';
+                                const isSent = reminder?.status === 'Sent';
                                 return (
                                   <TooltipProvider>
                                     <Tooltip>

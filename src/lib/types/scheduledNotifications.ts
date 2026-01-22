@@ -5,13 +5,13 @@
  * Supports reminders for tasks, proposals, invoices, etc.
  */
 
-export type ScheduledNotificationEntityType = 'task' | 'proposal' | 'invoice' | 'project';
+export type ScheduledNotificationEntityType = 'Task' | 'Proposal' | 'Invoice' | 'Project';
 
-export type ScheduledNotificationRecurrence = 'once' | 'daily' | 'weekly';
+export type ScheduledNotificationRecurrence = 'Once' | 'Daily' | 'Weekly';
 
-export type ScheduledNotificationStatus = 'pending' | 'sent' | 'cancelled' | 'failed';
+export type ScheduledNotificationStatus = 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
 
-export type ScheduledNotificationType = 'reminder' | 'follow_up' | 'due_date';
+export type ScheduledNotificationType = 'Reminder' | 'Follow Up' | 'Due Date';
 
 // Reminder preset types for quick selection in UI
 export type ReminderPreset = 'none' | 'day_of' | '1_day' | '2_days' | '1_week' | 'custom';

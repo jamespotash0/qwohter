@@ -222,7 +222,7 @@ serve(async (req) => {
           .eq('user_id', userPref.user_id)
           .eq('organization_id', userPref.organization_id)
           .eq('channel', 'email')
-          .eq('status', 'pending')
+          .eq('status', 'Pending')
           .order('created_at', { ascending: false });
 
         if (notifError || !notifications || notifications.length === 0) {

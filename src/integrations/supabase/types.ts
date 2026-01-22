@@ -1327,19 +1327,19 @@ export interface Database {
       scheduled_notifications: {
         Row: {
           id: string;
-          entity_type: 'task' | 'proposal' | 'invoice' | 'project';
+          entity_type: 'Task' | 'Proposal' | 'Invoice' | 'Project';
           entity_id: string;
           user_id: string;
           organization_id: string;
           scheduled_for: string;
-          recurrence: 'once' | 'daily' | 'weekly';
+          recurrence: 'Once' | 'Daily' | 'Weekly';
           recurrence_end_date: string | null;
           notification_type: string;
           title: string;
           message: string | null;
           link: string | null;
           metadata: Record<string, any>;
-          status: 'pending' | 'sent' | 'cancelled' | 'failed';
+          status: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
           sent_at: string | null;
           last_sent_at: string | null;
           failure_reason: string | null;
@@ -1349,19 +1349,19 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          entity_type: 'task' | 'proposal' | 'invoice' | 'project';
+          entity_type: 'Task' | 'Proposal' | 'Invoice' | 'Project';
           entity_id: string;
           user_id: string;
           organization_id: string;
           scheduled_for: string;
-          recurrence?: 'once' | 'daily' | 'weekly';
+          recurrence?: 'Once' | 'Daily' | 'Weekly';
           recurrence_end_date?: string | null;
           notification_type?: string;
           title: string;
           message?: string | null;
           link?: string | null;
           metadata?: Record<string, any>;
-          status?: 'pending' | 'sent' | 'cancelled' | 'failed';
+          status?: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
           sent_at?: string | null;
           last_sent_at?: string | null;
           failure_reason?: string | null;
@@ -1371,19 +1371,19 @@ export interface Database {
         };
         Update: {
           id?: string;
-          entity_type?: 'task' | 'proposal' | 'invoice' | 'project';
+          entity_type?: 'Task' | 'Proposal' | 'Invoice' | 'Project';
           entity_id?: string;
           user_id?: string;
           organization_id?: string;
           scheduled_for?: string;
-          recurrence?: 'once' | 'daily' | 'weekly';
+          recurrence?: 'Once' | 'Daily' | 'Weekly';
           recurrence_end_date?: string | null;
           notification_type?: string;
           title?: string;
           message?: string | null;
           link?: string | null;
           metadata?: Record<string, any>;
-          status?: 'pending' | 'sent' | 'cancelled' | 'failed';
+          status?: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
           sent_at?: string | null;
           last_sent_at?: string | null;
           failure_reason?: string | null;

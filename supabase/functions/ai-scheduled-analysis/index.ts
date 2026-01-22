@@ -313,7 +313,7 @@ async function analyzeProposal(
     .select('id')
     .eq('proposal_id', proposal.id)
     .eq('suggestion_type', suggestionType)
-    .eq('status', 'pending')
+    .eq('status', 'Pending')
     .single();
 
   if (existing) {
@@ -343,7 +343,7 @@ async function analyzeProposal(
       reasoning,
       confidence_score: 0.85,
       model_used: 'rule-based', // Not using AI for scheduled checks (cheaper)
-      status: 'pending',
+      status: 'Pending',
     });
 
   if (insertError) {

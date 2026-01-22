@@ -83,7 +83,7 @@ export function useAISuggestions(
  * Hook: Fetch pending suggestions for a proposal
  */
 export function usePendingSuggestions(proposalId: string | undefined) {
-  return useAISuggestions(proposalId, 'pending');
+  return useAISuggestions(proposalId, 'Pending');
 }
 
 /**
@@ -208,17 +208,17 @@ export function useApplySuggestionOptimistic(proposalId: string) {
     onMutate: async (suggestionId) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({
-        queryKey: aiSuggestionQueryKeys.list(proposalId, 'pending'),
+        queryKey: aiSuggestionQueryKeys.list(proposalId, 'Pending'),
       });
 
       // Snapshot the previous value
       const previousSuggestions = queryClient.getQueryData<AISuggestion[]>(
-        aiSuggestionQueryKeys.list(proposalId, 'pending')
+        aiSuggestionQueryKeys.list(proposalId, 'Pending')
       );
 
       // Optimistically remove from pending list
       queryClient.setQueryData<AISuggestion[]>(
-        aiSuggestionQueryKeys.list(proposalId, 'pending'),
+        aiSuggestionQueryKeys.list(proposalId, 'Pending'),
         (old) => old?.filter((s) => s.id !== suggestionId) || []
       );
 
@@ -228,7 +228,7 @@ export function useApplySuggestionOptimistic(proposalId: string) {
       // Rollback on error
       if (context?.previousSuggestions) {
         queryClient.setQueryData(
-          aiSuggestionQueryKeys.list(proposalId, 'pending'),
+          aiSuggestionQueryKeys.list(proposalId, 'Pending'),
           context.previousSuggestions
         );
       }
@@ -273,15 +273,15 @@ export function useDismissSuggestionOptimistic(proposalId: string) {
       dismissSuggestion(suggestionId, reason),
     onMutate: async ({ suggestionId }) => {
       await queryClient.cancelQueries({
-        queryKey: aiSuggestionQueryKeys.list(proposalId, 'pending'),
+        queryKey: aiSuggestionQueryKeys.list(proposalId, 'Pending'),
       });
 
       const previousSuggestions = queryClient.getQueryData<AISuggestion[]>(
-        aiSuggestionQueryKeys.list(proposalId, 'pending')
+        aiSuggestionQueryKeys.list(proposalId, 'Pending')
       );
 
       queryClient.setQueryData<AISuggestion[]>(
-        aiSuggestionQueryKeys.list(proposalId, 'pending'),
+        aiSuggestionQueryKeys.list(proposalId, 'Pending'),
         (old) => old?.filter((s) => s.id !== suggestionId) || []
       );
 
@@ -290,7 +290,7 @@ export function useDismissSuggestionOptimistic(proposalId: string) {
     onError: (_err, _variables, context) => {
       if (context?.previousSuggestions) {
         queryClient.setQueryData(
-          aiSuggestionQueryKeys.list(proposalId, 'pending'),
+          aiSuggestionQueryKeys.list(proposalId, 'Pending'),
           context.previousSuggestions
         );
       }

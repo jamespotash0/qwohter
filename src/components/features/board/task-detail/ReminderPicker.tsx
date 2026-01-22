@@ -70,7 +70,7 @@ export function ReminderPicker({
     if (isOpen) {
       // Start fresh - default to 'none' selected and 9:00 AM time
       setSelectedPreset('none');
-      setSelectedRecurrence('once');
+      setSelectedRecurrence('Once');
       setCustomTime('09:00');
       setShowCustom(false);
       setCustomDate('');
@@ -94,12 +94,12 @@ export function ReminderPicker({
     if (!currentReminder) return null;
 
     // For one-time reminders: check if sent
-    if (reminderRecurrence === 'once' && reminderSent) {
+    if (reminderRecurrence === 'Once' && reminderSent) {
       return 'sent';
     }
 
     // For daily reminders: check last_reminder_sent_at for today
-    if (reminderRecurrence === 'daily' && lastReminderSentAt) {
+    if (reminderRecurrence === 'Daily' && lastReminderSentAt) {
       const lastSent = parseISO(lastReminderSentAt);
       if (isValid(lastSent) && isToday(lastSent)) {
         return 'sent'; // Already sent today
@@ -107,7 +107,7 @@ export function ReminderPicker({
     }
 
     // Check if reminder time has passed (for one-time reminders)
-    if (reminderRecurrence === 'once' && isBefore(currentReminder, new Date())) {
+    if (reminderRecurrence === 'Once' && isBefore(currentReminder, new Date())) {
       return 'expired';
     }
 
@@ -160,14 +160,14 @@ export function ReminderPicker({
     } else {
       setSelectedPreset(preset);
       setShowCustom(false);
-      // Reset recurrence to 'once' only for day_of (no days left to repeat)
+      // Reset recurrence to 'Once' only for day_of (no days left to repeat)
       // For 1_day, daily is valid (fires day before + day of)
       if (preset === 'day_of') {
-        setSelectedRecurrence('once');
+        setSelectedRecurrence('Once');
       }
       // Reset weekly to daily for presets with < 7 days
-      if ((preset === '1_day' || preset === '2_days') && selectedRecurrence === 'weekly') {
-        setSelectedRecurrence('daily');
+      if ((preset === '1_day' || preset === '2_days') && selectedRecurrence === 'Weekly') {
+        setSelectedRecurrence('Daily');
       }
       // Set appropriate default time based on preset date
       if (preset !== 'none') {
@@ -195,12 +195,12 @@ export function ReminderPicker({
   // Handle saving the selected preset
   const handlePresetSave = () => {
     if (selectedPreset === 'none') {
-      onReminderChange(null, 'once');
-      setSelectedRecurrence('once');
+      onReminderChange(null, 'Once');
+      setSelectedRecurrence('Once');
     } else {
       const newReminderDate = calculateReminderDate(selectedPreset, customTime || '09:00');
-      // For presets with limited days, force 'once'
-      const recurrence = (selectedPreset === 'day_of' || selectedPreset === '1_day') ? 'once' : selectedRecurrence;
+      // For presets with limited days, force 'Once'
+      const recurrence = (selectedPreset === 'day_of' || selectedPreset === '1_day') ? 'Once' : selectedRecurrence;
       onReminderChange(newReminderDate, recurrence);
     }
     setIsOpen(false);
@@ -243,10 +243,10 @@ export function ReminderPicker({
     if (reminderStatus === 'scheduled' && currentReminder) {
       const dateStr = format(currentReminder, 'MMM d');
       const timeStr = format(currentReminder, 'h:mm a');
-      if (reminderRecurrence === 'daily') {
+      if (reminderRecurrence === 'Daily') {
         return `Daily from ${dateStr}, ${timeStr}`;
       }
-      if (reminderRecurrence === 'weekly') {
+      if (reminderRecurrence === 'Weekly') {
         return `Weekly from ${dateStr}, ${timeStr}`;
       }
       return `${dateStr}, ${timeStr}`;
@@ -344,34 +344,34 @@ export function ReminderPicker({
   const getAvailableRecurrenceOptions = (forCustomDate?: string): ReminderRecurrence[] => {
     // For presets
     if (!forCustomDate) {
-      // For day_of preset, only 'once' makes sense (no days left to repeat)
+      // For day_of preset, only 'Once' makes sense (no days left to repeat)
       if (selectedPreset === 'day_of') {
-        return ['once'];
+        return ['Once'];
       }
 
-      // For 1_day preset, 'once' or 'daily' (fires day before + day of = 2 days)
+      // For 1_day preset, 'Once' or 'Daily' (fires day before + day of = 2 days)
       if (selectedPreset === '1_day') {
-        return ['once', 'daily'];
+        return ['Once', 'Daily'];
       }
 
-      // For 2_days preset, 'once' and 'daily' (weekly doesn't make sense for 3 days)
+      // For 2_days preset, 'Once' and 'Daily' (weekly doesn't make sense for 3 days)
       if (selectedPreset === '2_days') {
-        return ['once', 'daily'];
+        return ['Once', 'Daily'];
       }
 
       // For 1_week or custom, all options available
-      return ['once', 'daily', 'weekly'];
+      return ['Once', 'Daily', 'Weekly'];
     }
 
     // For custom date - calculate days until due date
     // If no custom date selected yet, show all options
     if (!forCustomDate) {
-      return ['once', 'daily', 'weekly'];
+      return ['Once', 'Daily', 'Weekly'];
     }
 
     // If no due date, all options available (no end date for recurrence)
     if (!dueDate) {
-      return ['once', 'daily', 'weekly'];
+      return ['Once', 'Daily', 'Weekly'];
     }
 
     const customDateObj = parseLocalDate(forCustomDate);
@@ -379,15 +379,15 @@ export function ReminderPicker({
     const daysUntilDue = differenceInDays(dueDateObj, customDateObj);
 
     if (daysUntilDue <= 0) {
-      return ['once']; // Same day or past due
+      return ['Once']; // Same day or past due
     }
     if (daysUntilDue === 1) {
-      return ['once']; // Only 1 day, no repeat needed
+      return ['Once']; // Only 1 day, no repeat needed
     }
     if (daysUntilDue < 7) {
-      return ['once', 'daily']; // Less than a week, daily makes sense
+      return ['Once', 'Daily']; // Less than a week, daily makes sense
     }
-    return ['once', 'daily', 'weekly']; // Week or more, all options
+    return ['Once', 'Daily', 'Weekly']; // Week or more, all options
   };
 
   const availableRecurrenceOptions = getAvailableRecurrenceOptions();
@@ -397,12 +397,12 @@ export function ReminderPicker({
   const getCustomRecurrenceOptions = (): ReminderRecurrence[] => {
     // No custom date yet - show all options
     if (!customDate) {
-      return ['once', 'daily', 'weekly'];
+      return ['Once', 'Daily', 'Weekly'];
     }
 
     // No due date on task - show all options (no end constraint)
     if (!dueDate) {
-      return ['once', 'daily', 'weekly'];
+      return ['Once', 'Daily', 'Weekly'];
     }
 
     const customDateObj = parseLocalDate(customDate);
@@ -410,12 +410,12 @@ export function ReminderPicker({
     const daysUntilDue = differenceInDays(dueDateObj, customDateObj);
 
     if (daysUntilDue <= 0) {
-      return ['once']; // Same day or past - no point repeating
+      return ['Once']; // Same day or past - no point repeating
     }
     if (daysUntilDue < 7) {
-      return ['once', 'daily']; // 1-6 days - daily ok (fires on reminder day + remaining days until due)
+      return ['Once', 'Daily']; // 1-6 days - daily ok (fires on reminder day + remaining days until due)
     }
-    return ['once', 'daily', 'weekly']; // Week or more - all options
+    return ['Once', 'Daily', 'Weekly']; // Week or more - all options
   };
 
   const customRecurrenceOptions = getCustomRecurrenceOptions();
@@ -433,10 +433,10 @@ export function ReminderPicker({
     const formattedTime = format(dateWithTime, 'h:mm a');
     const dayIndicator = isToday(dateObj) ? ' (Today)' : isTomorrow(dateObj) ? ' (Tomorrow)' : '';
 
-    if (recurrence === 'daily') {
+    if (recurrence === 'Daily') {
       return `${formattedDate}${dayIndicator}, ${formattedTime} - Daily until due`;
     }
-    if (recurrence === 'weekly') {
+    if (recurrence === 'Weekly') {
       return `${formattedDate}${dayIndicator}, ${formattedTime} - Weekly until due`;
     }
     return `${formattedDate}${dayIndicator}, ${formattedTime} - Once`;
@@ -612,9 +612,9 @@ export function ReminderPicker({
               <button
                 type="button"
                 onClick={() => {
-                  onReminderChange(null, 'once');
+                  onReminderChange(null, 'Once');
                   setShowCustom(false);
-                  setSelectedRecurrence('once');
+                  setSelectedRecurrence('Once');
                   setSelectedPreset('none');
                   setShowCancelConfirm(false);
                   setIsOpen(false);
@@ -808,7 +808,7 @@ export function ReminderPicker({
                   <SelectContent className="z-[200]">
                     {availableRecurrenceOptions.map((option) => (
                       <SelectItem key={option} value={option} className="text-xs">
-                        {option === 'once' ? 'Once (no repeat)' : option === 'daily' ? 'Daily until due' : 'Weekly until due'}
+                        {option === 'Once' ? 'Once (no repeat)' : option === 'Daily' ? 'Daily until due' : 'Weekly until due'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -882,12 +882,12 @@ export function ReminderPicker({
                     const dueDateObj = parseLocalDate(dueDate);
                     const daysUntilDue = differenceInDays(dueDateObj, newDateObj);
                     // If less than 7 days and weekly selected, reset to daily or once
-                    if (daysUntilDue < 7 && selectedRecurrence === 'weekly') {
-                      setSelectedRecurrence(daysUntilDue > 0 ? 'daily' : 'once');
+                    if (daysUntilDue < 7 && selectedRecurrence === 'Weekly') {
+                      setSelectedRecurrence(daysUntilDue > 0 ? 'Daily' : 'Once');
                     }
                     // If same day or past and daily selected, reset to once
-                    if (daysUntilDue <= 0 && selectedRecurrence !== 'once') {
-                      setSelectedRecurrence('once');
+                    if (daysUntilDue <= 0 && selectedRecurrence !== 'Once') {
+                      setSelectedRecurrence('Once');
                     }
                   }
                 }}
@@ -968,7 +968,7 @@ export function ReminderPicker({
                     <SelectContent className="z-[200]">
                       {customRecurrenceOptions.map((option) => (
                         <SelectItem key={option} value={option} className="text-xs">
-                          {option === 'once' ? 'Once (no repeat)' : option === 'daily' ? 'Daily until due' : 'Weekly until due'}
+                          {option === 'Once' ? 'Once (no repeat)' : option === 'Daily' ? 'Daily until due' : 'Weekly until due'}
                         </SelectItem>
                       ))}
                     </SelectContent>

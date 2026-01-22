@@ -23,7 +23,7 @@ export interface TaskReminder {
   scheduledFor: string;
   recurrence: ScheduledNotificationRecurrence;
   recurrenceEndDate: string | null;
-  status: 'pending' | 'sent' | 'cancelled' | 'failed';
+  status: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
   sentAt: string | null;
   lastSentAt: string | null;
   title: string;
@@ -55,9 +55,9 @@ export async function getTaskReminder(taskId: string): Promise<TaskReminder | nu
   const { data, error } = await (supabase
     .from('scheduled_notifications') as any)
     .select('*')
-    .eq('entity_type', 'task')
+    .eq('entity_type', 'Task')
     .eq('entity_id', taskId)
-    .in('status', ['pending', 'sent'])
+    .in('status', ['Pending', 'Sent'])
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -81,7 +81,7 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
     userId,
     organizationId,
     scheduledFor,
-    recurrence = 'once',
+    recurrence = 'Once',
     dueDate,
     taskTitle,
     taskReference,
@@ -92,17 +92,17 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
   // First, cancel any existing pending reminders for this task/user
   await (supabase
     .from('scheduled_notifications') as any)
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('entity_type', 'task')
+    .update({ status: 'Cancelled', updated_at: new Date().toISOString() })
+    .eq('entity_type', 'Task')
     .eq('entity_id', taskId)
     .eq('user_id', userId)
-    .eq('status', 'pending');
+    .eq('status', 'Pending');
 
   // Create the new reminder
   const { data, error } = await (supabase
     .from('scheduled_notifications') as any)
     .insert({
-      entity_type: 'task',
+      entity_type: 'Task',
       entity_id: taskId,
       user_id: userId,
       organization_id: organizationId,
@@ -110,7 +110,7 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
       scheduled_for: scheduledFor,
       recurrence,
       recurrence_end_date: dueDate || null,
-      notification_type: 'reminder',
+      notification_type: 'Reminder',
       title: `Reminder: ${taskTitle}`,
       message: buildReminderMessage(taskTitle, taskReference),
       link: `/task-board?task=${taskReference || taskId}`,
@@ -120,7 +120,7 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
         priority,
         proposal_id: proposalId,
       },
-      status: 'pending',
+      status: 'Pending',
     })
     .select()
     .single();
@@ -139,10 +139,10 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
 export async function cancelTaskReminder(taskId: string, userId?: string): Promise<boolean> {
   let query = (supabase
     .from('scheduled_notifications') as any)
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('entity_type', 'task')
+    .update({ status: 'Cancelled', updated_at: new Date().toISOString() })
+    .eq('entity_type', 'Task')
     .eq('entity_id', taskId)
-    .eq('status', 'pending');
+    .eq('status', 'Pending');
 
   if (userId) {
     query = query.eq('user_id', userId);
@@ -163,13 +163,13 @@ export async function cancelTaskReminder(taskId: string, userId?: string): Promi
  */
 export async function getUserReminders(
   userId: string,
-  status?: 'pending' | 'sent' | 'cancelled'
+  status?: 'Pending' | 'Sent' | 'Cancelled'
 ): Promise<TaskReminder[]> {
   let query = (supabase
     .from('scheduled_notifications') as any)
     .select('*')
-    .eq('entity_type', 'task')
-    .eq('notification_type', 'reminder')
+    .eq('entity_type', 'Task')
+    .eq('notification_type', 'Reminder')
     .eq('user_id', userId)
     .order('scheduled_for', { ascending: true });
 
@@ -197,9 +197,9 @@ export async function getTaskReminders(taskIds: string[]): Promise<Map<string, T
   const { data, error } = await (supabase
     .from('scheduled_notifications') as any)
     .select('*')
-    .eq('entity_type', 'task')
+    .eq('entity_type', 'Task')
     .in('entity_id', taskIds)
-    .in('status', ['pending', 'sent'])
+    .in('status', ['Pending', 'Sent'])
     .order('created_at', { ascending: false });
 
   if (error) {

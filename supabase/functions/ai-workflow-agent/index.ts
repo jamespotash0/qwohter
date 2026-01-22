@@ -365,7 +365,7 @@ async function generateFollowUp(params: {
         .select('*')
         .eq('proposal_id', proposalId)
         .eq('suggestion_type', 'follow_up_email')
-        .eq('status', 'pending')
+        .eq('status', 'Pending')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
@@ -405,7 +405,7 @@ async function generateFollowUp(params: {
         suggestion_type: 'follow_up_email', title: 'Follow-up Email Draft', content: parsed.body,
         email_subject: parsed.subject, email_recipient: context.clientName, reasoning: parsed.reasoning,
         confidence_score: Math.min(Math.max(parsed.confidence || 0.8, 0), 1), model_used: 'gpt-4o-mini',
-        prompt_tokens: response.tokenUsage.prompt, completion_tokens: response.tokenUsage.completion, status: 'pending',
+        prompt_tokens: response.tokenUsage.prompt, completion_tokens: response.tokenUsage.completion, status: 'Pending',
       })
       .select().single();
 
@@ -451,7 +451,7 @@ async function suggestReminders(params: { supabase: SupabaseClient; openaiApiKey
           reasoning: `${reminder.reasoning}\n\nOverall analysis: ${parsed.analysis}`,
           confidence_score: Math.min(Math.max(parsed.confidence || 0.8, 0), 1), model_used: 'gpt-4o-mini',
           prompt_tokens: Math.floor(response.tokenUsage.prompt / parsed.reminders.length),
-          completion_tokens: Math.floor(response.tokenUsage.completion / parsed.reminders.length), status: 'pending',
+          completion_tokens: Math.floor(response.tokenUsage.completion / parsed.reminders.length), status: 'Pending',
         })
         .select().single();
 
@@ -506,7 +506,7 @@ async function getRecommendations(params: { supabase: SupabaseClient; openaiApiK
           reasoning: `${rec.reasoning}\n\nOverall assessment: ${parsed.overallAssessment}`,
           confidence_score: Math.min(Math.max(parsed.confidence || 0.8, 0), 1), model_used: 'gpt-4o-mini',
           prompt_tokens: Math.floor(response.tokenUsage.prompt / parsed.recommendations.length),
-          completion_tokens: Math.floor(response.tokenUsage.completion / parsed.recommendations.length), status: 'pending',
+          completion_tokens: Math.floor(response.tokenUsage.completion / parsed.recommendations.length), status: 'Pending',
         })
         .select().single();
 
@@ -546,7 +546,7 @@ async function analyzeContext(params: {
       const lastAnalyzed = new Date(proposal.ai_last_analyzed_at);
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       if (lastAnalyzed > thirtyMinutesAgo) {
-        const { data: existingSuggestions } = await supabase.from('ai_suggestions').select('*').eq('proposal_id', proposalId).eq('status', 'pending').order('created_at', { ascending: false }).limit(5);
+        const { data: existingSuggestions } = await supabase.from('ai_suggestions').select('*').eq('proposal_id', proposalId).eq('status', 'Pending').order('created_at', { ascending: false }).limit(5);
         return { success: true, data: { suggestions: (existingSuggestions || []).map((s: { id: string; title: string; content: string; suggestion_type: string; confidence_score: number }) => ({ id: s.id, title: s.title, content: s.content, suggestion_type: s.suggestion_type, confidence_score: s.confidence_score })), analyzedAt: proposal.ai_last_analyzed_at } };
       }
     }
@@ -594,7 +594,7 @@ async function analyzeContext(params: {
     const createdSuggestions: Array<{ id: string; title: string; content: string; suggestion_type: string; confidence_score: number }> = [];
 
     for (const insight of parsed.insights || []) {
-      const { data: existing } = await supabase.from('ai_suggestions').select('id').eq('proposal_id', proposalId).eq('suggestion_type', insight.type).eq('status', 'pending').limit(1).single();
+      const { data: existing } = await supabase.from('ai_suggestions').select('id').eq('proposal_id', proposalId).eq('suggestion_type', insight.type).eq('status', 'Pending').limit(1).single();
       if (existing) continue;
 
       const { data: suggestion, error: insertError } = await supabase
@@ -604,7 +604,7 @@ async function analyzeContext(params: {
           suggestion_type: insight.type, title: insight.title, content: insight.message + '\n\n' + insight.suggestedAction,
           reasoning: insight.reasoning, confidence_score: Math.min(Math.max(insight.confidence, 0), 1), model_used: 'gpt-4o-mini',
           prompt_tokens: Math.floor(response.tokenUsage.prompt / (parsed.insights?.length || 1)),
-          completion_tokens: Math.floor(response.tokenUsage.completion / (parsed.insights?.length || 1)), status: 'pending',
+          completion_tokens: Math.floor(response.tokenUsage.completion / (parsed.insights?.length || 1)), status: 'Pending',
         })
         .select().single();
 
@@ -617,7 +617,7 @@ async function analyzeContext(params: {
     if (parsed.summary && createdSuggestions.length > 0) {
       const { data: message, error: messageError } = await supabase
         .from('ai_messages')
-        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'assistant', content: parsed.summary, is_proactive: true, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
+        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'Assistant', content: parsed.summary, is_proactive: true, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
         .select().single();
       if (!messageError && message) proactiveMessage = { id: message.id, content: message.content };
     }
@@ -892,7 +892,7 @@ IMPORTANT: Don't ask users for "title", "subject", "body" etc. - extract these n
     } else {
       // Proposal-specific chat mode
       // Save user message
-      await supabase.from('ai_messages').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, role: 'user', content: message, is_proactive: false });
+      await supabase.from('ai_messages').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, role: 'User', content: message, is_proactive: false });
 
       const { data: proposal, error: proposalError } = await supabase.from('proposals').select('*').eq('id', proposalId).single();
       if (proposalError || !proposal) return { success: false, error: 'Proposal not found' };
@@ -1078,7 +1078,7 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
     if (!isGlobalChat) {
       const { data: assistantMessage, error: assistantError } = await supabase
         .from('ai_messages')
-        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'assistant', content: parsed.message, is_proactive: false, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
+        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'Assistant', content: parsed.message, is_proactive: false, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
         .select().single();
 
       if (assistantError) return { success: false, error: 'Failed to save response' };
@@ -1320,12 +1320,12 @@ async function handleConfirmAction(params: {
             await supabase
               .from('scheduled_notifications')
               .insert({
-                entity_type: 'task',
+                entity_type: 'Task',
                 entity_id: task.id,
                 user_id: userId,
                 organization_id: organizationId,
                 scheduled_for: reminderParams.due_date,
-                notification_type: 'reminder',
+                notification_type: 'Reminder',
                 title: `Reminder: ${reminderParams.title || 'Follow up'}`,
                 message: reminderParams.message || `Your reminder "${reminderParams.title}" is due`,
                 link: `/board?task=${task.id}`,
@@ -1356,7 +1356,7 @@ async function handleConfirmAction(params: {
             reasoning: 'Created via Ada chat',
             confidence_score: 1.0,
             model_used: 'user-confirmed',
-            status: 'pending',
+            status: 'Pending',
           })
           .select()
           .single();
@@ -1378,9 +1378,9 @@ async function handleConfirmAction(params: {
             proposal_id: proposalId,
             organization_id: organizationId,
             user_id: userId,
-            type: notifParams.type || 'reminder',
+            type: notifParams.type || 'Reminder',
             message: notifParams.message || 'Reminder',
-            status: 'pending',
+            status: 'Pending',
             scheduled_for: notifParams.scheduled_for || null,
           })
           .select()
@@ -1463,7 +1463,7 @@ async function handleConfirmAction(params: {
             reasoning: 'Created via Ada chat',
             confidence_score: 1.0,
             model_used: 'user-confirmed',
-            status: 'applied',
+            status: 'Applied',
           })
           .select()
           .single();
@@ -1494,7 +1494,7 @@ async function handleConfirmAction(params: {
             reasoning: 'Created via Ada chat - requires manual upload',
             confidence_score: 1.0,
             model_used: 'user-confirmed',
-            status: 'pending',
+            status: 'Pending',
           })
           .select()
           .single();
@@ -1524,7 +1524,7 @@ async function handleConfirmAction(params: {
             reasoning: 'Created via Ada chat',
             confidence_score: 1.0,
             model_used: 'user-confirmed',
-            status: 'pending',
+            status: 'Pending',
           })
           .select()
           .single();
@@ -1561,7 +1561,7 @@ async function handleConfirmAction(params: {
             reasoning: 'Web search feature - results will be displayed in future implementation',
             confidence_score: 1.0,
             model_used: 'user-confirmed',
-            status: 'pending',
+            status: 'Pending',
           })
           .select()
           .single();
