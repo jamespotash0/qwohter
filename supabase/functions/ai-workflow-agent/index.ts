@@ -994,7 +994,8 @@ async function handleConfirmAction(params: {
   const { type, params: actionParams, proposalId } = pendingAction;
 
   // Actions that don't require a proposal ID
-  const actionsWithoutProposal = ['create_proposal', 'update_integration'];
+  // Tasks and reminders can be standalone or linked to a project directly
+  const actionsWithoutProposal = ['create_proposal', 'update_integration', 'create_task', 'create_reminder'];
   const requiresProposal = !actionsWithoutProposal.includes(type);
 
   if (requiresProposal && !proposalId) {
@@ -1003,6 +1004,9 @@ async function handleConfirmAction(params: {
 
   try {
     // Verify proposal exists and user has access (if required)
+    // Also look up the associated project if the proposal has been sent to board
+    let projectId: string | null = null;
+
     if (requiresProposal && proposalId) {
       const { data: proposal, error: proposalError } = await supabase
         .from('proposals')
@@ -1014,6 +1018,17 @@ async function handleConfirmAction(params: {
       if (proposalError || !proposal) {
         return { success: false, error: 'Proposal not found or access denied' };
       }
+
+      // Look up the project associated with this proposal (if sent to board)
+      const { data: project } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('quote_id', proposalId)
+        .single();
+
+      if (project) {
+        projectId = project.id;
+      }
     }
 
     let result: { id: string; title: string; type: string } | null = null;
@@ -1024,14 +1039,16 @@ async function handleConfirmAction(params: {
         const { data: task, error: taskError } = await supabase
           .from('project_tasks')
           .insert({
-            proposal_id: proposalId,
+            // Link to project if proposal has been sent to board, otherwise standalone
+            project_id: projectId,
             organization_id: organizationId,
             title: taskParams.title || 'New Task',
             description: taskParams.description || '',
-            status: 'pending',
+            status: 'todo',
             priority: taskParams.priority || 'medium',
             due_date: taskParams.due_date || null,
             created_by: userId,
+            assigned_to: userId, // Assign to the creating user
           })
           .select()
           .single();
@@ -1054,7 +1071,8 @@ async function handleConfirmAction(params: {
         const { data: task, error: taskError } = await supabase
           .from('project_tasks')
           .insert({
-            proposal_id: proposalId,
+            // Link to project if proposal has been sent to board, otherwise standalone
+            project_id: projectId,
             organization_id: organizationId,
             title: reminderParams.title || 'Reminder',
             description: reminderParams.message || `Reminder: ${reminderParams.title || 'Follow up'}`,
@@ -1062,6 +1080,7 @@ async function handleConfirmAction(params: {
             priority: reminderParams.priority || 'medium',
             due_date: reminderParams.due_date || null,
             created_by: userId,
+            assigned_to: userId, // Assign to the creating user
           })
           .select()
           .single();

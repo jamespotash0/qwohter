@@ -267,11 +267,12 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         };
         setGlobalMessages(prev => [...prev, successMessage]);
       } else {
-        // Add error message
+        // Add error message - use friendly message, log technical error
+        console.error('[Ada] Action failed:', result.error);
         const errorMessage: LocalChatMessage = {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: result.error || 'Failed to complete the action. Please try again.',
+          content: "I'm having trouble completing that action. Could you try again?",
           created_at: new Date().toISOString(),
         };
         setGlobalMessages(prev => [...prev, errorMessage]);
@@ -281,7 +282,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       const errorMessage: LocalChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Something went wrong. Please try again.',
+        content: "Something went wrong on my end. Let's try that again.",
         created_at: new Date().toISOString(),
       };
       setGlobalMessages(prev => [...prev, errorMessage]);
