@@ -584,16 +584,20 @@ async function handleChat(params: {
 }) {
   const { supabase, openaiApiKey, proposalId, organizationId, userId, message, conversationHistory, userRole } = params;
   const isGlobalChat = !proposalId;
+  const isGreetingRequest = message === '[GREETING]';
 
-  // Content moderation check
-  const moderationResult = moderateContent(message);
-  if (!moderationResult.safe) {
-    console.warn('Content moderation blocked message:', moderationResult);
-    return {
-      success: false,
-      error: 'Your message contains content that cannot be processed. Please rephrase your request.',
-      moderation: { blocked: true, reason: moderationResult.reason },
-    };
+  // Skip content moderation for greeting requests
+  if (!isGreetingRequest) {
+    // Content moderation check
+    const moderationResult = moderateContent(message);
+    if (!moderationResult.safe) {
+      console.warn('Content moderation blocked message:', moderationResult);
+      return {
+        success: false,
+        error: 'Your message contains content that cannot be processed. Please rephrase your request.',
+        moderation: { blocked: true, reason: moderationResult.reason },
+      };
+    }
   }
 
   try {
@@ -615,16 +619,25 @@ async function handleChat(params: {
 
     let systemPrompt: string;
     let context: ReturnType<typeof extractFollowUpContext> | null = null;
-    let proposalsForSelection: Array<{ id: string; name: string }> = [];
+    let proposalsForSelection: Array<{ id: string; name: string; number: string | null }> = [];
 
     if (isGlobalChat) {
       // Global chat mode - fetch organization-level context
-      type ProposalSummary = { id: string; project_name: string | null; client_name: string | null; status: string; total_value: number | null; created_at: string; updated_at: string };
-      const { data: recentProposals } = await supabase.from('proposals').select('id, project_name, client_name, status, total_value, created_at, updated_at').eq('organization_id', organizationId).order('updated_at', { ascending: false }).limit(10) as { data: ProposalSummary[] | null };
+      type ProposalSummary = { id: string; proposal_number: string | null; project_name: string | null; client_name: string | null; status: string; total_value: number | null; is_on_board: boolean | null; created_at: string; updated_at: string };
+      const { data: recentProposals } = await supabase.from('proposals').select('id, proposal_number, project_name, client_name, status, total_value, is_on_board, created_at, updated_at').eq('organization_id', organizationId).order('updated_at', { ascending: false }).limit(10) as { data: ProposalSummary[] | null };
+
+      // Fetch project workflow statuses for proposals that are on board
+      type ProjectInfo = { quote_id: string; workflow_status: string };
+      const proposalIds = (recentProposals || []).filter(p => p.is_on_board).map(p => p.id);
+      let projectMap: Record<string, string> = {};
+      if (proposalIds.length > 0) {
+        const { data: projects } = await supabase.from('projects').select('quote_id, workflow_status').in('quote_id', proposalIds) as { data: ProjectInfo[] | null };
+        projectMap = (projects || []).reduce((acc, p) => ({ ...acc, [p.quote_id]: p.workflow_status }), {} as Record<string, string>);
+      }
 
       // Calculate stats
       const proposals = recentProposals || [];
-      proposalsForSelection = proposals.map((p: ProposalSummary) => ({ id: p.id, name: p.project_name || 'Unnamed Project' }));
+      proposalsForSelection = proposals.map((p: ProposalSummary) => ({ id: p.id, name: p.project_name || 'Unnamed Project', number: p.proposal_number }));
 
       const proposalStats = {
         total: proposals.length,
@@ -637,9 +650,39 @@ async function handleChat(params: {
       };
       const winRate = proposalStats.total > 0 ? Math.round((proposalStats.won / proposalStats.total) * 100) : 0;
 
-      const proposalsList = proposals.map((p: ProposalSummary, i: number) => `${i + 1}. [ID: ${p.id.slice(0, 8)}] ${p.project_name || 'Unnamed'} (${p.client_name || 'No client'}): ${p.status}${p.total_value ? ` - $${p.total_value.toLocaleString()}` : ''}`).join('\n') || 'No proposals yet.';
+      // Internal mapping for AI to resolve proposals (never shown to users)
+      const proposalIdMap: Record<string, string> = {};
+      proposals.forEach((p: ProposalSummary) => {
+        const key = `${p.proposal_number || ''}-${(p.project_name || '').toLowerCase()}`;
+        proposalIdMap[key] = p.id;
+      });
+
+      // User-friendly list with clear number→name mapping (no database IDs exposed)
+      const proposalsList = proposals.map((p: ProposalSummary) => {
+        const num = p.proposal_number || 'No number';
+        const name = p.project_name || 'Unnamed';
+        const client = p.client_name || 'No client';
+        const value = p.total_value ? ` - $${p.total_value.toLocaleString()}` : '';
+        // Include board/project status if on board
+        const boardStatus = p.is_on_board ? ` → Project: ${projectMap[p.id] || 'On Board'}` : '';
+        return `• ${num} = "${name}" (${client}) [${p.status}]${value}${boardStatus}`;
+      }).join('\n') || 'No proposals yet.';
 
       systemPrompt = `You are Ada, a friendly and intelligent AI assistant for ${organization?.name || 'a business'} helping manage proposals and projects.
+
+== CRITICAL RULES ==
+1. NEVER expose database IDs, UUIDs, or internal identifiers to users. Always refer to proposals by their proposal number or project name.
+
+2. PROPOSAL NUMBER MATCHING: When a user mentions a proposal number (e.g., "PR-101", "P-001"), ALWAYS look up that number in the RECENT PROPOSALS list below to find the matching project name. The format is:
+   • Number = "Project Name" (Client) [Status] - $Value → Project: WorkflowStatus
+   - Example: If user says "PR-101" and the list shows "• PR-101 = \"Testin\" (No client) [Won] → Project: In Progress", then:
+     - PR-101 IS the "Testin" proposal
+     - It's currently WON and has an associated PROJECT with status "In Progress"
+   - NEVER say "I don't have PR-101" if it appears in the list - look it up!
+
+3. When referring to proposals in responses, use BOTH the number and name: "PR-101 (Testin)" so users know you found the right one.
+
+4. PROJECTS: When a proposal shows "→ Project: [status]", it means that proposal has been sent to the project board. Use this context when users ask about projects associated with proposals.
 
 == USER CONTEXT ==
 - Role: ${effectiveRole} ${isAdmin ? '(has admin privileges)' : '(standard member)'}
@@ -651,7 +694,7 @@ async function handleChat(params: {
 - Total Pipeline Value: $${proposalStats.totalValue.toLocaleString()}
 - Won Value: $${proposalStats.wonValue.toLocaleString()}
 
-== RECENT PROPOSALS (with IDs) ==
+== RECENT PROPOSALS ==
 ${proposalsList}
 
 == CONVERSATION GUIDELINES ==
@@ -701,14 +744,15 @@ You can help users with:
 8. General questions about proposal management
 
 IMPORTANT - For actions that need a proposal:
-- If user specifies a proposal by name or number, use the matching ID from the list above
-- If no proposal is specified, ASK which proposal they want to associate the action with
-- Include "targetProposalId" in the action params when you know which proposal
+- If user specifies a proposal by name (e.g., "the Johnson project") or number (e.g., "P-001"), you can match it
+- If no proposal is specified, ASK which proposal by listing their names/numbers: "Which proposal? I see P-001 Johnson Kitchen, P-002 Smith Bathroom..."
+- Include "targetProposalNumber" and "targetProjectName" in the action params when you know which proposal
+- NEVER mention database IDs or UUIDs to users - only use proposal numbers and project names
 
 Respond with JSON:
 {
   "message": "Your conversational response to the user",
-  "action": { "type": "create_task | create_reminder | draft_email | create_notification | create_proposal | send_to_board | add_attachment | update_presentation | web_search | none", "params": { ... }, "targetProposalId": "uuid if known" }
+  "action": { "type": "create_task | create_reminder | draft_email | create_notification | create_proposal | send_to_board | add_attachment | update_presentation | web_search | none", "params": { ... }, "targetProposalNumber": "P-001 if known", "targetProjectName": "project name if known" }
 }
 
 Action params (use your best judgment to fill these from natural conversation):
@@ -836,12 +880,25 @@ Action: { type: "create_reminder", params: { title: "Call ${context.clientName}"
         messages.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
       }
     }
-    messages.push({ role: 'user', content: message });
+
+    // Handle greeting request with special prompt
+    if (isGreetingRequest && isGlobalChat) {
+      messages.push({
+        role: 'user',
+        content: `[SYSTEM: User just opened the chat. Provide a brief, friendly greeting that:
+1. Introduces yourself as Ada
+2. Gives a quick snapshot of their current situation (e.g., "You have X proposals, Y won this month" or "I see you have a draft proposal that might need attention")
+3. Offers to help with something specific based on their data
+Keep it concise (2-3 sentences max). Be warm but professional. Don't ask generic "how can I help" - be proactive with a specific observation or suggestion based on their actual data.]`
+      });
+    } else {
+      messages.push({ role: 'user', content: message });
+    }
 
     const response = await callOpenAI(openaiApiKey, messages, { temperature: 0.5, maxTokens: 1000 });
     const parsed = parseJSONResponse<{
       message: string;
-      action?: { type: string; params?: Record<string, unknown>; targetProposalId?: string };
+      action?: { type: string; params?: Record<string, unknown>; targetProposalId?: string; targetProposalNumber?: string; targetProjectName?: string };
       suggestedFollowUp?: string;
     }>(response.content);
 
@@ -861,7 +918,21 @@ Action: { type: "create_reminder", params: { title: "Call ${context.clientName}"
     let pendingAction: PendingAction | null = null;
     if (parsed.action && parsed.action.type !== 'none') {
       const actionType = parsed.action.type as PendingActionType;
-      const targetProposalId = parsed.action.targetProposalId || proposalId;
+
+      // Resolve target proposal ID from number/name (for global chat)
+      let targetProposalId: string | undefined = proposalId; // Default to current proposal if in proposal context
+      const action = parsed.action; // Capture for type narrowing
+      if (isGlobalChat && action && (action.targetProposalNumber || action.targetProjectName)) {
+        // Try to find matching proposal by number or name
+        const matchByNumber = action.targetProposalNumber
+          ? proposalsForSelection.find(p => p.number === action.targetProposalNumber)
+          : null;
+        const matchByName = action.targetProjectName
+          ? proposalsForSelection.find(p => p.name.toLowerCase().includes(action.targetProjectName!.toLowerCase()))
+          : null;
+
+        targetProposalId = matchByNumber?.id || matchByName?.id || undefined;
+      }
 
       // Only create pending action if we have a target proposal or it's a global action
       if (targetProposalId || ['create_task', 'create_reminder', 'draft_email', 'create_notification'].includes(actionType)) {
@@ -968,30 +1039,55 @@ async function handleConfirmAction(params: {
       }
 
       case 'create_reminder': {
-        const reminderParams = actionParams as { title?: string; due_date?: string; message?: string };
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from('ai_suggestions')
+        // Reminders are implemented as tasks with a due_date
+        // The notification system will send reminders based on the task's due_date
+        const reminderParams = actionParams as { title?: string; due_date?: string; message?: string; priority?: string };
+
+        // Create a task with the reminder details
+        const { data: task, error: taskError } = await supabase
+          .from('project_tasks')
           .insert({
             proposal_id: proposalId,
             organization_id: organizationId,
-            user_id: userId,
-            suggestion_type: 'status_reminder',
             title: reminderParams.title || 'Reminder',
-            content: `${reminderParams.message || reminderParams.title || 'Follow up on this proposal'}\n\nDue: ${reminderParams.due_date || 'Soon'}`,
-            reasoning: 'Created via Ada chat',
-            confidence_score: 1.0,
-            model_used: 'user-confirmed',
-            status: 'pending',
+            description: reminderParams.message || `Reminder: ${reminderParams.title || 'Follow up'}`,
+            status: 'todo',
+            priority: reminderParams.priority || 'medium',
+            due_date: reminderParams.due_date || null,
+            created_by: userId,
           })
           .select()
           .single();
 
-        if (suggestionError) {
-          console.error('Failed to create reminder:', suggestionError);
+        if (taskError) {
+          console.error('Failed to create reminder task:', taskError);
           return { success: false, error: 'Failed to create reminder' };
         }
 
-        result = { id: suggestion.id, title: reminderParams.title || 'Reminder', type: 'reminder' };
+        // If a due_date was specified, also create a scheduled notification for exact timing
+        if (reminderParams.due_date && task) {
+          try {
+            await supabase
+              .from('scheduled_notifications')
+              .insert({
+                entity_type: 'task',
+                entity_id: task.id,
+                user_id: userId,
+                organization_id: organizationId,
+                scheduled_for: reminderParams.due_date,
+                notification_type: 'reminder',
+                title: `Reminder: ${reminderParams.title || 'Follow up'}`,
+                message: reminderParams.message || `Your reminder "${reminderParams.title}" is due`,
+                link: `/board?task=${task.id}`,
+                metadata: { proposal_id: proposalId },
+              });
+          } catch (notifError) {
+            // Non-critical - the task was created, just log the notification error
+            console.warn('Failed to create scheduled notification:', notifError);
+          }
+        }
+
+        result = { id: task.id, title: reminderParams.title || 'Reminder', type: 'task' };
         break;
       }
 

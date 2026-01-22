@@ -1,12 +1,11 @@
 /**
  * Ada Message Bubble
  *
- * Individual chat message with clean styling.
+ * Compact chat message with distinct user/assistant colors.
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AIMessage, LocalChatMessage } from '@/lib/types/aiWorkflow';
 
@@ -35,67 +34,53 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
 
   return (
     <motion.div
-      initial={isLatest ? { opacity: 0, y: 10, scale: 0.98 } : false}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.2 }}
+      initial={isLatest ? { opacity: 0, y: 6 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15 }}
       className={cn(
-        'flex gap-3',
-        isUser ? 'flex-row-reverse' : 'flex-row'
+        'flex',
+        isUser ? 'justify-end' : 'justify-start'
       )}
     >
-      {/* Avatar */}
-      {!isUser && (
-        <div
-          className={cn(
-            'flex-shrink-0 w-7 h-7 rounded-lg',
-            'bg-gray-900 dark:bg-white',
-            'flex items-center justify-center'
-          )}
-        >
-          <Sparkles className="w-3.5 h-3.5 text-white dark:text-gray-900" />
-        </div>
-      )}
-
       {/* Message Bubble */}
       <div
         className={cn(
-          'max-w-[80%] px-4 py-2.5 rounded-2xl',
+          'max-w-[85%] px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed',
           isUser
             ? [
-                'bg-gray-900 dark:bg-white',
-                'text-white dark:text-gray-900',
-                'rounded-br-md',
+                // User: dark bubble
+                'bg-gray-800 dark:bg-gray-700',
+                'text-white',
+                'rounded-br-[3px]',
               ]
             : [
-                'bg-gray-100 dark:bg-gray-800',
+                // Ada: light blue-ish tint
+                'bg-blue-50 dark:bg-blue-950/40',
                 'text-gray-800 dark:text-gray-100',
-                'rounded-bl-md',
-                isProactive && 'ring-1 ring-emerald-200 dark:ring-emerald-500/30',
+                'rounded-bl-[3px]',
+                isProactive && 'border border-emerald-200 dark:border-emerald-800',
               ]
         )}
       >
         {/* Proactive indicator */}
         {isProactive && (
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center gap-1 mb-1">
+            <span className="w-1 h-1 rounded-full bg-emerald-500" />
+            <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400 uppercase">
               Insight
             </span>
           </div>
         )}
 
         {/* Message content */}
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="whitespace-pre-wrap">
           {message.content}
         </p>
 
         {/* Timestamp */}
         <p
           className={cn(
-            'text-[10px] mt-1.5',
-            isUser
-              ? 'text-white/60 dark:text-gray-900/60'
-              : 'text-gray-400 dark:text-gray-500'
+            'text-[9px] mt-1 opacity-50'
           )}
         >
           {formatTime(message.created_at)}

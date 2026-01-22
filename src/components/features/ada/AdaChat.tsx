@@ -5,10 +5,9 @@
  * Can help with proposals, answer questions, and provide proactive suggestions.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdaMessage } from './AdaMessage';
 import { AdaQuickActions } from './AdaQuickActions';
@@ -35,6 +34,10 @@ import type { AIMessage, LocalChatMessage } from '@/lib/types/aiWorkflow';
 interface AdaChatProps {
   organizationId: string;
   userId: string;
+  /** External messages state (lifted from parent for persistence) */
+  externalMessages?: LocalChatMessage[];
+  /** Callback when messages change (for lifted state) */
+  onMessagesChange?: (messages: LocalChatMessage[]) => void;
 }
 
 // ============================================================================
@@ -44,13 +47,28 @@ interface AdaChatProps {
 export const AdaChat: React.FC<AdaChatProps> = ({
   organizationId,
   userId,
+  externalMessages,
+  onMessagesChange,
 }) => {
   const location = useLocation();
-  const [inputValue, setInputValue] = useState('');
-  const [globalMessages, setGlobalMessages] = useState<LocalChatMessage[]>([]);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [inputValue, setInputValue] = React.useState('');
+  const [pendingAction, setPendingAction] = React.useState<PendingAction | null>(null);
+  const [hasGreeted, setHasGreeted] = React.useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const greetingRequestedRef = useRef(false);
+
+  // Use external messages if provided, otherwise internal state
+  const globalMessages = externalMessages || [];
+  const setGlobalMessages = useCallback((updater: LocalChatMessage[] | ((prev: LocalChatMessage[]) => LocalChatMessage[])) => {
+    if (onMessagesChange) {
+      if (typeof updater === 'function') {
+        onMessagesChange(updater(globalMessages));
+      } else {
+        onMessagesChange(updater);
+      }
+    }
+  }, [onMessagesChange, globalMessages]);
 
   // Detect context from URL - parse proposalId from pathname
   // Routes: /proposals/:proposalId/edit
@@ -92,6 +110,49 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, globalMessages, isTyping]);
 
+  // Auto-greeting: When Ada opens fresh with no messages, send a greeting request
+  useEffect(() => {
+    // Only for global chat, when no messages exist, and hasn't been requested yet
+    if (
+      !isProposalContext &&
+      globalMessages.length === 0 &&
+      !greetingRequestedRef.current &&
+      !hasGreeted &&
+      organizationId &&
+      userId
+    ) {
+      greetingRequestedRef.current = true;
+      setHasGreeted(true);
+
+      // Send greeting request to get contextual welcome from Ada
+      const sendGreeting = async () => {
+        try {
+          const result = await sendChatMessage.mutateAsync({
+            organizationId,
+            userId,
+            message: '[GREETING]', // Special marker for greeting request
+            conversationHistory: [],
+          });
+
+          if (result.success && result.data?.response) {
+            const aiMessage: LocalChatMessage = {
+              id: `ai-greeting-${Date.now()}`,
+              role: 'assistant',
+              content: result.data.response,
+              created_at: new Date().toISOString(),
+            };
+            setGlobalMessages([aiMessage]);
+          }
+        } catch (error) {
+          console.error('[Ada] Greeting error:', error);
+          // Silently fail - user can still start chatting
+        }
+      };
+
+      sendGreeting();
+    }
+  }, [isProposalContext, globalMessages.length, hasGreeted, organizationId, userId, sendChatMessage, setGlobalMessages]);
+
   // Auto-resize textarea
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -112,7 +173,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
 
     // For global chat, add user message to local state immediately
     if (!isProposalContext) {
-      const userMessage: AIMessage = {
+      const userMessage: LocalChatMessage = {
         id: `user-${Date.now()}`,
         role: 'user',
         content: message,
@@ -135,7 +196,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       if (result.success && result.data?.response) {
         // Add AI response message for global chat
         if (!isProposalContext) {
-          const aiMessage: AIMessage = {
+          const aiMessage: LocalChatMessage = {
             id: `ai-${Date.now()}`,
             role: 'assistant',
             content: result.data.response,
@@ -151,30 +212,25 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       } else if (!result.success) {
         // API returned success: false
         console.error('[Ada] Chat error:', result.error);
-        if (!isProposalContext) {
-          const errorMessage: AIMessage = {
-            id: `error-${Date.now()}`,
-            role: 'assistant',
-            content: result.error || 'Sorry, I encountered an error. Please try again.',
-            created_at: new Date().toISOString(),
-          };
-          setGlobalMessages(prev => [...prev, errorMessage]);
-        }
-      }
-    } catch (error) {
-      console.error('[Ada] Chat exception:', error);
-      // For global chat, add error message
-      if (!isProposalContext) {
-        const errorMessage: AIMessage = {
+        const errorMessage: LocalChatMessage = {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: 'I seem to have an issue with that request. Could you try again?',
           created_at: new Date().toISOString(),
         };
         setGlobalMessages(prev => [...prev, errorMessage]);
       }
+    } catch (error) {
+      console.error('[Ada] Chat exception:', error);
+      const errorMessage: LocalChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: 'I seem to have an issue with that request. Could you try again?',
+        created_at: new Date().toISOString(),
+      };
+      setGlobalMessages(prev => [...prev, errorMessage]);
     }
-  }, [inputValue, proposalId, isProposalContext, organizationId, userId, conversation, sendChatMessage]);
+  }, [inputValue, proposalId, isProposalContext, organizationId, userId, conversation, sendChatMessage, setGlobalMessages]);
 
   // Handle Enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -264,7 +320,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     } finally {
       setPendingAction(null);
     }
-  }, [organizationId, userId, confirmActionMutation]);
+  }, [organizationId, userId, confirmActionMutation, setGlobalMessages]);
 
   const handleCancelAction = useCallback(() => {
     setPendingAction(null);
@@ -276,92 +332,108 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       created_at: new Date().toISOString(),
     };
     setGlobalMessages(prev => [...prev, cancelMessage]);
-  }, []);
+  }, [setGlobalMessages]);
+
+  const hasMessages = conversation && conversation.length > 0;
 
   return (
     <div className="relative flex-1 flex flex-col min-h-0">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-        {/* Welcome state - shown when no conversation yet */}
-        {!isProposalContext && (!conversation || conversation.length === 0) ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className={cn(
-                'w-14 h-14 rounded-2xl mb-4',
-                'bg-gray-900 dark:bg-white',
-                'flex items-center justify-center'
-              )}
-            >
-              <Sparkles className="w-6 h-6 text-white dark:text-gray-900" />
-            </motion.div>
+      <div className={cn(
+        'flex-1 px-3 py-2',
+        hasMessages ? 'overflow-y-auto' : 'overflow-hidden'
+      )}>
+        {/* Global chat - show greeting/conversation with quick actions */}
+        {!isProposalContext ? (
+          <div className="h-full flex flex-col justify-end pb-2">
+            {/* Show typing indicator while greeting loads */}
+            {!hasMessages && isTyping && (
+              <div className="mb-3">
+                <AdaTypingIndicator />
+              </div>
+            )}
 
-            <motion.h3
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-lg font-semibold text-gray-900 dark:text-white mb-2"
-            >
-              Hi, I'm Ada
-            </motion.h3>
-
-            <motion.p
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs"
-            >
-              I can help you with your proposals, answer questions about your business, and provide recommendations.
-            </motion.p>
-
-            <motion.div
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="space-y-3 w-full max-w-xs"
-            >
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Try asking me:
-              </p>
-              <div className="space-y-2">
-                {[
-                  'What proposals are pending?',
-                  'Help me write a follow-up email',
-                  'What\'s my win rate this month?',
-                ].map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setInputValue(suggestion);
-                      inputRef.current?.focus();
-                    }}
-                    className={cn(
-                      'block w-full px-4 py-2.5 rounded-xl text-left',
-                      'bg-gray-100 dark:bg-gray-800',
-                      'text-gray-700 dark:text-gray-300',
-                      'text-sm',
-                      'hover:bg-gray-200 dark:hover:bg-gray-700',
-                      'transition-colors duration-150'
-                    )}
-                  >
-                    "{suggestion}"
-                  </button>
+            {/* Show conversation messages */}
+            {hasMessages && (
+              <div className="space-y-1.5 mb-3">
+                {conversation?.map((message, index) => (
+                  <AdaMessage
+                    key={message.id}
+                    message={message}
+                    isLatest={index === (conversation?.length || 0) - 1}
+                  />
                 ))}
               </div>
+            )}
+
+            {/* Pending Action Confirmation */}
+            <AnimatePresence>
+              {pendingAction && (
+                <div className="mb-3">
+                  <AdaActionConfirmation
+                    action={pendingAction}
+                    onConfirm={handleConfirmAction}
+                    onCancel={handleCancelAction}
+                  />
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Typing indicator during conversation */}
+            <AnimatePresence>
+              {hasMessages && isTyping && (
+                <div className="mb-3">
+                  <AdaTypingIndicator />
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Quick action templates - always visible in global chat */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-1"
+            >
+              <p className="text-[9px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">
+                Quick actions
+              </p>
+              {[
+                'What proposals are pending?',
+                'Create a follow-up reminder',
+                'What\'s my win rate?',
+              ].map((suggestion, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setInputValue(suggestion);
+                    inputRef.current?.focus();
+                  }}
+                  className={cn(
+                    'block w-full px-3 py-1.5 rounded-md text-left',
+                    'bg-gray-50 dark:bg-gray-800/50',
+                    'text-gray-600 dark:text-gray-400',
+                    'text-[11px]',
+                    'hover:bg-gray-100 dark:hover:bg-gray-800',
+                    'transition-colors duration-150'
+                  )}
+                >
+                  {suggestion}
+                </button>
+              ))}
             </motion.div>
+
+            <div ref={messagesEndRef} />
           </div>
         ) : (
-          <>
+          <div className="space-y-2">
             {/* Loading state */}
             {isLoading && (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
+              <div className="space-y-2">
+                {[1, 2].map((i) => (
                   <div
                     key={i}
                     className={cn(
-                      'h-16 rounded-2xl animate-pulse',
+                      'h-8 rounded-lg animate-pulse',
                       'bg-gray-100 dark:bg-white/5'
                     )}
                     style={{ animationDelay: `${i * 100}ms` }}
@@ -371,13 +443,10 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             )}
 
             {/* Empty state for proposal context */}
-            {!isLoading && (!conversation || conversation.length === 0) && (!suggestions || suggestions.length === 0) && (
-              <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
-                  I'm ready to help with this proposal!
-                </p>
-                <p className="text-gray-400 dark:text-gray-500 text-xs">
-                  Ask me anything or use the quick actions below.
+            {!isLoading && !hasMessages && (!suggestions || suggestions.length === 0) && (
+              <div className="text-center py-4">
+                <p className="text-gray-500 dark:text-gray-400 text-[11px]">
+                  Ask me anything about this proposal
                 </p>
               </div>
             )}
@@ -386,11 +455,11 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             <AnimatePresence>
               {suggestions && suggestions.length > 0 && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3"
+                  className="space-y-1.5"
                 >
-                  <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <p className="text-[9px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                     Suggestions
                   </p>
                   {suggestions.map((suggestion, index) => (
@@ -407,22 +476,22 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             </AnimatePresence>
 
             {/* Conversation */}
-            {conversation && conversation.length > 0 && (
-              <div className="space-y-3">
+            {hasMessages && (
+              <div className="space-y-1.5">
                 {(suggestions?.length || 0) > 0 && (
-                  <div className="flex items-center gap-3 py-2">
+                  <div className="flex items-center gap-2 py-1">
                     <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      Conversation
+                    <span className="text-[9px] text-gray-400 dark:text-gray-500">
+                      Chat
                     </span>
                     <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
                   </div>
                 )}
-                {conversation.map((message, index) => (
+                {conversation?.map((message, index) => (
                   <AdaMessage
                     key={message.id}
                     message={message}
-                    isLatest={index === conversation.length - 1}
+                    isLatest={index === (conversation?.length || 0) - 1}
                   />
                 ))}
               </div>
@@ -443,10 +512,10 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             <AnimatePresence>
               {isTyping && <AdaTypingIndicator />}
             </AnimatePresence>
-          </>
-        )}
 
-        <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Quick Actions (only in proposal context) */}
@@ -457,17 +526,16 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         />
       )}
 
-      {/* Input Area */}
-      <div className="relative px-4 pb-4 pt-2">
+      {/* Input Area - Compact */}
+      <div className="px-3 pb-3 pt-1">
         <div
           className={cn(
-            'relative flex items-end gap-2',
-            'bg-gray-100/80 dark:bg-white/5',
-            'rounded-2xl',
-            'border border-gray-200/50 dark:border-white/10',
+            'relative flex items-center gap-1',
+            'bg-gray-100 dark:bg-gray-800',
+            'rounded-lg',
+            'border border-transparent',
             'focus-within:border-gray-300 dark:focus-within:border-gray-600',
-            'focus-within:ring-4 focus-within:ring-gray-900/5 dark:focus-within:ring-white/5',
-            'transition-all duration-200'
+            'transition-colors duration-150'
           )}
         >
           <textarea
@@ -475,15 +543,15 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder={isProposalContext ? "Ask about this proposal..." : "Ask Ada anything..."}
+            placeholder="Message Ada..."
             rows={1}
             className={cn(
-              'flex-1 py-3 px-4',
+              'flex-1 py-2 px-3',
               'bg-transparent',
-              'text-sm text-gray-900 dark:text-white',
+              'text-[12px] text-gray-900 dark:text-white',
               'placeholder:text-gray-400 dark:placeholder:text-gray-500',
               'border-0 focus:outline-none focus:ring-0',
-              'resize-none',
+              'resize-none max-h-16',
               'disabled:opacity-50 disabled:cursor-not-allowed'
             )}
           />
@@ -492,35 +560,28 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             onClick={handleSend}
             disabled={!inputValue.trim() || isTyping}
             className={cn(
-              'flex-shrink-0 w-9 h-9 mb-1.5 mr-1.5',
-              'rounded-xl',
+              'flex-shrink-0 w-6 h-6 mr-1',
+              'rounded-md',
               'flex items-center justify-center',
               'bg-gray-900 dark:bg-white',
               'text-white dark:text-gray-900',
-              'shadow-lg shadow-gray-900/20',
-              'hover:shadow-xl hover:bg-gray-800 dark:hover:bg-gray-100',
-              'hover:scale-105 active:scale-95',
-              'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100',
-              'transition-all duration-200'
+              'hover:bg-gray-800 dark:hover:bg-gray-100',
+              'disabled:opacity-30 disabled:cursor-not-allowed',
+              'transition-colors duration-150'
             )}
             aria-label="Send message"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
+            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3">
               <path
                 d="M5 12h14M12 5l7 7-7 7"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
           </button>
         </div>
-
-        {/* Powered by badge */}
-        <p className="text-center text-[10px] text-gray-400 dark:text-gray-500 mt-2">
-          Powered by GPT-4o
-        </p>
       </div>
     </div>
   );
