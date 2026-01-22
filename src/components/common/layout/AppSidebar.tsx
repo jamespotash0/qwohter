@@ -51,11 +51,11 @@ const menuItems: MenuItem[] = [
   {
     title: "Board",
     icon: Stack,
-    path: "/board",
+    path: "/project-board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
     subItems: [
       { title: "Task Board", path: "/task-board", icon: CheckSquare },
-      { title: "Project Board", path: "/board", icon: Kanban },
+      { title: "Project Board", path: "/project-board", icon: Kanban },
     ],
   },
   {

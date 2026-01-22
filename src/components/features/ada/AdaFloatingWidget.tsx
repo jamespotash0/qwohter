@@ -7,13 +7,14 @@
  * Design: Modern AI aesthetic - clean, professional, instantly recognizable
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdaChat } from './AdaChat';
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { useOrganizationPendingCount } from '@/hooks/queries/useAISuggestions';
 import type { LocalChatMessage } from '@/lib/types/aiWorkflow';
 
 // ============================================================================
@@ -57,6 +58,9 @@ const saveMessagesToStorage = (userId: string, orgId: string, messages: LocalCha
 // Main Component
 // ============================================================================
 
+// Session storage key to track if user manually closed Ada this session
+const SESSION_CLOSED_KEY = 'ada_manually_closed_session';
+
 export const AdaFloatingWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -64,8 +68,14 @@ export const AdaFloatingWidget: React.FC = () => {
   // Lift conversation state up so it persists when panel closes
   const [globalMessages, setGlobalMessages] = useState<LocalChatMessage[]>([]);
 
+  // Track if we've already auto-opened this session to prevent repeated openings
+  const hasAutoOpenedRef = useRef(false);
+
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id || '', !!user?.id);
+
+  // Get pending suggestions count for auto-open logic
+  const pendingCount = useOrganizationPendingCount(organization?.id);
 
   // Load messages from localStorage on mount
   useEffect(() => {
@@ -85,11 +95,33 @@ export const AdaFloatingWidget: React.FC = () => {
     }
   }, [globalMessages, user?.id, organization?.id, isInitialized]);
 
+  // Auto-open Ada when there are pending suggestions (once per session)
+  useEffect(() => {
+    // Only auto-open if:
+    // 1. Not already open
+    // 2. Haven't auto-opened this session yet
+    // 3. There are pending suggestions
+    // 4. User hasn't manually closed Ada this session
+    if (
+      !isOpen &&
+      !hasAutoOpenedRef.current &&
+      pendingCount > 0 &&
+      !sessionStorage.getItem(SESSION_CLOSED_KEY)
+    ) {
+      hasAutoOpenedRef.current = true;
+      setIsOpen(true);
+    }
+  }, [isOpen, pendingCount]);
+
   const handleOpen = useCallback(() => {
+    // Clear the manual close flag when user opens Ada
+    sessionStorage.removeItem(SESSION_CLOSED_KEY);
     setIsOpen(true);
   }, []);
 
   const handleClose = useCallback(() => {
+    // Mark that user manually closed Ada this session to prevent auto-reopening
+    sessionStorage.setItem(SESSION_CLOSED_KEY, 'true');
     setIsOpen(false);
     setShowClearConfirm(false);
   }, []);
@@ -115,8 +147,8 @@ export const AdaFloatingWidget: React.FC = () => {
             transition={{ duration: 0.15 }}
             onClick={handleOpen}
             className={cn(
-              'fixed bottom-6 right-20 z-50',
-              'flex items-center gap-2',
+              'fixed bottom-6 right-20 z-[60]',
+              'relative flex items-center gap-2',
               'px-4 h-12 rounded-full',
               'bg-gray-900 dark:bg-white',
               'text-white dark:text-gray-900',
@@ -149,14 +181,16 @@ export const AdaFloatingWidget: React.FC = () => {
               AI
             </span>
 
-            {/* Message count badge */}
-            {globalMessages.length > 0 && (
+            {/* Pending suggestions badge */}
+            {pendingCount > 0 && (
               <span className={cn(
-                'absolute -top-1 -right-1 w-4 h-4 rounded-full',
-                'bg-blue-500 text-white text-[9px] font-bold',
-                'flex items-center justify-center'
+                'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1',
+                'flex items-center justify-center',
+                'rounded-full text-[10px] font-bold',
+                'bg-blue-500 text-white',
+                'animate-pulse'
               )}>
-                {globalMessages.length > 9 ? '9+' : globalMessages.length}
+                {pendingCount > 9 ? '9+' : pendingCount}
               </span>
             )}
           </motion.button>
@@ -173,7 +207,7 @@ export const AdaFloatingWidget: React.FC = () => {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
-              'fixed bottom-6 right-20 z-50',
+              'fixed bottom-6 right-20 z-[60]',
               'w-[380px] h-[400px] max-h-[55vh]',
               'rounded-xl overflow-hidden',
               'flex flex-col',

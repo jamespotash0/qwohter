@@ -110,7 +110,7 @@ export async function notifyTaskAssigned(params: {
     type: 'task_assigned',
     title: 'New Task Assigned',
     message: `${params.assignedByName} assigned you a task: "${params.taskTitle}" in ${params.projectName}`,
-    link: `/board?project=${params.projectId}`,
+    link: `/project-board?project=${params.projectId}`,
     metadata: {
       task_id: params.taskId,
       project_id: params.projectId,
@@ -173,7 +173,7 @@ async function sendTaskAssignedEmail(params: {
           taskTitle: params.taskTitle,
           projectName: params.projectName,
           actorName: params.assignedByName,
-          link: `/board?project=${params.projectId}`,
+          link: `/project-board?project=${params.projectId}`,
         },
       },
     });
@@ -431,7 +431,7 @@ export async function notifyTaskCommentMention(
         type: 'update_mention',
         title: 'You were mentioned',
         message: `${params.commenterName} mentioned you in a comment on "${params.taskTitle}"`,
-        link: `/board?task=${params.taskId}`,
+        link: `/task-board?task=${params.taskId}`,
         metadata: {
           task_id: params.taskId,
           task_reference: params.taskReference,
@@ -474,7 +474,7 @@ export async function notifyTaskCommentAdded(
       type: 'update_reply',
       title: 'New comment on your task',
       message: `${params.commenterName} commented on "${params.taskTitle}"`,
-      link: `/board?task=${params.taskId}`,
+      link: `/task-board?task=${params.taskId}`,
       metadata: {
         task_id: params.taskId,
         task_reference: params.taskReference,
@@ -504,7 +504,7 @@ export async function notifyTaskCommentReply(
       type: 'update_reply',
       title: 'Reply to your comment',
       message: `${params.commenterName} replied to your comment on "${params.taskTitle}"`,
-      link: `/board?task=${params.taskId}`,
+      link: `/task-board?task=${params.taskId}`,
       metadata: {
         task_id: params.taskId,
         task_reference: params.taskReference,
@@ -552,7 +552,7 @@ async function sendMentionEmail(params: {
           taskTitle: params.taskTitle,
           commentPreview: params.commentContent.slice(0, 200),
           actorName: params.commenterName,
-          link: `/board?task=${params.taskId}`,
+          link: `/task-board?task=${params.taskId}`,
         },
       },
     });

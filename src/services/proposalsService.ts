@@ -655,7 +655,9 @@ export async function updateProposalStatus(
   }
 
   // Update the proposal first
+  console.log('[updateProposalStatus] Updating proposal:', proposalId, 'to status:', status, 'updates:', updates);
   const updatedProposal = await updateProposal(proposalId, updates);
+  console.log('[updateProposalStatus] Update successful, new status:', updatedProposal.status);
 
   // Send notifications for significant status changes (non-blocking)
   if (['won', 'submitted', 'rejected'].includes(normalizedStatus)) {

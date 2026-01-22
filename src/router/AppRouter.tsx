@@ -235,7 +235,7 @@ export const AppRouter = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Board workflow */}
-          <Route path="/board" element={<Board />} />
+          <Route path="/project-board" element={<Board />} />
           <Route path="/task-board" element={<TaskBoard />} />
 
           {/* Contacts CRM */}

@@ -1,10 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
-import { type TimelineMilestone } from '@/lib/timelineMilestones';
-import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
-import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
-import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { useProjectAttachments } from '@/hooks/useProjectAttachments';
 import {
   useProjects,
@@ -27,7 +24,6 @@ import {
   CaretRight as CaretRightIcon,
   PencilSimple as PencilSimpleIcon,
   MapPin as MapPinIcon,
-  CurrencyDollar as CurrencyDollarIcon,
   Hash as HashIcon,
   X as XIcon,
   Check as CheckIcon,
@@ -50,8 +46,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { formatLocalDate } from '@/lib/utils';
-import { File as FileIcon } from '@phosphor-icons/react';
 import { ProjectDeleteDialog } from '@/components/features/board/ProjectDeleteDialog';
+import { ProjectBoardOverlay } from '@/components/features/board/ProjectBoardOverlay';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -66,16 +62,17 @@ const COLUMN_COLORS = [
   { name: 'Teal', value: '#14B8A6', icon: '🟦' },
 ];
 
-// const AVATAR_COLORS = [
-//   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-//   '#DFE6E9', '#74B9FF', '#A29BFE', '#FD79A8', '#FDCB6E'
-// ];
+
 
 export default function Board() {
   // Get user and organization
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id || '');
   const organizationId = organization?.id || '';
+
+  // URL Search Params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectFromUrl = searchParams.get('project');
 
   // Fetch data using React Query (includes automatic realtime subscriptions)
   const { data: projects = [], isLoading: projectsLoading } = useProjects(organizationId, !!organizationId);
@@ -102,12 +99,41 @@ export default function Board() {
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
-  // AI Milestone Suggestions state
+
+  const userClosedRef = useRef(false);
+
+  const openProjectOverlay = (project: Project) => {
+    setSelectedProjectId(project.id);
+    setSearchParams({ project: project.id });
+  };
+
+  const closeProjectOverlay = () => {
+    userClosedRef.current = true;
+    setSelectedProjectId(null);
+    // Clear the project param from URL
+    searchParams.delete('project');
+    setSearchParams(searchParams);
+  };
+
+  // Sync URL parameter to overlay state (like TaskBoard pattern)
+  useEffect(() => {
+    // Don't re-open if user just closed the overlay
+    if (userClosedRef.current) {
+      userClosedRef.current = false;
+      return;
+    }
+    if (projectFromUrl && projects.length > 0 && !selectedProjectId) {
+      // Try to find by ID (projects don't have reference field like tasks)
+      const foundProject = projects.find((p) => p.id === projectFromUrl);
+      if (foundProject) {
+        setSelectedProjectId(foundProject.id);
+      }
+    }
+  }, [projectFromUrl, projects, selectedProjectId]);
 
   // Delete confirmation state
   const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({
@@ -128,18 +154,6 @@ export default function Board() {
   // - Realtime subscriptions (built into hooks)
   // - Cleanup on unmount
   // No manual initialization needed!
-
-  const toggleSection = (sectionId: string) => {
-    setCollapsedSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionId)) {
-        newSet.delete(sectionId);
-      } else {
-        newSet.add(sectionId);
-      }
-      return newSet;
-    });
-  };
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
@@ -498,16 +512,6 @@ export default function Board() {
       });
   };
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '$0';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const getPriorityColor = (priority?: ProjectPriority | null) => {
     switch (priority) {
       case 'Highest':
@@ -854,7 +858,7 @@ export default function Board() {
                                 // Prevent column drag when clicking on card
                                 e.stopPropagation();
                               }}
-                              onClick={() => setSelectedProjectId(project.id)}
+                              onClick={() => openProjectOverlay(project)}
                               className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
@@ -1092,216 +1096,14 @@ export default function Board() {
 
       {/* Project Sidebar Overlay */}
       {selectedProject && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40 animate-in fade-in-0 duration-150"
-            onClick={() => setSelectedProjectId(null)}
-          />
-
-          {/* Sidebar Panel */}
-          <div className="fixed top-0 right-0 h-full w-[40%] min-w-[400px] max-w-[95vw] bg-white shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-200">
-            {/* Header */}
-            <div className="flex-shrink-0 border-b border-gray-100 px-5 py-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-semibold text-gray-900 truncate">
-                    {selectedProject.proposal?.project_name || 'Untitled Project'}
-                  </h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-mono text-gray-400 uppercase">
-                      {selectedProject.proposal?.proposal_number || 'No #'}
-                    </span>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-[11px] text-gray-500">{selectedProject.workflow_status}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedProjectId(null)}
-                  className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XIcon className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Inline Properties */}
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {/* Priority */}
-                <select
-                  value={selectedProject.priority || ''}
-                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
-                  className={`h-6 text-[11px] px-2 rounded-md border-0 bg-gray-50 hover:bg-gray-100 cursor-pointer ${
-                    selectedProject.priority === 'High' || selectedProject.priority === 'Highest'
-                      ? 'text-red-600'
-                      : selectedProject.priority === 'Medium'
-                      ? 'text-amber-600'
-                      : 'text-gray-600'
-                  }`}
-                >
-                  <option value="">Priority</option>
-                  <option value="Lowest">Lowest</option>
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Highest">Highest</option>
-                </select>
-
-                {/* Completion Date */}
-                <Input
-                  type="date"
-                  value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
-                  className="h-6 text-[11px] w-28 border-0 bg-gray-50 hover:bg-gray-100 px-2"
-                  placeholder="Due date"
-                />
-
-                {/* View Proposal Button */}
-                {selectedProject.proposal?.id && (
-                  <button
-                    onClick={() => { window.location.href = `/proposals/${selectedProject.proposal!.id}/edit`; }}
-                    className="h-6 px-2.5 text-[11px] rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors flex items-center gap-1"
-                  >
-                    <FileIcon className="w-3 h-3" />
-                    Proposal
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="px-5 py-4 space-y-4">
-                {/* Project Summary Section */}
-                <div>
-                  <button
-                    onClick={() => toggleSection('summary')}
-                    className="w-full flex items-center gap-1.5 mb-2 group"
-                  >
-                    {collapsedSections.has('summary') ? (
-                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
-                    ) : (
-                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
-                    )}
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-                      Project Details
-                    </span>
-                  </button>
-                  {!collapsedSections.has('summary') && (
-                    <div className="space-y-1.5 pl-4">
-                      {selectedProject.proposal?.client_name && (
-                        <div className="flex items-baseline gap-2 text-xs">
-                          <span className="text-gray-400 w-20 flex-shrink-0">Client</span>
-                          <span className="text-gray-700">{selectedProject.proposal.client_name}</span>
-                        </div>
-                      )}
-                      {selectedProject.proposal?.client_company && (
-                        <div className="flex items-baseline gap-2 text-xs">
-                          <span className="text-gray-400 w-20 flex-shrink-0">Company</span>
-                          <span className="text-gray-700">{selectedProject.proposal.client_company}</span>
-                        </div>
-                      )}
-                      {selectedProject.proposal?.job_location && (
-                        <div className="flex items-baseline gap-2 text-xs">
-                          <span className="text-gray-400 w-20 flex-shrink-0">Location</span>
-                          <span className="text-gray-700">{selectedProject.proposal.job_location}</span>
-                        </div>
-                      )}
-                      {selectedProject.proposal?.total_value && (
-                        <div className="flex items-baseline gap-2 text-xs">
-                          <span className="text-gray-400 w-20 flex-shrink-0">Value</span>
-                          <span className="text-gray-900 font-semibold">{formatCurrency(selectedProject.proposal.total_value)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Timeline Section */}
-                <div>
-                  <button
-                    onClick={() => toggleSection('timeline')}
-                    className="w-full flex items-center gap-1.5 mb-2 group"
-                  >
-                    {collapsedSections.has('timeline') ? (
-                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
-                    ) : (
-                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
-                    )}
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-                      Timeline
-                    </span>
-                  </button>
-                  {!collapsedSections.has('timeline') && (
-                    <div className="pl-4">
-                      <TimelineVisualizer
-                        milestones={selectedProject.timeline_milestones || []}
-                        wonDate={selectedProject.created_at}
-                        onMilestoneUpdate={(updatedMilestones) => {
-                          updateProject({
-                            id: selectedProject.id,
-                            updates: { timeline_milestones: updatedMilestones }
-                          });
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Tasks Section */}
-                <div>
-                  <button
-                    onClick={() => toggleSection('tasks')}
-                    className="w-full flex items-center gap-1.5 mb-2 group"
-                  >
-                    {collapsedSections.has('tasks') ? (
-                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
-                    ) : (
-                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
-                    )}
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-                      Tasks
-                    </span>
-                  </button>
-                  {!collapsedSections.has('tasks') && (
-                    <div className="pl-4">
-                      <ProjectTasks
-                        projectId={selectedProject.id}
-                        organizationId={organizationId}
-                        projectName={selectedProject.proposal?.project_name || 'Project'}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Documents Section */}
-                <div>
-                  <button
-                    onClick={() => toggleSection('documents')}
-                    className="w-full flex items-center gap-1.5 mb-2 group"
-                  >
-                    {collapsedSections.has('documents') ? (
-                      <CaretRightIcon className="w-3 h-3 text-gray-400" />
-                    ) : (
-                      <CaretDownIcon className="w-3 h-3 text-gray-400" />
-                    )}
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-                      Documents
-                    </span>
-                  </button>
-                  {!collapsedSections.has('documents') && (
-                    <div className="pl-4">
-                      <ProjectAttachments
-                        projectId={selectedProject.id}
-                        attachments={attachments}
-                        onAttachmentsChange={refetchAttachments}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
+        <ProjectBoardOverlay
+          project={selectedProject}
+          organizationId={organizationId}
+          attachments={attachments}
+          onClose={closeProjectOverlay}
+          onUpdate={(projectId, updates) => updateProject({ id: projectId, updates })}
+          onAttachmentsChange={refetchAttachments}
+        />
       )}
 
       {/* Delete Project Confirmation Dialog */}

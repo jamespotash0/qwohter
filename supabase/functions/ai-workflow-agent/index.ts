@@ -42,6 +42,7 @@ type PendingActionType =
   | 'add_attachment'
   | 'update_presentation'
   | 'update_integration'
+  | 'update_status'
   | 'web_search';
 
 interface PendingAction {
@@ -1328,7 +1329,7 @@ async function handleConfirmAction(params: {
                 notification_type: 'Reminder',
                 title: `Reminder: ${reminderParams.title || 'Follow up'}`,
                 message: reminderParams.message || `Your reminder "${reminderParams.title}" is due`,
-                link: `/board?task=${task.id}`,
+                link: `/task-board?task=${task.id}`,
                 metadata: { proposal_id: proposalId },
               });
           } catch (notifError) {
@@ -1392,6 +1393,60 @@ async function handleConfirmAction(params: {
         }
 
         result = { id: notification.id, title: notifParams.message || 'Notification', type: 'notification' };
+        break;
+      }
+
+      case 'update_status': {
+        const statusParams = actionParams as { status?: string };
+        const newStatus = statusParams.status;
+
+        if (!newStatus) {
+          return { success: false, error: 'Status is required for update_status action' };
+        }
+
+        // Validate status is one of the allowed values
+        const validStatuses = ['Draft', 'Submitted', 'Won', 'Rejected'];
+        if (!validStatuses.includes(newStatus)) {
+          return { success: false, error: `Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(', ')}` };
+        }
+
+        // Build update payload with timestamp
+        const now = new Date().toISOString();
+        const updatePayload: Record<string, unknown> = {
+          status: newStatus,
+          updated_at: now,
+        };
+
+        // Add appropriate timestamp based on status
+        switch (newStatus.toLowerCase()) {
+          case 'submitted':
+            updatePayload.submitted_at = now;
+            break;
+          case 'won':
+            updatePayload.won_at = now;
+            break;
+          case 'rejected':
+            updatePayload.rejected_at = now;
+            break;
+        }
+
+        console.log('[update_status] Updating proposal:', proposalId, 'to status:', newStatus);
+
+        const { data: updatedProposal, error: updateError } = await supabase
+          .from('proposals')
+          .update(updatePayload)
+          .eq('id', proposalId)
+          .eq('organization_id', organizationId)
+          .select('id, proposal_number, project_name, status')
+          .single();
+
+        if (updateError) {
+          console.error('[update_status] Update failed:', updateError);
+          return { success: false, error: `Failed to update status: ${updateError.message}` };
+        }
+
+        console.log('[update_status] Status updated successfully:', updatedProposal.status);
+        result = { id: updatedProposal.id, title: `Status → ${newStatus}`, type: 'status' };
         break;
       }
 
@@ -1613,6 +1668,10 @@ async function handleConfirmAction(params: {
         break;
       case 'create_notification':
         successMessage = `Notification set: "${result?.title}".`;
+        isWorkflowComplete = true;
+        break;
+      case 'update_status':
+        successMessage = `Done! I've updated the proposal status to ${result?.title?.replace('Status → ', '')}.`;
         isWorkflowComplete = true;
         break;
       default:
