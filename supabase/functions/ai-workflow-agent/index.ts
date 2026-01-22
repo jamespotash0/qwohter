@@ -5,10 +5,30 @@
  * Handles: follow-up emails, reminders, recommendations, context analysis, and chat.
  */
 
+// Deno runtime declaration
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
+
 //@ts-ignore
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 //@ts-ignore
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+
+// Tool System Imports
+import {
+  toolRegistry,
+  initializeToolRegistry,
+  type ToolDefinition,
+  type ToolCall,
+  type ToolContext,
+  type ToolExecutionResponse,
+} from './tools/index.ts';
+
+// Initialize tool registry on module load
+initializeToolRegistry();
 
 // ============================================================================
 // CORS Headers
@@ -32,22 +52,10 @@ type WorkflowAction =
   | 'chat'
   | 'confirm_action';
 
-type PendingActionType =
-  | 'create_task'
-  | 'create_reminder'
-  | 'draft_email'
-  | 'create_notification'
-  | 'create_proposal'
-  | 'send_to_board'
-  | 'add_attachment'
-  | 'update_presentation'
-  | 'update_integration'
-  | 'update_status'
-  | 'web_search';
-
+// PendingAction type - tool types are now defined in tools/types.ts
 interface PendingAction {
   id: string;
-  type: PendingActionType;
+  type: string; // Tool name from registry
   params: Record<string, unknown>;
   proposalId?: string;
   proposalName?: string;
@@ -87,11 +95,14 @@ interface OpenAIResponse {
 
 // ============================================================================
 // Task Reference Generation
+// @deprecated - These functions are now in tools/utils.ts
+// Kept here for backward compatibility with other functions in this file
 // ============================================================================
 
 /**
  * Generate org initials from name (e.g., "Acme Corp" -> "AC", "WallQu" -> "WAL")
  * Removes special characters before processing to avoid hyphens/symbols in reference
+ * @deprecated Use getOrgInitials from tools/utils.ts instead
  */
 function getOrgInitials(orgName: string): string {
   if (!orgName?.trim()) return 'TSK';
@@ -146,6 +157,161 @@ async function getNextTaskReference(supabase: SupabaseClient, organizationId: st
   }
 
   return `${initials}-${maxNum + 1}`;
+}
+
+// ============================================================================
+// Database Field Normalizers
+// @deprecated - Task/reminder normalizers are now in tools/utils.ts
+// These are kept for other functions in this file that may still use them.
+// ============================================================================
+// These functions normalize user input to match database constraints.
+// Use before inserting/updating data to ensure proper capitalization.
+
+/** Valid proposal statuses that match database constraints */
+const PROPOSAL_STATUSES = ['Draft', 'Submitted', 'Won', 'Rejected'] as const;
+type ProposalStatus = typeof PROPOSAL_STATUSES[number];
+
+/** Valid task priorities that match database constraints */
+const TASK_PRIORITIES = ['Low', 'Medium', 'High'] as const;
+type TaskPriority = typeof TASK_PRIORITIES[number];
+
+/** Valid task statuses that match database constraints */
+const TASK_STATUSES = ['To Do', 'In Progress', 'Done'] as const;
+type TaskStatus = typeof TASK_STATUSES[number];
+
+/**
+ * Generic normalizer that converts user input to a valid DB enum value
+ */
+function normalizeEnumValue<T extends string>(
+  value: string | null | undefined,
+  validValues: readonly T[],
+  defaultValue?: T
+): T | null {
+  if (!value) return defaultValue ?? null;
+  const normalized = value.trim().toLowerCase();
+  const match = validValues.find(v => v.toLowerCase() === normalized);
+  return match ?? defaultValue ?? null;
+}
+
+/**
+ * Normalize proposal status for database insertion
+ * Accepts any case: "draft", "DRAFT", "Draft" -> "Draft"
+ */
+function normalizeProposalStatus(status: string | null | undefined): ProposalStatus | null {
+  return normalizeEnumValue(status, PROPOSAL_STATUSES);
+}
+
+/**
+ * Normalize task priority for database insertion
+ * Accepts any case: "high", "HIGH", "High" -> "High"
+ */
+function normalizeTaskPriority(
+  priority: string | null | undefined,
+  defaultPriority: TaskPriority = 'Medium'
+): TaskPriority {
+  return normalizeEnumValue(priority, TASK_PRIORITIES, defaultPriority) ?? defaultPriority;
+}
+
+/**
+ * Normalize task status for database insertion
+ * Accepts variations: "todo", "to do", "TO DO" -> "To Do"
+ */
+function normalizeTaskStatus(
+  status: string | null | undefined,
+  defaultStatus: TaskStatus = 'To Do'
+): TaskStatus {
+  if (!status) return defaultStatus;
+
+  const normalized = status.trim().toLowerCase().replace(/[-_]/g, ' ');
+
+  const statusMap: Record<string, TaskStatus> = {
+    'to do': 'To Do',
+    'todo': 'To Do',
+    'pending': 'To Do',
+    'not started': 'To Do',
+    'in progress': 'In Progress',
+    'inprogress': 'In Progress',
+    'working': 'In Progress',
+    'started': 'In Progress',
+    'done': 'Done',
+    'completed': 'Done',
+    'complete': 'Done',
+    'finished': 'Done',
+  };
+
+  return statusMap[normalized] ?? defaultStatus;
+}
+
+/** Valid AI message roles that match database constraints */
+const AI_MESSAGE_ROLES = ['Assistant', 'User', 'System'] as const;
+type AIMessageRole = typeof AI_MESSAGE_ROLES[number];
+
+/** Valid AI suggestion statuses that match database constraints */
+const AI_SUGGESTION_STATUSES = ['Pending', 'Applied', 'Dismissed', 'Expired'] as const;
+type AISuggestionStatus = typeof AI_SUGGESTION_STATUSES[number];
+
+/** Valid proposal approval statuses that match database constraints */
+const PROPOSAL_APPROVAL_STATUSES = ['Pending', 'Approved', 'Rejected'] as const;
+type ProposalApprovalStatus = typeof PROPOSAL_APPROVAL_STATUSES[number];
+
+/** Valid signature types that match database constraints */
+const SIGNATURE_TYPES = ['Type', 'Draw'] as const;
+type SignatureType = typeof SIGNATURE_TYPES[number];
+
+/** Valid signing event types that match database constraints */
+const SIGNING_EVENT_TYPES = ['Signed', 'Viewed', 'Sent', 'Opened', 'Declined'] as const;
+type SigningEventType = typeof SIGNING_EVENT_TYPES[number];
+
+/** Valid signing token statuses that match database constraints */
+const SIGNING_TOKEN_STATUSES = ['Pending', 'Viewed', 'Signed', 'Expired', 'Revoked'] as const;
+type SigningTokenStatus = typeof SIGNING_TOKEN_STATUSES[number];
+
+/** Valid recurrence types that match database constraints */
+const RECURRENCE_TYPES = ['Daily', 'Once', 'Weekly'] as const;
+type RecurrenceType = typeof RECURRENCE_TYPES[number];
+
+/** Valid notification entity types that match database constraints */
+const NOTIFICATION_ENTITY_TYPES = ['Task', 'Proposal', 'Invoice', 'Project'] as const;
+type NotificationEntityType = typeof NOTIFICATION_ENTITY_TYPES[number];
+
+/** Normalize AI message role */
+function normalizeAIMessageRole(role: string | null | undefined): AIMessageRole | null {
+  return normalizeEnumValue(role, AI_MESSAGE_ROLES);
+}
+
+/** Normalize AI suggestion status */
+function normalizeAISuggestionStatus(status: string | null | undefined): AISuggestionStatus | null {
+  return normalizeEnumValue(status, AI_SUGGESTION_STATUSES);
+}
+
+/** Normalize proposal approval status */
+function normalizeProposalApprovalStatus(status: string | null | undefined): ProposalApprovalStatus | null {
+  return normalizeEnumValue(status, PROPOSAL_APPROVAL_STATUSES);
+}
+
+/** Normalize signature type */
+function normalizeSignatureType(type: string | null | undefined): SignatureType | null {
+  return normalizeEnumValue(type, SIGNATURE_TYPES);
+}
+
+/** Normalize signing event type */
+function normalizeSigningEventType(eventType: string | null | undefined): SigningEventType | null {
+  return normalizeEnumValue(eventType, SIGNING_EVENT_TYPES);
+}
+
+/** Normalize signing token status */
+function normalizeSigningTokenStatus(status: string | null | undefined): SigningTokenStatus | null {
+  return normalizeEnumValue(status, SIGNING_TOKEN_STATUSES);
+}
+
+/** Normalize recurrence type */
+function normalizeRecurrenceType(recurrence: string | null | undefined): RecurrenceType | null {
+  return normalizeEnumValue(recurrence, RECURRENCE_TYPES);
+}
+
+/** Normalize notification entity type */
+function normalizeNotificationEntityType(entityType: string | null | undefined): NotificationEntityType | null {
+  return normalizeEnumValue(entityType, NOTIFICATION_ENTITY_TYPES);
 }
 
 // ============================================================================
@@ -205,6 +371,111 @@ async function callOpenAI(
     },
   };
 }
+
+// ============================================================================
+// OpenAI Function Calling API
+// ============================================================================
+
+interface OpenAIToolCallResponse {
+  content: string | null;
+  toolCalls: ToolCall[] | null;
+  finishReason: 'stop' | 'tool_calls' | 'length' | 'content_filter';
+  tokenUsage: { prompt: number; completion: number; total: number };
+}
+
+/**
+ * Call OpenAI API with function calling (tools) support.
+ * This is the new approach that lets the AI decide when to use tools.
+ */
+async function callOpenAIWithTools(
+  apiKey: string,
+  messages: OpenAIMessage[],
+  tools: ToolDefinition[],
+  options: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    toolChoice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
+  } = {}
+): Promise<OpenAIToolCallResponse> {
+  const {
+    model = 'gpt-4o-mini',
+    temperature = 0.5,
+    maxTokens = 1500,
+    toolChoice = 'auto',
+  } = options;
+
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages,
+    temperature,
+    max_tokens: maxTokens,
+  };
+
+  // Only add tools if we have some
+  if (tools.length > 0) {
+    requestBody.tools = tools;
+    requestBody.tool_choice = toolChoice;
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error('OpenAI API error (function calling):', errorData);
+    throw new Error(`OpenAI API error: ${response.status} - ${JSON.stringify(errorData)}`);
+  }
+
+  const data = await response.json();
+  const choice = data.choices?.[0];
+
+  if (!choice) {
+    throw new Error('No response choice from OpenAI');
+  }
+
+  const message = choice.message;
+  const finishReason = choice.finish_reason as OpenAIToolCallResponse['finishReason'];
+
+  // Extract tool calls if present
+  let toolCalls: ToolCall[] | null = null;
+  if (message.tool_calls && Array.isArray(message.tool_calls)) {
+    toolCalls = message.tool_calls.map((tc: { id: string; type: string; function: { name: string; arguments: string } }) => ({
+      id: tc.id,
+      type: tc.type as 'function',
+      function: {
+        name: tc.function.name,
+        arguments: tc.function.arguments,
+      },
+    }));
+  }
+
+  return {
+    content: message.content || null,
+    toolCalls,
+    finishReason,
+    tokenUsage: {
+      prompt: data.usage?.prompt_tokens || 0,
+      completion: data.usage?.completion_tokens || 0,
+      total: data.usage?.total_tokens || 0,
+    },
+  };
+}
+
+/**
+ * Feature flag to enable function calling mode.
+ * Set AI_USE_FUNCTION_CALLING=true in environment to enable.
+ */
+// @deprecated - Function calling is now the default mode, no feature flag needed
+// function useFunctionCalling(): boolean {
+//   return Deno.env.get('AI_USE_FUNCTION_CALLING') === 'true';
+// }
 
 function parseJSONResponse<T>(content: string): T {
   const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -1067,77 +1338,141 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
       messages.push({ role: 'user', content: message });
     }
 
-    const response = await callOpenAI(openaiApiKey, messages, { temperature: 0.5, maxTokens: 1000 });
-    const parsed = parseJSONResponse<{
-      message: string;
-      action?: { type: string; params?: Record<string, unknown>; targetProposalId?: string; targetProposalNumber?: string; targetProjectName?: string };
-      suggestedFollowUp?: string;
-    }>(response.content);
+    // ========================================================================
+    // FUNCTION CALLING MODE (default)
+    // ========================================================================
+    console.log('[handleChat] Using function calling mode');
 
-    // For proposal context, save assistant message to database
-    let assistantMessageId = `global-${Date.now()}`;
-    if (!isGlobalChat) {
-      const { data: assistantMessage, error: assistantError } = await supabase
-        .from('ai_messages')
-        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'Assistant', content: parsed.message, is_proactive: false, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
-        .select().single();
+    // Get tool definitions from registry
+    const tools = toolRegistry.getToolDefinitions();
 
-      if (assistantError) return { success: false, error: 'Failed to save response' };
-      assistantMessageId = assistantMessage.id;
+    // For function calling, we use a simpler system prompt without action JSON format
+    const fcSystemPrompt = systemPrompt.replace(
+      /Respond with JSON:[\s\S]*?web_search: \{ "search_query": "formulate from user's question" \}/,
+      'Use the available tools when the user wants to take an action. Be conversational and helpful.'
+    );
+
+    const fcMessages: OpenAIMessage[] = [{ role: 'system', content: fcSystemPrompt }];
+    if (conversationHistory && conversationHistory.length > 0) {
+      for (const msg of conversationHistory.slice(-10)) {
+        fcMessages.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
+      }
     }
+    fcMessages.push({ role: 'user', content: message });
 
-    // Build pending action if AI wants to take an action (instead of auto-executing)
+    const fcResponse = await callOpenAIWithTools(openaiApiKey, fcMessages, tools, {
+      temperature: 0.5,
+      maxTokens: 1000,
+      toolChoice: isGreetingRequest ? 'none' : 'auto',
+    });
+
+    // Process function calling response
     let pendingAction: PendingAction | null = null;
-    if (parsed.action && parsed.action.type !== 'none') {
-      const actionType = parsed.action.type as PendingActionType;
+    let responseMessage = fcResponse.content || '';
 
-      // Resolve target proposal ID from number/name (for global chat)
-      let targetProposalId: string | undefined = proposalId; // Default to current proposal if in proposal context
-      const action = parsed.action; // Capture for type narrowing
-      if (isGlobalChat && action && (action.targetProposalNumber || action.targetProjectName)) {
-        // Try to find matching proposal by number or name
-        const matchByNumber = action.targetProposalNumber
-          ? proposalsForSelection.find(p => p.number === action.targetProposalNumber)
-          : null;
-        const matchByName = action.targetProjectName
-          ? proposalsForSelection.find(p => p.name.toLowerCase().includes(action.targetProjectName!.toLowerCase()))
-          : null;
+    if (fcResponse.toolCalls && fcResponse.toolCalls.length > 0) {
+      // AI wants to use a tool
+      const toolCall = fcResponse.toolCalls[0]; // Process first tool call
+      console.log('[handleChat] Tool call requested:', toolCall.function.name);
 
-        targetProposalId = matchByNumber?.id || matchByName?.id || undefined;
+      // Build context for tool execution
+      const toolContext: ToolContext = {
+        supabase,
+        organizationId,
+        userId,
+        proposalId,
+        proposalName: context?.projectName,
+        userRole: effectiveRole as 'Owner' | 'Admin' | 'Member',
+      };
+
+      // If in global chat, try to resolve proposal from tool arguments
+      if (isGlobalChat) {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          if (args.targetProposalNumber || args.targetProjectName) {
+            const matchByNumber = args.targetProposalNumber
+              ? proposalsForSelection.find(p => p.number === args.targetProposalNumber)
+              : null;
+            const matchByName = args.targetProjectName
+              ? proposalsForSelection.find(p => p.name.toLowerCase().includes(args.targetProjectName.toLowerCase()))
+              : null;
+            if (matchByNumber?.id || matchByName?.id) {
+              toolContext.proposalId = matchByNumber?.id || matchByName?.id;
+              const { data: targetProposal } = await supabase
+                .from('proposals')
+                .select('project_name')
+                .eq('id', toolContext.proposalId)
+                .single();
+              toolContext.proposalName = targetProposal?.project_name || 'Unnamed Project';
+            }
+          }
+        } catch (e) {
+          console.warn('[handleChat] Failed to parse tool arguments for proposal resolution:', e);
+        }
       }
 
-      // Only create pending action if we have a target proposal or it's a global action
-      if (targetProposalId || ['create_task', 'create_reminder', 'draft_email', 'create_notification'].includes(actionType)) {
-        // Get proposal name if we have a target
-        let proposalName: string | undefined;
-        if (targetProposalId) {
-          const { data: targetProposal } = await supabase
-            .from('proposals')
-            .select('project_name')
-            .eq('id', targetProposalId)
-            .single();
-          proposalName = targetProposal?.project_name || 'Unnamed Project';
+      // Also look up project if proposal exists and is on board
+      if (toolContext.proposalId) {
+        const { data: project } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('proposal_id', toolContext.proposalId)
+          .single();
+        if (project) {
+          toolContext.projectId = project.id;
         }
+      }
 
-        pendingAction = {
-          id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          type: actionType,
-          params: parsed.action.params || {},
-          proposalId: targetProposalId,
-          proposalName,
-        };
+      // Execute tool (may return pendingAction for confirmation or auto-execute)
+      const toolResult = await toolRegistry.executeToolCall(toolCall, toolContext);
+
+      if (toolResult.requiresConfirmation && toolResult.pendingAction) {
+        // Cast to local PendingAction type (compatible structure)
+        pendingAction = toolResult.pendingAction as PendingAction;
+        // Generate a confirmation message if AI didn't provide one
+        if (!responseMessage) {
+          responseMessage = `I'll help you with that. Let me ${toolCall.function.name.replace(/_/g, ' ')}.`;
+        }
+      } else if (toolResult.result) {
+        // Tool auto-executed - add result to response
+        responseMessage = toolResult.result.success
+          ? `Done! ${toolResult.result.data?.title || 'Action completed'}.`
+          : `I encountered an issue: ${toolResult.result.error}`;
+      }
+    }
+
+    // Save assistant message for proposal context
+    let assistantMessageId = `global-${Date.now()}`;
+    if (!isGlobalChat && responseMessage) {
+      const { data: assistantMessage, error: assistantError } = await supabase
+        .from('ai_messages')
+        .insert({
+          proposal_id: proposalId,
+          organization_id: organizationId,
+          user_id: null,
+          role: 'Assistant',
+          content: responseMessage,
+          is_proactive: false,
+          model_used: 'gpt-4o-mini',
+          tokens_used: fcResponse.tokenUsage.total,
+        })
+        .select()
+        .single();
+
+      if (!assistantError && assistantMessage) {
+        assistantMessageId = assistantMessage.id;
       }
     }
 
     return {
       success: true,
       data: {
-        response: parsed.message,
-        message: { id: assistantMessageId, role: 'assistant' as const, content: parsed.message },
+        response: responseMessage,
+        message: { id: assistantMessageId, role: 'assistant' as const, content: responseMessage },
         pendingAction: pendingAction || undefined,
         proposalsForSelection: isGlobalChat ? proposalsForSelection : undefined,
       },
-      tokenUsage: response.tokenUsage,
+      tokenUsage: fcResponse.tokenUsage,
     };
   } catch (error) {
     console.error('handleChat error:', error);
@@ -1147,6 +1482,7 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
 
 // ============================================================================
 // Confirm Action Handler (Executes pending actions after user approval)
+// Uses the tool registry for action execution
 // ============================================================================
 
 async function handleConfirmAction(params: {
@@ -1156,532 +1492,85 @@ async function handleConfirmAction(params: {
   pendingAction: PendingAction;
 }) {
   const { supabase, organizationId, userId, pendingAction } = params;
-  const { type, params: actionParams, proposalId } = pendingAction;
-
-  // Actions that don't require a proposal ID
-  // Tasks and reminders can be standalone or linked to a project directly
-  const actionsWithoutProposal = ['create_proposal', 'update_integration', 'create_task', 'create_reminder'];
-  const requiresProposal = !actionsWithoutProposal.includes(type);
-
-  if (requiresProposal && !proposalId) {
-    return { success: false, error: 'Proposal ID is required to execute this action' };
-  }
+  const { type, params: actionParams, proposalId, proposalName } = pendingAction;
 
   try {
-    // Verify proposal exists and user has access (if required)
-    // Also look up the associated project if the proposal has been sent to board
-    let projectId: string | null = null;
+    // Fetch user's role for approval workflow logic
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('organization_id', organizationId)
+      .eq('user_id', userId)
+      .single();
+    const userRole = (membership?.role || 'Member') as 'Owner' | 'Admin' | 'Member';
 
-    if (requiresProposal && proposalId) {
-      const { data: proposal, error: proposalError } = await supabase
-        .from('proposals')
-        .select('id, project_name')
-        .eq('id', proposalId)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (proposalError || !proposal) {
-        return { success: false, error: 'Proposal not found or access denied' };
-      }
-
-      // Look up the project associated with this proposal (if sent to board)
+    // Look up associated project if proposal exists
+    let projectId: string | undefined;
+    if (proposalId) {
       const { data: project } = await supabase
         .from('projects')
         .select('id')
         .eq('proposal_id', proposalId)
         .single();
-
       if (project) {
         projectId = project.id;
       }
     }
 
-    let result: { id: string; title: string; type: string } | null = null;
+    // Build tool context
+    const toolContext: ToolContext = {
+      supabase,
+      organizationId,
+      userId,
+      proposalId,
+      proposalName,
+      projectId,
+      userRole,
+    };
 
-    switch (type) {
-      case 'create_task': {
-        const taskParams = actionParams as { title?: string; description?: string; due_date?: string; priority?: string };
+    // Execute the action using the tool registry
+    const result = await toolRegistry.executeConfirmedAction(type, actionParams, toolContext);
 
-        // Normalize priority to capitalized (DB constraint: 'Low', 'Medium', 'High')
-        const validPriorities = ['Low', 'Medium', 'High'];
-        const rawPriority = (taskParams.priority || 'Medium').trim();
-        // Capitalize first letter, lowercase rest
-        const normalizedPriority = rawPriority.charAt(0).toUpperCase() + rawPriority.slice(1).toLowerCase();
-        const priority = validPriorities.includes(normalizedPriority) ? normalizedPriority : 'Medium';
-
-        // Generate task reference number (e.g., "WAL-42")
-        const taskReference = await getNextTaskReference(supabase, organizationId);
-
-        console.log('[create_task] Starting task creation:', {
-          userId,
-          organizationId,
-          projectId,
-          title: taskParams.title,
-          priority,
-          reference: taskReference,
-        });
-
-        const insertData = {
-          project_id: projectId, // null for standalone tasks
-          organization_id: organizationId,
-          reference: taskReference,
-          title: taskParams.title || 'New Task',
-          description: taskParams.description || '',
-          status: 'To Do',
-          priority,
-          due_date: taskParams.due_date || null,
-          created_by: userId,
-          assigned_to: userId,
-        };
-
-        console.log('[create_task] Insert data:', insertData);
-
-        const { data: task, error: taskError } = await supabase
-          .from('project_tasks')
-          .insert(insertData)
-          .select()
-          .single();
-
-        if (taskError) {
-          console.error('[create_task] Insert failed:', {
-            code: taskError.code,
-            message: taskError.message,
-            details: taskError.details,
-            hint: taskError.hint,
-          });
-          return { success: false, error: `Failed to create task: ${taskError.message} (${taskError.code})` };
-        }
-
-        console.log('[create_task] Task created successfully:', task.id);
-        result = { id: task.id, title: taskParams.title || 'New Task', type: 'task' };
-        break;
-      }
-
-      case 'create_reminder': {
-        // Reminders are implemented as tasks with a due_date
-        // The notification system will send reminders based on the task's due_date
-        const reminderParams = actionParams as { title?: string; due_date?: string; message?: string; priority?: string };
-
-        // Normalize priority to capitalized (DB constraint: 'Low', 'Medium', 'High')
-        const validReminderPriorities = ['Low', 'Medium', 'High'];
-        const rawReminderPriority = (reminderParams.priority || 'Medium').trim();
-        // Capitalize first letter, lowercase rest
-        const normalizedReminderPriority = rawReminderPriority.charAt(0).toUpperCase() + rawReminderPriority.slice(1).toLowerCase();
-        const reminderPriority = validReminderPriorities.includes(normalizedReminderPriority) ? normalizedReminderPriority : 'Medium';
-
-        // Generate task reference number (e.g., "WAL-43")
-        const reminderReference = await getNextTaskReference(supabase, organizationId);
-
-        console.log('[create_reminder] Starting reminder creation:', {
-          userId,
-          organizationId,
-          projectId,
-          title: reminderParams.title,
-          due_date: reminderParams.due_date,
-          priority: reminderPriority,
-          reference: reminderReference,
-        });
-
-        const reminderInsertData = {
-          project_id: projectId,
-          organization_id: organizationId,
-          reference: reminderReference,
-          title: reminderParams.title || 'Reminder',
-          description: reminderParams.message || `Reminder: ${reminderParams.title || 'Follow up'}`,
-          status: 'To Do',
-          priority: reminderPriority,
-          due_date: reminderParams.due_date || null,
-          created_by: userId,
-          assigned_to: userId,
-        };
-
-        console.log('[create_reminder] Insert data:', reminderInsertData);
-
-        const { data: task, error: taskError } = await supabase
-          .from('project_tasks')
-          .insert(reminderInsertData)
-          .select()
-          .single();
-
-        if (taskError) {
-          console.error('[create_reminder] Insert failed:', {
-            code: taskError.code,
-            message: taskError.message,
-            details: taskError.details,
-            hint: taskError.hint,
-          });
-          return { success: false, error: `Failed to create reminder: ${taskError.message} (${taskError.code})` };
-        }
-
-        console.log('[create_reminder] Task created successfully:', task.id);
-
-        // If a due_date was specified, also create a scheduled notification for exact timing
-        if (reminderParams.due_date && task) {
-          try {
-            await supabase
-              .from('scheduled_notifications')
-              .insert({
-                entity_type: 'Task',
-                entity_id: task.id,
-                user_id: userId,
-                organization_id: organizationId,
-                scheduled_for: reminderParams.due_date,
-                notification_type: 'Reminder',
-                title: `Reminder: ${reminderParams.title || 'Follow up'}`,
-                message: reminderParams.message || `Your reminder "${reminderParams.title}" is due`,
-                link: `/task-board?task=${task.id}`,
-                metadata: { proposal_id: proposalId },
-              });
-          } catch (notifError) {
-            // Non-critical - the task was created, just log the notification error
-            console.warn('Failed to create scheduled notification:', notifError);
-          }
-        }
-
-        result = { id: task.id, title: reminderParams.title || 'Reminder', type: 'task' };
-        break;
-      }
-
-      case 'draft_email': {
-        const emailParams = actionParams as { subject?: string; body?: string; tone?: string };
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from('ai_suggestions')
-          .insert({
-            proposal_id: proposalId,
-            organization_id: organizationId,
-            user_id: userId,
-            suggestion_type: 'follow_up_email',
-            title: 'Email Draft',
-            content: emailParams.body || 'Email content',
-            email_subject: emailParams.subject || 'Follow-up',
-            reasoning: 'Created via Ada chat',
-            confidence_score: 1.0,
-            model_used: 'user-confirmed',
-            status: 'Pending',
-          })
-          .select()
-          .single();
-
-        if (suggestionError) {
-          console.error('Failed to create email draft:', suggestionError);
-          return { success: false, error: 'Failed to create email draft' };
-        }
-
-        result = { id: suggestion.id, title: emailParams.subject || 'Email Draft', type: 'email' };
-        break;
-      }
-
-      case 'create_notification': {
-        const notifParams = actionParams as { type?: string; message?: string; scheduled_for?: string };
-        const { data: notification, error: notifError } = await supabase
-          .from('notifications')
-          .insert({
-            proposal_id: proposalId,
-            organization_id: organizationId,
-            user_id: userId,
-            type: notifParams.type || 'Reminder',
-            message: notifParams.message || 'Reminder',
-            status: 'Pending',
-            scheduled_for: notifParams.scheduled_for || null,
-          })
-          .select()
-          .single();
-
-        if (notifError) {
-          console.error('Failed to create notification:', notifError);
-          return { success: false, error: 'Failed to create notification' };
-        }
-
-        result = { id: notification.id, title: notifParams.message || 'Notification', type: 'notification' };
-        break;
-      }
-
-      case 'update_status': {
-        const statusParams = actionParams as { status?: string };
-        const newStatus = statusParams.status;
-
-        if (!newStatus) {
-          return { success: false, error: 'Status is required for update_status action' };
-        }
-
-        // Validate status is one of the allowed values
-        const validStatuses = ['Draft', 'Submitted', 'Won', 'Rejected'];
-        if (!validStatuses.includes(newStatus)) {
-          return { success: false, error: `Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(', ')}` };
-        }
-
-        // Build update payload with timestamp
-        const now = new Date().toISOString();
-        const updatePayload: Record<string, unknown> = {
-          status: newStatus,
-          updated_at: now,
-        };
-
-        // Add appropriate timestamp based on status
-        switch (newStatus.toLowerCase()) {
-          case 'submitted':
-            updatePayload.submitted_at = now;
-            break;
-          case 'won':
-            updatePayload.won_at = now;
-            break;
-          case 'rejected':
-            updatePayload.rejected_at = now;
-            break;
-        }
-
-        console.log('[update_status] Updating proposal:', proposalId, 'to status:', newStatus);
-
-        const { data: updatedProposal, error: updateError } = await supabase
-          .from('proposals')
-          .update(updatePayload)
-          .eq('id', proposalId)
-          .eq('organization_id', organizationId)
-          .select('id, proposal_number, project_name, status')
-          .single();
-
-        if (updateError) {
-          console.error('[update_status] Update failed:', updateError);
-          return { success: false, error: `Failed to update status: ${updateError.message}` };
-        }
-
-        console.log('[update_status] Status updated successfully:', updatedProposal.status);
-        result = { id: updatedProposal.id, title: `Status → ${newStatus}`, type: 'status' };
-        break;
-      }
-
-      case 'create_proposal': {
-        const proposalParams = actionParams as {
-          project_name?: string;
-          client_name?: string;
-          client_company?: string;
-          job_location?: string;
-          status?: string;
-        };
-
-        // Get the next proposal number
-        const { data: lastProposal } = await supabase
-          .from('proposals')
-          .select('proposal_number')
-          .eq('organization_id', organizationId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        let nextNumber = 1;
-        if (lastProposal?.proposal_number) {
-          const match = lastProposal.proposal_number.match(/P-(\d+)/);
-          if (match) {
-            nextNumber = parseInt(match[1], 10) + 1;
-          }
-        }
-
-        const { data: newProposal, error: proposalError } = await supabase
-          .from('proposals')
-          .insert({
-            organization_id: organizationId,
-            proposal_number: `P-${String(nextNumber).padStart(3, '0')}`,
-            project_name: proposalParams.project_name || 'New Project',
-            client_name: proposalParams.client_name || null,
-            client_company: proposalParams.client_company || null,
-            job_location: proposalParams.job_location || null,
-            status: proposalParams.status || 'Draft',
-            form_data: {},
-          })
-          .select()
-          .single();
-
-        if (proposalError) {
-          console.error('Failed to create proposal:', proposalError);
-          return { success: false, error: 'Failed to create proposal' };
-        }
-
-        result = { id: newProposal.id, title: proposalParams.project_name || 'New Project', type: 'proposal' };
-        break;
-      }
-
-      case 'send_to_board': {
-        // For now, log the action - actual board integration would go here
-        const boardParams = actionParams as { board_name?: string; board_id?: string };
-        console.log('Send to board requested:', { proposalId, boardParams });
-
-        // Create a suggestion to track this action
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from('ai_suggestions')
-          .insert({
-            proposal_id: proposalId,
-            organization_id: organizationId,
-            user_id: userId,
-            suggestion_type: 'action_recommendation',
-            title: `Send to ${boardParams.board_name || 'Board'}`,
-            content: `Proposal queued to be sent to board: ${boardParams.board_name || 'Board'}`,
-            reasoning: 'Created via Ada chat',
-            confidence_score: 1.0,
-            model_used: 'user-confirmed',
-            status: 'Applied',
-          })
-          .select()
-          .single();
-
-        if (suggestionError) {
-          console.error('Failed to log board action:', suggestionError);
-        }
-
-        result = { id: suggestion?.id || 'board-action', title: boardParams.board_name || 'Board', type: 'board' };
-        break;
-      }
-
-      case 'add_attachment': {
-        // For now, log the action - actual file handling would need to be done client-side
-        const attachmentParams = actionParams as { file_name?: string; file_type?: string; file_url?: string };
-        console.log('Add attachment requested:', { proposalId, attachmentParams });
-
-        // Create a note about the attachment request
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from('ai_suggestions')
-          .insert({
-            proposal_id: proposalId,
-            organization_id: organizationId,
-            user_id: userId,
-            suggestion_type: 'action_recommendation',
-            title: `Add Attachment: ${attachmentParams.file_name || 'File'}`,
-            content: `Attachment requested: ${attachmentParams.file_name || 'File'}\nType: ${attachmentParams.file_type || 'Unknown'}`,
-            reasoning: 'Created via Ada chat - requires manual upload',
-            confidence_score: 1.0,
-            model_used: 'user-confirmed',
-            status: 'Pending',
-          })
-          .select()
-          .single();
-
-        if (suggestionError) {
-          console.error('Failed to log attachment action:', suggestionError);
-        }
-
-        result = { id: suggestion?.id || 'attachment-action', title: attachmentParams.file_name || 'Attachment', type: 'attachment' };
-        break;
-      }
-
-      case 'update_presentation': {
-        const presentationParams = actionParams as { presentation_content?: string };
-        console.log('Update presentation requested:', { proposalId, presentationParams });
-
-        // Store the presentation update as a suggestion
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from('ai_suggestions')
-          .insert({
-            proposal_id: proposalId,
-            organization_id: organizationId,
-            user_id: userId,
-            suggestion_type: 'action_recommendation',
-            title: 'Presentation Update',
-            content: presentationParams.presentation_content || 'Presentation content update requested',
-            reasoning: 'Created via Ada chat',
-            confidence_score: 1.0,
-            model_used: 'user-confirmed',
-            status: 'Pending',
-          })
-          .select()
-          .single();
-
-        if (suggestionError) {
-          console.error('Failed to log presentation update:', suggestionError);
-        }
-
-        result = { id: suggestion?.id || 'presentation-action', title: 'Presentation Update', type: 'presentation' };
-        break;
-      }
-
-      case 'web_search': {
-        // Web search action - returns results to be displayed
-        const searchParams = actionParams as { search_query?: string; search_context?: string };
-
-        if (!searchParams.search_query) {
-          return { success: false, error: 'Search query is required' };
-        }
-
-        // For now, we'll create a note that a search was requested
-        // In a full implementation, this would call a web search API
-        console.log('Web search requested:', searchParams);
-
-        const { data: suggestion, error: suggestionError } = await supabase
-          .from('ai_suggestions')
-          .insert({
-            proposal_id: proposalId,
-            organization_id: organizationId,
-            user_id: userId,
-            suggestion_type: 'action_recommendation',
-            title: `Search: ${searchParams.search_query}`,
-            content: `Web search requested: "${searchParams.search_query}"\nContext: ${searchParams.search_context || 'General search'}`,
-            reasoning: 'Web search feature - results will be displayed in future implementation',
-            confidence_score: 1.0,
-            model_used: 'user-confirmed',
-            status: 'Pending',
-          })
-          .select()
-          .single();
-
-        if (suggestionError) {
-          console.error('Failed to log search action:', suggestionError);
-        }
-
-        result = { id: suggestion?.id || 'search-action', title: searchParams.search_query || 'Search', type: 'search' };
-        break;
-      }
-
-      case 'update_integration': {
-        const integrationParams = actionParams as { integration_type?: string; integration_settings?: Record<string, unknown> };
-        console.log('Update integration requested:', { organizationId, integrationParams });
-
-        // Log the integration update request
-        result = { id: 'integration-action', title: integrationParams.integration_type || 'Integration', type: 'integration' };
-        break;
-      }
-
-      default:
-        return { success: false, error: `Unknown action type: ${type}` };
+    if (!result.success) {
+      return { success: false, error: result.error };
     }
 
     // Generate contextual follow-up message based on action type
-    let successMessage = `Done! I've created the ${result?.type}: "${result?.title}".`;
+    const actionData = result.data as { id?: string; title?: string; type?: string } | undefined;
+    let successMessage = `Done! I've completed the action: "${actionData?.title || type}".`;
     let followUpPrompt: string | undefined;
-    let isWorkflowComplete = false; // True when this is a final step
+    let isWorkflowComplete = false;
 
     switch (type) {
       case 'create_task':
-        // After creating a task, offer to set a reminder (workflow continues)
-        successMessage = `Done! I've added "${result?.title}" to your task list.`;
+        successMessage = `Done! I've added "${actionData?.title || 'task'}" to your task list.`;
         followUpPrompt = 'Would you like me to set a reminder for when this is due?';
         break;
       case 'create_reminder':
-        // Reminder is typically the final step of a workflow
-        successMessage = `Got it! I'll remind you about "${result?.title}".`;
+        successMessage = `Got it! I'll remind you about "${actionData?.title || 'reminder'}".`;
         isWorkflowComplete = true;
         break;
       case 'draft_email':
-        successMessage = `I've drafted the email "${result?.title}". You can review and send it from the proposal.`;
+        successMessage = `I've drafted the email "${actionData?.title || 'Email Draft'}". You can review and send it from the proposal.`;
         isWorkflowComplete = true;
         break;
       case 'create_proposal':
-        successMessage = `I've created a new proposal: "${result?.title}".`;
+        successMessage = `I've created a new proposal: "${actionData?.title || 'New Project'}".`;
         followUpPrompt = 'Would you like to add any details to it?';
         break;
       case 'create_notification':
-        successMessage = `Notification set: "${result?.title}".`;
+        successMessage = `Notification set: "${actionData?.title || 'Notification'}".`;
         isWorkflowComplete = true;
         break;
       case 'update_status':
-        successMessage = `Done! I've updated the proposal status to ${result?.title?.replace('Status → ', '')}.`;
+        successMessage = `Done! I've updated the proposal status.`;
         isWorkflowComplete = true;
         break;
       default:
         isWorkflowComplete = true;
     }
 
-    // Add "anything else" prompt when workflow is complete
     const closingPrompt = isWorkflowComplete ? '\n\nIs there anything else I can help you with?' : '';
-
-    // Combine message with follow-up or closing prompt
     const fullMessage = followUpPrompt
       ? `${successMessage}\n\n${followUpPrompt}`
       : `${successMessage}${closingPrompt}`;
@@ -1689,7 +1578,7 @@ async function handleConfirmAction(params: {
     return {
       success: true,
       data: {
-        created: result,
+        created: actionData,
         message: fullMessage,
         followUpPrompt,
       },
@@ -1699,6 +1588,20 @@ async function handleConfirmAction(params: {
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
+// @deprecated - Old switch statement code removed, now using toolRegistry.executeConfirmedAction
+// The following code block was removed during refactoring to function calling:
+// - create_task handler (moved to tools/createTask.ts)
+// - create_reminder handler (moved to tools/createReminder.ts)
+// - draft_email handler (moved to tools/draftEmail.ts)
+// - create_notification handler (moved to tools/createNotification.ts)
+// - update_status handler (moved to tools/updateStatus.ts)
+// - create_proposal handler (moved to tools/createProposal.ts)
+// - send_to_board handler (moved to tools/sendToBoard.ts)
+// - add_attachment handler (moved to tools/addAttachment.ts)
+// - update_presentation handler (moved to tools/updatePresentation.ts)
+// - web_search handler (moved to tools/webSearch.ts)
+// - update_integration handler (moved to tools/updateIntegration.ts if needed)
 
 // ============================================================================
 // Main Handler

@@ -10,6 +10,7 @@ import type {
   ScheduledNotification,
   ScheduledNotificationRecurrence,
 } from '@/lib/types/scheduledNotifications';
+import { normalizeRecurrenceType, normalizeNotificationEntityType } from '@/utils/statusHelpers';
 
 // =============================================================================
 // Types
@@ -81,7 +82,7 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
     userId,
     organizationId,
     scheduledFor,
-    recurrence = 'Once',
+    recurrence: rawRecurrence,
     dueDate,
     taskTitle,
     taskReference,
@@ -89,11 +90,15 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
     proposalId,
   } = input;
 
+  // Normalize recurrence type (accepts any case: "once", "DAILY", "Weekly" -> "Once", "Daily", "Weekly")
+  const recurrence = normalizeRecurrenceType(rawRecurrence) || 'Once';
+  const entityType = normalizeNotificationEntityType('Task') || 'Task';
+
   // First, cancel any existing pending reminders for this task/user
   await (supabase
     .from('scheduled_notifications') as any)
     .update({ status: 'Cancelled', updated_at: new Date().toISOString() })
-    .eq('entity_type', 'Task')
+    .eq('entity_type', entityType)
     .eq('entity_id', taskId)
     .eq('user_id', userId)
     .eq('status', 'Pending');
@@ -102,7 +107,7 @@ export async function scheduleTaskReminder(input: ScheduleTaskReminderInput): Pr
   const { data, error } = await (supabase
     .from('scheduled_notifications') as any)
     .insert({
-      entity_type: 'Task',
+      entity_type: entityType,
       entity_id: taskId,
       user_id: userId,
       organization_id: organizationId,

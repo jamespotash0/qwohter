@@ -37,6 +37,32 @@ function escapeHtml(text: string | undefined | null): string {
     .replace(/'/g, '&#039;');
 }
 
+// ============================================================================
+// Database Field Normalizers
+// ============================================================================
+
+/** Valid signature types that match database constraints */
+const SIGNATURE_TYPES = ['Type', 'Draw'] as const;
+type SignatureType = typeof SIGNATURE_TYPES[number];
+
+/** Valid signing token statuses */
+const SIGNING_TOKEN_STATUSES = ['Pending', 'Viewed', 'Signed', 'Expired', 'Revoked'] as const;
+type SigningTokenStatus = typeof SIGNING_TOKEN_STATUSES[number];
+
+/** Valid proposal statuses */
+const PROPOSAL_STATUSES = ['Draft', 'Submitted', 'Won', 'Rejected'] as const;
+type ProposalStatus = typeof PROPOSAL_STATUSES[number];
+
+/**
+ * Normalize signature type (accepts any case: "draw", "DRAW", "Draw" -> "Draw")
+ */
+function normalizeSignatureType(type: string | null | undefined): SignatureType | null {
+  if (!type) return null;
+  const normalized = type.trim().toLowerCase();
+  const match = SIGNATURE_TYPES.find(v => v.toLowerCase() === normalized);
+  return match ?? null;
+}
+
 interface RequestBody {
   token: string;              // Signing token for validation
   signatureData: string;      // Base64 PNG image of signature

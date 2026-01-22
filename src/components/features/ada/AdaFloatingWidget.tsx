@@ -60,6 +60,7 @@ const saveMessagesToStorage = (userId: string, orgId: string, messages: LocalCha
 
 // Session storage key to track if user manually closed Ada this session
 const SESSION_CLOSED_KEY = 'ada_manually_closed_session';
+const LAST_SEEN_COUNT_KEY = 'ada_last_seen_pending_count';
 
 export const AdaFloatingWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +68,8 @@ export const AdaFloatingWidget: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   // Lift conversation state up so it persists when panel closes
   const [globalMessages, setGlobalMessages] = useState<LocalChatMessage[]>([]);
+  // Track the last seen pending count to determine if badge should show
+  const [lastSeenCount, setLastSeenCount] = useState<number>(0);
 
   // Track if we've already auto-opened this session to prevent repeated openings
   const hasAutoOpenedRef = useRef(false);
@@ -76,6 +79,17 @@ export const AdaFloatingWidget: React.FC = () => {
 
   // Get pending suggestions count for auto-open logic
   const pendingCount = useOrganizationPendingCount(organization?.id);
+
+  // Calculate unread count (only show badge for new suggestions since last open)
+  const unreadCount = Math.max(0, pendingCount - lastSeenCount);
+
+  // Load last seen count from session storage on mount
+  useEffect(() => {
+    const stored = sessionStorage.getItem(LAST_SEEN_COUNT_KEY);
+    if (stored) {
+      setLastSeenCount(parseInt(stored, 10) || 0);
+    }
+  }, []);
 
   // Load messages from localStorage on mount
   useEffect(() => {
@@ -116,8 +130,11 @@ export const AdaFloatingWidget: React.FC = () => {
   const handleOpen = useCallback(() => {
     // Clear the manual close flag when user opens Ada
     sessionStorage.removeItem(SESSION_CLOSED_KEY);
+    // Mark current pending count as "seen" so badge disappears after close
+    setLastSeenCount(pendingCount);
+    sessionStorage.setItem(LAST_SEEN_COUNT_KEY, String(pendingCount));
     setIsOpen(true);
-  }, []);
+  }, [pendingCount]);
 
   const handleClose = useCallback(() => {
     // Mark that user manually closed Ada this session to prevent auto-reopening
@@ -148,7 +165,7 @@ export const AdaFloatingWidget: React.FC = () => {
             onClick={handleOpen}
             className={cn(
               'fixed bottom-6 right-20 z-[60]',
-              'relative flex items-center gap-2',
+              'flex items-center gap-2',
               'px-4 h-12 rounded-full',
               'bg-gray-900 dark:bg-white',
               'text-white dark:text-gray-900',
@@ -181,16 +198,15 @@ export const AdaFloatingWidget: React.FC = () => {
               AI
             </span>
 
-            {/* Pending suggestions badge */}
-            {pendingCount > 0 && (
+            {/* Unread suggestions badge - solid, only shows for new suggestions */}
+            {unreadCount > 0 && (
               <span className={cn(
                 'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1',
                 'flex items-center justify-center',
                 'rounded-full text-[10px] font-bold',
-                'bg-blue-500 text-white',
-                'animate-pulse'
+                'bg-blue-500 text-white'
               )}>
-                {pendingCount > 9 ? '9+' : pendingCount}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </motion.button>
