@@ -385,7 +385,7 @@ export function normalizeTaskStatus(
 /**
  * Valid AI message roles that match database constraints
  */
-export const AI_MESSAGE_ROLES = ['Assistant', 'User', 'System'] as const;
+export const AI_MESSAGE_ROLES = ['assistant', 'user', 'system'] as const;
 export type AIMessageRole = (typeof AI_MESSAGE_ROLES)[number];
 
 /**

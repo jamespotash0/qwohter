@@ -243,7 +243,7 @@ function normalizeTaskStatus(
 }
 
 /** Valid AI message roles that match database constraints */
-const AI_MESSAGE_ROLES = ['Assistant', 'User', 'System'] as const;
+const AI_MESSAGE_ROLES = ['assistant', 'user', 'system'] as const;
 type AIMessageRole = typeof AI_MESSAGE_ROLES[number];
 
 /** Valid AI suggestion statuses that match database constraints */
@@ -889,7 +889,7 @@ async function analyzeContext(params: {
     if (parsed.summary && createdSuggestions.length > 0) {
       const { data: message, error: messageError } = await supabase
         .from('ai_messages')
-        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'Assistant', content: parsed.summary, is_proactive: true, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
+        .insert({ proposal_id: proposalId, organization_id: organizationId, user_id: null, role: 'assistant', content: parsed.summary, is_proactive: true, model_used: 'gpt-4o-mini', tokens_used: response.tokenUsage.total })
         .select().single();
       if (!messageError && message) proactiveMessage = { id: message.id, content: message.content };
     }
@@ -1164,7 +1164,7 @@ IMPORTANT: Don't ask users for "title", "subject", "body" etc. - extract these n
     } else {
       // Proposal-specific chat mode
       // Save user message
-      await supabase.from('ai_messages').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, role: 'User', content: message, is_proactive: false });
+      await supabase.from('ai_messages').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, role: 'user', content: message, is_proactive: false });
 
       const { data: proposal, error: proposalError } = await supabase.from('proposals').select('*').eq('id', proposalId).single();
       if (proposalError || !proposal) return { success: false, error: 'Proposal not found' };
@@ -1313,7 +1313,9 @@ Action: { type: "create_reminder", params: { title: "Call ${context.clientName}"
     const messages: OpenAIMessage[] = [{ role: 'system', content: systemPrompt }];
     if (conversationHistory && conversationHistory.length > 0) {
       for (const msg of conversationHistory.slice(-10)) {
-        messages.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
+        // Lowercase role for OpenAI API compatibility (DB stores 'user'/'assistant')
+        const role = msg.role.toLowerCase() as 'user' | 'assistant';
+        messages.push({ role, content: msg.content });
       }
     }
 
@@ -1355,7 +1357,9 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
     const fcMessages: OpenAIMessage[] = [{ role: 'system', content: fcSystemPrompt }];
     if (conversationHistory && conversationHistory.length > 0) {
       for (const msg of conversationHistory.slice(-10)) {
-        fcMessages.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
+        // Lowercase role for OpenAI API compatibility
+        const role = msg.role.toLowerCase() as 'user' | 'assistant';
+        fcMessages.push({ role, content: msg.content });
       }
     }
     fcMessages.push({ role: 'user', content: message });
@@ -1450,7 +1454,7 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
           proposal_id: proposalId,
           organization_id: organizationId,
           user_id: null,
-          role: 'Assistant',
+          role: 'assistant',
           content: responseMessage,
           is_proactive: false,
           model_used: 'gpt-4o-mini',

@@ -172,7 +172,7 @@ export interface SuggestionCardProps {
 // Chat/Conversation Types
 // ============================================================================
 
-export type AIMessageRole = 'User' | 'Assistant' | 'System';
+export type AIMessageRole = 'user' | 'assistant' | 'system';
 
 export interface AIMessage {
   id: string;

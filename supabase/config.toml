@@ -26,22 +26,6 @@ verify_jwt = true
 # Site URL for password reset links
 site_url = "env(SITE_URL)"
 
-# Rate limiting settings
-[auth.rate_limit]
-# Maximum requests per hour for email sign-ups
-email_signup = 3
-
-# Maximum requests per hour for email sign-ins
-email_signin = 10
-
-# Maximum requests per hour for password reset
-password_reset = 3
-
-# Maximum OTP verification attempts per hour
-otp_verification = 5
-
-# Token refresh rate limit per hour
-token_refresh = 30
 
 [auth.external]
 # Disable unused auth providers to reduce attack surface

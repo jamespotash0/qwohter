@@ -27,7 +27,7 @@ export const AIChatMessage: React.FC<AIChatMessageProps> = ({
   message,
   isLatest = false,
 }) => {
-  const isUser = message.role === 'User';
+  const isUser = message.role === 'user';
   const isProactive = message.is_proactive;
 
   // Format timestamp

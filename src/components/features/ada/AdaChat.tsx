@@ -143,7 +143,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     if (!isProposalContext) {
       const userMessage: LocalChatMessage = {
         id: `user-${Date.now()}`,
-        role: 'User',
+        role: 'user',
         content: message,
         created_at: new Date().toISOString(),
       };
@@ -166,7 +166,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         if (!isProposalContext) {
           const aiMessage: LocalChatMessage = {
             id: `ai-${Date.now()}`,
-            role: 'Assistant',
+            role: 'assistant',
             content: result.data.response,
             created_at: new Date().toISOString(),
           };
@@ -182,7 +182,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         console.error('[Ada] Chat error:', result.error);
         const errorMessage: LocalChatMessage = {
           id: `error-${Date.now()}`,
-          role: 'Assistant',
+          role: 'assistant',
           content: 'I seem to have an issue with that request. Could you try again?',
           created_at: new Date().toISOString(),
         };
@@ -192,7 +192,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       console.error('[Ada] Chat exception:', error);
       const errorMessage: LocalChatMessage = {
         id: `error-${Date.now()}`,
-        role: 'Assistant',
+        role: 'assistant',
         content: 'I seem to have an issue with that request. Could you try again?',
         created_at: new Date().toISOString(),
       };
@@ -261,7 +261,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         // Add success message to chat
         const successMessage: LocalChatMessage = {
           id: `success-${Date.now()}`,
-          role: 'Assistant',
+          role: 'assistant',
           content: result.data.message || `Successfully created ${action.type.replace('_', ' ')}.`,
           created_at: new Date().toISOString(),
         };
@@ -271,7 +271,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         console.error('[Ada] Action failed:', result.error);
         const errorMessage: LocalChatMessage = {
           id: `error-${Date.now()}`,
-          role: 'Assistant',
+          role: 'assistant',
           content: "I'm having trouble completing that action. Could you try again?",
           created_at: new Date().toISOString(),
         };
@@ -281,7 +281,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       console.error('[Ada] Confirm action error:', error);
       const errorMessage: LocalChatMessage = {
         id: `error-${Date.now()}`,
-        role: 'Assistant',
+        role: 'assistant',
         content: "Something went wrong on my end. Let's try that again.",
         created_at: new Date().toISOString(),
       };
@@ -296,7 +296,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     // Add cancellation message
     const cancelMessage: LocalChatMessage = {
       id: `cancel-${Date.now()}`,
-      role: 'Assistant',
+      role: 'assistant',
       content: 'No problem! Let me know if you need anything else.',
       created_at: new Date().toISOString(),
     };
@@ -308,7 +308,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     // Add user message to local state immediately
     const userMessage: LocalChatMessage = {
       id: `user-${Date.now()}`,
-      role: 'User',
+      role: 'user',
       content: suggestion,
       created_at: new Date().toISOString(),
     };
@@ -325,7 +325,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       if (result.success && result.data?.response) {
         const aiMessage: LocalChatMessage = {
           id: `ai-${Date.now()}`,
-          role: 'Assistant',
+          role: 'assistant',
           content: result.data.response,
           created_at: new Date().toISOString(),
         };
@@ -340,7 +340,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       console.error('[Ada] Suggestion click error:', error);
       const errorMessage: LocalChatMessage = {
         id: `error-${Date.now()}`,
-        role: 'Assistant',
+        role: 'assistant',
         content: 'I had trouble processing that. Could you try again?',
         created_at: new Date().toISOString(),
       };
@@ -362,7 +362,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
               <AdaMessage
                 message={{
                   id: 'static-greeting',
-                  role: 'Assistant',
+                  role: 'assistant',
                   content: STATIC_GREETING,
                   created_at: new Date().toISOString(),
                 }}
