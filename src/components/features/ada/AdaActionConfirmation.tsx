@@ -162,56 +162,48 @@ export const AdaActionConfirmation: React.FC<AdaActionConfirmationProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      initial={{ opacity: 0, y: 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className={cn(
-        'rounded-xl overflow-hidden',
+        'rounded-lg overflow-hidden',
         'bg-gradient-to-br from-blue-50 to-indigo-50',
         'dark:from-blue-950/30 dark:to-indigo-950/30',
-        'border border-blue-200 dark:border-blue-800',
-        'shadow-sm'
+        'border border-blue-200 dark:border-blue-800'
       )}
     >
-      {/* Header */}
-      <div className="px-4 py-3 bg-blue-100/50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-white" />
+      {/* Header - Compact */}
+      <div className="px-2.5 py-1.5 bg-blue-100/50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded bg-blue-500 dark:bg-blue-600 flex items-center justify-center">
+            <Icon className="w-2.5 h-2.5 text-white" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-              Confirm Action
+          <div className="flex items-center gap-1.5">
+            <p className="text-[9px] font-medium text-blue-600 dark:text-blue-400 uppercase">
+              Confirm
             </p>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            <span className="text-[9px] text-gray-400">•</span>
+            <p className="text-[10px] font-medium text-gray-900 dark:text-white">
               {ACTION_LABELS[action.type]}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-4 space-y-3">
+      {/* Content - Compact */}
+      <div className="px-2.5 py-2 space-y-1.5">
         {/* Title */}
         {action.params.title && (
-          <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Title</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {action.params.title}
-            </p>
-          </div>
+          <p className="text-[10px] font-medium text-gray-900 dark:text-white">
+            {action.params.title}
+          </p>
         )}
 
         {/* Description / Body / Message */}
         {(action.params.description || action.params.body || action.params.message) && (
-          <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              {action.type === 'draft_email' ? 'Email Body' : 'Description'}
-            </p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
-              {action.params.description || action.params.body || action.params.message}
-            </p>
-          </div>
+          <p className="text-[9px] text-gray-600 dark:text-gray-400 line-clamp-2">
+            {action.params.description || action.params.body || action.params.message}
+          </p>
         )}
 
         {/* Email Subject */}
@@ -319,13 +311,13 @@ export const AdaActionConfirmation: React.FC<AdaActionConfirmationProps> = ({
           </div>
         )}
 
-        {/* Metadata row */}
-        <div className="flex flex-wrap gap-2">
+        {/* Metadata row - Compact */}
+        <div className="flex flex-wrap gap-1">
           {/* Due date */}
           {(action.params.due_date || action.params.scheduled_for) && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800">
-              <Calendar className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+              <Calendar className="w-2.5 h-2.5 text-gray-500" />
+              <span className="text-[9px] text-gray-600 dark:text-gray-400">
                 {formatDate(action.params.due_date || action.params.scheduled_for)}
               </span>
             </div>
@@ -334,11 +326,11 @@ export const AdaActionConfirmation: React.FC<AdaActionConfirmationProps> = ({
           {/* Priority */}
           {action.params.priority && (
             <div className={cn(
-              'flex items-center gap-1.5 px-2 py-1 rounded-md',
+              'flex items-center gap-1 px-1.5 py-0.5 rounded',
               PRIORITY_COLORS[action.params.priority] || PRIORITY_COLORS.medium
             )}>
-              <Flag className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium capitalize">
+              <Flag className="w-2.5 h-2.5" />
+              <span className="text-[9px] font-medium capitalize">
                 {action.params.priority}
               </span>
             </div>
@@ -346,9 +338,9 @@ export const AdaActionConfirmation: React.FC<AdaActionConfirmationProps> = ({
 
           {/* Tone */}
           {action.params.tone && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800">
-              <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-                {action.params.tone} tone
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+              <span className="text-[9px] text-gray-600 dark:text-gray-400 capitalize">
+                {action.params.tone}
               </span>
             </div>
           )}
@@ -356,34 +348,32 @@ export const AdaActionConfirmation: React.FC<AdaActionConfirmationProps> = ({
 
         {/* Proposal context */}
         {action.proposalName && (
-          <div className="pt-2 border-t border-blue-200/50 dark:border-blue-800/50">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Will be added to: <span className="font-medium text-gray-700 dark:text-gray-300">{action.proposalName}</span>
-            </p>
-          </div>
+          <p className="text-[9px] text-gray-500 dark:text-gray-400 pt-1 border-t border-blue-200/50 dark:border-blue-800/50">
+            → {action.proposalName}
+          </p>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="px-4 pb-4 flex gap-2">
+      {/* Actions - Compact */}
+      <div className="px-2.5 pb-2 flex gap-1.5">
         <button
           onClick={handleConfirm}
           disabled={isConfirming}
           className={cn(
-            'flex-1 flex items-center justify-center gap-2',
-            'px-4 py-2.5 rounded-lg',
+            'flex-1 flex items-center justify-center gap-1',
+            'px-2 py-1 rounded',
             'bg-blue-600 hover:bg-blue-700',
-            'text-white text-sm font-medium',
+            'text-white text-[10px] font-medium',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'transition-colors duration-150'
           )}
         >
           {isConfirming ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
             <>
-              <CheckCircle className="w-4 h-4" />
-              <span>Confirm</span>
+              <CheckCircle className="w-3 h-3" />
+              <span>Yes</span>
             </>
           )}
         </button>
@@ -392,15 +382,15 @@ export const AdaActionConfirmation: React.FC<AdaActionConfirmationProps> = ({
           onClick={onCancel}
           disabled={isConfirming}
           className={cn(
-            'px-4 py-2.5 rounded-lg',
+            'px-2 py-1 rounded',
             'border border-gray-200 dark:border-gray-700',
-            'text-gray-600 dark:text-gray-400 text-sm font-medium',
+            'text-gray-500 dark:text-gray-400 text-[10px]',
             'hover:bg-gray-50 dark:hover:bg-gray-800',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'transition-colors duration-150'
           )}
         >
-          <XCircle className="w-4 h-4" />
+          <XCircle className="w-3 h-3" />
         </button>
       </div>
     </motion.div>

@@ -79,8 +79,8 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
           'max-w-[85%] px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed',
           isUser
             ? [
-                // User: dark bubble
-                'bg-gray-800 dark:bg-gray-700',
+                // User: coral/orange bubble (80% opacity)
+                'bg-[#EE6C4D]/80',
                 'text-white',
                 'rounded-br-[3px]',
               ]
@@ -135,7 +135,10 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
         {/* Timestamp */}
         <p
           className={cn(
-            'text-[9px] mt-1 opacity-50'
+            'text-[9px] mt-1',
+            isUser
+              ? 'text-white/70' // Darker on coral background
+              : 'opacity-50'
           )}
         >
           {formatTime(message.created_at)}

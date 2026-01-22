@@ -703,12 +703,63 @@ ${proposalsList}
    - BAD: "What title would you like?" or "Please provide: title, description, due date"
    - GOOD: "What's this about?" or "Tell me more about what you need" or "When do you need this done by?"
 3. Use your best judgment to fill in details from what the user says naturally
-   - If they say "remind me to call John next week" → title: "Call John", due_date: next week
-   - If they say "create a task for the website redesign" → title: "Website redesign task"
 4. Only ask follow-up questions if you genuinely need more context
 5. If user wants something for a proposal but doesn't specify which, ask "Which proposal is this for?"
 6. Keep responses concise but warm
 7. Reference specific proposal names when relevant
+
+== CRITICAL: MULTI-STEP WORKFLOWS ==
+ALWAYS guide users through steps ONE AT A TIME with confirmation at each step. Never try to do everything at once.
+
+**TASK CREATION FLOW:**
+When user describes something they need to do (e.g., "send email to architect"):
+1. First, clarify: "I'll create a task to 'Send email to architect'. Should I add this to your task list?"
+2. Wait for user confirmation before creating the action
+3. After confirmation: "Done! Would you like me to set a reminder for when this is due?"
+4. If yes, ask: "When should I remind you?"
+5. Create reminder only after they specify a time
+
+**REMINDER FLOW:**
+When user asks for a reminder (e.g., "remind me to X"):
+1. First ask: "What would you like to be reminded about?" (if not clear)
+2. Then ask: "When should I remind you?"
+3. Only AFTER you have BOTH pieces of info, create the action
+
+**EXAMPLE CONVERSATIONS:**
+
+User: "remind me to call the architect"
+Ada: "Sure! I'll create a task to 'Call the architect'. When would you like me to remind you?"
+(Wait for user to provide date/time before creating action)
+
+User: "tomorrow at 2pm"
+Ada: (NOW create action) "Got it! I'll remind you tomorrow at 2pm to call the architect."
+→ action: { type: "create_task", params: { title: "Call the architect", due_date: "tomorrow 2pm" } }
+
+User: "create a task for the Johnson proposal"
+Ada: "What task would you like me to create for the Johnson proposal?"
+(Wait for user response - don't assume)
+
+**KEY RULES:**
+- NEVER create an action until you have ALL required info
+- ALWAYS confirm what you're about to do before doing it
+- ONE step at a time - don't bundle multiple questions
+- If something is unclear, ASK - don't assume
+
+== CRITICAL: TASK vs ACTION INTENT ==
+When users describe something they need to do, create a TASK. Only perform actions if they explicitly ask YOU to do it:
+
+TASK (user will do it themselves):
+- "send email to architect" → Ask when, then create_task with due_date
+- "call the client" → Ask when, then create_task with due_date
+- "follow up with supplier" → Ask when, then create_task with due_date
+
+ACTION (Ada performs it):
+- "draft an email for me" → draft_email (user wants you to WRITE it)
+- "write a follow-up email" → draft_email (user wants you to COMPOSE it)
+- "help me write an email" → draft_email (asking for help writing)
+
+KEY DISTINCTION: Words like "send", "email", "call", "contact" describe what THE USER wants to do → create a task (after confirming details).
+Words like "draft", "write", "compose", "help me write" ask YOU to create content → perform the action.
 
 == PERMISSIONS & CAPABILITIES ==
 THINGS YOU CAN DO:
@@ -813,12 +864,55 @@ ${formContext}
 2. ASK NATURAL QUESTIONS - never ask for specific "fields" like a form:
    - BAD: "What title would you like?" or "Please provide the subject and body"
    - GOOD: "What's this about?" or "What should the email say?" or "When do you need a reminder?"
-3. Use your best judgment to extract details from natural conversation:
-   - "remind me to follow up Friday" → title: "Follow up on [proposal name]", due_date: Friday
-   - "send a friendly check-in email" → tone: friendly, infer subject/body from proposal context
-4. Only ask follow-up questions if you genuinely can't understand what they want
-5. Keep responses concise but warm
-6. Reference the proposal and client by name to show context awareness
+3. Only ask follow-up questions if you genuinely can't understand what they want
+4. Keep responses concise but warm
+5. Reference the proposal and client by name to show context awareness
+
+== CRITICAL: MULTI-STEP WORKFLOWS ==
+ALWAYS guide users through steps ONE AT A TIME with confirmation at each step. Never try to do everything at once.
+
+**TASK/REMINDER FLOW:**
+When user wants a task or reminder:
+1. First understand WHAT they want to do
+2. Then ask WHEN they need to do it / be reminded
+3. Only AFTER you have BOTH pieces of info, create the action
+
+**EXAMPLE CONVERSATIONS:**
+
+User: "remind me to follow up"
+Ada: "Sure! When should I remind you to follow up on ${context.projectName}?"
+(Wait for user to provide date/time)
+
+User: "Friday"
+Ada: (NOW create action) "Done! I'll remind you on Friday to follow up with ${context.clientName}."
+→ action: { type: "create_task", params: { title: "Follow up on ${context.projectName}", due_date: "Friday" } }
+
+User: "I need to send the revised quote"
+Ada: "I'll create a task for 'Send revised quote to ${context.clientName}'. When do you need to do this by?"
+(Wait for user response)
+
+**KEY RULES:**
+- NEVER create an action until you have ALL required info
+- ALWAYS confirm what you're about to do before doing it
+- ONE step at a time - don't bundle multiple questions
+- If something is unclear, ASK - don't assume
+- Reference the current proposal/client to show context awareness
+
+== CRITICAL: TASK vs ACTION INTENT ==
+When users describe something they need to do, create a TASK. Only perform actions if they explicitly ask YOU to do it:
+
+TASK (user will do it themselves):
+- "send email to architect" → Ask when, then create_task with due_date
+- "call the client" → Ask when, then create_task with due_date
+- "follow up with supplier" → Ask when, then create_task with due_date
+
+ACTION (Ada performs it):
+- "draft an email for me" → draft_email (user wants you to WRITE it)
+- "write a follow-up email" → draft_email (user wants you to COMPOSE it)
+- "help me write an email" → draft_email (asking for help writing)
+
+KEY DISTINCTION: Words like "send", "email", "call", "contact" describe what THE USER wants to do → create a task (after confirming details).
+Words like "draft", "write", "compose", "help me write" ask YOU to create content → perform the action.
 
 == PERMISSIONS & CAPABILITIES ==
 THINGS YOU CAN DO:
@@ -1036,28 +1130,45 @@ async function handleConfirmAction(params: {
     switch (type) {
       case 'create_task': {
         const taskParams = actionParams as { title?: string; description?: string; due_date?: string; priority?: string };
+
+        console.log('[create_task] Starting task creation:', {
+          userId,
+          organizationId,
+          projectId,
+          title: taskParams.title,
+        });
+
+        const insertData = {
+          project_id: projectId, // null for standalone tasks
+          organization_id: organizationId,
+          title: taskParams.title || 'New Task',
+          description: taskParams.description || '',
+          status: 'todo',
+          priority: taskParams.priority || 'medium',
+          due_date: taskParams.due_date || null,
+          created_by: userId,
+          assigned_to: userId,
+        };
+
+        console.log('[create_task] Insert data:', insertData);
+
         const { data: task, error: taskError } = await supabase
           .from('project_tasks')
-          .insert({
-            // Link to project if proposal has been sent to board, otherwise standalone
-            project_id: projectId,
-            organization_id: organizationId,
-            title: taskParams.title || 'New Task',
-            description: taskParams.description || '',
-            status: 'todo',
-            priority: taskParams.priority || 'medium',
-            due_date: taskParams.due_date || null,
-            created_by: userId,
-            assigned_to: userId, // Assign to the creating user
-          })
+          .insert(insertData)
           .select()
           .single();
 
         if (taskError) {
-          console.error('Failed to create task:', taskError);
-          return { success: false, error: 'Failed to create task' };
+          console.error('[create_task] Insert failed:', {
+            code: taskError.code,
+            message: taskError.message,
+            details: taskError.details,
+            hint: taskError.hint,
+          });
+          return { success: false, error: `Failed to create task: ${taskError.message} (${taskError.code})` };
         }
 
+        console.log('[create_task] Task created successfully:', task.id);
         result = { id: task.id, title: taskParams.title || 'New Task', type: 'task' };
         break;
       }
@@ -1067,28 +1178,45 @@ async function handleConfirmAction(params: {
         // The notification system will send reminders based on the task's due_date
         const reminderParams = actionParams as { title?: string; due_date?: string; message?: string; priority?: string };
 
-        // Create a task with the reminder details
+        console.log('[create_reminder] Starting reminder creation:', {
+          userId,
+          organizationId,
+          projectId,
+          title: reminderParams.title,
+          due_date: reminderParams.due_date,
+        });
+
+        const reminderInsertData = {
+          project_id: projectId,
+          organization_id: organizationId,
+          title: reminderParams.title || 'Reminder',
+          description: reminderParams.message || `Reminder: ${reminderParams.title || 'Follow up'}`,
+          status: 'todo',
+          priority: reminderParams.priority || 'medium',
+          due_date: reminderParams.due_date || null,
+          created_by: userId,
+          assigned_to: userId,
+        };
+
+        console.log('[create_reminder] Insert data:', reminderInsertData);
+
         const { data: task, error: taskError } = await supabase
           .from('project_tasks')
-          .insert({
-            // Link to project if proposal has been sent to board, otherwise standalone
-            project_id: projectId,
-            organization_id: organizationId,
-            title: reminderParams.title || 'Reminder',
-            description: reminderParams.message || `Reminder: ${reminderParams.title || 'Follow up'}`,
-            status: 'todo',
-            priority: reminderParams.priority || 'medium',
-            due_date: reminderParams.due_date || null,
-            created_by: userId,
-            assigned_to: userId, // Assign to the creating user
-          })
+          .insert(reminderInsertData)
           .select()
           .single();
 
         if (taskError) {
-          console.error('Failed to create reminder task:', taskError);
-          return { success: false, error: 'Failed to create reminder' };
+          console.error('[create_reminder] Insert failed:', {
+            code: taskError.code,
+            message: taskError.message,
+            details: taskError.details,
+            hint: taskError.hint,
+          });
+          return { success: false, error: `Failed to create reminder: ${taskError.message} (${taskError.code})` };
         }
+
+        console.log('[create_reminder] Task created successfully:', task.id);
 
         // If a due_date was specified, also create a scheduled notification for exact timing
         if (reminderParams.due_date && task) {
@@ -1418,8 +1546,9 @@ serve(async (req: Request) => {
 
     const request: WorkflowRequest = await req.json();
 
-    // Validate required fields - proposalId is optional for 'chat' action (global chat mode)
-    const requiresProposalId = request.action !== 'chat';
+    // Validate required fields - proposalId is optional for 'chat' and 'confirm_action' (tasks/reminders can be standalone)
+    const actionsWithoutProposalRequired = ['chat', 'confirm_action'];
+    const requiresProposalId = !actionsWithoutProposalRequired.includes(request.action);
     if (!request.action || !request.organizationId || !request.userId) {
       return new Response(JSON.stringify({ success: false, error: 'Missing required fields: action, organizationId, userId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -1435,31 +1564,35 @@ serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // IMPORTANT: Always use verified user.id from JWT, not request.userId from client
+    // This ensures security and that the user ID matches profiles table
+    const verifiedUserId = user.id;
+
     let result;
     switch (request.action) {
       case 'generate_follow_up':
-        result = await generateFollowUp({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId, options: request.options });
+        result = await generateFollowUp({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: verifiedUserId, options: request.options });
         break;
       case 'suggest_reminders':
-        result = await suggestReminders({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId });
+        result = await suggestReminders({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: verifiedUserId });
         break;
       case 'get_recommendations':
-        result = await getRecommendations({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId });
+        result = await getRecommendations({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: verifiedUserId });
         break;
       case 'analyze_context':
-        result = await analyzeContext({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId, triggerType: request.triggerType, metadata: request.metadata });
+        result = await analyzeContext({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: verifiedUserId, triggerType: request.triggerType, metadata: request.metadata });
         break;
       case 'chat':
         if (!request.message) {
           return new Response(JSON.stringify({ success: false, error: 'Message is required for chat action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-        result = await handleChat({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId, message: request.message, conversationHistory: request.conversationHistory, userRole: membership.role });
+        result = await handleChat({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: verifiedUserId, message: request.message, conversationHistory: request.conversationHistory, userRole: membership.role });
         break;
       case 'confirm_action':
         if (!request.pendingAction) {
           return new Response(JSON.stringify({ success: false, error: 'Pending action is required for confirm_action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-        result = await handleConfirmAction({ supabase: supabaseAdmin, organizationId: request.organizationId, userId: request.userId, pendingAction: request.pendingAction });
+        result = await handleConfirmAction({ supabase: supabaseAdmin, organizationId: request.organizationId, userId: verifiedUserId, pendingAction: request.pendingAction });
         break;
       default:
         return new Response(JSON.stringify({ success: false, error: `Unknown action: ${request.action}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

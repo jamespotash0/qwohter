@@ -6,7 +6,6 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -26,39 +25,28 @@ export const AdaTypingIndicator: React.FC<AdaTypingIndicatorProps> = ({
 }) => {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="flex items-start gap-3"
+      exit={{ opacity: 0, y: -6 }}
+      className="flex items-center gap-2"
     >
-      {/* Avatar */}
+      {/* Typing bubble - compact */}
       <div
         className={cn(
-          'flex-shrink-0 w-7 h-7 rounded-lg',
-          'bg-gray-900 dark:bg-white',
-          'flex items-center justify-center'
+          'px-2.5 py-1.5 rounded-lg rounded-bl-[3px]',
+          'bg-blue-50 dark:bg-blue-950/40'
         )}
       >
-        <Sparkles className="w-3.5 h-3.5 text-white dark:text-gray-900" />
-      </div>
-
-      {/* Typing bubble */}
-      <div
-        className={cn(
-          'px-4 py-3 rounded-2xl rounded-bl-md',
-          'bg-gray-100 dark:bg-gray-800'
-        )}
-      >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Animated dots */}
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {[0, 1, 2].map((i) => (
               <motion.span
                 key={i}
-                className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"
+                className="w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500"
                 animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 1, 0.5],
+                  scale: [1, 1.3, 1],
+                  opacity: [0.4, 1, 0.4],
                 }}
                 transition={{
                   duration: 0.8,
@@ -70,7 +58,7 @@ export const AdaTypingIndicator: React.FC<AdaTypingIndicatorProps> = ({
           </div>
 
           {/* Optional message */}
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+          <span className="text-[9px] text-gray-400 dark:text-gray-500">
             {message}
           </span>
         </div>

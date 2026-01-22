@@ -353,37 +353,32 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   return (
     <div className="relative flex-1 flex flex-col min-h-0">
       {/* Messages Area */}
-      <div className={cn(
-        'flex-1 px-3 py-2',
-        hasMessages ? 'overflow-y-auto' : 'overflow-hidden'
-      )}>
+      <div className="flex-1 px-3 py-2 overflow-y-auto">
         {/* Global chat - show greeting/conversation with quick actions */}
         {!isProposalContext ? (
-          <div className="h-full flex flex-col justify-end pb-2">
-            {/* Static greeting (shown instantly when no messages) */}
-            {!hasMessages && (
-              <div className="space-y-1.5 mb-3">
-                <AdaMessage
-                  message={{
-                    id: 'static-greeting',
-                    role: 'assistant',
-                    content: STATIC_GREETING,
-                    created_at: new Date().toISOString(),
-                  }}
-                  isLatest={true}
-                  onSuggestionClick={handleSuggestionClick}
-                />
-              </div>
-            )}
+          <div className="flex flex-col pb-2">
+            {/* Static greeting - always shown at top */}
+            <div className="space-y-1.5 mb-3">
+              <AdaMessage
+                message={{
+                  id: 'static-greeting',
+                  role: 'assistant',
+                  content: STATIC_GREETING,
+                  created_at: new Date().toISOString(),
+                }}
+                isLatest={globalMessages.length === 0}
+                onSuggestionClick={handleSuggestionClick}
+              />
+            </div>
 
-            {/* Show conversation messages */}
-            {hasMessages && (
+            {/* Show conversation messages below greeting */}
+            {globalMessages.length > 0 && (
               <div className="space-y-1.5 mb-3">
-                {conversation?.map((message, index) => (
+                {globalMessages.map((message, index) => (
                   <AdaMessage
                     key={message.id}
                     message={message}
-                    isLatest={index === (conversation?.length || 0) - 1}
+                    isLatest={index === globalMessages.length - 1}
                     onSuggestionClick={handleSuggestionClick}
                   />
                 ))}
@@ -405,7 +400,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
 
             {/* Typing indicator during conversation */}
             <AnimatePresence>
-              {hasMessages && isTyping && (
+              {isTyping && (
                 <div className="mb-3">
                   <AdaTypingIndicator />
                 </div>

@@ -7,7 +7,7 @@
  * Design: Modern AI aesthetic - clean, professional, instantly recognizable
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,17 +17,73 @@ import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import type { LocalChatMessage } from '@/lib/types/aiWorkflow';
 
 // ============================================================================
+// Storage Keys
+// ============================================================================
+
+const STORAGE_KEY_PREFIX = 'ada_chat_messages_';
+
+const getStorageKey = (userId: string, orgId: string) =>
+  `${STORAGE_KEY_PREFIX}${userId}_${orgId}`;
+
+const loadMessagesFromStorage = (userId: string, orgId: string): LocalChatMessage[] => {
+  try {
+    const key = getStorageKey(userId, orgId);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load Ada messages from storage:', error);
+  }
+  return [];
+};
+
+const saveMessagesToStorage = (userId: string, orgId: string, messages: LocalChatMessage[]) => {
+  try {
+    const key = getStorageKey(userId, orgId);
+    if (messages.length === 0) {
+      localStorage.removeItem(key);
+    } else {
+      // Keep only the last 50 messages to prevent localStorage bloat
+      const messagesToStore = messages.slice(-50);
+      localStorage.setItem(key, JSON.stringify(messagesToStore));
+    }
+  } catch (error) {
+    console.error('Failed to save Ada messages to storage:', error);
+  }
+};
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
 export const AdaFloatingWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   // Lift conversation state up so it persists when panel closes
   const [globalMessages, setGlobalMessages] = useState<LocalChatMessage[]>([]);
 
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id || '', !!user?.id);
+
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    if (user?.id && organization?.id && !isInitialized) {
+      const storedMessages = loadMessagesFromStorage(user.id, organization.id);
+      if (storedMessages.length > 0) {
+        setGlobalMessages(storedMessages);
+      }
+      setIsInitialized(true);
+    }
+  }, [user?.id, organization?.id, isInitialized]);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (user?.id && organization?.id && isInitialized) {
+      saveMessagesToStorage(user.id, organization.id, globalMessages);
+    }
+  }, [globalMessages, user?.id, organization?.id, isInitialized]);
 
   const handleOpen = useCallback(() => {
     setIsOpen(true);
