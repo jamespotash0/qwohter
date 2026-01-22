@@ -33,6 +33,8 @@ import { getProposalsTool } from './getProposals.ts';
 import { getContactsTool } from './getContacts.ts';
 import { getTasksTool } from './getTasks.ts';
 import { getProjectsTool } from './getProjects.ts';
+// System tools
+import { logCapabilityGapTool } from './logCapabilityGap.ts';
 
 // Import registry for registration
 import { toolRegistry } from './toolRegistry.ts';
@@ -64,6 +66,8 @@ export const allTools = [
   getContactsTool,
   getTasksTool,
   getProjectsTool,
+  // System tools
+  logCapabilityGapTool,
 ];
 
 // ============================================================================
@@ -106,4 +110,6 @@ export {
   getContactsTool,
   getTasksTool,
   getProjectsTool,
+  // System tools
+  logCapabilityGapTool,
 };
