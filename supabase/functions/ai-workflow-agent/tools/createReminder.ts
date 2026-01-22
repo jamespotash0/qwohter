@@ -21,7 +21,7 @@ export const createReminderTool: RegisteredTool = createTool({
     function: {
       name: 'create_reminder',
       description:
-        'Create a reminder for a future date/time. Use when user asks to be reminded about something, wants to follow up later, or needs a notification at a specific time.',
+        'Create a reminder for a future date/time. IMPORTANT: Before creating, ask: 1) When should the reminder be sent? (required), 2) Would you like to create a related task to track this work? 3) Should this be connected to a specific project? Only proceed immediately if user provides the date/time upfront.',
       parameters: {
         type: 'object',
         properties: {

@@ -27,6 +27,12 @@ import { updateProposalTool } from './updateProposal.ts';
 import { updateTaskTool } from './updateTask.ts';
 import { moveToProjectBoardTool } from './moveToProjectBoard.ts';
 import { addContactTool } from './addContact.ts';
+// Context-gathering tools (read-only, auto-execute)
+import { getAnalyticsTool } from './getAnalytics.ts';
+import { getProposalsTool } from './getProposals.ts';
+import { getContactsTool } from './getContacts.ts';
+import { getTasksTool } from './getTasks.ts';
+import { getProjectsTool } from './getProjects.ts';
 
 // Import registry for registration
 import { toolRegistry } from './toolRegistry.ts';
@@ -52,6 +58,12 @@ export const allTools = [
   updateTaskTool,
   moveToProjectBoardTool,
   addContactTool,
+  // Context-gathering tools (read-only, auto-execute)
+  getAnalyticsTool,
+  getProposalsTool,
+  getContactsTool,
+  getTasksTool,
+  getProjectsTool,
 ];
 
 // ============================================================================
@@ -88,4 +100,10 @@ export {
   updateTaskTool,
   moveToProjectBoardTool,
   addContactTool,
+  // Context-gathering tools
+  getAnalyticsTool,
+  getProposalsTool,
+  getContactsTool,
+  getTasksTool,
+  getProjectsTool,
 };

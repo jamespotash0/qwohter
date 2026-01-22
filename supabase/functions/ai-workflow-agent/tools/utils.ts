@@ -94,21 +94,37 @@ export function normalizeTaskStatus(
 // ============================================================================
 
 /**
- * Generate org initials from name (e.g., "Acme Corp" -> "AC", "WallQu" -> "WAL")
+ * Generate org initials from name (e.g., "Acme Corp" -> "AC", "B-Office" -> "BO", "WallQu" -> "WAL")
+ * Treats hyphens, underscores, and other separators as word boundaries.
+ * Only uses letters (A-Z) for initials, skipping numbers and special characters.
  */
 function getOrgInitials(orgName: string): string {
   if (!orgName?.trim()) return 'TSK';
 
-  const cleanedName = orgName.replace(/[^a-zA-Z0-9\s]/g, '');
-  const words = cleanedName.trim().toUpperCase().split(/\s+/).filter((w) => w.length > 0);
+  // Remove all non-letter characters except spaces, hyphens, underscores (word separators)
+  // Then replace separators with spaces
+  const normalizedName = orgName
+    .replace(/[-_]/g, ' ')  // Convert separators to spaces
+    .replace(/[^a-zA-Z\s]/g, '');  // Remove everything except letters and spaces
+
+  const words = normalizedName.trim().toUpperCase().split(/\s+/).filter((w) => w.length > 0);
 
   if (words.length === 0) return 'TSK';
 
   if (words.length === 1) {
-    return words[0]!.slice(0, 3);
+    // Single word: take first 3 letters
+    const lettersOnly = words[0]!.replace(/[^A-Z]/g, '');
+    return lettersOnly.slice(0, 3) || 'TSK';
   }
 
-  return words.slice(0, 3).map((w) => w[0]).join('');
+  // Multiple words: take first letter of first 3 words (only if it's a letter)
+  const initials = words
+    .slice(0, 3)
+    .map((w) => w.match(/[A-Z]/)?.[0] || '')
+    .filter((c) => c.length > 0)
+    .join('');
+
+  return initials || 'TSK';
 }
 
 /**

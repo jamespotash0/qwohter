@@ -21,7 +21,7 @@ export const updateNotificationTool: RegisteredTool = createTool({
     function: {
       name: 'update_notification',
       description:
-        'Update an existing notification. Use when user wants to modify a notification message, change its schedule, or update its type/status.',
+        'Update an existing notification. Can modify: message, type, scheduled time, status. CANNOT modify: notification ID - this is system-generated and immutable.',
       parameters: {
         type: 'object',
         properties: {

@@ -24,7 +24,7 @@ export const updateTaskTool: RegisteredTool = createTool({
     function: {
       name: 'update_task',
       description:
-        'Update an existing task. Use when user wants to change a task title, mark it complete, update its priority, change the due date, or modify other task details.',
+        'Update an existing task. Can modify: title, description, status, priority, due date, assigned user. CANNOT modify: task reference number (e.g., BO-1) or task ID - these are system-generated and immutable. If user asks to change a reference number, explain that references are auto-generated and cannot be modified.',
       parameters: {
         type: 'object',
         properties: {

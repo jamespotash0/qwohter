@@ -1173,13 +1173,28 @@ IMPORTANT: Don't ask users for "title", "subject", "body" etc. - extract these n
       const formContext = extractFormDataContext(proposal.form_data || {});
 
       // Fetch extended context
-      type TaskSummary = { id: string; title: string; status: string; due_date: string | null };
-      type NotificationSummary = { id: string; type: string; status: string };
-      const { data: tasks } = await supabase.from('project_tasks').select('id, title, status, due_date').eq('proposal_id', proposalId).order('created_at', { ascending: false }).limit(10) as { data: TaskSummary[] | null };
-      const { data: notifications } = await supabase.from('notifications').select('id, type, status').eq('proposal_id', proposalId).order('created_at', { ascending: false }).limit(5) as { data: NotificationSummary[] | null };
+      type TaskSummary = { id: string; title: string; status: string; due_date: string | null; priority: string | null; reference: string | null };
+      type NotificationSummary = { id: string; type: string; status: string; scheduled_for: string | null };
+      type AttachmentSummary = { id: string; file_name: string; file_type: string | null; created_at: string };
+      type ProjectSummary = { id: string; workflow_status: string; priority: string | null };
 
-      const tasksContext = (tasks || []).length > 0 ? (tasks || []).map((t: TaskSummary) => `- ${t.title}: ${t.status}${t.due_date ? ` (due: ${new Date(t.due_date).toLocaleDateString()})` : ''}`).join('\n') : 'No tasks yet.';
-      const notificationsContext = (notifications || []).length > 0 ? (notifications || []).map((n: NotificationSummary) => `- ${n.type}: ${n.status}`).join('\n') : 'No notifications.';
+      const { data: tasks } = await supabase.from('project_tasks').select('id, title, status, due_date, priority, reference').eq('proposal_id', proposalId).order('created_at', { ascending: false }).limit(10) as { data: TaskSummary[] | null };
+      const { data: notifications } = await supabase.from('notifications').select('id, type, status, scheduled_for').eq('proposal_id', proposalId).order('created_at', { ascending: false }).limit(5) as { data: NotificationSummary[] | null };
+      const { data: attachments } = await supabase.from('proposal_attachments').select('id, file_name, file_type, created_at').eq('proposal_id', proposalId).order('created_at', { ascending: false }).limit(10) as { data: AttachmentSummary[] | null };
+      const { data: project } = await supabase.from('projects').select('id, workflow_status, priority').eq('proposal_id', proposalId).maybeSingle() as { data: ProjectSummary | null };
+
+      const tasksContext = (tasks || []).length > 0
+        ? (tasks || []).map((t: TaskSummary) => `- ${t.reference || 'Task'}: ${t.title} [${t.status}]${t.priority ? ` Priority: ${t.priority}` : ''}${t.due_date ? ` Due: ${new Date(t.due_date).toLocaleDateString()}` : ''}`).join('\n')
+        : 'No tasks yet.';
+      const notificationsContext = (notifications || []).length > 0
+        ? (notifications || []).map((n: NotificationSummary) => `- ${n.type}: ${n.status}${n.scheduled_for ? ` (scheduled: ${new Date(n.scheduled_for).toLocaleDateString()})` : ''}`).join('\n')
+        : 'No notifications.';
+      const attachmentsContext = (attachments || []).length > 0
+        ? (attachments || []).map((a: AttachmentSummary) => `- ${a.file_name}${a.file_type ? ` (${a.file_type})` : ''}`).join('\n')
+        : 'No attachments.';
+      const projectContext = project
+        ? `On Project Board: ${project.workflow_status}${project.priority ? ` (Priority: ${project.priority})` : ''}`
+        : 'Not on project board yet.';
 
       systemPrompt = `You are Ada, a friendly and intelligent AI assistant for ${organization?.name || 'a business'} helping manage proposals and projects.
 
@@ -1192,12 +1207,16 @@ IMPORTANT: Don't ask users for "title", "subject", "body" etc. - extract these n
 - Value: ${context.totalValue > 0 ? `$${context.totalValue.toLocaleString()}` : 'Not specified'}
 - Status: ${context.status}
 - Days since update: ${context.daysSinceSubmission}
+- Project Board: ${projectContext}
 
 == TASKS ==
 ${tasksContext}
 
-== NOTIFICATIONS ==
+== NOTIFICATIONS/REMINDERS ==
 ${notificationsContext}
+
+== ATTACHMENTS ==
+${attachmentsContext}
 
 == FORM DATA ==
 ${formContext}
@@ -1568,6 +1587,27 @@ async function handleConfirmAction(params: {
         break;
       case 'update_status':
         successMessage = `Done! I've updated the proposal status.`;
+        isWorkflowComplete = true;
+        break;
+      case 'add_contact':
+        successMessage = `Done! I've added "${actionData?.title || 'the contact'}" to your contacts.`;
+        isWorkflowComplete = true;
+        break;
+      case 'update_task':
+        successMessage = `Done! I've updated the task "${actionData?.title || 'task'}".`;
+        isWorkflowComplete = true;
+        break;
+      case 'update_proposal':
+        successMessage = `Done! I've updated the proposal details.`;
+        isWorkflowComplete = true;
+        break;
+      case 'update_notification':
+        successMessage = `Done! I've updated the notification.`;
+        isWorkflowComplete = true;
+        break;
+      case 'move_to_project_board':
+        const workflowStatus = (actionData as Record<string, unknown>)?.workflow_status;
+        successMessage = `Done! The proposal has been ${workflowStatus ? `moved to "${workflowStatus}"` : 'added to the project board'}.`;
         isWorkflowComplete = true;
         break;
       default:

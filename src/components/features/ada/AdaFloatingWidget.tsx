@@ -198,6 +198,14 @@ export const AdaFloatingWidget: React.FC = () => {
               AI
             </span>
 
+            {/* Beta badge */}
+            <span className={cn(
+              'px-1.5 py-0.5 rounded text-[9px] font-medium uppercase',
+              'bg-amber-400/30 text-amber-200 dark:bg-amber-500/20 dark:text-amber-300'
+            )}>
+              Beta
+            </span>
+
             {/* Unread suggestions badge - solid, only shows for new suggestions */}
             {unreadCount > 0 && (
               <span className={cn(
@@ -253,6 +261,13 @@ export const AdaFloatingWidget: React.FC = () => {
                   'text-gray-500 dark:text-gray-400'
                 )}>
                   AI
+                </span>
+                <span className={cn(
+                  'px-1 py-0.5 rounded text-[8px] font-medium uppercase',
+                  'bg-amber-100 text-amber-700',
+                  'dark:bg-amber-900/30 dark:text-amber-400'
+                )}>
+                  Beta
                 </span>
               </div>
 

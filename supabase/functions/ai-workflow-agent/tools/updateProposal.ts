@@ -23,7 +23,7 @@ export const updateProposalTool: RegisteredTool = createTool({
     function: {
       name: 'update_proposal',
       description:
-        'Update proposal details like project name, client information, notes, or value. Use when user wants to modify existing proposal information.',
+        'Update proposal details. Can modify: project name, client name/company/email, job location, notes, total value. CANNOT modify: proposal number (e.g., P-001) or proposal ID - these are system-generated and immutable. If user asks to change a proposal number, explain it cannot be modified.',
       parameters: {
         type: 'object',
         properties: {

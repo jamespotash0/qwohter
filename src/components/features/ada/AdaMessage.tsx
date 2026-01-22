@@ -42,11 +42,12 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
     const bulletSuggestions: string[] = [];
 
     for (const line of lines) {
-      // Check if line is a bullet point (•, -, or * at start, with optional leading whitespace)
+      // Check if line is a bullet point (•, -, or * at start)
+      // Use negative lookahead to exclude ** (markdown bold) from matching as bullet
       const trimmedLine = line.trim();
-      const bulletMatch = trimmedLine.match(/^[•\-\*]\s*(.+)$/);
-      if (bulletMatch && bulletMatch[1]) {
-        bulletSuggestions.push(bulletMatch[1].trim());
+      const bulletMatch = trimmedLine.match(/^([•\-]|\*(?!\*))\s+(.+)$/);
+      if (bulletMatch && bulletMatch[2]) {
+        bulletSuggestions.push(bulletMatch[2].trim());
       } else {
         textLines.push(line);
       }
@@ -76,7 +77,7 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
       {/* Message Bubble */}
       <div
         className={cn(
-          'max-w-[85%] px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed',
+          'max-w-[85%] px-3 py-2 rounded-lg text-[13px] leading-relaxed',
           isUser
             ? [
                 // User: coral/orange bubble (80% opacity)
@@ -97,16 +98,16 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
         {isProactive && (
           <div className="flex items-center gap-1 mb-1">
             <span className="w-1 h-1 rounded-full bg-emerald-500" />
-            <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400 uppercase">
+            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 uppercase">
               Insight
             </span>
           </div>
         )}
 
-        {/* Message content */}
+        {/* Message content with basic markdown parsing */}
         {textContent && (
           <p className="whitespace-pre-wrap">
-            {textContent}
+            {parseBasicMarkdown(textContent)}
           </p>
         )}
 
@@ -119,7 +120,7 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
                 onClick={() => onSuggestionClick?.(suggestion)}
                 disabled={!onSuggestionClick}
                 className={cn(
-                  'block w-full px-2 py-1 rounded text-left text-[10px]',
+                  'block w-full px-2 py-1.5 rounded text-left text-[12px]',
                   'bg-white/60 dark:bg-white/10',
                   'hover:bg-white dark:hover:bg-white/20',
                   'transition-colors duration-150',
@@ -135,7 +136,7 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
         {/* Timestamp */}
         <p
           className={cn(
-            'text-[9px] mt-1',
+            'text-[10px] mt-1',
             isUser
               ? 'text-white/70' // Darker on coral background
               : 'opacity-50'
@@ -151,6 +152,28 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/**
+ * Parse basic markdown (**bold**) and return React elements
+ */
+function parseBasicMarkdown(text: string): React.ReactNode {
+  // Split by **text** pattern while capturing the bold content
+  const parts = text.split(/\*\*([^*]+)\*\*/g);
+
+  if (parts.length === 1) {
+    // No markdown found, return plain text
+    return text;
+  }
+
+  // Alternate between plain text (even indices) and bold text (odd indices)
+  return parts.map((part, index) => {
+    if (index % 2 === 1) {
+      // Bold text
+      return <strong key={index} className="font-semibold">{part}</strong>;
+    }
+    return part;
+  });
+}
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);

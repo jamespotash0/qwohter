@@ -21,7 +21,7 @@ export const createTaskTool: RegisteredTool = createTool({
     function: {
       name: 'create_task',
       description:
-        'Create a task for tracking work items. Use when user mentions needing to do something like call someone, send an email, follow up, review something, schedule a meeting, or complete any action item.',
+        'Create a task for tracking work items. IMPORTANT: Before creating a task, ask the user for key details they might want to include: 1) Priority (High/Medium/Low), 2) Due date, 3) Any additional description. Only create immediately if user provides all details upfront or explicitly says to skip details.',
       parameters: {
         type: 'object',
         properties: {

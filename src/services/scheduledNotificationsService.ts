@@ -61,13 +61,14 @@ export async function getTaskReminder(taskId: string): Promise<TaskReminder | nu
     .in('status', ['Pending', 'Sent'])
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') return null; // No rows found
     console.error('Error fetching task reminder:', error);
     return null;
   }
+
+  if (!data) return null;
 
   return mapToTaskReminder(data);
 }

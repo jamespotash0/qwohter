@@ -44,7 +44,7 @@ export const addContactTool: RegisteredTool = createTool({
     function: {
       name: 'add_contact',
       description:
-        'Add a new contact to the organization contact list. Use when user wants to save a new customer, client, vendor, contractor, or other business contact.',
+        'Add a new contact to the organization. IMPORTANT: When user confirms contact creation (says "yes", "no" to optional fields, or "create it"), call this tool immediately with the information gathered. Do NOT create a task instead. Contact IDs are system-generated and immutable.',
       parameters: {
         type: 'object',
         properties: {

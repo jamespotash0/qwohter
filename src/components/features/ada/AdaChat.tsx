@@ -175,7 +175,10 @@ export const AdaChat: React.FC<AdaChatProps> = ({
 
         // Check if there's a pending action that needs confirmation
         if (result.data.pendingAction) {
+          console.log('[Ada] Setting pendingAction:', result.data.pendingAction);
           setPendingAction(result.data.pendingAction as PendingAction);
+        } else {
+          console.log('[Ada] No pendingAction in response');
         }
       } else if (!result.success) {
         // API returned success: false
@@ -333,7 +336,10 @@ export const AdaChat: React.FC<AdaChatProps> = ({
 
         // Check if there's a pending action
         if (result.data.pendingAction) {
+          console.log('[Ada] Setting pendingAction from suggestion:', result.data.pendingAction);
           setPendingAction(result.data.pendingAction as PendingAction);
+        } else {
+          console.log('[Ada] No pendingAction in suggestion response');
         }
       }
     } catch (error) {

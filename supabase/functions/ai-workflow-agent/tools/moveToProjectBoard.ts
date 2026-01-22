@@ -23,7 +23,7 @@ export const moveToProjectBoardTool: RegisteredTool = createTool({
     function: {
       name: 'move_to_project_board',
       description:
-        'Move a proposal to the project board for project tracking. Creates a project from the proposal if not already on board, or updates the project workflow status. Use when user wants to convert a won proposal to a project or manage project workflow.',
+        'Move a proposal to the project board. Creates a project from the proposal or updates workflow status. Project IDs are system-generated and immutable. Can modify: workflow status, priority. CANNOT modify: project ID.',
       parameters: {
         type: 'object',
         properties: {
