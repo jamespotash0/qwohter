@@ -885,11 +885,18 @@ Action: { type: "create_reminder", params: { title: "Call ${context.clientName}"
     if (isGreetingRequest && isGlobalChat) {
       messages.push({
         role: 'user',
-        content: `[SYSTEM: User just opened the chat. Provide a brief, friendly greeting that:
-1. Introduces yourself as Ada
-2. Gives a quick snapshot of their current situation (e.g., "You have X proposals, Y won this month" or "I see you have a draft proposal that might need attention")
-3. Offers to help with something specific based on their data
-Keep it concise (2-3 sentences max). Be warm but professional. Don't ask generic "how can I help" - be proactive with a specific observation or suggestion based on their actual data.]`
+        content: `[SYSTEM: User just opened the chat. Respond with a greeting message that has TWO parts:
+
+PART 1 - Your greeting (2-3 sentences):
+- Introduce yourself as Ada
+- Give a quick snapshot of their situation (e.g., "You have X proposals, Y won")
+
+PART 2 - These EXACT lines (MUST include, copy exactly with the bullet character):
+• What proposals are pending?
+• Create a follow-up reminder
+• What's my win rate?
+
+CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point lines exactly as shown above. Use the • character and include newlines between them.]`
       });
     } else {
       messages.push({ role: 'user', content: message });

@@ -53,22 +53,26 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   const location = useLocation();
   const [inputValue, setInputValue] = React.useState('');
   const [pendingAction, setPendingAction] = React.useState<PendingAction | null>(null);
-  const [hasGreeted, setHasGreeted] = React.useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const greetingRequestedRef = useRef(false);
 
   // Use external messages if provided, otherwise internal state
   const globalMessages = externalMessages || [];
+
+  // Keep a ref to always have access to the latest messages (avoids stale closure)
+  const messagesRef = useRef<LocalChatMessage[]>(globalMessages);
+  messagesRef.current = globalMessages;
+
   const setGlobalMessages = useCallback((updater: LocalChatMessage[] | ((prev: LocalChatMessage[]) => LocalChatMessage[])) => {
     if (onMessagesChange) {
       if (typeof updater === 'function') {
-        onMessagesChange(updater(globalMessages));
+        // Use ref to get the latest messages, avoiding stale closure
+        onMessagesChange(updater(messagesRef.current));
       } else {
         onMessagesChange(updater);
       }
     }
-  }, [onMessagesChange, globalMessages]);
+  }, [onMessagesChange]);
 
   // Detect context from URL - parse proposalId from pathname
   // Routes: /proposals/:proposalId/edit
@@ -110,48 +114,12 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation, globalMessages, isTyping]);
 
-  // Auto-greeting: When Ada opens fresh with no messages, send a greeting request
-  useEffect(() => {
-    // Only for global chat, when no messages exist, and hasn't been requested yet
-    if (
-      !isProposalContext &&
-      globalMessages.length === 0 &&
-      !greetingRequestedRef.current &&
-      !hasGreeted &&
-      organizationId &&
-      userId
-    ) {
-      greetingRequestedRef.current = true;
-      setHasGreeted(true);
+  // Static greeting content (shown instantly, no API call)
+  const STATIC_GREETING = `Hi! I'm Ada, your AI assistant. How can I help you today?
 
-      // Send greeting request to get contextual welcome from Ada
-      const sendGreeting = async () => {
-        try {
-          const result = await sendChatMessage.mutateAsync({
-            organizationId,
-            userId,
-            message: '[GREETING]', // Special marker for greeting request
-            conversationHistory: [],
-          });
-
-          if (result.success && result.data?.response) {
-            const aiMessage: LocalChatMessage = {
-              id: `ai-greeting-${Date.now()}`,
-              role: 'assistant',
-              content: result.data.response,
-              created_at: new Date().toISOString(),
-            };
-            setGlobalMessages([aiMessage]);
-          }
-        } catch (error) {
-          console.error('[Ada] Greeting error:', error);
-          // Silently fail - user can still start chatting
-        }
-      };
-
-      sendGreeting();
-    }
-  }, [isProposalContext, globalMessages.length, hasGreeted, organizationId, userId, sendChatMessage, setGlobalMessages]);
+• Create a reminder for a task
+• Help me draft a follow-up email
+• What's on my schedule this week?`;
 
   // Auto-resize textarea
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -334,6 +302,51 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     setGlobalMessages(prev => [...prev, cancelMessage]);
   }, [setGlobalMessages]);
 
+  // Handle clicking a suggestion from Ada's greeting - submit directly
+  const handleSuggestionClick = useCallback(async (suggestion: string) => {
+    // Add user message to local state immediately
+    const userMessage: LocalChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: suggestion,
+      created_at: new Date().toISOString(),
+    };
+    setGlobalMessages(prev => [...prev, userMessage]);
+
+    try {
+      const result = await sendChatMessage.mutateAsync({
+        organizationId,
+        userId,
+        message: suggestion,
+        conversationHistory: globalMessages as AIMessage[],
+      });
+
+      if (result.success && result.data?.response) {
+        const aiMessage: LocalChatMessage = {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          content: result.data.response,
+          created_at: new Date().toISOString(),
+        };
+        setGlobalMessages(prev => [...prev, aiMessage]);
+
+        // Check if there's a pending action
+        if (result.data.pendingAction) {
+          setPendingAction(result.data.pendingAction as PendingAction);
+        }
+      }
+    } catch (error) {
+      console.error('[Ada] Suggestion click error:', error);
+      const errorMessage: LocalChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: 'I had trouble processing that. Could you try again?',
+        created_at: new Date().toISOString(),
+      };
+      setGlobalMessages(prev => [...prev, errorMessage]);
+    }
+  }, [organizationId, userId, globalMessages, sendChatMessage, setGlobalMessages]);
+
   const hasMessages = conversation && conversation.length > 0;
 
   return (
@@ -346,10 +359,19 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         {/* Global chat - show greeting/conversation with quick actions */}
         {!isProposalContext ? (
           <div className="h-full flex flex-col justify-end pb-2">
-            {/* Show typing indicator while greeting loads */}
-            {!hasMessages && isTyping && (
-              <div className="mb-3">
-                <AdaTypingIndicator />
+            {/* Static greeting (shown instantly when no messages) */}
+            {!hasMessages && (
+              <div className="space-y-1.5 mb-3">
+                <AdaMessage
+                  message={{
+                    id: 'static-greeting',
+                    role: 'assistant',
+                    content: STATIC_GREETING,
+                    created_at: new Date().toISOString(),
+                  }}
+                  isLatest={true}
+                  onSuggestionClick={handleSuggestionClick}
+                />
               </div>
             )}
 
@@ -361,6 +383,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                     key={message.id}
                     message={message}
                     isLatest={index === (conversation?.length || 0) - 1}
+                    onSuggestionClick={handleSuggestionClick}
                   />
                 ))}
               </div>
@@ -387,40 +410,6 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                 </div>
               )}
             </AnimatePresence>
-
-            {/* Quick action templates - always visible in global chat */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-1"
-            >
-              <p className="text-[9px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">
-                Quick actions
-              </p>
-              {[
-                'What proposals are pending?',
-                'Create a follow-up reminder',
-                'What\'s my win rate?',
-              ].map((suggestion, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setInputValue(suggestion);
-                    inputRef.current?.focus();
-                  }}
-                  className={cn(
-                    'block w-full px-3 py-1.5 rounded-md text-left',
-                    'bg-gray-50 dark:bg-gray-800/50',
-                    'text-gray-600 dark:text-gray-400',
-                    'text-[11px]',
-                    'hover:bg-gray-100 dark:hover:bg-gray-800',
-                    'transition-colors duration-150'
-                  )}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </motion.div>
 
             <div ref={messagesEndRef} />
           </div>
@@ -492,6 +481,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                     key={message.id}
                     message={message}
                     isLatest={index === (conversation?.length || 0) - 1}
+                    onSuggestionClick={handleSuggestionClick}
                   />
                 ))}
               </div>

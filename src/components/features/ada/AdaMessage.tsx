@@ -19,6 +19,8 @@ type MessageType = AIMessage | LocalChatMessage;
 interface AdaMessageProps {
   message: MessageType;
   isLatest?: boolean;
+  /** Callback when a suggestion bullet point is clicked */
+  onSuggestionClick?: (suggestion: string) => void;
 }
 
 // ============================================================================
@@ -28,9 +30,38 @@ interface AdaMessageProps {
 export const AdaMessage: React.FC<AdaMessageProps> = ({
   message,
   isLatest = false,
+  onSuggestionClick,
 }) => {
   const isUser = message.role === 'user';
   const isProactive = 'is_proactive' in message ? message.is_proactive : false;
+
+  // Parse message content to separate text and bullet suggestions
+  const { textContent, suggestions } = React.useMemo(() => {
+    const lines = message.content.split('\n');
+    const textLines: string[] = [];
+    const bulletSuggestions: string[] = [];
+
+    for (const line of lines) {
+      // Check if line is a bullet point (•, -, or * at start, with optional leading whitespace)
+      const trimmedLine = line.trim();
+      const bulletMatch = trimmedLine.match(/^[•\-\*]\s*(.+)$/);
+      if (bulletMatch && bulletMatch[1]) {
+        bulletSuggestions.push(bulletMatch[1].trim());
+      } else {
+        textLines.push(line);
+      }
+    }
+
+    // Remove trailing empty lines from text
+    while (textLines.length > 0 && textLines[textLines.length - 1]?.trim() === '') {
+      textLines.pop();
+    }
+
+    return {
+      textContent: textLines.join('\n'),
+      suggestions: bulletSuggestions,
+    };
+  }, [message.content]);
 
   return (
     <motion.div
@@ -73,9 +104,33 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
         )}
 
         {/* Message content */}
-        <p className="whitespace-pre-wrap">
-          {message.content}
-        </p>
+        {textContent && (
+          <p className="whitespace-pre-wrap">
+            {textContent}
+          </p>
+        )}
+
+        {/* Clickable suggestions */}
+        {suggestions.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {suggestions.map((suggestion, i) => (
+              <button
+                key={i}
+                onClick={() => onSuggestionClick?.(suggestion)}
+                disabled={!onSuggestionClick}
+                className={cn(
+                  'block w-full px-2 py-1 rounded text-left text-[10px]',
+                  'bg-white/60 dark:bg-white/10',
+                  'hover:bg-white dark:hover:bg-white/20',
+                  'transition-colors duration-150',
+                  !onSuggestionClick && 'cursor-default'
+                )}
+              >
+                • {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Timestamp */}
         <p

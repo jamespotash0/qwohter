@@ -118,7 +118,7 @@ export const AdaFloatingWidget: React.FC = () => {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
               'fixed bottom-6 right-20 z-50',
-              'w-[380px] h-[480px] max-h-[70vh]',
+              'w-[380px] h-[400px] max-h-[55vh]',
               'rounded-xl overflow-hidden',
               'flex flex-col',
               'bg-white dark:bg-gray-900',
