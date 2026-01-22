@@ -19,6 +19,7 @@ import type {
   ContextAnalysisResponse,
   ChatMessageResponse,
   AINotificationSummary,
+  PendingAction,
 } from '@/lib/types/aiWorkflow';
 
 // ============================================================================
@@ -483,6 +484,60 @@ export async function fetchConversation(
 }
 
 // ============================================================================
+// Action Confirmation Functions
+// ============================================================================
+
+export interface ConfirmActionOptions {
+  organizationId: string;
+  userId: string;
+  pendingAction: PendingAction;
+}
+
+export interface ConfirmActionResult {
+  created: {
+    id: string;
+    title: string;
+    type: string;
+  };
+  message: string;
+}
+
+/**
+ * Confirm and execute a pending action
+ */
+export async function confirmAction(
+  options: ConfirmActionOptions
+): Promise<AIServiceResult<ConfirmActionResult>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-workflow-agent', {
+      body: {
+        action: 'confirm_action' as AIWorkflowActionExtended,
+        organizationId: options.organizationId,
+        userId: options.userId,
+        pendingAction: options.pendingAction,
+      },
+    });
+
+    if (error) {
+      console.error('[aiWorkflowService] confirmAction error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Unknown error' };
+    }
+
+    return { success: true, data: data.data };
+  } catch (err) {
+    console.error('[aiWorkflowService] confirmAction error:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to confirm action',
+    };
+  }
+}
+
+// ============================================================================
 // Organization-wide Functions
 // ============================================================================
 
@@ -612,4 +667,5 @@ export type {
   AIServiceResult,
   AIMessage,
   AINotificationSummary,
+  PendingAction,
 };

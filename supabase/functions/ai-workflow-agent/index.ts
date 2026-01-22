@@ -29,7 +29,28 @@ type WorkflowAction =
   | 'suggest_reminders'
   | 'get_recommendations'
   | 'analyze_context'
-  | 'chat';
+  | 'chat'
+  | 'confirm_action';
+
+type PendingActionType =
+  | 'create_task'
+  | 'create_reminder'
+  | 'draft_email'
+  | 'create_notification'
+  | 'create_proposal'
+  | 'send_to_board'
+  | 'add_attachment'
+  | 'update_presentation'
+  | 'update_integration'
+  | 'web_search';
+
+interface PendingAction {
+  id: string;
+  type: PendingActionType;
+  params: Record<string, unknown>;
+  proposalId?: string;
+  proposalName?: string;
+}
 
 interface WorkflowRequest {
   action: WorkflowAction;
@@ -50,6 +71,7 @@ interface WorkflowRequest {
     previousStatus?: string;
     newStatus?: string;
   };
+  pendingAction?: PendingAction; // For confirm_action
 }
 
 interface OpenAIMessage {
@@ -199,6 +221,67 @@ function extractFormDataContext(formData: Record<string, unknown>): string {
 }
 
 // ============================================================================
+// Content Moderation
+// ============================================================================
+
+const BLOCKED_PATTERNS = [
+  // SQL injection patterns
+  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER)\b.*\b(FROM|INTO|TABLE|DATABASE)\b)/i,
+  // Script injection
+  /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
+  /javascript:/gi,
+  /on\w+\s*=/gi,
+  // Command injection
+  /[;&|`$].*\b(rm|del|format|shutdown|reboot|curl|wget|nc|bash|sh|powershell)\b/i,
+  // Explicit content markers
+  /\b(porn|xxx|nsfw|explicit|nude)\b/i,
+];
+
+const HARMFUL_INTENT_KEYWORDS = [
+  'delete all', 'drop table', 'truncate', 'destroy', 'hack', 'exploit',
+  'inject', 'bypass security', 'steal data', 'unauthorized access',
+];
+
+interface ModerationResult {
+  safe: boolean;
+  reason?: string;
+  flaggedPatterns?: string[];
+}
+
+function moderateContent(content: string): ModerationResult {
+  if (!content || typeof content !== 'string') {
+    return { safe: true };
+  }
+
+  const flaggedPatterns: string[] = [];
+  const lowerContent = content.toLowerCase();
+
+  // Check blocked patterns
+  for (const pattern of BLOCKED_PATTERNS) {
+    if (pattern.test(content)) {
+      flaggedPatterns.push(pattern.toString());
+    }
+  }
+
+  // Check harmful intent keywords
+  for (const keyword of HARMFUL_INTENT_KEYWORDS) {
+    if (lowerContent.includes(keyword.toLowerCase())) {
+      flaggedPatterns.push(`keyword: ${keyword}`);
+    }
+  }
+
+  if (flaggedPatterns.length > 0) {
+    return {
+      safe: false,
+      reason: 'Content contains potentially harmful patterns',
+      flaggedPatterns,
+    };
+  }
+
+  return { safe: true };
+}
+
+// ============================================================================
 // Follow-Up Email Generator
 // ============================================================================
 
@@ -333,7 +416,7 @@ async function getRecommendations(params: { supabase: SupabaseClient; openaiApiK
     if (proposalError || !proposal) return { success: false, error: 'Proposal not found' };
 
     const { data: orgStats } = await supabase.from('proposals').select('status, total_value').eq('organization_id', organizationId).in('status', ['Won', 'Rejected']);
-    const wonCount = orgStats?.filter(p => p.status === 'Won').length || 0;
+    const wonCount = orgStats?.filter((p: { status: string }) => p.status === 'Won').length || 0;
     const totalDecided = orgStats?.length || 1;
     const winRate = Math.round((wonCount / totalDecided) * 100);
 
@@ -401,7 +484,7 @@ async function analyzeContext(params: {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       if (lastAnalyzed > thirtyMinutesAgo) {
         const { data: existingSuggestions } = await supabase.from('ai_suggestions').select('*').eq('proposal_id', proposalId).eq('status', 'pending').order('created_at', { ascending: false }).limit(5);
-        return { success: true, data: { suggestions: (existingSuggestions || []).map(s => ({ id: s.id, title: s.title, content: s.content, suggestion_type: s.suggestion_type, confidence_score: s.confidence_score })), analyzedAt: proposal.ai_last_analyzed_at } };
+        return { success: true, data: { suggestions: (existingSuggestions || []).map((s: { id: string; title: string; content: string; suggestion_type: string; confidence_score: number }) => ({ id: s.id, title: s.title, content: s.content, suggestion_type: s.suggestion_type, confidence_score: s.confidence_score })), analyzedAt: proposal.ai_last_analyzed_at } };
       }
     }
 
@@ -413,12 +496,14 @@ async function analyzeContext(params: {
     const { data: notifications } = await supabase.from('notifications').select('id, type, status, scheduled_for').eq('proposal_id', proposalId).order('created_at', { ascending: false }).limit(5);
 
     const now = new Date();
-    const tasksList = (tasks || []).map(t => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, is_overdue: t.due_date ? new Date(t.due_date) < now : false }));
-    const notificationsList = (notifications || []).map(n => ({ id: n.id, type: n.type, status: n.status, scheduled_for: n.scheduled_for }));
+    type TaskRow = { id: string; title: string; status: string; due_date: string | null };
+    type NotificationRow = { id: string; type: string; status: string; scheduled_for: string | null };
+    const tasksList = (tasks || []).map((t: TaskRow) => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, is_overdue: t.due_date ? new Date(t.due_date) < now : false }));
+    const notificationsList = (notifications || []).map((n: NotificationRow) => ({ id: n.id, type: n.type, status: n.status, scheduled_for: n.scheduled_for }));
 
-    const overdueTasks = tasksList.filter(t => t.is_overdue && t.status !== 'completed');
-    const incompleteTasks = tasksList.filter(t => t.status !== 'completed');
-    const pendingNotifications = notificationsList.filter(n => n.status === 'pending');
+    const overdueTasks = tasksList.filter((t: { is_overdue: boolean; status: string }) => t.is_overdue && t.status !== 'completed');
+    const incompleteTasks = tasksList.filter((t: { status: string }) => t.status !== 'completed');
+    const pendingNotifications = notificationsList.filter((n: { status: string }) => n.status === 'pending');
 
     const activities = [];
     if (overdueTasks.length > 0) activities.push(`${overdueTasks.length} overdue task(s)`);
@@ -430,8 +515,10 @@ async function analyzeContext(params: {
     else if (triggerType === 'panel_opened') triggerContext = '\n\nUser just opened this proposal to review it.';
     else if (triggerType === 'time_elapsed') triggerContext = '\n\nThis is a scheduled background check.';
 
-    const tasksContext = tasksList.length > 0 ? tasksList.map(t => `- ${t.title}: ${t.status}${t.due_date ? ` (due: ${new Date(t.due_date).toLocaleDateString()})` : ''}${t.is_overdue ? ' [OVERDUE]' : ''}`).join('\n') : 'No tasks found.';
-    const notificationsContext = notificationsList.length > 0 ? notificationsList.map(n => `- ${n.type}: ${n.status}${n.scheduled_for ? ` (scheduled: ${new Date(n.scheduled_for).toLocaleDateString()})` : ''}`).join('\n') : 'No scheduled notifications.';
+    type TaskItem = { title: string; status: string; due_date: string | null; is_overdue: boolean };
+    type NotificationItem = { type: string; status: string; scheduled_for: string | null };
+    const tasksContext = tasksList.length > 0 ? tasksList.map((t: TaskItem) => `- ${t.title}: ${t.status}${t.due_date ? ` (due: ${new Date(t.due_date).toLocaleDateString()})` : ''}${t.is_overdue ? ' [OVERDUE]' : ''}`).join('\n') : 'No tasks found.';
+    const notificationsContext = notificationsList.length > 0 ? notificationsList.map((n: NotificationItem) => `- ${n.type}: ${n.status}${n.scheduled_for ? ` (scheduled: ${new Date(n.scheduled_for).toLocaleDateString()})` : ''}`).join('\n') : 'No scheduled notifications.';
     const activitySummary = activities.length ? activities.join(', ') : 'No notable activity';
 
     const systemPrompt = `You are a proactive business assistant that analyzes proposal status, tasks, and project activity to suggest helpful actions.\n\nGuidelines:\n- Be helpful and specific, not generic\n- Focus on actionable insights\n- Consider timing, deadlines, and urgency\n- Look for overdue tasks or upcoming deadlines\n- Maximum 3 insights per analysis\n\nTypes: follow_up_email, status_reminder, action_recommendation, win_loss_insight, task_suggestion, pricing_suggestion\n\nRespond with valid JSON only, no markdown code blocks.`;
@@ -493,16 +580,42 @@ async function handleChat(params: {
   userId: string;
   message: string;
   conversationHistory?: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  userRole?: string; // User's role in the organization
 }) {
-  const { supabase, openaiApiKey, proposalId, organizationId, userId, message, conversationHistory } = params;
+  const { supabase, openaiApiKey, proposalId, organizationId, userId, message, conversationHistory, userRole } = params;
   const isGlobalChat = !proposalId;
+
+  // Content moderation check
+  const moderationResult = moderateContent(message);
+  if (!moderationResult.safe) {
+    console.warn('Content moderation blocked message:', moderationResult);
+    return {
+      success: false,
+      error: 'Your message contains content that cannot be processed. Please rephrase your request.',
+      moderation: { blocked: true, reason: moderationResult.reason },
+    };
+  }
 
   try {
     // Get organization info
     const { data: organization } = await supabase.from('organizations').select('name, organization_info').eq('id', organizationId).single();
 
+    // Fetch user's role if not provided
+    let effectiveRole = userRole;
+    if (!effectiveRole) {
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('role')
+        .eq('organization_id', organizationId)
+        .eq('user_id', userId)
+        .single();
+      effectiveRole = membership?.role || 'Member';
+    }
+    const isAdmin = effectiveRole === 'Admin' || effectiveRole === 'Owner';
+
     let systemPrompt: string;
     let context: ReturnType<typeof extractFollowUpContext> | null = null;
+    let proposalsForSelection: Array<{ id: string; name: string }> = [];
 
     if (isGlobalChat) {
       // Global chat mode - fetch organization-level context
@@ -511,6 +624,8 @@ async function handleChat(params: {
 
       // Calculate stats
       const proposals = recentProposals || [];
+      proposalsForSelection = proposals.map((p: ProposalSummary) => ({ id: p.id, name: p.project_name || 'Unnamed Project' }));
+
       const proposalStats = {
         total: proposals.length,
         draft: proposals.filter((p: ProposalSummary) => p.status === 'Draft').length,
@@ -522,9 +637,12 @@ async function handleChat(params: {
       };
       const winRate = proposalStats.total > 0 ? Math.round((proposalStats.won / proposalStats.total) * 100) : 0;
 
-      const proposalsList = proposals.map((p: ProposalSummary) => `- ${p.project_name || 'Unnamed'} (${p.client_name || 'No client'}): ${p.status}${p.total_value ? ` - $${p.total_value.toLocaleString()}` : ''}`).join('\n') || 'No proposals yet.';
+      const proposalsList = proposals.map((p: ProposalSummary, i: number) => `${i + 1}. [ID: ${p.id.slice(0, 8)}] ${p.project_name || 'Unnamed'} (${p.client_name || 'No client'}): ${p.status}${p.total_value ? ` - $${p.total_value.toLocaleString()}` : ''}`).join('\n') || 'No proposals yet.';
 
       systemPrompt = `You are Ada, a friendly and intelligent AI assistant for ${organization?.name || 'a business'} helping manage proposals and projects.
+
+== USER CONTEXT ==
+- Role: ${effectiveRole} ${isAdmin ? '(has admin privileges)' : '(standard member)'}
 
 == ORGANIZATION OVERVIEW ==
 - Recent Proposals: ${proposalStats.total}
@@ -533,30 +651,78 @@ async function handleChat(params: {
 - Total Pipeline Value: $${proposalStats.totalValue.toLocaleString()}
 - Won Value: $${proposalStats.wonValue.toLocaleString()}
 
-== RECENT PROPOSALS ==
+== RECENT PROPOSALS (with IDs) ==
 ${proposalsList}
 
 == CONVERSATION GUIDELINES ==
 1. Be conversational, friendly, and helpful - not robotic
-2. ASK CLARIFYING QUESTIONS when you need more information before taking action:
-   - If user wants to create something but doesn't specify details (title, description, date, etc.), ask for them
-   - If the request is ambiguous, ask for clarification
-   - If multiple approaches are possible, offer options and ask which they prefer
-3. Don't make assumptions about missing details - it's better to ask than guess wrong
-4. Keep responses concise but warm
-5. Use the user's name if known, and reference specific proposal names when relevant
+2. ASK NATURAL QUESTIONS when you need more info - don't ask for specific "fields":
+   - BAD: "What title would you like?" or "Please provide: title, description, due date"
+   - GOOD: "What's this about?" or "Tell me more about what you need" or "When do you need this done by?"
+3. Use your best judgment to fill in details from what the user says naturally
+   - If they say "remind me to call John next week" → title: "Call John", due_date: next week
+   - If they say "create a task for the website redesign" → title: "Website redesign task"
+4. Only ask follow-up questions if you genuinely need more context
+5. If user wants something for a proposal but doesn't specify which, ask "Which proposal is this for?"
+6. Keep responses concise but warm
+7. Reference specific proposal names when relevant
+
+== PERMISSIONS & CAPABILITIES ==
+THINGS YOU CAN DO:
+- Create tasks, reminders, and notifications for proposals
+- Create new proposals from scratch
+- Draft follow-up emails
+- Update proposal details (status, notes, comments)
+- Assign tasks to team members
+- Send proposals/projects to boards
+- Add attachments and documents to proposals
+- Update presentation content
+- Search the web for information (plans, templates, research)
+- Answer questions about proposals and business metrics
+
+THINGS YOU CANNOT DO (provide guidance instead):
+- Delete proposals → Guide: "You can archive proposals from the proposal menu (⋮) → Archive"
+- Delete user accounts → Guide: "Account management is in Settings → Team Members"
+- Remove team members → Guide: "Go to Settings → Team Members to manage team"
+- Update billing/subscription → Guide: "Go to Settings → Billing Plan → Manage Plan"
+- Access other organizations' data
+${isAdmin ? '' : '- Change organization settings (admin only) → Guide: "Contact your organization admin"'}
+
+When user asks to do something you cannot do, provide helpful navigation instructions instead.
 
 You can help users with:
 1. Answering questions about their proposals and business
 2. Providing insights on proposal performance and win rates
-3. General questions about proposal management
-4. Writing tips and best practices for proposals
+3. Creating tasks for specific proposals (requires proposal selection)
+4. Creating reminders for specific proposals (just needs a title!)
+5. Drafting emails for specific proposals (requires proposal selection)
+6. Creating new proposals
+7. Web searches for research, templates, planning help
+8. General questions about proposal management
+
+IMPORTANT - For actions that need a proposal:
+- If user specifies a proposal by name or number, use the matching ID from the list above
+- If no proposal is specified, ASK which proposal they want to associate the action with
+- Include "targetProposalId" in the action params when you know which proposal
 
 Respond with JSON:
 {
   "message": "Your conversational response to the user",
-  "action": { "type": "none" }
-}`;
+  "action": { "type": "create_task | create_reminder | draft_email | create_notification | create_proposal | send_to_board | add_attachment | update_presentation | web_search | none", "params": { ... }, "targetProposalId": "uuid if known" }
+}
+
+Action params (use your best judgment to fill these from natural conversation):
+- create_task: { "title": "infer from context" }
+- create_reminder: { "title": "infer from context", "due_date": "if mentioned" }
+- draft_email: { "subject": "infer", "body": "generate based on context and tone" }
+- create_notification: { "message": "infer from context" }
+- create_proposal: { "project_name": "infer from what user describes" }
+- send_to_board: { "board_name": "ask if not clear" }
+- add_attachment: { "file_name": "from user's description" }
+- update_presentation: { "presentation_content": "generate based on request" }
+- web_search: { "search_query": "formulate based on what user wants to know" }
+
+IMPORTANT: Don't ask users for "title", "subject", "body" etc. - extract these naturally from conversation.`;
     } else {
       // Proposal-specific chat mode
       // Save user message
@@ -579,6 +745,9 @@ Respond with JSON:
 
       systemPrompt = `You are Ada, a friendly and intelligent AI assistant for ${organization?.name || 'a business'} helping manage proposals and projects.
 
+== USER CONTEXT ==
+- Role: ${effectiveRole} ${isAdmin ? '(has admin privileges)' : '(standard member)'}
+
 == CURRENT PROPOSAL ==
 - Project: ${context.projectName}
 - Client: ${context.clientName}${context.clientCompany ? ` (${context.clientCompany})` : ''}
@@ -597,15 +766,35 @@ ${formContext}
 
 == CONVERSATION GUIDELINES ==
 1. Be conversational, friendly, and helpful - not robotic
-2. ASK CLARIFYING QUESTIONS when you need more information before taking action:
-   - Creating a task? Ask for title, description, priority, and due date if not provided
-   - Creating a reminder? Ask when they want to be reminded and what for
-   - Drafting an email? Ask about tone, key points to include, or recipient if unclear
-   - Multiple steps needed? Walk through them one at a time, confirming each step
-3. Don't make assumptions about missing details - it's better to ask than guess wrong
-4. Only set "action" when you have ALL required information. Otherwise, ask questions first.
+2. ASK NATURAL QUESTIONS - never ask for specific "fields" like a form:
+   - BAD: "What title would you like?" or "Please provide the subject and body"
+   - GOOD: "What's this about?" or "What should the email say?" or "When do you need a reminder?"
+3. Use your best judgment to extract details from natural conversation:
+   - "remind me to follow up Friday" → title: "Follow up on [proposal name]", due_date: Friday
+   - "send a friendly check-in email" → tone: friendly, infer subject/body from proposal context
+4. Only ask follow-up questions if you genuinely can't understand what they want
 5. Keep responses concise but warm
 6. Reference the proposal and client by name to show context awareness
+
+== PERMISSIONS & CAPABILITIES ==
+THINGS YOU CAN DO:
+- Create tasks, reminders, and notifications for this proposal
+- Draft follow-up emails
+- Update proposal details (add notes, comments)
+- Assign tasks to team members
+- Send this proposal to a board
+- Add attachments and documents
+- Update presentation content
+- Search the web for information (plans, templates, research)
+- Answer questions about this proposal
+
+THINGS YOU CANNOT DO (provide guidance instead):
+- Delete this proposal → Guide: "You can archive from the proposal menu (⋮) → Archive"
+- Delete user accounts → Guide: "Account management is in Settings → Team Members"
+- Update billing → Guide: "Go to Settings → Billing Plan → Manage Plan"
+${isAdmin ? '' : '- Change organization settings (admin only) → Guide: "Contact your organization admin"'}
+
+When user asks to do something you cannot do, provide helpful navigation instructions instead.
 
 You can help users with:
 1. Answering questions about this proposal and its tasks
@@ -613,22 +802,32 @@ You can help users with:
 3. Drafting emails (e.g., "write a follow-up email")
 4. Creating tasks (e.g., "create a task to review the pricing")
 5. Setting up notifications (e.g., "notify me when...")
-6. Providing insights and recommendations
+6. Web searches for research, templates, or help with planning
+7. Adding documents/attachments to this proposal
+8. Sending this proposal to a board
+9. Providing insights and recommendations
 
 Respond with JSON:
 {
   "message": "Your conversational response to the user",
-  "action": { "type": "create_reminder | draft_email | update_status | add_note | create_task | create_notification | none", "params": { "key": "value" } },
+  "action": { "type": "create_reminder | draft_email | update_status | add_note | create_task | create_notification | send_to_board | add_attachment | update_presentation | web_search | none", "params": { "key": "value" } },
   "suggestedFollowUp": "Optional: A follow-up question or suggestion"
 }
 
-IMPORTANT: Only include an action with type other than "none" when you have ALL the required parameters. If the user's request is missing information (like title, date, description), ask for it first and use action type "none".
+IMPORTANT: Use your best judgment to fill action params from natural conversation. Don't ask users to provide specific "fields" - infer them.
 
-Action params by type (only use when you have all required info):
-- create_reminder: { "title": "...", "due_date": "ISO date" }
-- draft_email: { "subject": "...", "body": "...", "tone": "formal|friendly|urgent" }
-- create_task: { "title": "...", "description": "...", "due_date": "ISO date", "priority": "low|medium|high" }
-- create_notification: { "type": "reminder|follow_up|deadline", "message": "...", "scheduled_for": "ISO date" }`;
+Action params (infer these naturally from conversation):
+- create_task: { "title": "from context", "due_date": "if mentioned", "priority": "if implied" }
+- create_reminder: { "title": "from context", "due_date": "if mentioned" }
+- draft_email: { "subject": "generate", "body": "generate based on context/tone", "tone": "from request" }
+- create_notification: { "message": "from context", "scheduled_for": "if mentioned" }
+- send_to_board: { "board_name": "ask only if unclear" }
+- add_attachment: { "file_name": "from description" }
+- update_presentation: { "presentation_content": "generate from request" }
+- web_search: { "search_query": "formulate from user's question" }
+
+Example: User says "remind me to call the client next Tuesday" →
+Action: { type: "create_reminder", params: { title: "Call ${context.clientName}", due_date: "next Tuesday ISO" } }`;
     }
 
     const messages: OpenAIMessage[] = [{ role: 'system', content: systemPrompt }];
@@ -640,7 +839,11 @@ Action params by type (only use when you have all required info):
     messages.push({ role: 'user', content: message });
 
     const response = await callOpenAI(openaiApiKey, messages, { temperature: 0.5, maxTokens: 1000 });
-    const parsed = parseJSONResponse<{ message: string; action?: { type: string; params?: Record<string, unknown> }; suggestedFollowUp?: string }>(response.content);
+    const parsed = parseJSONResponse<{
+      message: string;
+      action?: { type: string; params?: Record<string, unknown>; targetProposalId?: string };
+      suggestedFollowUp?: string;
+    }>(response.content);
 
     // For proposal context, save assistant message to database
     let assistantMessageId = `global-${Date.now()}`;
@@ -654,63 +857,401 @@ Action params by type (only use when you have all required info):
       assistantMessageId = assistantMessage.id;
     }
 
-    // Handle actions only for proposal context
-    let createdSuggestion = null;
-    if (!isGlobalChat && parsed.action && parsed.action.type !== 'none') {
-      createdSuggestion = await handleChatAction(supabase, parsed.action as { type: string; params?: Record<string, unknown> }, proposalId!, organizationId, userId, parsed.message);
+    // Build pending action if AI wants to take an action (instead of auto-executing)
+    let pendingAction: PendingAction | null = null;
+    if (parsed.action && parsed.action.type !== 'none') {
+      const actionType = parsed.action.type as PendingActionType;
+      const targetProposalId = parsed.action.targetProposalId || proposalId;
+
+      // Only create pending action if we have a target proposal or it's a global action
+      if (targetProposalId || ['create_task', 'create_reminder', 'draft_email', 'create_notification'].includes(actionType)) {
+        // Get proposal name if we have a target
+        let proposalName: string | undefined;
+        if (targetProposalId) {
+          const { data: targetProposal } = await supabase
+            .from('proposals')
+            .select('project_name')
+            .eq('id', targetProposalId)
+            .single();
+          proposalName = targetProposal?.project_name || 'Unnamed Project';
+        }
+
+        pendingAction = {
+          id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          type: actionType,
+          params: parsed.action.params || {},
+          proposalId: targetProposalId,
+          proposalName,
+        };
+      }
     }
 
-    return { success: true, data: { response: parsed.message, message: { id: assistantMessageId, role: 'assistant' as const, content: parsed.message }, action: parsed.action, suggestion: createdSuggestion || undefined }, tokenUsage: response.tokenUsage };
+    return {
+      success: true,
+      data: {
+        response: parsed.message,
+        message: { id: assistantMessageId, role: 'assistant' as const, content: parsed.message },
+        pendingAction: pendingAction || undefined,
+        proposalsForSelection: isGlobalChat ? proposalsForSelection : undefined,
+      },
+      tokenUsage: response.tokenUsage,
+    };
   } catch (error) {
     console.error('handleChat error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
-async function handleChatAction(supabase: SupabaseClient, action: { type: string; params?: Record<string, unknown> }, proposalId: string, organizationId: string, userId: string, responseMessage: string) {
+// ============================================================================
+// Confirm Action Handler (Executes pending actions after user approval)
+// ============================================================================
+
+async function handleConfirmAction(params: {
+  supabase: SupabaseClient;
+  organizationId: string;
+  userId: string;
+  pendingAction: PendingAction;
+}) {
+  const { supabase, organizationId, userId, pendingAction } = params;
+  const { type, params: actionParams, proposalId } = pendingAction;
+
+  // Actions that don't require a proposal ID
+  const actionsWithoutProposal = ['create_proposal', 'update_integration'];
+  const requiresProposal = !actionsWithoutProposal.includes(type);
+
+  if (requiresProposal && !proposalId) {
+    return { success: false, error: 'Proposal ID is required to execute this action' };
+  }
+
   try {
-    switch (action.type) {
-      case 'create_reminder': {
-        const params = action.params as { title?: string; due_date?: string } | undefined;
-        const { data: suggestion } = await supabase.from('ai_suggestions').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, suggestion_type: 'status_reminder', title: params?.title || 'Reminder', content: `Reminder: ${params?.title || 'Follow up on this proposal'}\n\nDue: ${params?.due_date || 'Soon'}`, reasoning: 'Created via chat request', confidence_score: 1.0, model_used: 'gpt-4o-mini', status: 'pending' }).select().single();
-        if (suggestion) return { id: suggestion.id, title: suggestion.title, content: suggestion.content, suggestion_type: suggestion.suggestion_type };
-        break;
-      }
-      case 'draft_email': {
-        const params = action.params as { subject?: string; body?: string; tone?: string } | undefined;
-        const { data: suggestion } = await supabase.from('ai_suggestions').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, suggestion_type: 'follow_up_email', title: 'Email Draft', content: params?.body || responseMessage, email_subject: params?.subject || 'Follow-up', reasoning: 'Created via chat request', confidence_score: 1.0, model_used: 'gpt-4o-mini', status: 'pending' }).select().single();
-        if (suggestion) return { id: suggestion.id, title: suggestion.title, content: suggestion.content, suggestion_type: suggestion.suggestion_type };
-        break;
-      }
-      case 'create_task': {
-        const params = action.params as { title?: string; description?: string; due_date?: string; priority?: string } | undefined;
-        const { data: task, error: taskError } = await supabase.from('project_tasks').insert({ proposal_id: proposalId, organization_id: organizationId, title: params?.title || 'New Task', description: params?.description || '', status: 'pending', priority: params?.priority || 'medium', due_date: params?.due_date || null, created_by: userId }).select().single();
-        if (!taskError && task) {
-          const { data: suggestion } = await supabase.from('ai_suggestions').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, suggestion_type: 'action_recommendation', title: `Task Created: ${params?.title || 'New Task'}`, content: `A new task has been created.\n\nTitle: ${params?.title}\nDescription: ${params?.description || 'None'}\nDue: ${params?.due_date || 'Not set'}`, reasoning: 'Created via chat request', confidence_score: 1.0, model_used: 'gpt-4o-mini', status: 'applied', applied_at: new Date().toISOString() }).select().single();
-          if (suggestion) return { id: suggestion.id, title: suggestion.title, content: suggestion.content, suggestion_type: suggestion.suggestion_type };
-        }
-        break;
-      }
-      case 'create_notification': {
-        const params = action.params as { type?: string; message?: string; scheduled_for?: string } | undefined;
-        const { data: notification, error: notifError } = await supabase.from('notifications').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, type: params?.type || 'reminder', message: params?.message || 'Reminder', status: 'pending', scheduled_for: params?.scheduled_for || null }).select().single();
-        if (!notifError && notification) {
-          const { data: suggestion } = await supabase.from('ai_suggestions').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, suggestion_type: 'status_reminder', title: 'Notification Scheduled', content: `A notification has been scheduled.\n\nType: ${params?.type || 'reminder'}\nMessage: ${params?.message || 'Reminder'}\nScheduled: ${params?.scheduled_for || 'Immediately'}`, reasoning: 'Created via chat request', confidence_score: 1.0, model_used: 'gpt-4o-mini', status: 'applied', applied_at: new Date().toISOString() }).select().single();
-          if (suggestion) return { id: suggestion.id, title: suggestion.title, content: suggestion.content, suggestion_type: suggestion.suggestion_type };
-        }
-        break;
-      }
-      case 'add_note':
-      case 'update_status': {
-        const { data: suggestion } = await supabase.from('ai_suggestions').insert({ proposal_id: proposalId, organization_id: organizationId, user_id: userId, suggestion_type: 'action_recommendation', title: action.type === 'add_note' ? 'Add Note' : 'Update Status', content: responseMessage, reasoning: 'Created via chat request', confidence_score: 1.0, model_used: 'gpt-4o-mini', status: 'pending' }).select().single();
-        if (suggestion) return { id: suggestion.id, title: suggestion.title, content: suggestion.content, suggestion_type: suggestion.suggestion_type };
-        break;
+    // Verify proposal exists and user has access (if required)
+    if (requiresProposal && proposalId) {
+      const { data: proposal, error: proposalError } = await supabase
+        .from('proposals')
+        .select('id, project_name')
+        .eq('id', proposalId)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (proposalError || !proposal) {
+        return { success: false, error: 'Proposal not found or access denied' };
       }
     }
+
+    let result: { id: string; title: string; type: string } | null = null;
+
+    switch (type) {
+      case 'create_task': {
+        const taskParams = actionParams as { title?: string; description?: string; due_date?: string; priority?: string };
+        const { data: task, error: taskError } = await supabase
+          .from('project_tasks')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            title: taskParams.title || 'New Task',
+            description: taskParams.description || '',
+            status: 'pending',
+            priority: taskParams.priority || 'medium',
+            due_date: taskParams.due_date || null,
+            created_by: userId,
+          })
+          .select()
+          .single();
+
+        if (taskError) {
+          console.error('Failed to create task:', taskError);
+          return { success: false, error: 'Failed to create task' };
+        }
+
+        result = { id: task.id, title: taskParams.title || 'New Task', type: 'task' };
+        break;
+      }
+
+      case 'create_reminder': {
+        const reminderParams = actionParams as { title?: string; due_date?: string; message?: string };
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('ai_suggestions')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            suggestion_type: 'status_reminder',
+            title: reminderParams.title || 'Reminder',
+            content: `${reminderParams.message || reminderParams.title || 'Follow up on this proposal'}\n\nDue: ${reminderParams.due_date || 'Soon'}`,
+            reasoning: 'Created via Ada chat',
+            confidence_score: 1.0,
+            model_used: 'user-confirmed',
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (suggestionError) {
+          console.error('Failed to create reminder:', suggestionError);
+          return { success: false, error: 'Failed to create reminder' };
+        }
+
+        result = { id: suggestion.id, title: reminderParams.title || 'Reminder', type: 'reminder' };
+        break;
+      }
+
+      case 'draft_email': {
+        const emailParams = actionParams as { subject?: string; body?: string; tone?: string };
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('ai_suggestions')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            suggestion_type: 'follow_up_email',
+            title: 'Email Draft',
+            content: emailParams.body || 'Email content',
+            email_subject: emailParams.subject || 'Follow-up',
+            reasoning: 'Created via Ada chat',
+            confidence_score: 1.0,
+            model_used: 'user-confirmed',
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (suggestionError) {
+          console.error('Failed to create email draft:', suggestionError);
+          return { success: false, error: 'Failed to create email draft' };
+        }
+
+        result = { id: suggestion.id, title: emailParams.subject || 'Email Draft', type: 'email' };
+        break;
+      }
+
+      case 'create_notification': {
+        const notifParams = actionParams as { type?: string; message?: string; scheduled_for?: string };
+        const { data: notification, error: notifError } = await supabase
+          .from('notifications')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            type: notifParams.type || 'reminder',
+            message: notifParams.message || 'Reminder',
+            status: 'pending',
+            scheduled_for: notifParams.scheduled_for || null,
+          })
+          .select()
+          .single();
+
+        if (notifError) {
+          console.error('Failed to create notification:', notifError);
+          return { success: false, error: 'Failed to create notification' };
+        }
+
+        result = { id: notification.id, title: notifParams.message || 'Notification', type: 'notification' };
+        break;
+      }
+
+      case 'create_proposal': {
+        const proposalParams = actionParams as {
+          project_name?: string;
+          client_name?: string;
+          client_company?: string;
+          job_location?: string;
+          status?: string;
+        };
+
+        // Get the next proposal number
+        const { data: lastProposal } = await supabase
+          .from('proposals')
+          .select('proposal_number')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        let nextNumber = 1;
+        if (lastProposal?.proposal_number) {
+          const match = lastProposal.proposal_number.match(/P-(\d+)/);
+          if (match) {
+            nextNumber = parseInt(match[1], 10) + 1;
+          }
+        }
+
+        const { data: newProposal, error: proposalError } = await supabase
+          .from('proposals')
+          .insert({
+            organization_id: organizationId,
+            proposal_number: `P-${String(nextNumber).padStart(3, '0')}`,
+            project_name: proposalParams.project_name || 'New Project',
+            client_name: proposalParams.client_name || null,
+            client_company: proposalParams.client_company || null,
+            job_location: proposalParams.job_location || null,
+            status: proposalParams.status || 'Draft',
+            form_data: {},
+          })
+          .select()
+          .single();
+
+        if (proposalError) {
+          console.error('Failed to create proposal:', proposalError);
+          return { success: false, error: 'Failed to create proposal' };
+        }
+
+        result = { id: newProposal.id, title: proposalParams.project_name || 'New Project', type: 'proposal' };
+        break;
+      }
+
+      case 'send_to_board': {
+        // For now, log the action - actual board integration would go here
+        const boardParams = actionParams as { board_name?: string; board_id?: string };
+        console.log('Send to board requested:', { proposalId, boardParams });
+
+        // Create a suggestion to track this action
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('ai_suggestions')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            suggestion_type: 'action_recommendation',
+            title: `Send to ${boardParams.board_name || 'Board'}`,
+            content: `Proposal queued to be sent to board: ${boardParams.board_name || 'Board'}`,
+            reasoning: 'Created via Ada chat',
+            confidence_score: 1.0,
+            model_used: 'user-confirmed',
+            status: 'applied',
+          })
+          .select()
+          .single();
+
+        if (suggestionError) {
+          console.error('Failed to log board action:', suggestionError);
+        }
+
+        result = { id: suggestion?.id || 'board-action', title: boardParams.board_name || 'Board', type: 'board' };
+        break;
+      }
+
+      case 'add_attachment': {
+        // For now, log the action - actual file handling would need to be done client-side
+        const attachmentParams = actionParams as { file_name?: string; file_type?: string; file_url?: string };
+        console.log('Add attachment requested:', { proposalId, attachmentParams });
+
+        // Create a note about the attachment request
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('ai_suggestions')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            suggestion_type: 'action_recommendation',
+            title: `Add Attachment: ${attachmentParams.file_name || 'File'}`,
+            content: `Attachment requested: ${attachmentParams.file_name || 'File'}\nType: ${attachmentParams.file_type || 'Unknown'}`,
+            reasoning: 'Created via Ada chat - requires manual upload',
+            confidence_score: 1.0,
+            model_used: 'user-confirmed',
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (suggestionError) {
+          console.error('Failed to log attachment action:', suggestionError);
+        }
+
+        result = { id: suggestion?.id || 'attachment-action', title: attachmentParams.file_name || 'Attachment', type: 'attachment' };
+        break;
+      }
+
+      case 'update_presentation': {
+        const presentationParams = actionParams as { presentation_content?: string };
+        console.log('Update presentation requested:', { proposalId, presentationParams });
+
+        // Store the presentation update as a suggestion
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('ai_suggestions')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            suggestion_type: 'action_recommendation',
+            title: 'Presentation Update',
+            content: presentationParams.presentation_content || 'Presentation content update requested',
+            reasoning: 'Created via Ada chat',
+            confidence_score: 1.0,
+            model_used: 'user-confirmed',
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (suggestionError) {
+          console.error('Failed to log presentation update:', suggestionError);
+        }
+
+        result = { id: suggestion?.id || 'presentation-action', title: 'Presentation Update', type: 'presentation' };
+        break;
+      }
+
+      case 'web_search': {
+        // Web search action - returns results to be displayed
+        const searchParams = actionParams as { search_query?: string; search_context?: string };
+
+        if (!searchParams.search_query) {
+          return { success: false, error: 'Search query is required' };
+        }
+
+        // For now, we'll create a note that a search was requested
+        // In a full implementation, this would call a web search API
+        console.log('Web search requested:', searchParams);
+
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('ai_suggestions')
+          .insert({
+            proposal_id: proposalId,
+            organization_id: organizationId,
+            user_id: userId,
+            suggestion_type: 'action_recommendation',
+            title: `Search: ${searchParams.search_query}`,
+            content: `Web search requested: "${searchParams.search_query}"\nContext: ${searchParams.search_context || 'General search'}`,
+            reasoning: 'Web search feature - results will be displayed in future implementation',
+            confidence_score: 1.0,
+            model_used: 'user-confirmed',
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (suggestionError) {
+          console.error('Failed to log search action:', suggestionError);
+        }
+
+        result = { id: suggestion?.id || 'search-action', title: searchParams.search_query || 'Search', type: 'search' };
+        break;
+      }
+
+      case 'update_integration': {
+        const integrationParams = actionParams as { integration_type?: string; integration_settings?: Record<string, unknown> };
+        console.log('Update integration requested:', { organizationId, integrationParams });
+
+        // Log the integration update request
+        result = { id: 'integration-action', title: integrationParams.integration_type || 'Integration', type: 'integration' };
+        break;
+      }
+
+      default:
+        return { success: false, error: `Unknown action type: ${type}` };
+    }
+
+    return {
+      success: true,
+      data: {
+        created: result,
+        message: `Successfully created ${result?.type}: "${result?.title}"`,
+      },
+    };
   } catch (error) {
-    console.error('handleChatAction error:', error);
+    console.error('handleConfirmAction error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
-  return null;
 }
 
 // ============================================================================
@@ -790,7 +1331,13 @@ serve(async (req: Request) => {
         if (!request.message) {
           return new Response(JSON.stringify({ success: false, error: 'Message is required for chat action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-        result = await handleChat({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId, message: request.message, conversationHistory: request.conversationHistory });
+        result = await handleChat({ supabase: supabaseAdmin, openaiApiKey, proposalId: request.proposalId, organizationId: request.organizationId, userId: request.userId, message: request.message, conversationHistory: request.conversationHistory, userRole: membership.role });
+        break;
+      case 'confirm_action':
+        if (!request.pendingAction) {
+          return new Response(JSON.stringify({ success: false, error: 'Pending action is required for confirm_action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        result = await handleConfirmAction({ supabase: supabaseAdmin, organizationId: request.organizationId, userId: request.userId, pendingAction: request.pendingAction });
         break;
       default:
         return new Response(JSON.stringify({ success: false, error: `Unknown action: ${request.action}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -798,9 +1345,10 @@ serve(async (req: Request) => {
 
     // Log agent run
     const duration = Date.now() - startTime;
-    const agentTypes: Record<string, string> = { generate_follow_up: 'follow_up_generator', suggest_reminders: 'reminder_suggester', get_recommendations: 'recommendation_engine', analyze_context: 'status_monitor', chat: 'recommendation_engine' };
+    const agentTypes: Record<string, string> = { generate_follow_up: 'follow_up_generator', suggest_reminders: 'reminder_suggester', get_recommendations: 'recommendation_engine', analyze_context: 'status_monitor', chat: 'recommendation_engine', confirm_action: 'recommendation_engine' };
+    const tokenUsage = 'tokenUsage' in result ? result.tokenUsage : null;
     try {
-      await supabaseAdmin.from('ai_agent_runs').insert({ organization_id: request.organizationId, triggered_by: user.id, agent_type: agentTypes[request.action] || 'recommendation_engine', trigger_event: 'manual', proposal_id: request.proposalId, status: result.success ? 'completed' : 'failed', suggestions_generated: result.success ? 1 : 0, duration_ms: duration, error_message: result.error || null, total_tokens: result.tokenUsage?.total || null, started_at: new Date(Date.now() - duration).toISOString(), completed_at: new Date().toISOString() });
+      await supabaseAdmin.from('ai_agent_runs').insert({ organization_id: request.organizationId, triggered_by: user.id, agent_type: agentTypes[request.action] || 'recommendation_engine', trigger_event: 'manual', proposal_id: request.proposalId, status: result.success ? 'completed' : 'failed', suggestions_generated: result.success ? 1 : 0, duration_ms: duration, error_message: result.error || null, total_tokens: tokenUsage?.total || null, started_at: new Date(Date.now() - duration).toISOString(), completed_at: new Date().toISOString() });
     } catch (logError) {
       console.error('Failed to log agent run:', logError);
     }

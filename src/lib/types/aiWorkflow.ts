@@ -201,6 +201,8 @@ export interface ChatMessageResponse {
   message?: AIMessage;
   response?: string; // For global chat mode (plain text response)
   suggestion?: AISuggestion;
+  pendingAction?: PendingAction;
+  proposalsForSelection?: Array<{ id: string; name: string }>;
   error?: string;
 }
 
@@ -242,6 +244,7 @@ export interface ContextAnalysisResponse {
   success: boolean;
   suggestions?: AISuggestion[];
   message?: AIMessage;
+  proactiveMessage?: { id: string; content: string };
   analyzed_at?: string;
   error?: string;
 }
@@ -277,7 +280,8 @@ export type AIWorkflowActionExtended =
   | 'analyze_context'
   | 'chat'
   | 'create_reminder'
-  | 'scheduled_analysis';
+  | 'scheduled_analysis'
+  | 'confirm_action';
 
 export interface AIWorkflowRequestExtended extends Omit<AIWorkflowRequest, 'action'> {
   action: AIWorkflowActionExtended;
@@ -301,4 +305,81 @@ export interface AINotificationSummary {
     type: AISuggestionType;
     count: number;
   }[];
+}
+
+// ============================================================================
+// Pending Action Types (Action Confirmation Flow)
+// ============================================================================
+
+export type PendingActionType =
+  | 'create_task'
+  | 'create_reminder'
+  | 'draft_email'
+  | 'create_notification'
+  | 'create_proposal'
+  | 'send_to_board'
+  | 'add_attachment'
+  | 'update_presentation'
+  | 'update_integration'
+  | 'web_search';
+
+export interface PendingActionParams {
+  // Common fields
+  title?: string;
+  description?: string;
+  due_date?: string;
+  priority?: 'low' | 'medium' | 'high';
+
+  // Email fields
+  subject?: string;
+  body?: string;
+  tone?: string;
+
+  // Notification fields
+  message?: string;
+  scheduled_for?: string;
+  notification_type?: string;
+
+  // Proposal fields
+  project_name?: string;
+  client_name?: string;
+  client_company?: string;
+  job_location?: string;
+  status?: 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+
+  // Board/presentation fields
+  board_id?: string;
+  board_name?: string;
+  presentation_content?: string;
+
+  // Attachment fields
+  file_url?: string;
+  file_name?: string;
+  file_type?: string;
+
+  // Integration fields
+  integration_type?: string;
+  integration_settings?: Record<string, unknown>;
+
+  // Web search fields
+  search_query?: string;
+  search_context?: string;
+}
+
+export interface PendingAction {
+  id: string;
+  type: PendingActionType;
+  params: PendingActionParams;
+  proposalId?: string;
+  proposalName?: string;
+}
+
+export interface ChatMessageResponseWithAction extends ChatMessageResponse {
+  pendingAction?: PendingAction;
+}
+
+export interface ContentModerationResult {
+  safe: boolean;
+  flagged_categories?: string[];
+  message?: string;
 }

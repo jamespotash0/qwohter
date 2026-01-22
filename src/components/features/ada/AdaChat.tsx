@@ -14,6 +14,7 @@ import { AdaMessage } from './AdaMessage';
 import { AdaQuickActions } from './AdaQuickActions';
 import { AdaTypingIndicator } from './AdaTypingIndicator';
 import { AdaSuggestionCard } from './AdaSuggestionCard';
+import { AdaActionConfirmation, type PendingAction } from './AdaActionConfirmation';
 import {
   useAISuggestions,
   useAIConversation,
@@ -23,6 +24,7 @@ import {
   useGetRecommendations,
   useApplySuggestionOptimistic,
   useDismissSuggestionOptimistic,
+  useConfirmAction,
 } from '@/hooks/queries/useAISuggestions';
 import type { AIMessage, LocalChatMessage } from '@/lib/types/aiWorkflow';
 
@@ -46,6 +48,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   const location = useLocation();
   const [inputValue, setInputValue] = useState('');
   const [globalMessages, setGlobalMessages] = useState<LocalChatMessage[]>([]);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,6 +82,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   const getRecommendations = useGetRecommendations();
   const applySuggestion = useApplySuggestionOptimistic(proposalId || '');
   const dismissSuggestion = useDismissSuggestionOptimistic(proposalId || '');
+  const confirmActionMutation = useConfirmAction();
 
   const isTyping = sendChatMessage.isPending;
   const isLoading = isProposalContext && (suggestionsLoading || conversationLoading);
@@ -128,8 +132,9 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       });
 
       // Handle response
-      if (!isProposalContext) {
-        if (result.success && result.data?.response) {
+      if (result.success && result.data?.response) {
+        // Add AI response message for global chat
+        if (!isProposalContext) {
           const aiMessage: AIMessage = {
             id: `ai-${Date.now()}`,
             role: 'assistant',
@@ -137,9 +142,16 @@ export const AdaChat: React.FC<AdaChatProps> = ({
             created_at: new Date().toISOString(),
           };
           setGlobalMessages(prev => [...prev, aiMessage]);
-        } else {
-          // API returned success: false
-          console.error('[Ada] Chat error:', result.error);
+        }
+
+        // Check if there's a pending action that needs confirmation
+        if (result.data.pendingAction) {
+          setPendingAction(result.data.pendingAction as PendingAction);
+        }
+      } else if (!result.success) {
+        // API returned success: false
+        console.error('[Ada] Chat error:', result.error);
+        if (!isProposalContext) {
           const errorMessage: AIMessage = {
             id: `error-${Date.now()}`,
             role: 'assistant',
@@ -211,6 +223,60 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   }, [dismissSuggestion]);
 
   const isGenerating = generateFollowUp.isPending || suggestReminders.isPending || getRecommendations.isPending;
+
+  // Handle action confirmation
+  const handleConfirmAction = useCallback(async (action: PendingAction) => {
+    try {
+      const result = await confirmActionMutation.mutateAsync({
+        organizationId,
+        userId,
+        pendingAction: action,
+      });
+
+      if (result.success && result.data) {
+        // Add success message to chat
+        const successMessage: LocalChatMessage = {
+          id: `success-${Date.now()}`,
+          role: 'assistant',
+          content: result.data.message || `Successfully created ${action.type.replace('_', ' ')}.`,
+          created_at: new Date().toISOString(),
+        };
+        setGlobalMessages(prev => [...prev, successMessage]);
+      } else {
+        // Add error message
+        const errorMessage: LocalChatMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: result.error || 'Failed to complete the action. Please try again.',
+          created_at: new Date().toISOString(),
+        };
+        setGlobalMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('[Ada] Confirm action error:', error);
+      const errorMessage: LocalChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: 'Something went wrong. Please try again.',
+        created_at: new Date().toISOString(),
+      };
+      setGlobalMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setPendingAction(null);
+    }
+  }, [organizationId, userId, confirmActionMutation]);
+
+  const handleCancelAction = useCallback(() => {
+    setPendingAction(null);
+    // Add cancellation message
+    const cancelMessage: LocalChatMessage = {
+      id: `cancel-${Date.now()}`,
+      role: 'assistant',
+      content: 'No problem! Let me know if you need anything else.',
+      created_at: new Date().toISOString(),
+    };
+    setGlobalMessages(prev => [...prev, cancelMessage]);
+  }, []);
 
   return (
     <div className="relative flex-1 flex flex-col min-h-0">
@@ -361,6 +427,17 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                 ))}
               </div>
             )}
+
+            {/* Pending Action Confirmation */}
+            <AnimatePresence>
+              {pendingAction && (
+                <AdaActionConfirmation
+                  action={pendingAction}
+                  onConfirm={handleConfirmAction}
+                  onCancel={handleCancelAction}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Typing indicator */}
             <AnimatePresence>

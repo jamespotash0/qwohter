@@ -21,6 +21,7 @@ import {
   fetchConversation,
   fetchOrganizationPendingCount,
   fetchNotificationSummary,
+  confirmAction,
   type AISuggestion,
   type AISuggestionStatus,
   type GenerateFollowUpOptions,
@@ -32,6 +33,7 @@ import {
   type AnalyzeContextOptions,
   type SendChatMessageOptions,
   type AINotificationSummary,
+  type PendingAction,
 } from '@/services/aiWorkflowService';
 
 // ============================================================================
@@ -318,6 +320,20 @@ export function useSubmitFeedback() {
 }
 
 // ============================================================================
+// Action Confirmation Hook
+// ============================================================================
+
+/**
+ * Hook: Confirm and execute a pending action
+ */
+export function useConfirmAction() {
+  return useMutation({
+    mutationFn: (params: { organizationId: string; userId: string; pendingAction: PendingAction }) =>
+      confirmAction(params),
+  });
+}
+
+// ============================================================================
 // Conversation Hooks
 // ============================================================================
 
@@ -524,4 +540,4 @@ export function useSuggestionPolling(
 // Re-exports
 // ============================================================================
 
-export type { AISuggestion, AISuggestionStatus, EmailTone, AIMessage, AINotificationSummary };
+export type { AISuggestion, AISuggestionStatus, EmailTone, AIMessage, AINotificationSummary, PendingAction };
