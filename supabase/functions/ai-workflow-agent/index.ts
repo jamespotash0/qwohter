@@ -85,6 +85,69 @@ interface OpenAIResponse {
 }
 
 // ============================================================================
+// Task Reference Generation
+// ============================================================================
+
+/**
+ * Generate org initials from name (e.g., "Acme Corp" -> "AC", "WallQu" -> "WAL")
+ * Removes special characters before processing to avoid hyphens/symbols in reference
+ */
+function getOrgInitials(orgName: string): string {
+  if (!orgName?.trim()) return 'TSK';
+
+  // Remove special characters (keep only letters, numbers, spaces)
+  const cleanedName = orgName.replace(/[^a-zA-Z0-9\s]/g, '');
+  const words = cleanedName.trim().toUpperCase().split(/\s+/).filter(w => w.length > 0);
+
+  if (words.length === 0) return 'TSK';
+
+  if (words.length === 1) {
+    // Single word: take first 3 chars
+    return words[0]!.slice(0, 3);
+  }
+
+  // Multiple words: take first letter of each (max 3)
+  return words.slice(0, 3).map(w => w[0]).join('');
+}
+
+/**
+ * Get the next task reference number for an organization
+ */
+async function getNextTaskReference(supabase: SupabaseClient, organizationId: string): Promise<string> {
+  // Get org name for prefix
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', organizationId)
+    .single();
+
+  const orgData = org as { name: string } | null;
+  const initials = getOrgInitials(orgData?.name || 'TASK');
+
+  // Find max existing reference number
+  const { data: tasks } = await supabase
+    .from('project_tasks')
+    .select('reference')
+    .eq('organization_id', organizationId)
+    .not('reference', 'is', null);
+
+  let maxNum = 0;
+  const pattern = new RegExp(`^${initials}-(\\d+)$`);
+
+  const taskList = (tasks || []) as { reference: string | null }[];
+  for (const task of taskList) {
+    if (!task.reference) continue;
+    const match = task.reference.match(pattern);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
+
+  return `${initials}-${maxNum + 1}`;
+}
+
+// ============================================================================
 // OpenAI Utilities
 // ============================================================================
 
@@ -627,12 +690,12 @@ async function handleChat(params: {
       const { data: recentProposals } = await supabase.from('proposals').select('id, proposal_number, project_name, client_name, status, total_value, is_on_board, created_at, updated_at').eq('organization_id', organizationId).order('updated_at', { ascending: false }).limit(10) as { data: ProposalSummary[] | null };
 
       // Fetch project workflow statuses for proposals that are on board
-      type ProjectInfo = { quote_id: string; workflow_status: string };
+      type ProjectInfo = { proposal_id: string; workflow_status: string };
       const proposalIds = (recentProposals || []).filter(p => p.is_on_board).map(p => p.id);
       let projectMap: Record<string, string> = {};
       if (proposalIds.length > 0) {
-        const { data: projects } = await supabase.from('projects').select('quote_id, workflow_status').in('quote_id', proposalIds) as { data: ProjectInfo[] | null };
-        projectMap = (projects || []).reduce((acc, p) => ({ ...acc, [p.quote_id]: p.workflow_status }), {} as Record<string, string>);
+        const { data: projects } = await supabase.from('projects').select('proposal_id, workflow_status').in('proposal_id', proposalIds) as { data: ProjectInfo[] | null };
+        projectMap = (projects || []).reduce((acc, p) => ({ ...acc, [p.proposal_id]: p.workflow_status }), {} as Record<string, string>);
       }
 
       // Calculate stats
@@ -709,41 +772,49 @@ ${proposalsList}
 7. Reference specific proposal names when relevant
 
 == CRITICAL: MULTI-STEP WORKFLOWS ==
-ALWAYS guide users through steps ONE AT A TIME with confirmation at each step. Never try to do everything at once.
+Guide users through complex requests ONE STEP AT A TIME. After completing each step, automatically offer the next logical step.
 
-**TASK CREATION FLOW:**
-When user describes something they need to do (e.g., "send email to architect"):
-1. First, clarify: "I'll create a task to 'Send email to architect'. Should I add this to your task list?"
-2. Wait for user confirmation before creating the action
-3. After confirmation: "Done! Would you like me to set a reminder for when this is due?"
-4. If yes, ask: "When should I remind you?"
-5. Create reminder only after they specify a time
+**WORKFLOW CHAINING - VERY IMPORTANT:**
+When you complete an action, ALWAYS think about what naturally comes next:
+- Task created → Offer to set a reminder/due date
+- Reminder set → Confirm and offer related actions
+- Email drafted → Offer to send or schedule
+
+**TASK + REMINDER FLOW (most common):**
+User: "I need to call the architect about the project"
+Step 1: Create the task action immediately with the info you have
+→ action: { type: "create_task", params: { title: "Call the architect about the project" } }
+(System will auto-prompt: "Would you like me to set a reminder for when this is due?")
+
+Step 2: If user says "yes" or provides a time:
+→ action: { type: "create_reminder", params: { title: "Call the architect", due_date: "..." } }
 
 **REMINDER FLOW:**
 When user asks for a reminder (e.g., "remind me to X"):
-1. First ask: "What would you like to be reminded about?" (if not clear)
-2. Then ask: "When should I remind you?"
-3. Only AFTER you have BOTH pieces of info, create the action
+1. If they mention WHEN: Create task with due_date immediately
+2. If no time given: Ask "When should I remind you?" then create
 
 **EXAMPLE CONVERSATIONS:**
 
-User: "remind me to call the architect"
-Ada: "Sure! I'll create a task to 'Call the architect'. When would you like me to remind you?"
-(Wait for user to provide date/time before creating action)
+User: "remind me to call the architect tomorrow"
+Ada: (Create immediately - you have title AND time)
+→ action: { type: "create_task", params: { title: "Call the architect", due_date: "tomorrow" } }
+"Done! I'll remind you tomorrow to call the architect."
 
-User: "tomorrow at 2pm"
-Ada: (NOW create action) "Got it! I'll remind you tomorrow at 2pm to call the architect."
-→ action: { type: "create_task", params: { title: "Call the architect", due_date: "tomorrow 2pm" } }
+User: "create a task to review the proposal"
+Ada: (Create immediately - you have the title)
+→ action: { type: "create_task", params: { title: "Review the proposal" } }
+(System auto-follows up with reminder offer)
 
-User: "create a task for the Johnson proposal"
-Ada: "What task would you like me to create for the Johnson proposal?"
-(Wait for user response - don't assume)
+User: "yes, remind me Friday"
+Ada: (Continue the workflow)
+→ action: { type: "create_reminder", params: { title: "Review the proposal", due_date: "Friday" } }
 
 **KEY RULES:**
-- NEVER create an action until you have ALL required info
-- ALWAYS confirm what you're about to do before doing it
-- ONE step at a time - don't bundle multiple questions
-- If something is unclear, ASK - don't assume
+- Create action as soon as you have the core info (title for tasks)
+- The system will automatically prompt for follow-up steps
+- If user provides time with request, include it in the action
+- Keep the conversation flowing - don't over-confirm simple requests
 
 == CRITICAL: TASK vs ACTION INTENT ==
 When users describe something they need to do, create a TASK. Only perform actions if they explicitly ask YOU to do it:
@@ -869,34 +940,33 @@ ${formContext}
 5. Reference the proposal and client by name to show context awareness
 
 == CRITICAL: MULTI-STEP WORKFLOWS ==
-ALWAYS guide users through steps ONE AT A TIME with confirmation at each step. Never try to do everything at once.
+Guide users through complex requests ONE STEP AT A TIME. After completing each step, automatically offer the next logical step.
 
-**TASK/REMINDER FLOW:**
-When user wants a task or reminder:
-1. First understand WHAT they want to do
-2. Then ask WHEN they need to do it / be reminded
-3. Only AFTER you have BOTH pieces of info, create the action
+**WORKFLOW CHAINING:**
+When you complete an action, the system will automatically prompt for next steps:
+- Task created → System offers to set a reminder
+- You just need to create the action when you have the core info
 
-**EXAMPLE CONVERSATIONS:**
-
+**TASK + REMINDER FLOW:**
 User: "remind me to follow up"
-Ada: "Sure! When should I remind you to follow up on ${context.projectName}?"
-(Wait for user to provide date/time)
+Ada: Create task immediately with context from proposal
+→ action: { type: "create_task", params: { title: "Follow up on ${context.projectName} with ${context.clientName}" } }
+(System will auto-prompt: "Would you like me to set a reminder for when this is due?")
 
-User: "Friday"
-Ada: (NOW create action) "Done! I'll remind you on Friday to follow up with ${context.clientName}."
-→ action: { type: "create_task", params: { title: "Follow up on ${context.projectName}", due_date: "Friday" } }
+User: "yes, Friday"
+Ada: Create the reminder
+→ action: { type: "create_reminder", params: { title: "Follow up on ${context.projectName}", due_date: "Friday" } }
 
-User: "I need to send the revised quote"
-Ada: "I'll create a task for 'Send revised quote to ${context.clientName}'. When do you need to do this by?"
-(Wait for user response)
+User: "remind me Friday to send the quote"
+Ada: (Has both title AND time - create immediately)
+→ action: { type: "create_task", params: { title: "Send the quote to ${context.clientName}", due_date: "Friday" } }
 
 **KEY RULES:**
-- NEVER create an action until you have ALL required info
-- ALWAYS confirm what you're about to do before doing it
-- ONE step at a time - don't bundle multiple questions
-- If something is unclear, ASK - don't assume
-- Reference the current proposal/client to show context awareness
+- Create action as soon as you have the core info (title for tasks)
+- If user provides a time, include it as due_date
+- System handles follow-up prompts automatically
+- Reference the proposal/client names to show context awareness
+- Keep responses concise - don't over-explain
 
 == CRITICAL: TASK vs ACTION INTENT ==
 When users describe something they need to do, create a TASK. Only perform actions if they explicitly ask YOU to do it:
@@ -1117,7 +1187,7 @@ async function handleConfirmAction(params: {
       const { data: project } = await supabase
         .from('projects')
         .select('id')
-        .eq('quote_id', proposalId)
+        .eq('proposal_id', proposalId)
         .single();
 
       if (project) {
@@ -1131,20 +1201,33 @@ async function handleConfirmAction(params: {
       case 'create_task': {
         const taskParams = actionParams as { title?: string; description?: string; due_date?: string; priority?: string };
 
+        // Normalize priority to capitalized (DB constraint: 'Low', 'Medium', 'High')
+        const validPriorities = ['Low', 'Medium', 'High'];
+        const rawPriority = (taskParams.priority || 'Medium').trim();
+        // Capitalize first letter, lowercase rest
+        const normalizedPriority = rawPriority.charAt(0).toUpperCase() + rawPriority.slice(1).toLowerCase();
+        const priority = validPriorities.includes(normalizedPriority) ? normalizedPriority : 'Medium';
+
+        // Generate task reference number (e.g., "WAL-42")
+        const taskReference = await getNextTaskReference(supabase, organizationId);
+
         console.log('[create_task] Starting task creation:', {
           userId,
           organizationId,
           projectId,
           title: taskParams.title,
+          priority,
+          reference: taskReference,
         });
 
         const insertData = {
           project_id: projectId, // null for standalone tasks
           organization_id: organizationId,
+          reference: taskReference,
           title: taskParams.title || 'New Task',
           description: taskParams.description || '',
-          status: 'todo',
-          priority: taskParams.priority || 'medium',
+          status: 'To Do',
+          priority,
           due_date: taskParams.due_date || null,
           created_by: userId,
           assigned_to: userId,
@@ -1178,21 +1261,34 @@ async function handleConfirmAction(params: {
         // The notification system will send reminders based on the task's due_date
         const reminderParams = actionParams as { title?: string; due_date?: string; message?: string; priority?: string };
 
+        // Normalize priority to capitalized (DB constraint: 'Low', 'Medium', 'High')
+        const validReminderPriorities = ['Low', 'Medium', 'High'];
+        const rawReminderPriority = (reminderParams.priority || 'Medium').trim();
+        // Capitalize first letter, lowercase rest
+        const normalizedReminderPriority = rawReminderPriority.charAt(0).toUpperCase() + rawReminderPriority.slice(1).toLowerCase();
+        const reminderPriority = validReminderPriorities.includes(normalizedReminderPriority) ? normalizedReminderPriority : 'Medium';
+
+        // Generate task reference number (e.g., "WAL-43")
+        const reminderReference = await getNextTaskReference(supabase, organizationId);
+
         console.log('[create_reminder] Starting reminder creation:', {
           userId,
           organizationId,
           projectId,
           title: reminderParams.title,
           due_date: reminderParams.due_date,
+          priority: reminderPriority,
+          reference: reminderReference,
         });
 
         const reminderInsertData = {
           project_id: projectId,
           organization_id: organizationId,
+          reference: reminderReference,
           title: reminderParams.title || 'Reminder',
           description: reminderParams.message || `Reminder: ${reminderParams.title || 'Follow up'}`,
-          status: 'todo',
-          priority: reminderParams.priority || 'medium',
+          status: 'To Do',
+          priority: reminderPriority,
           due_date: reminderParams.due_date || null,
           created_by: userId,
           assigned_to: userId,
@@ -1491,11 +1587,52 @@ async function handleConfirmAction(params: {
         return { success: false, error: `Unknown action type: ${type}` };
     }
 
+    // Generate contextual follow-up message based on action type
+    let successMessage = `Done! I've created the ${result?.type}: "${result?.title}".`;
+    let followUpPrompt: string | undefined;
+    let isWorkflowComplete = false; // True when this is a final step
+
+    switch (type) {
+      case 'create_task':
+        // After creating a task, offer to set a reminder (workflow continues)
+        successMessage = `Done! I've added "${result?.title}" to your task list.`;
+        followUpPrompt = 'Would you like me to set a reminder for when this is due?';
+        break;
+      case 'create_reminder':
+        // Reminder is typically the final step of a workflow
+        successMessage = `Got it! I'll remind you about "${result?.title}".`;
+        isWorkflowComplete = true;
+        break;
+      case 'draft_email':
+        successMessage = `I've drafted the email "${result?.title}". You can review and send it from the proposal.`;
+        isWorkflowComplete = true;
+        break;
+      case 'create_proposal':
+        successMessage = `I've created a new proposal: "${result?.title}".`;
+        followUpPrompt = 'Would you like to add any details to it?';
+        break;
+      case 'create_notification':
+        successMessage = `Notification set: "${result?.title}".`;
+        isWorkflowComplete = true;
+        break;
+      default:
+        isWorkflowComplete = true;
+    }
+
+    // Add "anything else" prompt when workflow is complete
+    const closingPrompt = isWorkflowComplete ? '\n\nIs there anything else I can help you with?' : '';
+
+    // Combine message with follow-up or closing prompt
+    const fullMessage = followUpPrompt
+      ? `${successMessage}\n\n${followUpPrompt}`
+      : `${successMessage}${closingPrompt}`;
+
     return {
       success: true,
       data: {
         created: result,
-        message: `Successfully created ${result?.type}: "${result?.title}"`,
+        message: fullMessage,
+        followUpPrompt,
       },
     };
   } catch (error) {
