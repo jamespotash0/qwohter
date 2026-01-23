@@ -591,6 +591,33 @@ serve(async (req) => {
             .eq('access_blocked_reason', 'Payment failed');
         }
 
+        // Update billing period dates ONLY on actual subscription renewals
+        // Skip prorated invoices (seat changes, plan upgrades) - they don't change the billing period
+        // billing_reason: 'subscription_cycle' = renewal, 'subscription_update' = proration, 'subscription_create' = initial
+        const isRenewalInvoice = invoice.billing_reason === 'subscription_cycle';
+
+        if (invoice.subscription && isRenewalInvoice) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+
+            await supabase
+              .from('subscriptions')
+              .update({
+                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                stripe_subscription_status: subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('stripe_subscription_id', subscription.id);
+
+            console.log('Updated billing period from invoice.paid (renewal):', subscription.id);
+          } catch (err) {
+            console.error('Failed to update billing period from invoice.paid:', err);
+          }
+        } else if (invoice.subscription) {
+          console.log('Skipping billing period update - not a renewal invoice:', invoice.billing_reason);
+        }
+
         console.log('Invoice paid:', invoice.id);
         break;
       }

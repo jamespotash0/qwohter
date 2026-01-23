@@ -1018,7 +1018,14 @@ async function handleChat(params: {
         return `• ${num} = "${name}" (${client}) [${p.status}]${value}${boardStatus}`;
       }).join('\n') || 'No proposals yet.';
 
+      // Get current date for context
+      const currentDate = new Date();
+      const dateStr = currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
       systemPrompt = `You are Ada, a friendly and intelligent AI assistant for ${organization?.name || 'a business'} helping manage proposals and projects.
+
+== CURRENT DATE ==
+Today is ${dateStr}. Use this date as reference for all date-related queries and calculations.
 
 == CRITICAL RULES ==
 1. NEVER expose database IDs, UUIDs, or internal identifiers to users. Always refer to proposals by their proposal number or project name.
@@ -1259,7 +1266,14 @@ IMPORTANT: Don't ask users for "title", "subject", "body" etc. - extract these n
         ? `On Project Board: ${project.workflow_status}${project.priority ? ` (Priority: ${project.priority})` : ''}`
         : 'Not on project board yet.';
 
+      // Get current date for context (reuse if already defined, otherwise create)
+      const proposalCurrentDate = new Date();
+      const proposalDateStr = proposalCurrentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
       systemPrompt = `You are Ada, a friendly and intelligent AI assistant for ${organization?.name || 'a business'} helping manage proposals and projects.
+
+== CURRENT DATE ==
+Today is ${proposalDateStr}. Use this date as reference for all date-related queries and calculations.
 
 == USER CONTEXT ==
 - Role: ${effectiveRole} ${isAdmin ? '(has admin privileges)' : '(standard member)'}

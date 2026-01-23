@@ -338,8 +338,8 @@ export function useInviteMember(organizationId: string) {
       if (!user) throw new Error('User not authenticated');
 
       // Get current user's profile for inviter name
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: profile } = await (supabase
+        .from('profiles') as any)
         .select('full_name')
         .eq('id', user.id)
         .single();
@@ -347,8 +347,8 @@ export function useInviteMember(organizationId: string) {
       const inviterName = profile?.full_name || 'Your teammate';
 
       // Get organization details
-      const { data: organization } = await supabase
-        .from('organizations')
+      const { data: organization } = await (supabase
+        .from('organizations') as any)
         .select('name')
         .eq('id', organizationId)
         .single();
@@ -386,24 +386,31 @@ export function useInviteMember(organizationId: string) {
 }
 
 /**
- * Hook: Remove Member
+ * Hook: Deactivate Member (Soft Delete)
  *
- * Removes a member from the organization
+ * Deactivates a member by setting their status to 'Inactive'.
+ * This is a soft delete - member data is preserved but access is revoked.
+ *
+ * @deprecated Alias: useRemoveMember is kept for backwards compatibility
  */
 export function useRemoveMember(organizationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (membershipId: string) => {
-      const { error } = await supabase
-        .from('memberships')
-        .delete()
+      // Soft delete: Set status to 'Inactive' instead of hard delete
+      const { error } = await (supabase
+        .from('memberships') as any)
+        .update({
+          status: 'Inactive', //membership_status
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', membershipId);
 
       if (error) throw error;
     },
     onSuccess: async () => {
-      toast.success('Member removed successfully');
+      toast.success('Member deactivated successfully');
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
@@ -416,10 +423,13 @@ export function useRemoveMember(organizationId: string) {
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to remove member: ${error.message}`);
+      toast.error(`Failed to deactivate member: ${error.message}`);
     },
   });
 }
+
+// Alias for backwards compatibility
+export const useDeactivateMember = useRemoveMember;
 
 /**
  * Hook: Update Member Role
@@ -431,8 +441,8 @@ export function useUpdateMemberRole(organizationId: string) {
 
   return useMutation({
     mutationFn: async ({ membershipId, role }: { membershipId: string; role: 'Owner' | 'Admin' | 'Member' }) => {
-      const { data, error } = await supabase
-        .from('memberships')
+      const { data, error } = await (supabase
+        .from('memberships') as any)
         .update({ role, updated_at: new Date().toISOString() })
         .eq('id', membershipId)
         .select()
@@ -462,14 +472,21 @@ export function useUpdateMemberStatus(organizationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ membershipId, status }: { membershipId: string; status: 'Active' | 'Suspended' }) => { //membership_status
-      const { data, error } = await supabase
-        .from('memberships')
-        .update({
-          status, //membership_status
-          updated_at: new Date().toISOString(),
-          joined_at: status === 'Active' ? new Date().toISOString() : undefined, //membership_status
-        })
+    mutationFn: async ({ membershipId, status }: { membershipId: string; status: 'Active' | 'Suspended' | 'Inactive' }) => { //membership_status
+      // Build update object - only include joined_at when activating
+      const updateData: { status: typeof status; updated_at: string; joined_at?: string } = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Set joined_at only when activating a member
+      if (status === 'Active') {
+        updateData.joined_at = new Date().toISOString();
+      }
+
+      const { data, error } = await (supabase
+        .from('memberships') as any)
+        .update(updateData)
         .eq('id', membershipId)
         .select()
         .single();

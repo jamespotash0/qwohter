@@ -202,32 +202,32 @@ export interface UpdateNotificationPreferencesInput {
   email_on_seat_count_changed?: boolean;
 }
 
-// Default preferences for new users
+// Default preferences for new users - all notifications OFF by default
 export const DEFAULT_NOTIFICATION_PREFERENCES: Omit<NotificationPreferences, 'id' | 'user_id' | 'organization_id' | 'created_at' | 'updated_at'> = {
-  email_enabled: true,
+  email_enabled: false,
   sms_enabled: false,
   sms_phone: null,
   notification_email: null,
-  email_on_signature_sent: true,
-  email_on_signature_viewed: true,
-  email_on_signature_signed: true,
-  email_on_proposal_submitted: true,
-  email_on_proposal_won: true,
+  email_on_signature_sent: false,
+  email_on_signature_viewed: false,
+  email_on_signature_signed: false,
+  email_on_proposal_submitted: false,
+  email_on_proposal_won: false,
   email_on_proposal_rejected: false,
-  email_on_mention: true,
-  email_on_task_assigned: true,
-  email_on_member_joined: true,
-  email_on_reminder_due: true,
-  email_on_task_due: true,
-  email_on_task_reminder: true,
+  email_on_mention: false,
+  email_on_task_assigned: false,
+  email_on_member_joined: false,
+  email_on_reminder_due: false,
+  email_on_task_due: false,
+  email_on_task_reminder: false,
   sms_on_task_reminder: false,
   // Payment/Subscription defaults
-  email_on_payment_success: true,
-  email_on_payment_failed: true,
-  email_on_trial_ending: true,
-  email_on_subscription_activated: true,
-  email_on_subscription_canceled: true,
-  email_on_subscription_renewed: true,
+  email_on_payment_success: false,
+  email_on_payment_failed: false,
+  email_on_trial_ending: false,
+  email_on_subscription_activated: false,
+  email_on_subscription_canceled: false,
+  email_on_subscription_renewed: false,
   email_on_seat_count_changed: false,
 };
 

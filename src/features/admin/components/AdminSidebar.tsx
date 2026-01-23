@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   LogOut,
   ListChecks,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logoutAdmin } from './AdminPasswordGate';
@@ -32,6 +33,12 @@ interface NavSection {
 }
 
 const navSections: NavSection[] = [
+  {
+    title: 'User Management',
+    items: [
+      { label: 'Send App Invite', path: '/admin/appinvite', icon: UserPlus },
+    ],
+  },
   {
     title: 'Product Hierarchy',
     items: [

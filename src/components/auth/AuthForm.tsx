@@ -286,8 +286,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         )}
       </form>
 
-      {/* Simple toggle link */}
-      <p className="text-center text-sm text-[#171717]/50" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+      {/* Disabled create-account button button */}
+
+      {/* <p className="text-center text-sm text-[#171717]/50" style={{ fontFamily: 'Urbanist, sans-serif' }}>
         {isSignUp ? "Already have an account? " : "Don't have an account? "}
         <button
           type="button"
@@ -296,7 +297,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         >
           {isSignUp ? "Log in" : "Sign up"}
         </button>
-      </p>
+      </p> */}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
+import { ScrollToTop } from "@/components/common/ScrollToTop";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { useUser, useAuthStatus } from "@/auth";
@@ -15,6 +16,12 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const user = useUser();
   const { isInitialized } = useAuthStatus();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
+
+  // Check if URL has invite token - if so, let Auth.tsx handle the loading state
+  const hasInviteToken = React.useMemo(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return !!(urlParams.get('invite') || urlParams.get('appinvite'));
+  }, []);
 
   // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
   // Hooks must always be called in the same order - move this BEFORE the loading check
@@ -44,7 +51,8 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   // Show loading spinner while auth is initializing (prevents flash of sign-in page)
-  if (!isInitialized) {
+  // Skip this spinner if there's an invite token - Auth.tsx shows its own "Validating invitation..." spinner
+  if (!isInitialized && !hasInviteToken) {
     return (
       <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
         <div className="text-center">
@@ -78,8 +86,10 @@ const AccessibilityStatement = lazy(() => import("@/pages/legal/AccessibilitySta
 const DoNotSell = lazy(() => import("@/pages/legal/DoNotSell"));
 const ProposalSigningPage = lazy(() => import("@/pages/ProposalSigningPage"));
 
-// Authentication pages
-const Auth = lazy(() => import("@/pages/Auth"));
+// Authentication pages - import eagerly to prevent loading spinner flash
+// Auth is needed immediately on login/signup and handles its own loading states
+import Auth from "@/pages/Auth";
+import InvalidInvitation from "@/pages/InvalidInvitation";
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
@@ -125,6 +135,7 @@ const OptionValuesPage = lazy(() => import("@/features/admin/pages/OptionValuesP
 const ModelOptionsPage = lazy(() => import("@/features/admin/pages/ModelOptionsPage").then(m => ({ default: m.ModelOptionsPage })));
 const ModelAllowedValuesPage = lazy(() => import("@/features/admin/pages/ModelAllowedValuesPage").then(m => ({ default: m.ModelAllowedValuesPage })));
 const RulesPage = lazy(() => import("@/features/admin/pages/RulesPage").then(m => ({ default: m.RulesPage })));
+const AdminInvitePage = lazy(() => import("@/features/admin/pages/AdminInvitePage").then(m => ({ default: m.AdminInvitePage })));
 
 // Products page - HIDDEN for now
 // const Products = lazy(() => import("@/pages/Products"));
@@ -152,6 +163,9 @@ const PageLoader = () => (
 export const AppRouter = () => (
   <ErrorBoundary>
     <BrowserRouter>
+      {/* Scroll to top on route change */}
+      <ScrollToTop />
+
       {/* Ada - Global AI Assistant */}
       <AdaFloatingWidget />
 
@@ -194,6 +208,7 @@ export const AppRouter = () => (
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
+          <Route path="/invalid-invitation" element={<InvalidInvitation />} />
 
           {/* OAuth callback routes */}
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
@@ -201,7 +216,8 @@ export const AppRouter = () => (
           {/* Legacy redirects */}
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
-          <Route path="/signup" element={<Navigate to="/create-account" replace />} />
+          {/* Public signup is disabled - redirect to sign-in */}
+          <Route path="/signup" element={<Navigate to="/sign-in" replace />} />
 
           {/* Proposal Builder V4 - Full screen Apple-level design */}
           <Route path="/proposals/builder" element={<FormBuilderV4 />} />
@@ -215,6 +231,7 @@ export const AppRouter = () => (
           {/* Admin Panel - Product Catalog Management (full-screen with own layout) */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
+            <Route path="appinvite" element={<AdminInvitePage />} />
             <Route path="products/domains" element={<DomainsPage />} />
             <Route path="products/manufacturers" element={<ManufacturersPage />} />
             <Route path="products/lines" element={<ProductLinesPage />} />

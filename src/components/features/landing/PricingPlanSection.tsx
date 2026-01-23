@@ -78,7 +78,7 @@ export const PricingPlanSection = (): JSX.Element => {
             </ul>
 
             <Button
-              onClick={() => navigate('/create-account')}
+              onClick={() => navigate('/demo')}
               className="flex gap-[5px] w-full bg-[#ee6c4d] hover:bg-[#d95b3e] items-center justify-center px-[30px] py-2.5 relative flex-[0_0_auto] rounded-3xl h-auto transition-colors"
             >
               <span className="relative flex-1 [font-family:'Urbanist',Helvetica] font-semibold text-white text-base text-center tracking-[0] leading-6">

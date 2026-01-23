@@ -125,7 +125,7 @@ const Settings = () => {
         id: "profile",
         label: "Account",
         icon: <UserIcon className="w-4 h-4" />,
-        component: <ProfileTab user={user as any} profile={profile} userRole={userRole || 'Member'} />,
+        component: <ProfileTab user={user as any} profile={profile} />,
         alwaysAvailable: true
       },
       {

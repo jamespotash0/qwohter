@@ -37,6 +37,7 @@ export interface OrganizationMember {
   joined_at: string;
   email?: string;
   full_name?: string;
+  avatar_url?: string;
   join_type: 'Invited' | 'Direct';
   department?: string | null;
 }
@@ -253,15 +254,24 @@ export interface SubscriptionStatus {
 
 /**
  * Check subscription status for organization
+ * Handles trial expiration, grace periods, and access blocking
  */
 export async function checkSubscriptionStatus(organizationId: string): Promise<SubscriptionStatus> {
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('stripe_subscription_status, current_period_end')
+    .select('stripe_subscription_status, current_period_end, is_active, access_blocked, access_blocked_reason, trial_end, has_payment_method')
     .eq('organization_id', organizationId)
-    .single<{ stripe_subscription_status: string | null; current_period_end: string | null }>();
+    .single<{
+      stripe_subscription_status: string | null;
+      current_period_end: string | null;
+      is_active: boolean;
+      access_blocked: boolean;
+      access_blocked_reason: string | null;
+      trial_end: string | null;
+      has_payment_method: boolean;
+    }>();
 
-  if (error) {
+  if (error || !data) {
     return {
       hasAccess: false,
       status: null,
@@ -269,14 +279,64 @@ export async function checkSubscriptionStatus(organizationId: string): Promise<S
     };
   }
 
-  // Case-insensitive comparison to match database trigger
-  const hasAccess = data.stripe_subscription_status?.toLowerCase() === 'active' ||
-                    data.stripe_subscription_status?.toLowerCase() === 'trialing';
+  // Check access blocked flag (manual override)
+  if (data.access_blocked) {
+    return {
+      hasAccess: false,
+      status: data.stripe_subscription_status,
+      reason: data.access_blocked_reason || 'Access blocked',
+    };
+  }
+
+  // Check is_active flag (master switch)
+  if (!data.is_active) {
+    return {
+      hasAccess: false,
+      status: data.stripe_subscription_status,
+      reason: 'Subscription is not active',
+    };
+  }
+
+  // Case-insensitive status check
+  const status = data.stripe_subscription_status?.toLowerCase();
+  const validStatuses = ['active', 'trialing'];
+
+  if (!status || !validStatuses.includes(status)) {
+    return {
+      hasAccess: false,
+      status: data.stripe_subscription_status,
+      reason: data.stripe_subscription_status
+        ? `Subscription status: ${data.stripe_subscription_status}`
+        : 'No subscription status set',
+    };
+  }
+
+  // Handle trial expiration with 3-day grace period
+  if (status === 'trialing' && data.trial_end) {
+    const now = new Date();
+    const trialEndDate = new Date(data.trial_end);
+    const isExpired = trialEndDate < now;
+
+    if (isExpired && !data.has_payment_method) {
+      // Check grace period (3 days after trial end)
+      const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+      const inGracePeriod = now <= gracePeriodEnd;
+
+      if (!inGracePeriod) {
+        return {
+          hasAccess: false,
+          status: data.stripe_subscription_status,
+          reason: 'Your free trial and grace period have expired. Please add a payment method to continue.',
+        };
+      }
+      // In grace period - allow access but could show warning
+    }
+  }
 
   return {
-    hasAccess,
+    hasAccess: true,
     status: data.stripe_subscription_status,
-    reason: hasAccess ? '' : 'Subscription is not active',
+    reason: '',
   };
 }
 

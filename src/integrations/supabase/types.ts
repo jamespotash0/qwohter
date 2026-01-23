@@ -109,6 +109,7 @@ export interface Database {
           id: string;
           email: string;
           full_name: string | null;
+          is_super_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -116,6 +117,7 @@ export interface Database {
           id: string;
           email: string;
           full_name?: string | null;
+          is_super_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -123,6 +125,7 @@ export interface Database {
           id?: string;
           email?: string;
           full_name?: string | null;
+          is_super_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -219,6 +222,79 @@ export interface Database {
           {
             foreignKeyName: "invite_tokens_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      signup_invites: {
+        Row: {
+          id: string;
+          token: string;
+          email: string;
+          expires_at: string;
+          is_used: boolean;
+          used_at: string | null;
+          used_by_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by_user_id: string | null;
+          revoked_at: string | null;
+          revoked_by_user_id: string | null;
+          email_sent_at: string | null;
+          email_error: string | null;
+        };
+        Insert: {
+          id?: string;
+          token: string;
+          email: string;
+          expires_at: string;
+          is_used?: boolean;
+          used_at?: string | null;
+          used_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by_user_id?: string | null;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          email_sent_at?: string | null;
+          email_error?: string | null;
+        };
+        Update: {
+          id?: string;
+          token?: string;
+          email?: string;
+          expires_at?: string;
+          is_used?: boolean;
+          used_at?: string | null;
+          used_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by_user_id?: string | null;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          email_sent_at?: string | null;
+          email_error?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "signup_invites_used_by_user_id_fkey";
+            columns: ["used_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "signup_invites_created_by_user_id_fkey";
+            columns: ["created_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "signup_invites_revoked_by_user_id_fkey";
+            columns: ["revoked_by_user_id"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];

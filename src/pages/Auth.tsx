@@ -19,6 +19,7 @@ import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { SignupRecoveryPrompt } from "@/components/auth/SignupRecoveryPrompt";
+import { InviteRequiredScreen } from "@/components/auth/InviteRequiredScreen";
 import { validateInviteTokenDetailed } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,8 +59,38 @@ const Auth = () => {
   const [otpAttempts, setOtpAttempts] = useState(0);
   const MAX_OTP_ATTEMPTS = 3;
 
+  // Track invite token validation to prevent form flash
+  const [validatingInviteToken, setValidatingInviteToken] = useState(() => {
+    // Initialize to true if URL has invite token - prevents form flash
+    const urlParams = new URLSearchParams(window.location.search);
+    return !!(urlParams.get('invite') && location.pathname === '/create-account');
+  });
+
+  // Track when user tries to access create-account without an invite
+  const [showInviteRequired, setShowInviteRequired] = useState(false);
+
   // Determine if user is an invitee (has pending invite token or organizationId set)
   const isInvitee = !!(formState.organizationId || sessionStorage.getItem('pendingInviteToken'));
+
+  // ============================================================================
+  // BLOCK PUBLIC SIGN-UP (require invite token)
+  // ============================================================================
+  useEffect(() => {
+    // Only check on /create-account route
+    if (location.pathname !== '/create-account') return;
+
+    const urlParams = new URLSearchParams(location.search);
+    const inviteToken = urlParams.get('invite');
+    const appInvite = urlParams.get('appinvite');
+    const pendingInvite = sessionStorage.getItem('pendingInviteToken');
+
+    // If no invite token of any kind, show the invite required screen
+    if (!inviteToken && !appInvite && !pendingInvite) {
+      setShowInviteRequired(true);
+    } else {
+      setShowInviteRequired(false);
+    }
+  }, [location.pathname, location.search]);
 
   // ============================================================================
   // RESET FORM WHEN SWITCHING BETWEEN SIGN-IN AND CREATE-ACCOUNT
@@ -83,6 +114,7 @@ const Auth = () => {
     if (formState.organizationId) return;
 
     const handleInviteToken = async () => {
+      setValidatingInviteToken(true);
       try {
         processedInviteTokenRef.current = inviteToken.trim();
 
@@ -113,36 +145,44 @@ const Auth = () => {
             title: "Invite link detected",
             description: "You've been invited to join an organization",
           });
-        } else {
-          const errorMessage = validationResult.error?.userMessage || "This invite link is invalid.";
-          const errorTitle = validationResult.error?.type === 'expired'
-            ? "Invitation Expired"
-            : validationResult.error?.type === 'used'
-            ? "Invitation Already Used"
-            : validationResult.error?.type === 'revoked'
-            ? "Invitation Revoked"
-            : "Invalid Invitation";
 
-          toast({
-            title: errorTitle,
-            description: errorMessage,
-            variant: "destructive",
-          });
+          // Token is valid - show the form
+          setValidatingInviteToken(false);
+        } else {
+          // Navigate to the invalid invitation page with error type
+          const errorType = validationResult.error?.type || 'Invalid';
 
           processedInviteTokenRef.current = null;
 
-          setTimeout(() => {
-            navigate('/');
-          }, 3000);
+          // Remove the invite param from URL before navigating
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('invite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          navigate('/invalid-invitation', {
+            replace: true,
+            state: {
+              errorType,
+              fromInviteValidation: true,
+            },
+          });
         }
       } catch (error) {
         console.error('Error validating invite token:', error);
-        toast({
-          title: "Error",
-          description: "Could not validate invite link",
-          variant: "destructive",
-        });
         processedInviteTokenRef.current = null;
+
+        // Remove the invite param from URL before navigating
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('invite');
+        window.history.replaceState({}, '', newUrl.toString());
+
+        navigate('/invalid-invitation', {
+          replace: true,
+          state: {
+            errorType: 'Invalid',
+            fromInviteValidation: true,
+          },
+        });
       }
     };
 
@@ -531,6 +571,89 @@ const Auth = () => {
   // ============================================================================
   // RENDER
   // ============================================================================
+
+  // Show loading state while validating invite token to prevent form flash
+  if (validatingInviteToken) {
+    return (
+      <div className="min-h-screen bg-[#FFFEFA] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-[#EE6C4D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p
+            className="text-[#171717]/50 text-sm"
+            style={{ fontFamily: 'Urbanist, sans-serif' }}
+          >
+            Validating invitation...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show invite required screen when accessing /create-account without an invite
+  if (showInviteRequired) {
+    return (
+      <div className="min-h-screen bg-[#FFFEFA] flex">
+        {/* Left Panel - Cream & Pink Style (same as main auth) */}
+        <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] flex-col items-center justify-center p-10 xl:p-12 relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div
+              className="absolute top-[-100px] right-[-150px] w-[500px] h-[500px] rounded-full blur-[100px] opacity-40"
+              style={{ background: '#EE6C4D' }}
+            />
+            <div
+              className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] rounded-full blur-[80px] opacity-30"
+              style={{ background: '#F7C4BB' }}
+            />
+          </div>
+          <div className="relative z-10 text-center max-w-[600px] px-4">
+            <div className="cursor-pointer mb-8" onClick={() => navigate('/')}>
+              <img
+                src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+                alt="Qwohter"
+                className="h-[42px] w-auto mx-auto"
+              />
+            </div>
+            <h1
+              className="text-[28px] xl:text-[32px] leading-[1.2] tracking-[-0.01em] text-[#171717] mb-8"
+              style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
+            >
+              The all-in-one tool to automate
+              <br />
+              proposals, billing, and management.
+            </h1>
+            <div className="pt-6 border-t border-[#171717]/10">
+              <p className="text-sm text-[#171717]/50 mb-3" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+                Trusted by companies in these industries
+              </p>
+              <p className="text-sm text-[#171717]/70" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+                Construction · Landscaping · HVAC · Roofing · Electrical · Plumbing
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Invite Required Screen */}
+        <div className="flex-1 flex flex-col min-h-screen bg-[#FFF9F7]">
+          <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#FFF9F7]/90 backdrop-blur-md border-b border-[#171717]/5">
+            <div className="px-6 py-4">
+              <div className="cursor-pointer" onClick={() => navigate('/')}>
+                <img
+                  src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+                  alt="Qwohter"
+                  className="h-7 w-auto"
+                />
+              </div>
+            </div>
+          </header>
+          <div className="flex-1 flex items-center justify-center px-6 py-20 lg:py-12">
+            <div className="w-full max-w-[420px]">
+              <InviteRequiredScreen />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FFFEFA] flex">
