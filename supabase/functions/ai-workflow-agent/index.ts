@@ -951,8 +951,9 @@ async function handleChat(params: {
   }
 
   try {
-    // Get organization info
-    const { data: organization } = await supabase.from('organizations').select('name, organization_info').eq('id', organizationId).single();
+    // Get organization info including approval workflow setting
+    const { data: organization } = await supabase.from('organizations').select('name, organization_info, require_proposal_approval').eq('id', organizationId).single();
+    const requiresApproval = organization?.require_proposal_approval ?? false;
 
     // Fetch user's role if not provided
     let effectiveRole = userRole;
@@ -1007,7 +1008,7 @@ async function handleChat(params: {
         proposalIdMap[key] = p.id;
       });
 
-      // User-friendly list with clear number→name mapping (no database IDs exposed)
+      // Proposals list with IDs for tool calls (Ada should NOT expose IDs to users in responses)
       const proposalsList = proposals.map((p: ProposalSummary) => {
         const num = p.proposal_number || 'No number';
         const name = p.project_name || 'Unnamed';
@@ -1015,7 +1016,8 @@ async function handleChat(params: {
         const value = p.total_value ? ` - $${p.total_value.toLocaleString()}` : '';
         // Include board/project status if on board
         const boardStatus = p.is_on_board ? ` → Project: ${projectMap[p.id] || 'On Board'}` : '';
-        return `• ${num} = "${name}" (${client}) [${p.status}]${value}${boardStatus}`;
+        // Include ID for tool calls (Ada uses this internally but never shows to users)
+        return `• ${num} = "${name}" (${client}) [${p.status}]${value}${boardStatus} {id:${p.id}}`;
       }).join('\n') || 'No proposals yet.';
 
       // Get current date for context
@@ -1028,9 +1030,11 @@ async function handleChat(params: {
 Today is ${dateStr}. Use this date as reference for all date-related queries and calculations.
 
 == CRITICAL RULES ==
-1. NEVER expose database IDs, UUIDs, or internal identifiers to users. Always refer to proposals by their proposal number or project name.
+1. NEVER expose database IDs, UUIDs, or internal identifiers to users in your responses. Always refer to proposals by their proposal number or project name when talking to users.
 
-2. PROPOSAL NUMBER MATCHING: When a user mentions a proposal number (e.g., "PR-101", "P-001"), ALWAYS look up that number in the RECENT PROPOSALS list below to find the matching project name. The format is:
+2. USING PROPOSAL IDs FOR TOOLS: Each proposal in the RECENT PROPOSALS list includes an {id:...} at the end. Use this ID when calling tools like update_status, update_proposal, etc. Example: If user says "change PR-104 to Submitted", find PR-104 in the list, extract its {id:...}, and pass that as proposal_id to the tool.
+
+3. PROPOSAL NUMBER MATCHING: When a user mentions a proposal number (e.g., "PR-101", "P-001"), ALWAYS look up that number in the RECENT PROPOSALS list below to find the matching project name. The format is:
    • Number = "Project Name" (Client) [Status] - $Value → Project: WorkflowStatus
    - Example: If user says "PR-101" and the list shows "• PR-101 = \"Testin\" (No client) [Won] → Project: In Progress", then:
      - PR-101 IS the "Testin" proposal
@@ -1043,7 +1047,8 @@ Today is ${dateStr}. Use this date as reference for all date-related queries and
 
 == USER CONTEXT ==
 - Role: ${effectiveRole} ${isAdmin ? '(has admin privileges)' : '(standard member)'}
-
+- Approval Workflow: ${requiresApproval ? 'ENABLED - Members need admin approval to submit proposals' : 'DISABLED - Anyone can submit proposals directly'}
+${!isAdmin && requiresApproval ? '- NOTE: Since you are a Member and approval is required, submitting a proposal will create an approval request for an Admin to review.' : ''}
 == ORGANIZATION OVERVIEW ==
 - Recent Proposals: ${proposalStats.total}
 - By Status: ${proposalStats.draft} Draft, ${proposalStats.submitted} Submitted, ${proposalStats.won} Won, ${proposalStats.rejected} Rejected
@@ -1177,7 +1182,7 @@ THINGS YOU CAN DO:
 - Create new proposals from scratch
 - Draft follow-up emails
 - Update proposal details (project name, client info, status, notes) - can update proposals in ANY status
-- Change proposal status between Draft, Submitted, Won, Rejected - ANY status can change to ANY other status directly (no restrictions). WARN user: changing FROM Won to any other status will remove it from the project board
+- Change proposal status between Draft, Submitted, Won, Rejected - ANY status can change to ANY other status directly (no restrictions based on current status). WARN user: changing FROM Won to any other status will remove it from the project board. NOTE: Approval workflow ONLY applies when: changing TO "Submitted" + user is Member role + org has approval enabled. Never tell users there are status-based restrictions.
 - Assign tasks to team members
 - Send proposals/projects to boards
 - Add attachments and documents to proposals
@@ -1278,7 +1283,8 @@ Today is ${proposalDateStr}. Use this date as reference for all date-related que
 
 == USER CONTEXT ==
 - Role: ${effectiveRole} ${isAdmin ? '(has admin privileges)' : '(standard member)'}
-
+- Approval Workflow: ${requiresApproval ? 'ENABLED - Members need admin approval to submit proposals' : 'DISABLED - Anyone can submit proposals directly'}
+${!isAdmin && requiresApproval ? '- NOTE: Since you are a Member and approval is required, submitting a proposal will create an approval request for an Admin to review.' : ''}
 == CURRENT PROPOSAL ==
 - Project: ${context.projectName}
 - Client: ${context.clientName}${context.clientCompany ? ` (${context.clientCompany})` : ''}
@@ -1385,7 +1391,7 @@ THINGS YOU CAN DO:
 - Create tasks, reminders, and notifications for this proposal
 - Draft follow-up emails
 - Update proposal details (project name, client info, status, notes) - can update proposals in ANY status
-- Change proposal status between Draft, Submitted, Won, Rejected - ANY status can change to ANY other status directly (no restrictions). WARN user: changing FROM Won to any other status will remove it from the project board
+- Change proposal status between Draft, Submitted, Won, Rejected - ANY status can change to ANY other status directly (no restrictions based on current status). WARN user: changing FROM Won to any other status will remove it from the project board. NOTE: Approval workflow ONLY applies when: changing TO "Submitted" + user is Member role + org has approval enabled. Never tell users there are status-based restrictions.
 - Assign tasks to team members
 - Send this proposal to a board
 - Add attachments and documents

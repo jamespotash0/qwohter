@@ -9,6 +9,7 @@ import { createTool } from './toolRegistry.ts';
 import type { RegisteredTool, ToolContext, ToolResult } from './types.ts';
 
 interface UpdateStatusParams {
+  proposal_id?: string; // Optional - used in global chat mode to specify which proposal
   status?: string;
   comment?: string; // Optional comment for approval request
 }
@@ -153,10 +154,14 @@ export const updateStatusTool: RegisteredTool = createTool({
     function: {
       name: 'update_status',
       description:
-        'Update a proposal status. Use when user wants to mark a proposal as won, rejected, submitted, or move it back to draft. If approval is required, it will create an approval request instead of submitting directly.',
+        'Update a proposal status. ANY status can change to ANY other status directly - there are NO restrictions based on current status. Approval is ONLY required when: 1) changing TO Submitted, 2) user has Member role (not Admin/Owner), 3) organization has approval workflow enabled. Do NOT tell users there are restrictions based on current status - there are none.',
       parameters: {
         type: 'object',
         properties: {
+          proposal_id: {
+            type: ['string', 'null'],
+            description: 'The proposal ID to update. Required when calling from global chat. Use the ID from get_proposals or when user specifies a proposal number.',
+          },
           status: {
             type: 'string',
             enum: ['Draft', 'Submitted', 'Won', 'Rejected'],
@@ -174,13 +179,20 @@ export const updateStatusTool: RegisteredTool = createTool({
   },
   metadata: {
     requiresConfirmation: true,
-    requiresProposalId: true,
+    requiresProposalId: false, // Now optional - can come from params or context
     category: 'proposal',
   },
   execute: async (params: Record<string, unknown>, context: ToolContext): Promise<ToolResult> => {
-    const { supabase, organizationId, userId, proposalId, userRole } = context;
+    const { supabase, organizationId, userId, proposalId: contextProposalId, userRole } = context;
     const statusParams = params as unknown as UpdateStatusParams;
     const newStatus = statusParams.status;
+
+    // Use proposal_id from params if provided, otherwise fall back to context
+    const proposalId = statusParams.proposal_id || contextProposalId;
+
+    if (!proposalId) {
+      return { success: false, error: 'Proposal ID is required. Please specify which proposal to update.' };
+    }
 
     if (!newStatus) {
       return { success: false, error: 'Status is required for update_status action' };
