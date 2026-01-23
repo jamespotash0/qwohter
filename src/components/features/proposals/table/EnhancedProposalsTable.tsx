@@ -168,13 +168,20 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   const columnResizeMode: ColumnResizeMode = 'onChange';
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Handle status change with confirmation for downgrades from Won/Rejected
+  // Handle status change with confirmation for status changes that have side effects
+  // - Won -> anything: removes from project board, affects analytics
+  // - Rejected -> Draft/Submitted: reopens the proposal
   const handleStatusChangeWithConfirm = useCallback((proposal: Proposal, newStatus: string) => {
     const currentStatus = proposal.status || 'Draft';
-    const isDowngrade = (currentStatus === 'Won' || currentStatus === 'Rejected') &&
-                        (newStatus === 'Draft' || newStatus === 'Submitted');
 
-    if (isDowngrade) {
+    // Show confirmation when leaving Won status (removes from project board)
+    const leavingWon = currentStatus === 'Won' && newStatus !== 'Won';
+    // Show confirmation when reopening a rejected proposal
+    const reopeningRejected = currentStatus === 'Rejected' && (newStatus === 'Draft' || newStatus === 'Submitted');
+
+    const needsConfirmation = leavingWon || reopeningRejected;
+
+    if (needsConfirmation) {
       setStatusChangeConfirm({
         proposalId: proposal.id,
         proposalNumber: proposal.proposal_number || 'this proposal',
@@ -1240,15 +1247,18 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Status Change Confirmation (for downgrading from Won/Rejected) */}
+      {/* Status Change Confirmation (for status changes with side effects) */}
       <AlertDialog open={!!statusChangeConfirm} onOpenChange={() => setStatusChangeConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Change Status Back to {statusChangeConfirm?.newStatus}?</AlertDialogTitle>
+            <AlertDialogTitle>Change Status to {statusChangeConfirm?.newStatus}?</AlertDialogTitle>
             <AlertDialogDescription>
               <strong>{statusChangeConfirm?.proposalNumber}</strong> is currently marked as <strong>{statusChangeConfirm?.currentStatus}</strong>.
-              {statusChangeConfirm?.currentStatus === 'Won' && (
-                <> Changing it back to {statusChangeConfirm?.newStatus} will affect your Analytics, Projects, and reporting.</>
+              {statusChangeConfirm?.currentStatus === 'Won' && statusChangeConfirm?.newStatus === 'Rejected' && (
+                <> Changing to Rejected will remove it from the Project Board and affect your Analytics.</>
+              )}
+              {statusChangeConfirm?.currentStatus === 'Won' && statusChangeConfirm?.newStatus !== 'Rejected' && (
+                <> Changing to {statusChangeConfirm?.newStatus} will remove it from the Project Board and affect your Analytics.</>
               )}
               {statusChangeConfirm?.currentStatus === 'Rejected' && (
                 <> Are you sure you want to reopen this proposal?</>
