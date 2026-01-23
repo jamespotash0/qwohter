@@ -134,6 +134,7 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          org_prefix: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -147,6 +148,7 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
+          org_prefix?: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -160,6 +162,7 @@ export interface Database {
         Update: {
           id?: string;
           name?: string;
+          org_prefix?: string;
           found_via?: string;
           phone_number?: string;
           fax_number?: string | null;

@@ -16,6 +16,7 @@ import * as Sentry from '@sentry/react';
 export interface Organization {
   id: string;
   name: string;
+  org_prefix: string; // Stable prefix for task references (e.g., "WAL"), doesn't change if org renamed
 
   phone_number?: string;
   fax_number?: string;

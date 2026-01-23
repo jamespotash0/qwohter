@@ -10,6 +10,7 @@ import { onboardingStateHelpers } from "@/services/onboardingStateService";
 import { OrganizationCreationLimiter } from "@/services/rateLimitingService";
 import { tempSignupService } from "@/services/tempSignupService";
 import * as authService from "@/auth/services/authService";
+import { generateOrgPrefix } from "@/utils/orgPrefixGenerator";
 
 export interface AuthResult {
   success: boolean;
@@ -518,8 +519,12 @@ export const authFlowHelpers = {
       }
 
       // --- Transaction-safe insert via RPC function ---
+      // Generate stable prefix for task references (Jira-style: stays fixed even if org renamed)
+      const orgPrefix = generateOrgPrefix(choice.orgName);
+
       console.log('🏢 [DEBUG] Creating organization with RPC:', {
         orgName: choice.orgName,
+        orgPrefix,
         userId,
         industry,
         foundVia
@@ -527,6 +532,7 @@ export const authFlowHelpers = {
 
       const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
         org_name: sanitizeInput.string(choice.orgName),
+        org_prefix: orgPrefix,
         found_via: foundVia,
         industry: industry,
         owner_id: userId

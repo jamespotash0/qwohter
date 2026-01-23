@@ -129,20 +129,22 @@ function getOrgInitials(orgName: string): string {
 
 /**
  * Get the next task reference number for an organization
+ * Uses stored org_prefix for consistency (doesn't change if org is renamed)
  */
 export async function getNextTaskReference(
   supabase: SupabaseClient,
   organizationId: string
 ): Promise<string> {
-  // Get org name for prefix
+  // Get stored org_prefix (stable even if org is renamed)
   const { data: org } = await supabase
     .from('organizations')
-    .select('name')
+    .select('org_prefix, name')
     .eq('id', organizationId)
     .single();
 
-  const orgData = org as { name: string } | null;
-  const initials = getOrgInitials(orgData?.name || 'TASK');
+  const orgData = org as { org_prefix: string | null; name: string } | null;
+  // Use stored prefix, fall back to generating from name for legacy orgs
+  const initials = orgData?.org_prefix?.toUpperCase() || getOrgInitials(orgData?.name || 'TASK');
 
   // Find max existing reference number
   const { data: tasks } = await supabase
