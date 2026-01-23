@@ -109,6 +109,16 @@ export const AdaFloatingWidget: React.FC = () => {
     }
   }, [globalMessages, user?.id, organization?.id, isInitialized]);
 
+  // Close Ada when user signs out (clear state immediately)
+  useEffect(() => {
+    if (!user) {
+      setIsOpen(false);
+      setGlobalMessages([]);
+      setIsInitialized(false);
+      hasAutoOpenedRef.current = false;
+    }
+  }, [user]);
+
   // Auto-open Ada when there are pending suggestions (once per session)
   useEffect(() => {
     // Only auto-open if:

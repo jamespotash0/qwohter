@@ -83,9 +83,24 @@ interface WorkflowRequest {
   pendingAction?: PendingAction; // For confirm_action
 }
 
+/**
+ * Base OpenAI message type for simple messages
+ */
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+}
+
+/**
+ * Extended message type that supports tool calls and tool responses
+ * Used for multi-turn tool loop conversations
+ */
+interface OpenAIExtendedMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string; // Tool name for tool responses
 }
 
 interface OpenAIResponse {
@@ -389,7 +404,7 @@ interface OpenAIToolCallResponse {
  */
 async function callOpenAIWithTools(
   apiKey: string,
-  messages: OpenAIMessage[],
+  messages: OpenAIExtendedMessage[],
   tools: ToolDefinition[],
   options: {
     model?: string;
@@ -1428,8 +1443,8 @@ PART 1 - Your greeting (2-3 sentences):
 
 PART 2 - These EXACT lines (MUST include, copy exactly with the bullet character):
 • What proposals are pending?
-• Create a follow-up reminder
-• What's my win rate?
+• Create a task for me
+• Search the web for something
 
 CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point lines exactly as shown above. Use the • character and include newlines between them.]`
       });
@@ -1438,9 +1453,9 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
     }
 
     // ========================================================================
-    // FUNCTION CALLING MODE (default)
+    // FUNCTION CALLING MODE with MULTI-TURN TOOL LOOP
     // ========================================================================
-    console.log('[handleChat] Using function calling mode');
+    console.log('[handleChat] Using function calling mode with multi-turn tool loop');
 
     // Get tool definitions from registry
     const tools = toolRegistry.getToolDefinitions();
@@ -1448,10 +1463,43 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
     // For function calling, we use a simpler system prompt without action JSON format
     const fcSystemPrompt = systemPrompt.replace(
       /Respond with JSON:[\s\S]*?web_search: \{ "search_query": "formulate from user's question" \}/,
-      'Use the available tools when the user wants to take an action. Be conversational and helpful.'
+      `IMPORTANT TOOL USAGE RULES:
+1. Use tools proactively - don't just respond with "yes" or ask clarifying questions when you can use a tool
+2. For queries about tasks (e.g., "show my tasks", "what tasks do I have"), use get_tasks immediately
+3. For creating tasks/reminders, use create_task with the info you have
+4. For updating tasks, use update_task with task_query, task_reference, or search_title
+5. For searches, use web_search
+6. After a tool returns results, summarize them in a conversational way
+7. Be helpful and conversational while actively using tools to assist the user
+8. You can call MULTIPLE tools in one response if needed (they execute in parallel)
+
+CRITICAL - HANDLING TOOL FAILURES:
+- If a tool returns success: false, ALWAYS acknowledge the failure clearly
+- Tell the user specifically what couldn't be completed and why
+- Suggest alternatives or ask if they want to try a different approach
+- NEVER ignore errors or pretend an action succeeded when it didn't
+- Example: "I couldn't update that task - it looks like it doesn't exist. Would you like me to create a new one instead?"
+
+CONVERSATION CONTEXT & MEMORY:
+- When you create or update something, REMEMBER it for the rest of the conversation
+- If user says "update that task" or "change its priority", refer to the most recently created/discussed item
+- Reference items by their reference number (e.g., "WAL-42") when discussing them
+- When summarizing completed actions, include specific details (title, reference, status)
+- Example: "Done! I created task WAL-42: 'Call client about proposal'. Would you like to set a due date for it?"
+
+DATE UNDERSTANDING:
+- You can use natural language dates: "tomorrow", "next Friday", "in 3 days", "January 15"
+- The system will automatically convert these to proper dates
+- When user says relative dates, use them directly in tool calls
+
+USER ASSIGNMENT:
+- You can assign tasks to team members by name (e.g., "assign to John")
+- Use "me" or "myself" to assign to the current user
+- The system will look up the user automatically`
     );
 
-    const fcMessages: OpenAIMessage[] = [{ role: 'system', content: fcSystemPrompt }];
+    // Use extended message type for multi-turn tool conversations
+    const fcMessages: OpenAIExtendedMessage[] = [{ role: 'system', content: fcSystemPrompt }];
     if (conversationHistory && conversationHistory.length > 0) {
       for (const msg of conversationHistory.slice(-10)) {
         // Lowercase role for OpenAI API compatibility
@@ -1461,59 +1509,82 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
     }
     fcMessages.push({ role: 'user', content: message });
 
-    const fcResponse = await callOpenAIWithTools(openaiApiKey, fcMessages, tools, {
-      temperature: 0.5,
-      maxTokens: 1000,
-      toolChoice: isGreetingRequest ? 'none' : 'auto',
-    });
+    // Build tool context (shared across all tool calls in the loop)
+    const toolContext: ToolContext = {
+      supabase,
+      organizationId,
+      userId,
+      proposalId,
+      proposalName: context?.projectName,
+      userRole: effectiveRole as 'Owner' | 'Admin' | 'Member',
+    };
 
-    // Process function calling response
+    // ========================================================================
+    // MULTI-TURN TOOL LOOP
+    // Allows the agent to call tools, see results, and decide what to do next
+    // ========================================================================
+    const MAX_TOOL_ITERATIONS = 5; // Safety limit to prevent infinite loops
     let pendingAction: PendingAction | null = null;
-    let responseMessage = fcResponse.content || '';
+    let responseMessage = '';
+    let totalTokenUsage = { prompt: 0, completion: 0, total: 0 };
 
-    if (fcResponse.toolCalls && fcResponse.toolCalls.length > 0) {
-      // AI wants to use a tool
-      const toolCall = fcResponse.toolCalls[0]; // Process first tool call
-      console.log('[handleChat] Tool call requested:', toolCall.function.name);
+    for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+      console.log(`[handleChat] Tool loop iteration ${iteration + 1}/${MAX_TOOL_ITERATIONS}`);
 
-      // Build context for tool execution
-      const toolContext: ToolContext = {
-        supabase,
-        organizationId,
-        userId,
-        proposalId,
-        proposalName: context?.projectName,
-        userRole: effectiveRole as 'Owner' | 'Admin' | 'Member',
-      };
+      const fcResponse = await callOpenAIWithTools(openaiApiKey, fcMessages, tools, {
+        temperature: 0.5,
+        maxTokens: 1000,
+        toolChoice: isGreetingRequest ? 'none' : 'auto',
+      });
 
-      // If in global chat, try to resolve proposal from tool arguments
+      // Accumulate token usage
+      totalTokenUsage.prompt += fcResponse.tokenUsage.prompt;
+      totalTokenUsage.completion += fcResponse.tokenUsage.completion;
+      totalTokenUsage.total += fcResponse.tokenUsage.total;
+
+      // Check if the AI wants to call tools
+      if (!fcResponse.toolCalls || fcResponse.toolCalls.length === 0) {
+        // No tool calls - we have the final response
+        responseMessage = fcResponse.content || '';
+        console.log('[handleChat] No tool calls, final response received');
+        break;
+      }
+
+      // Process ALL tool calls in parallel for this iteration
+      const toolCalls = fcResponse.toolCalls;
+      console.log(`[handleChat] Processing ${toolCalls.length} tool call(s): ${toolCalls.map(tc => tc.function.name).join(', ')}`);
+
+      // First, try to resolve proposal context from the first tool's arguments (if in global chat)
       if (isGlobalChat) {
-        try {
-          const args = JSON.parse(toolCall.function.arguments);
-          if (args.targetProposalNumber || args.targetProjectName) {
-            const matchByNumber = args.targetProposalNumber
-              ? proposalsForSelection.find(p => p.number === args.targetProposalNumber)
-              : null;
-            const matchByName = args.targetProjectName
-              ? proposalsForSelection.find(p => p.name.toLowerCase().includes(args.targetProjectName.toLowerCase()))
-              : null;
-            if (matchByNumber?.id || matchByName?.id) {
-              toolContext.proposalId = matchByNumber?.id || matchByName?.id;
-              const { data: targetProposal } = await supabase
-                .from('proposals')
-                .select('project_name')
-                .eq('id', toolContext.proposalId)
-                .single();
-              toolContext.proposalName = targetProposal?.project_name || 'Unnamed Project';
+        for (const toolCall of toolCalls) {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            if (args.targetProposalNumber || args.targetProjectName) {
+              const matchByNumber = args.targetProposalNumber
+                ? proposalsForSelection.find(p => p.number === args.targetProposalNumber)
+                : null;
+              const matchByName = args.targetProjectName
+                ? proposalsForSelection.find(p => p.name.toLowerCase().includes(args.targetProjectName.toLowerCase()))
+                : null;
+              if (matchByNumber?.id || matchByName?.id) {
+                toolContext.proposalId = matchByNumber?.id || matchByName?.id;
+                const { data: targetProposal } = await supabase
+                  .from('proposals')
+                  .select('project_name')
+                  .eq('id', toolContext.proposalId)
+                  .single();
+                toolContext.proposalName = targetProposal?.project_name || 'Unnamed Project';
+                break; // Use first match
+              }
             }
+          } catch (e) {
+            console.warn('[handleChat] Failed to parse tool arguments for proposal resolution:', e);
           }
-        } catch (e) {
-          console.warn('[handleChat] Failed to parse tool arguments for proposal resolution:', e);
         }
       }
 
-      // Also look up project if proposal exists and is on board
-      if (toolContext.proposalId) {
+      // Look up project if proposal exists and is on board
+      if (toolContext.proposalId && !toolContext.projectId) {
         const { data: project } = await supabase
           .from('projects')
           .select('id')
@@ -1524,21 +1595,53 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
         }
       }
 
-      // Execute tool (may return pendingAction for confirmation or auto-execute)
-      const toolResult = await toolRegistry.executeToolCall(toolCall, toolContext);
+      // Execute all tool calls in parallel
+      const toolResults = await Promise.all(
+        toolCalls.map(async (toolCall) => {
+          const result = await toolRegistry.executeToolCall(toolCall, toolContext);
+          return { toolCall, result };
+        })
+      );
 
-      if (toolResult.requiresConfirmation && toolResult.pendingAction) {
-        // Cast to local PendingAction type (compatible structure)
-        pendingAction = toolResult.pendingAction as PendingAction;
-        // Generate a confirmation message if AI didn't provide one
-        if (!responseMessage) {
-          responseMessage = `I'll help you with that. Let me ${toolCall.function.name.replace(/_/g, ' ')}.`;
+      // Check if ANY tool requires confirmation (we can only handle one at a time)
+      const confirmationRequired = toolResults.find(tr => tr.result.requiresConfirmation && tr.result.pendingAction);
+      if (confirmationRequired) {
+        pendingAction = confirmationRequired.result.pendingAction as PendingAction;
+        responseMessage = fcResponse.content || `I'll help you with that. Let me ${confirmationRequired.toolCall.function.name.replace(/_/g, ' ')}.`;
+        console.log('[handleChat] Tool requires confirmation, breaking loop');
+        break;
+      }
+
+      // All tools auto-executed - add assistant message with all tool_calls
+      const assistantMessageWithToolCalls: OpenAIExtendedMessage = {
+        role: 'assistant',
+        content: fcResponse.content,
+        tool_calls: toolCalls,
+      };
+      fcMessages.push(assistantMessageWithToolCalls);
+
+      // Add all tool results as tool messages (required by OpenAI - one per tool_call)
+      for (const { toolCall, result: toolResult } of toolResults) {
+        const toolResultMessage: OpenAIExtendedMessage = {
+          role: 'tool',
+          content: JSON.stringify(toolResult.result || { success: false, error: toolResult.error }),
+          tool_call_id: toolCall.id,
+          name: toolCall.function.name,
+        };
+        fcMessages.push(toolResultMessage);
+        console.log(`[handleChat] Tool ${toolCall.function.name} executed, result:`, toolResult.result?.success ? 'success' : 'failed');
+      }
+
+      // If this is the last iteration, generate a response based on tool results
+      if (iteration === MAX_TOOL_ITERATIONS - 1) {
+        console.log('[handleChat] Max iterations reached, generating final response');
+        const successCount = toolResults.filter(tr => tr.result.result?.success).length;
+        const failCount = toolResults.length - successCount;
+        if (failCount === 0) {
+          responseMessage = `Done! Completed ${successCount} action(s).`;
+        } else {
+          responseMessage = `Completed ${successCount} action(s), but ${failCount} had issues.`;
         }
-      } else if (toolResult.result) {
-        // Tool auto-executed - add result to response
-        responseMessage = toolResult.result.success
-          ? `Done! ${toolResult.result.data?.title || 'Action completed'}.`
-          : `I encountered an issue: ${toolResult.result.error}`;
       }
     }
 
@@ -1555,7 +1658,7 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
           content: responseMessage,
           is_proactive: false,
           model_used: 'gpt-4o-mini',
-          tokens_used: fcResponse.tokenUsage.total,
+          tokens_used: totalTokenUsage.total,
         })
         .select()
         .single();
@@ -1573,12 +1676,61 @@ CRITICAL: Your "message" field in the JSON MUST end with those 3 bullet point li
         pendingAction: pendingAction || undefined,
         proposalsForSelection: isGlobalChat ? proposalsForSelection : undefined,
       },
-      tokenUsage: fcResponse.tokenUsage,
+      tokenUsage: totalTokenUsage,
     };
   } catch (error) {
     console.error('handleChat error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+// ============================================================================
+// Error Message Helper
+// ============================================================================
+
+/**
+ * Convert technical error messages to user-friendly messages
+ */
+function getFriendlyErrorMessage(actionType: string, error: string): string {
+  const errorLower = error.toLowerCase();
+
+  // Task-related errors
+  if (actionType.includes('task')) {
+    if (errorLower.includes('not found')) {
+      return "I couldn't find that task. It may have been deleted or the reference is incorrect. Would you like me to show you the current tasks?";
+    }
+    if (errorLower.includes('no fields')) {
+      return "I need to know what to update. Could you specify what you'd like to change (title, status, due date, etc.)?";
+    }
+  }
+
+  // Proposal-related errors
+  if (actionType.includes('proposal') || actionType.includes('status')) {
+    if (errorLower.includes('not found')) {
+      return "I couldn't find that proposal. Please check the proposal number and try again.";
+    }
+  }
+
+  // Contact-related errors
+  if (actionType.includes('contact')) {
+    if (errorLower.includes('already exists') || errorLower.includes('duplicate')) {
+      return "That contact already exists in your system.";
+    }
+  }
+
+  // Permission errors
+  if (errorLower.includes('permission') || errorLower.includes('unauthorized') || errorLower.includes('not allowed')) {
+    return "You don't have permission to perform this action. Please contact your admin.";
+  }
+
+  // Rate limiting
+  if (errorLower.includes('rate limit')) {
+    return "I'm processing too many requests. Please wait a moment and try again.";
+  }
+
+  // Generic fallback with the action type
+  const actionName = actionType.replace(/_/g, ' ');
+  return `I couldn't complete the ${actionName}. ${error}. Would you like to try again or do something else?`;
 }
 
 // ============================================================================
@@ -1633,7 +1785,15 @@ async function handleConfirmAction(params: {
     const result = await toolRegistry.executeConfirmedAction(type, actionParams, toolContext);
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      // Return user-friendly error message
+      const friendlyError = getFriendlyErrorMessage(type, result.error || 'Unknown error');
+      return {
+        success: false,
+        error: result.error,
+        data: {
+          message: friendlyError,
+        },
+      };
     }
 
     // Generate contextual follow-up message based on action type

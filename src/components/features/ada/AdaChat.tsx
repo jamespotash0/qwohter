@@ -117,9 +117,9 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   // Static greeting content (shown instantly, no API call)
   const STATIC_GREETING = `Hi! I'm Ada, your AI assistant. How can I help you today?
 
-• Create a reminder for a task
-• Help me draft a follow-up email
-• What's on my schedule this week?`;
+• What proposals are pending?
+• Create a task for me
+• Search the web for something`;
 
   // Auto-resize textarea
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -129,6 +129,66 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
   }, []);
 
+  // Check if a message is a confirmation response
+  const isConfirmationResponse = useCallback((message: string): boolean => {
+    const confirmPhrases = [
+      'yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'confirm', 'do it',
+      'go ahead', 'proceed', 'sounds good', 'that works', 'perfect', 'great',
+      'please', 'yes please', 'go for it', 'approved', 'accept'
+    ];
+    const normalized = message.toLowerCase().trim();
+    return confirmPhrases.some(phrase =>
+      normalized === phrase ||
+      normalized === phrase + '!' ||
+      normalized === phrase + '.'
+    );
+  }, []);
+
+  // Handle action confirmation (moved before handleSend so it can be used there)
+  const handleConfirmAction = useCallback(async (action: PendingAction) => {
+    try {
+      const result = await confirmActionMutation.mutateAsync({
+        organizationId,
+        userId,
+        pendingAction: action,
+      });
+
+      if (result.success && result.data) {
+        // Add success message to chat
+        const successMessage: LocalChatMessage = {
+          id: `success-${Date.now()}`,
+          role: 'assistant',
+          content: result.data.message || `Successfully created ${action.type.replace('_', ' ')}.`,
+          created_at: new Date().toISOString(),
+        };
+        setGlobalMessages(prev => [...prev, successMessage]);
+      } else {
+        // Add error message - use friendly message from backend if available
+        console.error('[Ada] Action failed:', result.error);
+        const friendlyMessage = result.data?.message ||
+          `I couldn't complete that ${action.type.replace(/_/g, ' ')}. ${result.error || 'Please try again.'}`;
+        const errorMessage: LocalChatMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: friendlyMessage,
+          created_at: new Date().toISOString(),
+        };
+        setGlobalMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('[Ada] Confirm action error:', error);
+      const errorMessage: LocalChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "Something went wrong on my end. Let's try that again.",
+        created_at: new Date().toISOString(),
+      };
+      setGlobalMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setPendingAction(null);
+    }
+  }, [organizationId, userId, confirmActionMutation, setGlobalMessages]);
+
   // Send message
   const handleSend = useCallback(async () => {
     const message = inputValue.trim();
@@ -137,6 +197,22 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     setInputValue('');
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
+    }
+
+    // Check if there's a pending action and user is confirming it
+    if (pendingAction && isConfirmationResponse(message)) {
+      console.log('[Ada] User confirmed pending action via chat:', pendingAction);
+      // Add user message to show they said yes
+      const userMessage: LocalChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: message,
+        created_at: new Date().toISOString(),
+      };
+      setGlobalMessages(prev => [...prev, userMessage]);
+      // Execute the pending action
+      handleConfirmAction(pendingAction);
+      return;
     }
 
     // For global chat, add user message to local state immediately
@@ -201,7 +277,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       };
       setGlobalMessages(prev => [...prev, errorMessage]);
     }
-  }, [inputValue, proposalId, isProposalContext, organizationId, userId, conversation, sendChatMessage, setGlobalMessages]);
+  }, [inputValue, proposalId, isProposalContext, organizationId, userId, conversation, sendChatMessage, setGlobalMessages, pendingAction, isConfirmationResponse, handleConfirmAction]);
 
   // Handle Enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -250,49 +326,6 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   }, [dismissSuggestion]);
 
   const isGenerating = generateFollowUp.isPending || suggestReminders.isPending || getRecommendations.isPending;
-
-  // Handle action confirmation
-  const handleConfirmAction = useCallback(async (action: PendingAction) => {
-    try {
-      const result = await confirmActionMutation.mutateAsync({
-        organizationId,
-        userId,
-        pendingAction: action,
-      });
-
-      if (result.success && result.data) {
-        // Add success message to chat
-        const successMessage: LocalChatMessage = {
-          id: `success-${Date.now()}`,
-          role: 'assistant',
-          content: result.data.message || `Successfully created ${action.type.replace('_', ' ')}.`,
-          created_at: new Date().toISOString(),
-        };
-        setGlobalMessages(prev => [...prev, successMessage]);
-      } else {
-        // Add error message - use friendly message, log technical error
-        console.error('[Ada] Action failed:', result.error);
-        const errorMessage: LocalChatMessage = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content: "I'm having trouble completing that action. Could you try again?",
-          created_at: new Date().toISOString(),
-        };
-        setGlobalMessages(prev => [...prev, errorMessage]);
-      }
-    } catch (error) {
-      console.error('[Ada] Confirm action error:', error);
-      const errorMessage: LocalChatMessage = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "Something went wrong on my end. Let's try that again.",
-        created_at: new Date().toISOString(),
-      };
-      setGlobalMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setPendingAction(null);
-    }
-  }, [organizationId, userId, confirmActionMutation, setGlobalMessages]);
 
   const handleCancelAction = useCallback(() => {
     setPendingAction(null);

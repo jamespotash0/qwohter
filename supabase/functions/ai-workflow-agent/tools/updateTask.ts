@@ -3,10 +3,16 @@
  *
  * Updates an existing task's title, description, status, priority, or due date.
  * Supports finding tasks by ID, reference, title search, or relative queries like "most recent".
+ * Supports natural language dates and user assignment by name.
  */
 
 import { createTool } from './toolRegistry.ts';
-import { normalizeTaskPriority, normalizeTaskStatus } from './utils.ts';
+import {
+  normalizeTaskPriority,
+  normalizeTaskStatus,
+  parseNaturalDate,
+  lookupTeamMember,
+} from './utils.ts';
 import type { RegisteredTool, ToolContext, ToolResult } from './types.ts';
 
 interface UpdateTaskParams {
@@ -141,11 +147,11 @@ export const updateTaskTool: RegisteredTool = createTool({
           },
           due_date: {
             type: ['string', 'null'],
-            description: 'New due date in ISO 8601 format (YYYY-MM-DD). For relative dates like "tomorrow", convert to actual date.',
+            description: 'New due date - accepts ISO format (YYYY-MM-DD) OR natural language like "tomorrow", "next Friday", "in 3 days"',
           },
           assigned_to: {
             type: ['string', 'null'],
-            description: 'User ID to assign the task to',
+            description: 'Who to assign the task to. Can be "me" for current user, a team member name like "John", or a user ID.',
           },
         },
         required: [],
@@ -159,7 +165,7 @@ export const updateTaskTool: RegisteredTool = createTool({
     category: 'task',
   },
   execute: async (params: Record<string, unknown>, context: ToolContext): Promise<ToolResult> => {
-    const { supabase, organizationId } = context;
+    const { supabase, organizationId, userId } = context;
     const taskParams = params as unknown as UpdateTaskParams;
 
     console.log('[update_task] Finding and updating task:', {
@@ -200,10 +206,33 @@ export const updateTaskTool: RegisteredTool = createTool({
       updateData.priority = normalizeTaskPriority(taskParams.priority);
     }
     if (taskParams.due_date !== undefined && taskParams.due_date !== null) {
-      updateData.due_date = taskParams.due_date;
+      // Parse natural language dates
+      const parsedDate = parseNaturalDate(taskParams.due_date);
+      if (parsedDate) {
+        updateData.due_date = parsedDate;
+      } else {
+        console.warn(`[update_task] Could not parse date "${taskParams.due_date}", using as-is`);
+        updateData.due_date = taskParams.due_date;
+      }
     }
     if (taskParams.assigned_to !== undefined && taskParams.assigned_to !== null) {
-      updateData.assigned_to = taskParams.assigned_to;
+      // Resolve assigned_to - can be "me", a name, or a user ID
+      const assignee = taskParams.assigned_to.toLowerCase().trim();
+      if (assignee === 'me' || assignee === 'myself') {
+        updateData.assigned_to = userId;
+      } else if (assignee.match(/^[0-9a-f-]{36}$/)) {
+        // Already a UUID
+        updateData.assigned_to = taskParams.assigned_to;
+      } else {
+        // Look up by name
+        const member = await lookupTeamMember(supabase, organizationId, taskParams.assigned_to);
+        if (member) {
+          updateData.assigned_to = member.id;
+          console.log(`[update_task] Resolved "${taskParams.assigned_to}" to user ${member.displayName} (${member.id})`);
+        } else {
+          console.warn(`[update_task] Could not find team member "${taskParams.assigned_to}", keeping original value`);
+        }
+      }
     }
 
     // Check if there's anything to update

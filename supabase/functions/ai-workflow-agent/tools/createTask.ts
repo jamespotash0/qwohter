@@ -2,10 +2,16 @@
  * Create Task Tool
  *
  * Creates a task for tracking work items.
+ * Supports natural language dates and user assignment by name.
  */
 
 import { createTool } from './toolRegistry.ts';
-import { normalizeTaskPriority, getNextTaskReference } from './utils.ts';
+import {
+  normalizeTaskPriority,
+  getNextTaskReference,
+  parseNaturalDate,
+  lookupTeamMember,
+} from './utils.ts';
 import type { RegisteredTool, ToolContext, ToolResult } from './types.ts';
 
 interface CreateTaskParams {
@@ -13,6 +19,7 @@ interface CreateTaskParams {
   description?: string;
   due_date?: string;
   priority?: string;
+  assigned_to?: string; // Can be user ID, name, or "me"
 }
 
 export const createTaskTool: RegisteredTool = createTool({
@@ -35,12 +42,16 @@ export const createTaskTool: RegisteredTool = createTool({
           },
           due_date: {
             type: ['string', 'null'],
-            description: 'Due date in ISO 8601 format (YYYY-MM-DD) or relative like "tomorrow", "next Friday". Parse to YYYY-MM-DD format.',
+            description: 'Due date - accepts ISO format (YYYY-MM-DD) OR natural language like "tomorrow", "next Friday", "in 3 days", "January 15"',
           },
           priority: {
             type: ['string', 'null'],
             enum: ['Low', 'Medium', 'High', null as any],
             description: 'Task priority level. Default is medium if not specified.',
+          },
+          assigned_to: {
+            type: ['string', 'null'],
+            description: 'Who to assign the task to. Can be "me" for current user, a team member name like "John", or a user ID.',
           },
         },
         required: ['title'],
@@ -60,6 +71,30 @@ export const createTaskTool: RegisteredTool = createTool({
     // Normalize priority
     const priority = normalizeTaskPriority(taskParams.priority);
 
+    // Parse natural language date (e.g., "tomorrow", "next Friday" -> "2024-01-15")
+    const parsedDueDate = parseNaturalDate(taskParams.due_date);
+
+    // Resolve assigned_to - can be "me", a name, or a user ID
+    let assignedToUserId = userId; // Default to current user
+    if (taskParams.assigned_to) {
+      const assignee = taskParams.assigned_to.toLowerCase().trim();
+      if (assignee === 'me' || assignee === 'myself') {
+        assignedToUserId = userId;
+      } else if (assignee.match(/^[0-9a-f-]{36}$/)) {
+        // Already a UUID
+        assignedToUserId = taskParams.assigned_to;
+      } else {
+        // Look up by name
+        const member = await lookupTeamMember(supabase, organizationId, taskParams.assigned_to);
+        if (member) {
+          assignedToUserId = member.id;
+          console.log(`[create_task] Resolved "${taskParams.assigned_to}" to user ${member.displayName} (${member.id})`);
+        } else {
+          console.warn(`[create_task] Could not find team member "${taskParams.assigned_to}", defaulting to current user`);
+        }
+      }
+    }
+
     // Generate task reference number (e.g., "WAL-42")
     const taskReference = await getNextTaskReference(supabase, organizationId);
 
@@ -70,6 +105,8 @@ export const createTaskTool: RegisteredTool = createTool({
       title: taskParams.title,
       priority,
       reference: taskReference,
+      dueDate: parsedDueDate,
+      assignedTo: assignedToUserId,
     });
 
     const insertData = {
@@ -80,9 +117,9 @@ export const createTaskTool: RegisteredTool = createTool({
       description: taskParams.description || '',
       status: 'To Do',
       priority,
-      due_date: taskParams.due_date || null,
+      due_date: parsedDueDate,
       created_by: userId,
-      assigned_to: userId,
+      assigned_to: assignedToUserId,
     };
 
     const { data: task, error: taskError } = await supabase
