@@ -10,6 +10,7 @@ import type { RegisteredTool, ToolContext, ToolResult } from './types.ts';
 
 interface UpdateStatusParams {
   proposal_id?: string; // Optional - used in global chat mode to specify which proposal
+  proposal_number?: string; // Optional - proposal number like "PR-104" to resolve to ID
   status?: string;
   comment?: string; // Optional comment for approval request
 }
@@ -160,7 +161,11 @@ export const updateStatusTool: RegisteredTool = createTool({
         properties: {
           proposal_id: {
             type: ['string', 'null'],
-            description: 'The proposal ID to update. Required when calling from global chat. Use the ID from get_proposals or when user specifies a proposal number.',
+            description: 'The proposal UUID. Use this if you have the ID directly.',
+          },
+          proposal_number: {
+            type: ['string', 'null'],
+            description: 'The proposal number (e.g., "PR-104", "P-001"). Use this when user mentions a proposal by number - the tool will resolve it to the ID.',
           },
           status: {
             type: 'string',
@@ -187,11 +192,31 @@ export const updateStatusTool: RegisteredTool = createTool({
     const statusParams = params as unknown as UpdateStatusParams;
     const newStatus = statusParams.status;
 
-    // Use proposal_id from params if provided, otherwise fall back to context
-    const proposalId = statusParams.proposal_id || contextProposalId;
+    // Resolve proposal ID from multiple sources
+    let proposalId = statusParams.proposal_id || contextProposalId;
+
+    // If proposal_number provided, look up the ID
+    if (!proposalId && statusParams.proposal_number) {
+      console.log('[update_status] Resolving proposal_number:', statusParams.proposal_number);
+      const { data: proposal, error: lookupError } = await supabase
+        .from('proposals')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .ilike('proposal_number', statusParams.proposal_number)
+        .single();
+
+      if (lookupError || !proposal) {
+        return {
+          success: false,
+          error: `Could not find proposal with number "${statusParams.proposal_number}". Please check the proposal number and try again.`,
+        };
+      }
+      proposalId = proposal.id;
+      console.log('[update_status] Resolved to proposal ID:', proposalId);
+    }
 
     if (!proposalId) {
-      return { success: false, error: 'Proposal ID is required. Please specify which proposal to update.' };
+      return { success: false, error: 'Please specify which proposal to update (by proposal_number like "PR-104").' };
     }
 
     if (!newStatus) {
