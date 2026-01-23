@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
@@ -9,6 +9,49 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdaFloatingWidget } from "@/components/features/ada";
 
 import React from "react";
+
+// Auth-aware Ada wrapper - only shows on authenticated pages
+const AdaWithAuthCheck: React.FC = () => {
+  const user = useUser();
+  const location = useLocation();
+
+  // List of paths where Ada should NOT appear (public/auth pages)
+  const publicPaths = [
+    '/sign-in',
+    '/create-account',
+    '/forgot-password',
+    '/reset-password',
+    '/access-denied',
+    '/account-inactive',
+    '/invalid-invitation',
+    '/auth',
+    '/login',
+    '/signup',
+    '/',
+    '/demo',
+    '/contact-us',
+    '/privacy-policy',
+    '/privacy-notice',
+    '/terms-of-service',
+    '/faq',
+    '/legal',
+    '/cookie-settings',
+    '/accessibility-statement',
+    '/do-not-sell-my-personal-information',
+    '/404',
+  ];
+
+  // Check if current path is a public page or starts with /sign (signing page)
+  const isPublicPage = publicPaths.includes(location.pathname) ||
+    location.pathname.startsWith('/sign/');
+
+  // Don't render Ada on public pages or when not authenticated
+  if (!user || isPublicPage) {
+    return null;
+  }
+
+  return <AdaFloatingWidget />;
+};
 
 // Protected auth route wrapper - redirects to dashboard if already logged in AND completed onboarding
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
@@ -166,8 +209,8 @@ export const AppRouter = () => (
       {/* Scroll to top on route change */}
       <ScrollToTop />
 
-      {/* Ada - Global AI Assistant */}
-      <AdaFloatingWidget />
+      {/* Ada - Global AI Assistant (auth-aware, hidden on public pages) */}
+      <AdaWithAuthCheck />
 
       <Suspense fallback={<PageLoader />}>
         <Routes>
