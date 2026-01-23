@@ -50,40 +50,65 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
   const handleThumbsUp = useCallback(async () => {
     if (!organizationId || feedbackGiven || isSubmitting) return;
     setIsSubmitting(true);
-    const result = await submitThumbsUp(message.id, organizationId);
-    if (result.success) {
+    try {
+      const result = await submitThumbsUp(message.id, organizationId);
+      console.log('[AdaMessage] Thumbs up result:', result);
+      // Always show thanks - even if DB fails, user clicked
       setFeedbackGiven('up');
+    } catch (err) {
+      console.error('[AdaMessage] Thumbs up error:', err);
+      setFeedbackGiven('up'); // Still show thanks for UX
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   }, [organizationId, message.id, feedbackGiven, isSubmitting]);
 
   // Handle thumbs down
   const handleThumbsDown = useCallback(async () => {
     if (!organizationId || feedbackGiven || isSubmitting) return;
     setIsSubmitting(true);
-    const result = await submitThumbsDown(message.id, organizationId);
-    if (result.success) {
+    try {
+      const result = await submitThumbsDown(message.id, organizationId);
+      console.log('[AdaMessage] Thumbs down result:', result);
       setFeedbackGiven('down');
+    } catch (err) {
+      console.error('[AdaMessage] Thumbs down error:', err);
+      setFeedbackGiven('down'); // Still show thanks for UX
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   }, [organizationId, message.id, feedbackGiven, isSubmitting]);
 
   // Show feedback buttons for assistant messages (not user, not static greeting)
   const showFeedbackButtons = !isUser && !isStaticGreeting && organizationId;
 
-  // Parse message content to separate text and bullet suggestions
+  // Parse message content to separate text and clickable bullet suggestions
   const { textContent, suggestions } = React.useMemo(() => {
     const lines = message.content.split('\n');
     const textLines: string[] = [];
     const bulletSuggestions: string[] = [];
 
     for (const line of lines) {
-      // Check if line is a bullet point (•, -, or * at start)
-      // Use negative lookahead to exclude ** (markdown bold) from matching as bullet
       const trimmedLine = line.trim();
+      // Check if line is a bullet point (•, -, or * at start)
       const bulletMatch = trimmedLine.match(/^([•\-]|\*(?!\*))\s+(.+)$/);
+
       if (bulletMatch && bulletMatch[2]) {
-        bulletSuggestions.push(bulletMatch[2].trim());
+        const bulletContent = bulletMatch[2].trim();
+        // Only make it clickable if it's an action suggestion, NOT data/stats
+        // Data bullets contain: **bold**, numbers with $, or colons followed by values
+        const isDataBullet =
+          bulletContent.includes('**') ||           // Has bold markdown (stats labels)
+          /:\s*\$?\d/.test(bulletContent) ||        // Has colon followed by number/dollar
+          /^\d+%?$/.test(bulletContent);            // Is just a number/percentage
+
+        if (isDataBullet) {
+          // Keep as regular text, not clickable
+          textLines.push(line);
+        } else {
+          // Action suggestion - make clickable
+          bulletSuggestions.push(bulletContent);
+        }
       } else {
         textLines.push(line);
       }
