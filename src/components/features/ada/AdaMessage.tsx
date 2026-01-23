@@ -2,11 +2,14 @@
  * Ada Message Bubble
  *
  * Compact chat message with distinct user/assistant colors.
+ * Includes thumbs up/down feedback for AI responses.
  */
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ThumbsUp, ThumbsDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { submitThumbsUp, submitThumbsDown } from '@/services/aiFeedbackService';
 import type { AIMessage, LocalChatMessage } from '@/lib/types/aiWorkflow';
 
 // ============================================================================
@@ -21,6 +24,8 @@ interface AdaMessageProps {
   isLatest?: boolean;
   /** Callback when a suggestion bullet point is clicked */
   onSuggestionClick?: (suggestion: string) => void;
+  /** Organization ID for feedback submission */
+  organizationId?: string;
 }
 
 // ============================================================================
@@ -31,9 +36,40 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
   message,
   isLatest = false,
   onSuggestionClick,
+  organizationId,
 }) => {
   const isUser = message.role.toLowerCase() === 'user';
   const isProactive = 'is_proactive' in message ? message.is_proactive : false;
+  const isStaticGreeting = message.id === 'static-greeting';
+
+  // Feedback state
+  const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Handle thumbs up
+  const handleThumbsUp = useCallback(async () => {
+    if (!organizationId || feedbackGiven || isSubmitting) return;
+    setIsSubmitting(true);
+    const result = await submitThumbsUp(message.id, organizationId);
+    if (result.success) {
+      setFeedbackGiven('up');
+    }
+    setIsSubmitting(false);
+  }, [organizationId, message.id, feedbackGiven, isSubmitting]);
+
+  // Handle thumbs down
+  const handleThumbsDown = useCallback(async () => {
+    if (!organizationId || feedbackGiven || isSubmitting) return;
+    setIsSubmitting(true);
+    const result = await submitThumbsDown(message.id, organizationId);
+    if (result.success) {
+      setFeedbackGiven('down');
+    }
+    setIsSubmitting(false);
+  }, [organizationId, message.id, feedbackGiven, isSubmitting]);
+
+  // Show feedback buttons for assistant messages (not user, not static greeting)
+  const showFeedbackButtons = !isUser && !isStaticGreeting && organizationId;
 
   // Parse message content to separate text and bullet suggestions
   const { textContent, suggestions } = React.useMemo(() => {
@@ -133,17 +169,68 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
           </div>
         )}
 
-        {/* Timestamp */}
-        <p
-          className={cn(
-            'text-[10px] mt-1',
-            isUser
-              ? 'text-white/70' // Darker on coral background
-              : 'opacity-50'
+        {/* Timestamp and Feedback */}
+        <div className="flex items-center justify-between mt-1 gap-2">
+          <p
+            className={cn(
+              'text-[10px]',
+              isUser
+                ? 'text-white/70'
+                : 'opacity-50'
+            )}
+          >
+            {formatTime(message.created_at)}
+          </p>
+
+          {/* Feedback buttons - only for assistant messages */}
+          {showFeedbackButtons && (
+            <AnimatePresence mode="wait">
+              {feedbackGiven ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400"
+                >
+                  <Check className="w-3 h-3" />
+                  <span>Thanks!</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center gap-1"
+                >
+                  <button
+                    onClick={handleThumbsUp}
+                    disabled={isSubmitting}
+                    className={cn(
+                      'p-1 rounded hover:bg-white/50 dark:hover:bg-white/10',
+                      'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400',
+                      'transition-colors duration-150',
+                      'disabled:opacity-50'
+                    )}
+                    title="Helpful"
+                  >
+                    <ThumbsUp className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={handleThumbsDown}
+                    disabled={isSubmitting}
+                    className={cn(
+                      'p-1 rounded hover:bg-white/50 dark:hover:bg-white/10',
+                      'text-gray-400 hover:text-red-500 dark:hover:text-red-400',
+                      'transition-colors duration-150',
+                      'disabled:opacity-50'
+                    )}
+                    title="Not helpful"
+                  >
+                    <ThumbsDown className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           )}
-        >
-          {formatTime(message.created_at)}
-        </p>
+        </div>
       </div>
     </motion.div>
   );

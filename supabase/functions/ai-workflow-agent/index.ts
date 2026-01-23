@@ -575,8 +575,14 @@ function extractFormDataContext(formData: Record<string, unknown>): string {
 // ============================================================================
 
 const BLOCKED_PATTERNS = [
-  // SQL injection patterns
-  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER)\b.*\b(FROM|INTO|TABLE|DATABASE)\b)/i,
+  // SQL injection patterns - require SQL syntax markers (*, =, WHERE, SET, VALUES)
+  /\b(SELECT)\s+[\w*,\s]+\s+FROM\b/i,
+  /\b(INSERT)\s+INTO\s+\w+/i,
+  /\b(UPDATE)\s+\w+\s+SET\s+/i,
+  /\b(DELETE)\s+FROM\s+\w+/i,
+  /\b(DROP)\s+(TABLE|DATABASE)\b/i,
+  /\b(UNION)\s+(ALL\s+)?SELECT\b/i,
+  /\b(ALTER)\s+TABLE\b/i,
   // Script injection
   /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
   /javascript:/gi,
@@ -1069,6 +1075,9 @@ ${proposalsList}
 5. If user wants something for a proposal but doesn't specify which, ask "Which proposal is this for?"
 6. Keep responses concise but warm
 7. Reference specific proposal names when relevant
+8. DON'T explain internal logic to users - they don't need to know about approval workflows, role permissions, or system restrictions. Just perform the action or ask a simple clarifying question.
+   - BAD: "Since you have admin privileges, approval is not applicable..."
+   - GOOD: "I'll update PR-104 to Submitted. Confirm?"
 
 == CRITICAL: MULTI-STEP WORKFLOWS ==
 Guide users through complex requests ONE STEP AT A TIME. After completing each step, automatically offer the next logical step.
@@ -1313,6 +1322,9 @@ ${formContext}
 3. Only ask follow-up questions if you genuinely can't understand what they want
 4. Keep responses concise but warm
 5. Reference the proposal and client by name to show context awareness
+6. DON'T explain internal logic to users - just perform actions or ask simple questions.
+   - BAD: "Since you have admin privileges, approval is not applicable..."
+   - GOOD: "I'll update the status to Submitted. Confirm?"
 
 == CRITICAL: MULTI-STEP WORKFLOWS ==
 Guide users through complex requests ONE STEP AT A TIME. After completing each step, automatically offer the next logical step.

@@ -407,6 +407,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                 }}
                 isLatest={globalMessages.length === 0}
                 onSuggestionClick={handleSuggestionClick}
+                organizationId={organizationId}
               />
             </div>
 
@@ -419,6 +420,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                     message={message}
                     isLatest={index === globalMessages.length - 1}
                     onSuggestionClick={handleSuggestionClick}
+                    organizationId={organizationId}
                   />
                 ))}
               </div>
@@ -517,6 +519,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
                     message={message}
                     isLatest={index === (conversation?.length || 0) - 1}
                     onSuggestionClick={handleSuggestionClick}
+                    organizationId={organizationId}
                   />
                 ))}
               </div>
