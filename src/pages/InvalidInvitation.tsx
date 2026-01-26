@@ -18,6 +18,7 @@ type InvitationErrorType = 'Used' | 'Expired' | 'Revoked' | 'NotFound' | 'Invali
 interface LocationState {
   errorType?: InvitationErrorType;
   fromInviteValidation?: boolean;
+  isSignupInvite?: boolean;
 }
 
 /**
@@ -84,25 +85,32 @@ const BrokenChainIllustration = () => (
 /**
  * Get error-specific messaging based on the error type
  */
-const getErrorContent = (errorType: InvitationErrorType) => {
+const getErrorContent = (errorType: InvitationErrorType, isSignupInvite: boolean) => {
+  // Different messaging for signup invites (new org) vs team invites (join existing org)
+  const contactEntity = isSignupInvite ? 'support' : "your organization's administrator";
+
   switch (errorType) {
     case 'Used':
       return {
         title: "This invitation has been used",
-        description: "This invitation link has already been accepted by another user.",
-        helpText: "If you believe this is an error, please contact your organization's administrator for a new invitation.",
+        description: isSignupInvite
+          ? "This signup invitation link has already been used to create an account."
+          : "This invitation link has already been accepted by another user.",
+        helpText: `If you believe this is an error, please contact ${contactEntity} for a new invitation.`,
       };
     case 'Expired':
       return {
         title: "This invitation has expired",
-        description: "Invitation links are valid for 24 hours. This one is no longer active.",
-        helpText: "Please contact your organization's administrator to receive a new invitation.",
+        description: isSignupInvite
+          ? "Signup invitation links are valid for 7 days. This one is no longer active."
+          : "Invitation links are valid for 24 hours. This one is no longer active.",
+        helpText: `Please contact ${contactEntity} to receive a new invitation.`,
       };
     case 'Revoked':
       return {
         title: "This invitation has been revoked",
         description: "The administrator has cancelled this invitation.",
-        helpText: "Please contact your organization's administrator if you still need access.",
+        helpText: `Please contact ${contactEntity} if you still need access.`,
       };
     case 'NotFound':
     case 'Invalid':
@@ -110,7 +118,7 @@ const getErrorContent = (errorType: InvitationErrorType) => {
       return {
         title: "Invalid invitation link",
         description: "This invitation link is invalid or has been removed.",
-        helpText: "Please contact your organization's administrator for a valid invitation.",
+        helpText: `Please contact ${contactEntity} for a valid invitation.`,
       };
   }
 };
@@ -123,6 +131,7 @@ const InvalidInvitation: React.FC = () => {
   const locationState = location.state as LocationState | null;
   const errorType = locationState?.errorType || 'Invalid';
   const isValidRedirect = locationState?.fromInviteValidation === true;
+  const isSignupInvite = locationState?.isSignupInvite === true;
 
   // Protect against direct URL access - only allow if redirected from invite validation
   useEffect(() => {
@@ -137,9 +146,13 @@ const InvalidInvitation: React.FC = () => {
     window.location.href = '/';
   };
 
-  const handleContactAdmin = () => {
+  const handleContact = () => {
     // Open email client with pre-filled subject
-    window.location.href = 'mailto:?subject=Request%20for%20New%20Invitation%20Link';
+    if (isSignupInvite) {
+      window.location.href = 'mailto:support@qwohter.com?subject=Request%20for%20New%20Signup%20Invitation';
+    } else {
+      window.location.href = 'mailto:?subject=Request%20for%20New%20Invitation%20Link';
+    }
   };
 
   // Show loading while redirecting unauthorized direct access
@@ -151,7 +164,7 @@ const InvalidInvitation: React.FC = () => {
     );
   }
 
-  const content = getErrorContent(errorType);
+  const content = getErrorContent(errorType, isSignupInvite);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] p-4 overflow-hidden">
@@ -205,13 +218,13 @@ const InvalidInvitation: React.FC = () => {
             Back to Qwohter
           </Button>
           <Button
-            onClick={handleContactAdmin}
+            onClick={handleContact}
             variant="outline"
             className="h-12 px-6 rounded-full border-[#171717]/15 text-[#171717]/70 hover:text-[#171717] hover:bg-white/50 font-medium flex items-center justify-center gap-2"
             style={{ fontFamily: 'Urbanist, sans-serif' }}
           >
             <Mail className="w-4 h-4" />
-            Contact Administrator
+            {isSignupInvite ? 'Contact Support' : 'Contact Administrator'}
           </Button>
         </div>
 

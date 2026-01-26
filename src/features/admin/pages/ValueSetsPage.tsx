@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Loader2, Search, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { configValueSetsService } from '../services/configValueSetsService';
+import { ValuesEditor } from '../components/ValuesEditor';
 import type { ConfigValueSet, ValueSetListItem } from '@/lib/types/configValueSet';
 import { VALUE_SET_CATEGORIES } from '@/lib/types/configValueSet';
 
@@ -63,8 +64,8 @@ export function ValueSetsPage() {
   });
   const [saving, setSaving] = useState(false);
 
-  // View dialog
-  const [viewingSet, setViewingSet] = useState<ConfigValueSet | null>(null);
+  // Values editor dialog
+  const [editingValuesSet, setEditingValuesSet] = useState<ConfigValueSet | null>(null);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ValueSetListItem | null>(null);
@@ -121,9 +122,9 @@ export function ValueSetsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleViewSet = async (setItem: ValueSetListItem) => {
+  const handleEditValues = async (setItem: ValueSetListItem) => {
     const fullSet = await configValueSetsService.getValueSet(setItem.id);
-    setViewingSet(fullSet);
+    setEditingValuesSet(fullSet);
   };
 
   const handleNameChange = (name: string) => {
@@ -290,10 +291,11 @@ export function ValueSetsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleViewSet(set)}
-                        title="View values"
+                        onClick={() => handleEditValues(set)}
+                        title="Edit values"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Settings className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -390,64 +392,15 @@ export function ValueSetsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Values Dialog */}
-      <Dialog open={!!viewingSet} onOpenChange={() => setViewingSet(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>{viewingSet?.name} Values</DialogTitle>
-            <DialogDescription>
-              {viewingSet?.values.length || 0} values in this set
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="overflow-y-auto max-h-[50vh] border rounded-lg">
-            {viewingSet?.values.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No values yet</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Order</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {viewingSet?.values.map((value, index) => (
-                    <TableRow key={value.code || index}>
-                      <TableCell>
-                        <code className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm">
-                          {value.code}
-                        </code>
-                      </TableCell>
-                      <TableCell>{value.label}</TableCell>
-                      <TableCell>
-                        {value.category ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {value.category}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right text-gray-500">
-                        {value.sort_order ?? index}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewingSet(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Values Editor Dialog */}
+      {editingValuesSet && (
+        <ValuesEditor
+          valueSet={editingValuesSet}
+          open={!!editingValuesSet}
+          onOpenChange={(open) => !open && setEditingValuesSet(null)}
+          onUpdate={loadValueSets}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

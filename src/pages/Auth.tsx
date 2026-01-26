@@ -20,7 +20,7 @@ import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { SignupRecoveryPrompt } from "@/components/auth/SignupRecoveryPrompt";
 import { InviteRequiredScreen } from "@/components/auth/InviteRequiredScreen";
-import { validateInviteTokenDetailed } from "@/utils/inviteTokens";
+import { validateInviteTokenDetailed, validateSignupInviteToken } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
 import * as authService from "@/auth/services/authService";
@@ -63,8 +63,13 @@ const Auth = () => {
   const [validatingInviteToken, setValidatingInviteToken] = useState(() => {
     // Initialize to true if URL has invite token - prevents form flash
     const urlParams = new URLSearchParams(window.location.search);
-    return !!(urlParams.get('invite') && location.pathname === '/create-account');
+    const hasTeamInvite = !!(urlParams.get('invite') && location.pathname === '/create-account');
+    const hasAppInvite = !!(urlParams.get('appinvite') && location.pathname === '/create-account');
+    return hasTeamInvite || hasAppInvite;
   });
+
+  // Track processed app invite tokens to prevent loops
+  const processedAppInviteTokenRef = useRef<string | null>(null);
 
   // Track when user tries to access create-account without an invite
   const [showInviteRequired, setShowInviteRequired] = useState(false);
@@ -83,9 +88,10 @@ const Auth = () => {
     const inviteToken = urlParams.get('invite');
     const appInvite = urlParams.get('appinvite');
     const pendingInvite = sessionStorage.getItem('pendingInviteToken');
+    const pendingSignupInvite = sessionStorage.getItem('pendingSignupInviteToken');
 
     // If no invite token of any kind, show the invite required screen
-    if (!inviteToken && !appInvite && !pendingInvite) {
+    if (!inviteToken && !appInvite && !pendingInvite && !pendingSignupInvite) {
       setShowInviteRequired(true);
     } else {
       setShowInviteRequired(false);
@@ -188,6 +194,106 @@ const Auth = () => {
 
     handleInviteToken();
   }, [location.search]);
+
+  // ============================================================================
+  // APP INVITE TOKEN HANDLING (for new organization signups)
+  // ============================================================================
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const appInviteToken = urlParams.get('appinvite');
+
+    // Only process on /create-account route
+    if (location.pathname !== '/create-account') return;
+    if (!appInviteToken || !appInviteToken.trim()) return;
+    if (processedAppInviteTokenRef.current === appInviteToken.trim()) {
+      return;
+    }
+
+    // Skip if we already have a pending signup invite
+    if (sessionStorage.getItem('pendingSignupInviteToken')) {
+      setValidatingInviteToken(false);
+      return;
+    }
+
+    const handleAppInviteToken = async () => {
+      setValidatingInviteToken(true);
+      try {
+        processedAppInviteTokenRef.current = appInviteToken.trim();
+
+        // Sign out existing user if any
+        const session = await authService.getSession();
+        if (session) {
+          await authService.signOut();
+          clearAuthState();
+        }
+
+        // Validate the signup invite token
+        const validationResult = await validateSignupInviteToken(appInviteToken.trim());
+
+        if (validationResult.success && validationResult.data) {
+          // Store the validated signup invite for use after OTP verification
+          sessionStorage.setItem('pendingSignupInviteToken', appInviteToken.trim());
+          sessionStorage.setItem('pendingSignupInviteEmail', validationResult.data.email);
+
+          // Pre-fill the email if available
+          if (validationResult.data.email) {
+            formState.setEmail(validationResult.data.email);
+          }
+
+          // Remove the appinvite param from URL
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('appinvite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          toast({
+            title: "Signup invitation validated",
+            description: "Create your account to get started",
+          });
+
+          // Token is valid - show the form
+          setValidatingInviteToken(false);
+        } else {
+          // Navigate to the invalid invitation page with error type
+          const errorType = validationResult.error?.type || 'Invalid';
+
+          processedAppInviteTokenRef.current = null;
+
+          // Remove the appinvite param from URL before navigating
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('appinvite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          navigate('/invalid-invitation', {
+            replace: true,
+            state: {
+              errorType,
+              fromInviteValidation: true,
+              isSignupInvite: true,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Error validating app invite token:', error);
+        processedAppInviteTokenRef.current = null;
+
+        // Remove the appinvite param from URL before navigating
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('appinvite');
+        window.history.replaceState({}, '', newUrl.toString());
+
+        navigate('/invalid-invitation', {
+          replace: true,
+          state: {
+            errorType: 'Invalid',
+            fromInviteValidation: true,
+            isSignupInvite: true,
+          },
+        });
+      }
+    };
+
+    handleAppInviteToken();
+  }, [location.search, location.pathname]);
 
   // ============================================================================
   // STATE RESTORATION
@@ -507,6 +613,8 @@ const Auth = () => {
     // Clear all temp data and go back to signup form
     tempSignupService.clear();
     clearAuthState();
+    sessionStorage.removeItem('pendingSignupInviteToken');
+    sessionStorage.removeItem('pendingSignupInviteEmail');
     formState.setEmail('');
     formState.setFullName('');
     formState.setPassword('');
@@ -527,6 +635,10 @@ const Auth = () => {
     // Clear all state
     tempSignupService.clear();
     clearAuthState();
+    sessionStorage.removeItem('pendingSignupInviteToken');
+    sessionStorage.removeItem('pendingSignupInviteEmail');
+    sessionStorage.removeItem('pendingInviteToken');
+    sessionStorage.removeItem('pendingOrganizationId');
     formState.setEmail('');
     formState.setFullName('');
     formState.setPassword('');

@@ -108,17 +108,14 @@ export function ModelsPage() {
     }
   }, [selectedProductLineId]);
 
-  // Load models when series changes (or when "no series" is selected)
+  // Load models when series changes
   useEffect(() => {
-    if (selectedSeriesId === 'no-series') {
-      // Load models directly under manufacturer (no series)
-      loadModelsWithoutSeries(selectedManufacturerId);
-    } else if (selectedSeriesId) {
+    if (selectedSeriesId) {
       loadModels(selectedSeriesId);
     } else {
       setModels([]);
     }
-  }, [selectedSeriesId, selectedManufacturerId]);
+  }, [selectedSeriesId]);
 
   const loadManufacturers = async () => {
     try {
@@ -186,22 +183,6 @@ export function ModelsPage() {
     }
   };
 
-  const loadModelsWithoutSeries = async (manufacturerId: string) => {
-    setLoading(true);
-    try {
-      const data = await productAdminService.getModelsWithoutSeries(manufacturerId);
-      setModels(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load models',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleOpenDialog = (item?: ProductModel) => {
     if (item) {
       setEditingModel(item);
@@ -240,20 +221,16 @@ export function ModelsPage() {
         });
         toast({ title: 'Model updated' });
       } else {
-        const isNoSeries = selectedSeriesId === 'no-series';
         await productAdminService.createModel({
-          product_series_id: isNoSeries ? null : selectedSeriesId,
+          product_series_id: selectedSeriesId,
           product_manufacturer_id: selectedManufacturerId,
+          product_line_id: selectedProductLineId || null,
           name: formData.name.trim(),
         });
         toast({ title: 'Model created' });
       }
       setIsDialogOpen(false);
-      if (selectedSeriesId === 'no-series') {
-        loadModelsWithoutSeries(selectedManufacturerId);
-      } else {
-        loadModels(selectedSeriesId);
-      }
+      loadModels(selectedSeriesId);
     } catch (error) {
       toast({
         title: 'Error',
@@ -273,11 +250,7 @@ export function ModelsPage() {
       await productAdminService.deleteModel(deleteTarget.id);
       toast({ title: 'Model deleted' });
       setDeleteTarget(null);
-      if (selectedSeriesId === 'no-series') {
-        loadModelsWithoutSeries(selectedManufacturerId);
-      } else {
-        loadModels(selectedSeriesId);
-      }
+      loadModels(selectedSeriesId);
     } catch (error) {
       toast({
         title: 'Error',
@@ -366,15 +339,12 @@ export function ModelsPage() {
           <Select
             value={selectedSeriesId}
             onValueChange={setSelectedSeriesId}
-            disabled={!selectedManufacturerId}
+            disabled={!selectedProductLineId || series.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select series" />
+              <SelectValue placeholder={series.length === 0 ? 'No series available' : 'Select series'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="no-series" className="text-blue-600 font-medium">
-                ⊕ No Series (Direct Models)
-              </SelectItem>
               {series.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name}
@@ -545,11 +515,7 @@ export function ModelsPage() {
               modelName={schemaEditorModel.name}
               onSave={() => {
                 // Refresh models list after saving schema
-                if (selectedSeriesId === 'no-series') {
-                  loadModelsWithoutSeries(selectedManufacturerId);
-                } else {
-                  loadModels(selectedSeriesId);
-                }
+                loadModels(selectedSeriesId);
               }}
               onClose={() => setSchemaEditorModel(null)}
             />

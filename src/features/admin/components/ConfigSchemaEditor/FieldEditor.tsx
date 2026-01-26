@@ -166,9 +166,9 @@ export function FieldEditor({
                   <span className="text-gray-400 ml-1">(from config_value_sets)</span>
                 </label>
                 <Select
-                  value={typeof field.values_ref === 'string' ? field.values_ref : ''}
+                  value={typeof field.values_ref === 'string' ? field.values_ref : '_none'}
                   onValueChange={(v) =>
-                    handleFieldChange('values_ref', v || undefined)
+                    handleFieldChange('values_ref', v === '_none' ? undefined : v)
                   }
                   disabled={hasInlineValues}
                 >
@@ -176,7 +176,7 @@ export function FieldEditor({
                     <SelectValue placeholder="Select value set..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="_none">None</SelectItem>
                     {valueSets.map((vs) => (
                       <SelectItem key={vs.slug} value={vs.slug}>
                         {vs.name} ({vs.slug})

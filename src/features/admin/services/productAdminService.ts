@@ -399,6 +399,7 @@ class ProductAdminService {
   async createModel(input: {
     product_series_id?: string | null;
     product_manufacturer_id?: string | null;
+    product_line_id?: string | null;
     name: string;
     default_configurations?: Record<string, any> | null;
   }): Promise<ProductModel> {

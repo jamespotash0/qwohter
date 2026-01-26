@@ -6,6 +6,7 @@
 import { authFlowHelpers } from '@/utils/authFlowHelpers';
 import { onboardingStateHelpers } from '@/services/onboardingStateService';
 import { OrganizationCreationLimiter } from '@/services/rateLimitingService';
+import { markSignupInviteAsUsed } from '@/utils/inviteTokens';
 import { NavigateFunction } from 'react-router-dom';
 
 interface HandleOrganizationSubmitParams {
@@ -75,6 +76,19 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
 
     if (result.success && result.data) {
+      // Mark signup invite as used if this was a signup invite flow
+      const pendingSignupInviteToken = sessionStorage.getItem('pendingSignupInviteToken');
+      if (pendingSignupInviteToken) {
+        try {
+          await markSignupInviteAsUsed(pendingSignupInviteToken, userId);
+          sessionStorage.removeItem('pendingSignupInviteToken');
+          sessionStorage.removeItem('pendingSignupInviteEmail');
+        } catch (error) {
+          console.error('Failed to mark signup invite as used:', error);
+          // Don't fail the signup flow for this
+        }
+      }
+
       toast({
         title: 'Organization created!',
         description: `${result.data.organizationName} has been created successfully.`,
