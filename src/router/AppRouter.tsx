@@ -59,6 +59,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const user = useUser();
   const { isInitialized } = useAuthStatus();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
 
   // Check if URL has invite token - if so, let Auth.tsx handle the loading state
   const hasInviteToken = React.useMemo(() => {
@@ -66,16 +67,31 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     return !!(urlParams.get('invite') || urlParams.get('appinvite'));
   }, []);
 
-  // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
+  // IMPORTANT: Check if user has completed onboarding OR is super admin (BEFORE any early returns!)
   // Hooks must always be called in the same order - move this BEFORE the loading check
   React.useEffect(() => {
     const checkOnboarding = async () => {
       if (!user) {
         setHasCompletedOnboarding(null);
+        setIsSuperAdmin(false);
         return;
       }
 
       try {
+        // First check if user is a super admin - they bypass organization requirement
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle() as { data: { is_super_admin: boolean } | null; error: unknown };
+
+        if (profile?.is_super_admin) {
+          setIsSuperAdmin(true);
+          setHasCompletedOnboarding(true);
+          return;
+        }
+
+        // Otherwise check for active membership
         const { data: membership } = await supabase
           .from('memberships')
           .select('id, status')
@@ -106,9 +122,10 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If user is logged in AND has completed onboarding, redirect to dashboard
+  // If user is logged in AND has completed onboarding, redirect appropriately
   if (user && hasCompletedOnboarding) {
-    return <Navigate to="/dashboard" replace />;
+    // Super admins go to admin panel, regular users go to dashboard
+    return <Navigate to={isSuperAdmin ? "/admin" : "/dashboard"} replace />;
   }
 
   return <>{children}</>;
@@ -172,12 +189,7 @@ const ManufacturersPage = lazy(() => import("@/features/admin/pages/Manufacturer
 const ProductLinesPage = lazy(() => import("@/features/admin/pages/ProductLinesPage").then(m => ({ default: m.ProductLinesPage })));
 const SeriesPage = lazy(() => import("@/features/admin/pages/SeriesPage").then(m => ({ default: m.SeriesPage })));
 const ModelsPage = lazy(() => import("@/features/admin/pages/ModelsPage").then(m => ({ default: m.ModelsPage })));
-const VariantsPage = lazy(() => import("@/features/admin/pages/VariantsPage").then(m => ({ default: m.VariantsPage })));
-const OptionGroupsPage = lazy(() => import("@/features/admin/pages/OptionGroupsPage").then(m => ({ default: m.OptionGroupsPage })));
-const OptionValuesPage = lazy(() => import("@/features/admin/pages/OptionValuesPage").then(m => ({ default: m.OptionValuesPage })));
-const ModelOptionsPage = lazy(() => import("@/features/admin/pages/ModelOptionsPage").then(m => ({ default: m.ModelOptionsPage })));
-const ModelAllowedValuesPage = lazy(() => import("@/features/admin/pages/ModelAllowedValuesPage").then(m => ({ default: m.ModelAllowedValuesPage })));
-const RulesPage = lazy(() => import("@/features/admin/pages/RulesPage").then(m => ({ default: m.RulesPage })));
+const ValueSetsPage = lazy(() => import("@/features/admin/pages/ValueSetsPage").then(m => ({ default: m.ValueSetsPage })));
 const AdminInvitePage = lazy(() => import("@/features/admin/pages/AdminInvitePage").then(m => ({ default: m.AdminInvitePage })));
 
 // Products page - HIDDEN for now
@@ -280,12 +292,7 @@ export const AppRouter = () => (
             <Route path="products/lines" element={<ProductLinesPage />} />
             <Route path="products/series" element={<SeriesPage />} />
             <Route path="products/models" element={<ModelsPage />} />
-            <Route path="products/variants" element={<VariantsPage />} />
-            <Route path="options/groups" element={<OptionGroupsPage />} />
-            <Route path="options/values" element={<OptionValuesPage />} />
-            <Route path="config/model-options" element={<ModelOptionsPage />} />
-            <Route path="config/allowed-values" element={<ModelAllowedValuesPage />} />
-            <Route path="config/rules" element={<RulesPage />} />
+            <Route path="options/value-sets" element={<ValueSetsPage />} />
           </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}

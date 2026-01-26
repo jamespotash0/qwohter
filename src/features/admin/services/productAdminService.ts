@@ -54,7 +54,10 @@ export interface ProductModel {
   product_line_id: string | null;
   product_manufacturer_id: string | null;
   name: string;
+  /** @deprecated Use config_schema instead */
   default_configurations: Record<string, any> | null;
+  /** Configuration schema for product options (replaces pc_* tables) */
+  config_schema: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Loader2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -48,6 +48,8 @@ import {
   type ProductLine,
   type ProductManufacturer,
 } from '../services/productAdminService';
+import { ConfigSchemaEditor } from '../components/ConfigSchemaEditor';
+import type { ConfigSchema } from '@/lib/types/configSchema';
 
 export function ModelsPage() {
   const { toast } = useToast();
@@ -70,6 +72,9 @@ export function ModelsPage() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ProductModel | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Schema editor state
+  const [schemaEditorModel, setSchemaEditorModel] = useState<ProductModel | null>(null);
 
   // Load manufacturers on mount
   useEffect(() => {
@@ -434,7 +439,17 @@ export function ModelsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setSchemaEditorModel(item)}
+                        title="Edit Schema"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleOpenDialog(item)}
+                        title="Edit Name"
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -443,6 +458,7 @@ export function ModelsPage() {
                         size="icon"
                         onClick={() => setDeleteTarget(item)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -499,7 +515,7 @@ export function ModelsPage() {
             <AlertDialogTitle>Delete Model</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteTarget?.name}"? This will also
-              delete all associated variants.
+              delete all associated configurations.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -515,6 +531,31 @@ export function ModelsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Config Schema Editor Dialog */}
+      <Dialog
+        open={!!schemaEditorModel}
+        onOpenChange={(open) => !open && setSchemaEditorModel(null)}
+      >
+        <DialogContent className="max-w-4xl h-[85vh] p-0">
+          {schemaEditorModel && (
+            <ConfigSchemaEditor
+              schema={schemaEditorModel.config_schema as ConfigSchema | null}
+              modelId={schemaEditorModel.id}
+              modelName={schemaEditorModel.name}
+              onSave={() => {
+                // Refresh models list after saving schema
+                if (selectedSeriesId === 'no-series') {
+                  loadModelsWithoutSeries(selectedManufacturerId);
+                } else {
+                  loadModels(selectedSeriesId);
+                }
+              }}
+              onClose={() => setSchemaEditorModel(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
