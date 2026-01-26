@@ -1033,6 +1033,8 @@ export interface Database {
           product_manufacturer_id: string | null;
           name: string;
           default_configurations: Record<string, any> | null;
+          /** Product configuration schema (v2.0) - replaces default_configurations */
+          config_schema: import('@/lib/types/configSchema').ConfigSchema | null;
           created_at: string;
           updated_at: string;
         };
@@ -1046,6 +1048,7 @@ export interface Database {
           product_manufacturer_id?: string | null;
           name: string;
           default_configurations?: Record<string, any> | null;
+          config_schema?: import('@/lib/types/configSchema').ConfigSchema | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1059,6 +1062,7 @@ export interface Database {
           product_manufacturer_id?: string | null;
           name?: string;
           default_configurations?: Record<string, any> | null;
+          config_schema?: import('@/lib/types/configSchema').ConfigSchema | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1105,10 +1109,52 @@ export interface Database {
         };
       };
       // ============================================================================
-      // Product Configuration Tables (pc_ prefix)
+      // Config Value Sets - Shared value libraries for product configuration
+      // ============================================================================
+      /**
+       * Config Value Sets - Shared value libraries (colors, materials, etc.)
+       * Referenced by config_schema via values_ref property
+       */
+      config_value_sets: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          category: string | null;
+          manufacturer_id: string | null;
+          values: import('@/lib/types/configValueSet').ValueOption[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          category?: string | null;
+          manufacturer_id?: string | null;
+          values?: import('@/lib/types/configValueSet').ValueOption[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          name?: string;
+          category?: string | null;
+          manufacturer_id?: string | null;
+          values?: import('@/lib/types/configValueSet').ValueOption[];
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      // ============================================================================
+      // Product Configuration Tables (pc_ prefix) - DEPRECATED
+      // These tables are being replaced by config_schema on product_models
+      // and config_value_sets. See TICKET-9 for deprecation plan.
       // ============================================================================
       /**
        * Option Groups - Shared option definitions (Track System, Panel Face, etc.)
+       * @deprecated Use config_value_sets and config_schema instead
        */
       pc_option_groups: {
         Row: {
@@ -1152,6 +1198,7 @@ export interface Database {
           value: string;
           sort_order: number;
           is_active: boolean;
+          category: string | null;
           created_at: string;
         };
         Insert: {
@@ -1160,6 +1207,7 @@ export interface Database {
           value: string;
           sort_order?: number;
           is_active?: boolean;
+          category?: string | null;
           created_at?: string;
         };
         Update: {
@@ -1168,6 +1216,7 @@ export interface Database {
           value?: string;
           sort_order?: number;
           is_active?: boolean;
+          category?: string | null;
           created_at?: string;
         };
       };
