@@ -11,10 +11,12 @@ export type FeedbackType = 'helpful' | 'not_helpful' | 'incorrect' | 'too_generi
 export type ContextType = 'suggestion' | 'chat_message' | 'tool_action';
 
 export interface SubmitFeedbackParams {
-  /** The message ID (for chat feedback) */
+  /** The message ID (for chat feedback on persisted messages) */
   messageId?: string;
   /** The suggestion ID (for suggestion feedback) */
   suggestionId?: string;
+  /** The message content (for feedback on local/global chat messages not stored in DB) */
+  messageContent?: string;
   /** Organization ID */
   organizationId: string;
   /** Type of content being rated */
@@ -45,9 +47,9 @@ export async function submitAiFeedback(params: SubmitFeedbackParams): Promise<Fe
       return { success: false, error: 'User not authenticated' };
     }
 
-    // Validate - must have either messageId or suggestionId
-    if (!params.messageId && !params.suggestionId) {
-      return { success: false, error: 'Either messageId or suggestionId is required' };
+    // Validate - must have messageId, suggestionId, or messageContent
+    if (!params.messageId && !params.suggestionId && !params.messageContent) {
+      return { success: false, error: 'Either messageId, suggestionId, or messageContent is required' };
     }
 
     const { error } = await supabase
@@ -57,6 +59,7 @@ export async function submitAiFeedback(params: SubmitFeedbackParams): Promise<Fe
         organization_id: params.organizationId,
         message_id: params.messageId || null,
         suggestion_id: params.suggestionId || null,
+        message_content: params.messageContent || null,
         context_type: params.contextType,
         feedback_type: params.feedbackType || null,
         rating: params.rating || null,
@@ -81,13 +84,15 @@ export async function submitAiFeedback(params: SubmitFeedbackParams): Promise<Fe
 
 /**
  * Quick thumbs up feedback
+ * @param messageContent - The message text (for local/global chat)
+ * @param organizationId - The organization ID
  */
 export async function submitThumbsUp(
-  messageId: string,
+  messageContent: string,
   organizationId: string
 ): Promise<FeedbackResult> {
   return submitAiFeedback({
-    messageId,
+    messageContent,
     organizationId,
     contextType: 'chat_message',
     feedbackType: 'helpful',
@@ -97,14 +102,17 @@ export async function submitThumbsUp(
 
 /**
  * Quick thumbs down feedback
+ * @param messageContent - The message text (for local/global chat)
+ * @param organizationId - The organization ID
+ * @param correction - Optional user correction
  */
 export async function submitThumbsDown(
-  messageId: string,
+  messageContent: string,
   organizationId: string,
   correction?: string
 ): Promise<FeedbackResult> {
   return submitAiFeedback({
-    messageId,
+    messageContent,
     organizationId,
     contextType: 'chat_message',
     feedbackType: 'not_helpful',

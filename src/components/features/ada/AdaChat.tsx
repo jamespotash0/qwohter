@@ -156,7 +156,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       if (result.success && result.data) {
         // Add success message to chat
         const successMessage: LocalChatMessage = {
-          id: `success-${Date.now()}`,
+          id: crypto.randomUUID(),
           role: 'assistant',
           content: result.data.message || `Successfully created ${action.type.replace('_', ' ')}.`,
           created_at: new Date().toISOString(),
@@ -168,7 +168,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         const friendlyMessage = result.data?.message ||
           `I couldn't complete that ${action.type.replace(/_/g, ' ')}. ${result.error || 'Please try again.'}`;
         const errorMessage: LocalChatMessage = {
-          id: `error-${Date.now()}`,
+          id: crypto.randomUUID(),
           role: 'assistant',
           content: friendlyMessage,
           created_at: new Date().toISOString(),
@@ -178,7 +178,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     } catch (error) {
       console.error('[Ada] Confirm action error:', error);
       const errorMessage: LocalChatMessage = {
-        id: `error-${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: "Something went wrong on my end. Let's try that again.",
         created_at: new Date().toISOString(),
@@ -204,7 +204,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
       console.log('[Ada] User confirmed pending action via chat:', pendingAction);
       // Add user message to show they said yes
       const userMessage: LocalChatMessage = {
-        id: `user-${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'user',
         content: message,
         created_at: new Date().toISOString(),
@@ -218,7 +218,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     // For global chat, add user message to local state immediately
     if (!isProposalContext) {
       const userMessage: LocalChatMessage = {
-        id: `user-${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'user',
         content: message,
         created_at: new Date().toISOString(),
@@ -241,7 +241,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         // Add AI response message for global chat
         if (!isProposalContext) {
           const aiMessage: LocalChatMessage = {
-            id: `ai-${Date.now()}`,
+            id: crypto.randomUUID(),
             role: 'assistant',
             content: result.data.response,
             created_at: new Date().toISOString(),
@@ -260,7 +260,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
         // API returned success: false
         console.error('[Ada] Chat error:', result.error);
         const errorMessage: LocalChatMessage = {
-          id: `error-${Date.now()}`,
+          id: crypto.randomUUID(),
           role: 'assistant',
           content: 'I seem to have an issue with that request. Could you try again?',
           created_at: new Date().toISOString(),
@@ -270,7 +270,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     } catch (error) {
       console.error('[Ada] Chat exception:', error);
       const errorMessage: LocalChatMessage = {
-        id: `error-${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: 'I seem to have an issue with that request. Could you try again?',
         created_at: new Date().toISOString(),
@@ -331,7 +331,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     setPendingAction(null);
     // Add cancellation message
     const cancelMessage: LocalChatMessage = {
-      id: `cancel-${Date.now()}`,
+      id: crypto.randomUUID(),
       role: 'assistant',
       content: 'No problem! Let me know if you need anything else.',
       created_at: new Date().toISOString(),
@@ -343,7 +343,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
   const handleSuggestionClick = useCallback(async (suggestion: string) => {
     // Add user message to local state immediately
     const userMessage: LocalChatMessage = {
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(),
       role: 'user',
       content: suggestion,
       created_at: new Date().toISOString(),
@@ -360,7 +360,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
 
       if (result.success && result.data?.response) {
         const aiMessage: LocalChatMessage = {
-          id: `ai-${Date.now()}`,
+          id: crypto.randomUUID(),
           role: 'assistant',
           content: result.data.response,
           created_at: new Date().toISOString(),
@@ -378,7 +378,7 @@ export const AdaChat: React.FC<AdaChatProps> = ({
     } catch (error) {
       console.error('[Ada] Suggestion click error:', error);
       const errorMessage: LocalChatMessage = {
-        id: `error-${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: 'I had trouble processing that. Could you try again?',
         created_at: new Date().toISOString(),

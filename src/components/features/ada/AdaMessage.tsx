@@ -5,9 +5,9 @@
  * Includes thumbs up/down feedback for AI responses.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, ThumbsDown, Check } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Check, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { submitThumbsUp, submitThumbsDown } from '@/services/aiFeedbackService';
 import type { AIMessage, LocalChatMessage } from '@/lib/types/aiWorkflow';
@@ -45,15 +45,17 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
   // Feedback state
   const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFeedbackInput, setShowFeedbackInput] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const feedbackInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle thumbs up
+  // Handle thumbs up - quick action, no input needed
   const handleThumbsUp = useCallback(async () => {
     if (!organizationId || feedbackGiven || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const result = await submitThumbsUp(message.id, organizationId);
+      const result = await submitThumbsUp(message.content, organizationId);
       console.log('[AdaMessage] Thumbs up result:', result);
-      // Always show thanks - even if DB fails, user clicked
       setFeedbackGiven('up');
     } catch (err) {
       console.error('[AdaMessage] Thumbs up error:', err);
@@ -61,23 +63,44 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [organizationId, message.id, feedbackGiven, isSubmitting]);
+  }, [organizationId, message.content, feedbackGiven, isSubmitting]);
 
-  // Handle thumbs down
-  const handleThumbsDown = useCallback(async () => {
+  // Handle thumbs down click - show feedback input
+  const handleThumbsDownClick = useCallback(() => {
     if (!organizationId || feedbackGiven || isSubmitting) return;
+    setShowFeedbackInput(true);
+    // Focus input after render
+    setTimeout(() => feedbackInputRef.current?.focus(), 50);
+  }, [organizationId, feedbackGiven, isSubmitting]);
+
+  // Submit thumbs down with optional feedback
+  const handleSubmitThumbsDown = useCallback(async () => {
+    if (!organizationId || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const result = await submitThumbsDown(message.id, organizationId);
+      const result = await submitThumbsDown(
+        message.content,
+        organizationId,
+        feedbackText.trim() || undefined
+      );
       console.log('[AdaMessage] Thumbs down result:', result);
       setFeedbackGiven('down');
+      setShowFeedbackInput(false);
+      setFeedbackText('');
     } catch (err) {
       console.error('[AdaMessage] Thumbs down error:', err);
-      setFeedbackGiven('down'); // Still show thanks for UX
+      setFeedbackGiven('down');
+      setShowFeedbackInput(false);
     } finally {
       setIsSubmitting(false);
     }
-  }, [organizationId, message.id, feedbackGiven, isSubmitting]);
+  }, [organizationId, message.content, feedbackText, isSubmitting]);
+
+  // Cancel feedback input
+  const handleCancelFeedback = useCallback(() => {
+    setShowFeedbackInput(false);
+    setFeedbackText('');
+  }, []);
 
   // Show feedback buttons for assistant messages (not user, not static greeting)
   const showFeedbackButtons = !isUser && !isStaticGreeting && organizationId;
@@ -219,6 +242,56 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
                   <Check className="w-3 h-3" />
                   <span>Thanks!</span>
                 </motion.div>
+              ) : showFeedbackInput ? (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  className="flex items-center gap-1"
+                >
+                  <input
+                    ref={feedbackInputRef}
+                    type="text"
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSubmitThumbsDown();
+                      if (e.key === 'Escape') handleCancelFeedback();
+                    }}
+                    placeholder="What went wrong? (optional)"
+                    className={cn(
+                      'w-32 px-2 py-0.5 text-[10px] rounded',
+                      'bg-white dark:bg-gray-800',
+                      'border border-gray-200 dark:border-gray-600',
+                      'focus:outline-none focus:ring-1 focus:ring-red-400',
+                      'placeholder:text-gray-400'
+                    )}
+                  />
+                  <button
+                    onClick={handleSubmitThumbsDown}
+                    disabled={isSubmitting}
+                    className={cn(
+                      'p-1 rounded',
+                      'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20',
+                      'transition-colors duration-150',
+                      'disabled:opacity-50'
+                    )}
+                    title="Submit feedback"
+                  >
+                    <Send className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={handleCancelFeedback}
+                    className={cn(
+                      'p-1 rounded',
+                      'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700',
+                      'transition-colors duration-150'
+                    )}
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
               ) : (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -239,7 +312,7 @@ export const AdaMessage: React.FC<AdaMessageProps> = ({
                     <ThumbsUp className="w-3 h-3" />
                   </button>
                   <button
-                    onClick={handleThumbsDown}
+                    onClick={handleThumbsDownClick}
                     disabled={isSubmitting}
                     className={cn(
                       'p-1 rounded hover:bg-white/50 dark:hover:bg-white/10',
