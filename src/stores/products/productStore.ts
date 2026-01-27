@@ -2,7 +2,7 @@
  * Product Store
  * Manages product hierarchy state for cascading selection
  *
- * Hierarchy: Domain → Manufacturer → Product Line → Series → Model → Variant
+ * Hierarchy: Domain → Manufacturer → Product Line → Series → Model
  */
 
 import { create } from 'zustand';
@@ -47,83 +47,10 @@ export interface ProductSeries {
   updated_at: string;
 }
 
-export interface ProductModel {
-  id: string;
-  product_series_id: string;
-  product_line_id?: string;
-  product_manufacturer_id?: string;
-  name: string;
-  default_configurations: Record<string, FieldDefinition>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProductVariant {
-  id: string;
-  model_id: string;
-  name: string;
-  sku?: string;
-  description?: string;
-  specifications: Record<string, unknown>;
-  pricing: Record<string, unknown>;
-  is_default: boolean;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-// ============================================================================
-// MODEL OPTIONS & VALUES (from pc_* tables)
-// ============================================================================
-
-export interface OptionGroup {
-  id: string;
-  slug: string;
-  label: string;
-  field_type: 'dropdown' | 'input' | 'multi-select' | 'checkbox' | 'textarea' | 'radio' | 'auto';
-  input_type?: string;
-  description?: string;
-}
-
-export interface OptionValue {
-  id: string;
-  option_group_id: string;
-  value: string;
-  label?: string;
-  category?: string; // For hierarchical filtering (e.g., "Standard Vinyl")
-  sort_order: number;
-  is_active: boolean;
-}
-
-export interface ModelOption {
-  id: string;
-  model_id: string;
-  option_group_id: string;
-  display_order: number;
-  display_group: 'primary' | 'secondary' | 'advanced';
-  grid_span: number;
-  placeholder?: string;
-  help_text?: string;
-  is_required: boolean;
-  is_multi_select: boolean;
-  is_manual_select: boolean;
-  is_visible: boolean;
-  // Joined data
-  option_group?: OptionGroup;
-  allowed_values?: AllowedValue[];
-}
-
-export interface AllowedValue {
-  id: string;
-  model_option_id: string;
-  option_value_id: string;
-  is_default: boolean;
-  sort_order: number;
-  is_active: boolean;
-  // Joined option value data
-  option_value?: OptionValue;
-}
-
+/**
+ * Legacy field definition for default_configurations
+ * @deprecated Use config_schema instead for new development
+ */
 export interface FieldDefinition {
   field_type:
     | 'input'
@@ -136,23 +63,33 @@ export interface FieldDefinition {
     | 'auto';
   input_type?: 'string' | 'number' | 'email' | 'tel' | 'url' | 'date' | 'datetime-local' | 'time';
   required: boolean;
-  options?: any[]; // available choices (can be numbers or strings)
-  depends_on?: { field_id: string; value: any }[] | null; // triggers dependency logic
-  default_value?: any;
+  options?: unknown[];
+  depends_on?: { field_id: string; value: unknown }[] | null;
+  default_value?: unknown;
   placeholder?: string;
-  multi_select?: boolean; // true if multiple selections allowed
-  manual_select?: boolean; // true if user can manually pick (vs auto-calculated)
-
-  // Display metadata for UI rendering
-  display_order?: number; // sort order (lower = first)
-  display_group?: 'primary' | 'secondary' | 'advanced'; // grouping for layout
-  grid_span?: number; // number of columns to span (1-4)
+  multi_select?: boolean;
+  manual_select?: boolean;
+  display_order?: number;
+  display_group?: 'primary' | 'secondary' | 'advanced';
+  grid_span?: number;
 }
 
+export interface ProductModel {
+  id: string;
+  product_series_id: string;
+  product_line_id?: string;
+  product_manufacturer_id?: string;
+  name: string;
+  /** @deprecated Use config_schema instead */
+  default_configurations?: Record<string, FieldDefinition>;
+  /** Configuration schema for product options (replaces pc_* tables) */
+  config_schema?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface ProductSelection {
   product_model_id: string;
-  product_variant_id: string | null;
   product_hierarchy: {
     domain: string;
     domain_id: string;
@@ -163,8 +100,6 @@ export interface ProductSelection {
     series: string;
     series_id: string;
     model: string;
-    variant: string | null;
-    variant_id: string | null;
   };
   specifications: Record<string, unknown>;
   pricing: {
@@ -181,12 +116,10 @@ export interface ProductSelection {
 interface ProductState {
   // Hierarchy data (cached)
   domains: ProductDomain[];
-  manufacturers: Map<string, ProductManufacturer[]>; // keyed by domain_id (via junction)
-  productLines: Map<string, ProductLine[]>; // keyed by manufacturer_id
-  series: Map<string, ProductSeries[]>; // keyed by product_line_id
-  models: Map<string, ProductModel[]>; // keyed by product_series.id or pl_${product_line_id}
-  variants: Map<string, ProductVariant[]>; // keyed by model_id
-  modelOptions: Map<string, ModelOption[]>; // keyed by model_id - options from pc_* tables
+  manufacturers: Map<string, ProductManufacturer[]>;
+  productLines: Map<string, ProductLine[]>;
+  series: Map<string, ProductSeries[]>;
+  models: Map<string, ProductModel[]>;
 
   // Selected state
   selectedDomain: ProductDomain | null;
@@ -194,7 +127,6 @@ interface ProductState {
   selectedProductLine: ProductLine | null;
   selectedSeries: ProductSeries | null;
   selectedModel: ProductModel | null;
-  selectedVariant: ProductVariant | null;
 
   // Loading states
   loading: {
@@ -203,8 +135,6 @@ interface ProductState {
     productLines: boolean;
     series: boolean;
     models: boolean;
-    variants: boolean;
-    modelOptions: boolean;
   };
 
   error: string | null;
@@ -214,11 +144,10 @@ interface ProductState {
   fetchManufacturers: (domainId: string) => Promise<void>;
   fetchProductLines: (manufacturerId: string) => Promise<void>;
   fetchSeries: (productLineId: string) => Promise<void>;
+  fetchSeriesByManufacturer: (manufacturerId: string) => Promise<void>;
   fetchModels: (seriesId: string) => Promise<void>;
   fetchModelsByProductLine: (productLineId: string) => Promise<void>;
   fetchModelsByManufacturer: (manufacturerId: string) => Promise<void>;
-  fetchVariants: (modelId: string) => Promise<void>;
-  fetchModelOptions: (modelId: string) => Promise<ModelOption[]>;
   getModelDetails: (modelId: string) => Promise<ProductModel | null>;
 
   // Selection actions
@@ -227,11 +156,10 @@ interface ProductState {
   selectProductLine: (productLine: ProductLine | null) => void;
   selectSeries: (series: ProductSeries | null) => void;
   selectModel: (model: ProductModel | null) => void;
-  selectVariant: (variant: ProductVariant | null) => void;
 
   // Utilities
   reset: () => void;
-  clearFromLevel: (level: 'manufacturer' | 'productLine' | 'series' | 'model' | 'variant') => void;
+  clearFromLevel: (level: 'manufacturer' | 'productLine' | 'series' | 'model') => void;
   setError: (error: string | null) => void;
 
   // Legacy aliases for backward compatibility
@@ -253,15 +181,12 @@ export const useProductStore = create<ProductState>()(
     productLines: new Map(),
     series: new Map(),
     models: new Map(),
-    variants: new Map(),
-    modelOptions: new Map(),
 
     selectedDomain: null,
     selectedManufacturer: null,
     selectedProductLine: null,
     selectedSeries: null,
     selectedModel: null,
-    selectedVariant: null,
 
     loading: {
       domains: false,
@@ -269,8 +194,6 @@ export const useProductStore = create<ProductState>()(
       productLines: false,
       series: false,
       models: false,
-      variants: false,
-      modelOptions: false,
     },
 
     error: null,
@@ -360,7 +283,6 @@ export const useProductStore = create<ProductState>()(
       }));
 
       try {
-        // Query via junction table to get manufacturers for this domain
         const { data, error } = await supabase
           .from('manufacturer_product_domains')
           .select(`
@@ -379,8 +301,10 @@ export const useProductStore = create<ProductState>()(
 
         // Extract manufacturer data from the joined result
         const manufacturers = (data || [])
-          .map((row) => row.product_manufacturers as ProductManufacturer)
-          .filter(Boolean)
+          .map((row: { product_manufacturers: ProductManufacturer | null }) =>
+            row.product_manufacturers
+          )
+          .filter((m): m is ProductManufacturer => m !== null)
           .sort((a, b) => a.name.localeCompare(b.name));
 
         const newMap = new Map(get().manufacturers);
@@ -423,6 +347,40 @@ export const useProductStore = create<ProductState>()(
         const message = error instanceof Error ? error.message : 'Unknown error';
         set({ error: message });
         console.error('Error fetching series:', error);
+      } finally {
+        set((state) => ({
+          loading: { ...state.loading, series: false },
+        }));
+      }
+    },
+
+    // Fetch series directly by manufacturer (for manufacturers without product lines)
+    fetchSeriesByManufacturer: async (manufacturerId: string) => {
+      const cacheKey = `mfr_${manufacturerId}`;
+      const cached = get().series.get(cacheKey);
+      if (cached && cached.length > 0) return;
+
+      set((state) => ({
+        loading: { ...state.loading, series: true },
+        error: null,
+      }));
+
+      try {
+        const { data, error } = await supabase
+          .from('product_series')
+          .select('*')
+          .eq('manufacturer_id', manufacturerId)
+          .is('product_line_id', null)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        const newMap = new Map(get().series);
+        newMap.set(cacheKey, data || []);
+        set({ series: newMap });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        set({ error: message });
       } finally {
         set((state) => ({
           loading: { ...state.loading, series: false },
@@ -513,7 +471,7 @@ export const useProductStore = create<ProductState>()(
           .from('product_models')
           .select('*')
           .eq('product_manufacturer_id', manufacturerId)
-          .is('product_series_id', null) // Only models directly under manufacturer (no series)
+          .is('product_series_id', null)
           .order('name', { ascending: true });
 
         if (error) throw error;
@@ -524,137 +482,9 @@ export const useProductStore = create<ProductState>()(
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         set({ error: message });
-        console.error('Error fetching models by manufacturer:', error);
       } finally {
         set((state) => ({
           loading: { ...state.loading, models: false },
-        }));
-      }
-    },
-
-    // Fetch variants for a model
-    fetchVariants: async (modelId: string) => {
-      const cached = get().variants.get(modelId);
-      if (cached && cached.length > 0) return;
-
-      set((state) => ({
-        loading: { ...state.loading, variants: true },
-        error: null,
-      }));
-
-      try {
-        const { data, error } = await supabase
-          .from('product_variants')
-          .select('*')
-          .eq('model_id', modelId)
-          .order('sort_order', { ascending: true });
-
-        if (error) throw error;
-
-        const newMap = new Map(get().variants);
-        newMap.set(modelId, data || []);
-        set({ variants: newMap });
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        set({ error: message });
-        console.error('Error fetching variants:', error);
-      } finally {
-        set((state) => ({
-          loading: { ...state.loading, variants: false },
-        }));
-      }
-    },
-
-    // Fetch model options with allowed values (from pc_* tables)
-    fetchModelOptions: async (modelId: string) => {
-      const cached = get().modelOptions.get(modelId);
-      if (cached && cached.length > 0) return cached;
-
-      set((state) => ({
-        loading: { ...state.loading, modelOptions: true },
-        error: null,
-      }));
-
-      try {
-        // Fetch model options with option group info
-        const { data: optionsData, error: optionsError } = await supabase
-          .from('pc_model_options')
-          .select(`
-            *,
-            pc_option_groups (
-              id,
-              name,
-              slug,
-              field_type,
-              input_type,
-              description
-            )
-          `)
-          .eq('model_id', modelId)
-          .eq('is_visible', true)
-          .order('display_order', { ascending: true });
-
-        if (optionsError) throw optionsError;
-
-        // For each option, fetch allowed values with option_value details
-        const optionsWithValues: ModelOption[] = await Promise.all(
-          (optionsData || []).map(async (option) => {
-            const { data: allowedData } = await supabase
-              .from('pc_model_allowed_values')
-              .select(`
-                *,
-                pc_option_values (
-                  id,
-                  value,
-                  category,
-                  sort_order,
-                  is_active
-                )
-              `)
-              .eq('model_option_id', option.id)
-              .eq('is_active', true)
-              .order('sort_order', { ascending: true });
-
-            return {
-              id: option.id,
-              model_id: option.model_id,
-              option_group_id: option.option_group_id,
-              display_order: option.display_order,
-              display_group: option.display_group || 'primary',
-              grid_span: option.grid_span || 2,
-              placeholder: option.placeholder,
-              help_text: option.help_text,
-              is_required: option.is_required,
-              is_multi_select: option.is_multi_select,
-              is_manual_select: option.is_manual_select,
-              is_visible: option.is_visible,
-              option_group: option.pc_option_groups,
-              allowed_values: (allowedData || []).map((av) => ({
-                id: av.id,
-                model_option_id: av.model_option_id,
-                option_value_id: av.option_value_id,
-                is_default: av.is_default,
-                sort_order: av.sort_order,
-                is_active: av.is_active,
-                option_value: av.pc_option_values,
-              })),
-            } as ModelOption;
-          })
-        );
-
-        const newMap = new Map(get().modelOptions);
-        newMap.set(modelId, optionsWithValues);
-        set({ modelOptions: newMap });
-
-        return optionsWithValues;
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        set({ error: message });
-        console.error('Error fetching model options:', error);
-        return [];
-      } finally {
-        set((state) => ({
-          loading: { ...state.loading, modelOptions: false },
         }));
       }
     },
@@ -686,11 +516,9 @@ export const useProductStore = create<ProductState>()(
         selectedProductLine: null,
         selectedSeries: null,
         selectedModel: null,
-        selectedVariant: null,
       });
 
       if (domain) {
-        // Fetch manufacturers for the domain
         get().fetchManufacturers(domain.id);
       }
     },
@@ -706,11 +534,9 @@ export const useProductStore = create<ProductState>()(
         selectedProductLine: null,
         selectedSeries: null,
         selectedModel: null,
-        selectedVariant: null,
       });
 
       if (manufacturer) {
-        // Fetch product lines for this manufacturer
         get().fetchProductLines(manufacturer.id);
       }
     },
@@ -720,11 +546,9 @@ export const useProductStore = create<ProductState>()(
         selectedProductLine: productLine,
         selectedSeries: null,
         selectedModel: null,
-        selectedVariant: null,
       });
 
       if (productLine) {
-        // Fetch series for this product line
         get().fetchSeries(productLine.id);
       }
     },
@@ -733,7 +557,6 @@ export const useProductStore = create<ProductState>()(
       set({
         selectedSeries: series,
         selectedModel: null,
-        selectedVariant: null,
       });
 
       if (series) {
@@ -742,19 +565,7 @@ export const useProductStore = create<ProductState>()(
     },
 
     selectModel: (model) => {
-      set({
-        selectedModel: model,
-        selectedVariant: null,
-      });
-
-      if (model) {
-        get().fetchVariants(model.id);
-        get().fetchModelOptions(model.id); // Fetch dynamic options from pc_* tables
-      }
-    },
-
-    selectVariant: (variant) => {
-      set({ selectedVariant: variant });
+      set({ selectedModel: model });
     },
 
     // Clear from a specific level
@@ -766,7 +577,6 @@ export const useProductStore = create<ProductState>()(
             selectedProductLine: null,
             selectedSeries: null,
             selectedModel: null,
-            selectedVariant: null,
           });
           break;
         case 'productLine':
@@ -774,24 +584,16 @@ export const useProductStore = create<ProductState>()(
             selectedProductLine: null,
             selectedSeries: null,
             selectedModel: null,
-            selectedVariant: null,
           });
           break;
         case 'series':
           set({
             selectedSeries: null,
             selectedModel: null,
-            selectedVariant: null,
           });
           break;
         case 'model':
-          set({
-            selectedModel: null,
-            selectedVariant: null,
-          });
-          break;
-        case 'variant':
-          set({ selectedVariant: null });
+          set({ selectedModel: null });
           break;
       }
     },
@@ -804,7 +606,6 @@ export const useProductStore = create<ProductState>()(
         selectedProductLine: null,
         selectedSeries: null,
         selectedModel: null,
-        selectedVariant: null,
         error: null,
       });
     },

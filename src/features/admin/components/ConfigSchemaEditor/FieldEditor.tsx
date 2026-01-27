@@ -3,11 +3,12 @@
  * Form for editing a single config schema field
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -15,7 +16,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Plus, GripVertical } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Trash2, GripVertical, Check, ChevronsUpDown, X, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { OptionFieldType } from '@/lib/types/configSchema';
 import type { FieldEditorState, ValueSetOption } from './types';
@@ -87,8 +101,37 @@ export function FieldEditor({
   };
 
   const needsValues = field.type === 'select' || field.type === 'multi-select';
-  const hasValuesRef = !!field.values_ref;
+  const hasValuesRef = typeof field.values_ref === 'string' && field.values_ref.length > 0;
   const hasInlineValues = field.values && field.values.length > 0;
+
+  // Get available values from the selected value set for filtering UI
+  const selectedValueSet = useMemo(() => {
+    if (!hasValuesRef || typeof field.values_ref !== 'string') return null;
+    return valueSets.find((vs) => vs.slug === field.values_ref) || null;
+  }, [hasValuesRef, field.values_ref, valueSets]);
+
+  const availableValues = selectedValueSet?.values || [];
+
+  // Handle allowed_codes toggle
+  const handleAllowedCodeToggle = (code: string) => {
+    const current = field.allowed_codes || [];
+    const newCodes = current.includes(code)
+      ? current.filter((c) => c !== code)
+      : [...current, code];
+    handleFieldChange('allowed_codes', newCodes.length > 0 ? newCodes : undefined);
+  };
+
+  // Handle excluded_codes toggle
+  const handleExcludedCodeToggle = (code: string) => {
+    const current = field.excluded_codes || [];
+    const newCodes = current.includes(code)
+      ? current.filter((c) => c !== code)
+      : [...current, code];
+    handleFieldChange('excluded_codes', newCodes.length > 0 ? newCodes : undefined);
+  };
+
+  // Get other field keys for depends_on dropdown (exclude current field)
+  const otherFieldKeys = allFieldKeys.filter((k) => k !== field._key);
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
@@ -329,15 +372,171 @@ export function FieldEditor({
                   <label className="text-xs font-medium text-gray-500">
                     Depends On (for cascading)
                   </label>
-                  <Input
-                    value={field.depends_on || ''}
-                    onChange={(e) =>
-                      handleFieldChange('depends_on', e.target.value || undefined)
+                  <Select
+                    value={field.depends_on || '_none'}
+                    onValueChange={(v) =>
+                      handleFieldChange('depends_on', v === '_none' ? undefined : v)
                     }
-                    placeholder="Parent field key (e.g., finish_style)"
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select parent field..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">None</SelectItem>
+                      {otherFieldKeys.map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {key}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-gray-400">
                     Filter this field's values by the category matching the parent's value
+                  </p>
+                </div>
+              )}
+
+              {/* Value Filtering - only show when values_ref is set */}
+              {needsValues && hasValuesRef && availableValues.length > 0 && (
+                <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                      Value Filtering
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      ({availableValues.length} values in set)
+                    </span>
+                  </div>
+
+                  {/* Allowed Codes */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-500">
+                      Allowed Codes
+                      <span className="text-gray-400 ml-1">(whitelist - only show these)</span>
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-between h-auto min-h-[36px] py-2"
+                        >
+                          <span className="flex flex-wrap gap-1">
+                            {field.allowed_codes && field.allowed_codes.length > 0 ? (
+                              field.allowed_codes.map((code) => (
+                                <Badge key={code} variant="secondary" className="text-xs">
+                                  {code}
+                                  <X
+                                    className="w-3 h-3 ml-1 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAllowedCodeToggle(code);
+                                    }}
+                                  />
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-gray-400">All values allowed</span>
+                            )}
+                          </span>
+                          <ChevronsUpDown className="w-4 h-4 ml-2 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search values..." />
+                          <CommandList>
+                            <CommandEmpty>No values found.</CommandEmpty>
+                            <CommandGroup>
+                              {availableValues.map((v) => (
+                                <CommandItem
+                                  key={v.code}
+                                  onSelect={() => handleAllowedCodeToggle(v.code)}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      field.allowed_codes?.includes(v.code)
+                                        ? 'opacity-100'
+                                        : 'opacity-0'
+                                    )}
+                                  />
+                                  <span className="flex-1">{v.label}</span>
+                                  <span className="text-xs text-gray-400 font-mono">{v.code}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Excluded Codes */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-500">
+                      Excluded Codes
+                      <span className="text-gray-400 ml-1">(blacklist - hide these)</span>
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-between h-auto min-h-[36px] py-2"
+                        >
+                          <span className="flex flex-wrap gap-1">
+                            {field.excluded_codes && field.excluded_codes.length > 0 ? (
+                              field.excluded_codes.map((code) => (
+                                <Badge key={code} variant="destructive" className="text-xs">
+                                  {code}
+                                  <X
+                                    className="w-3 h-3 ml-1 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleExcludedCodeToggle(code);
+                                    }}
+                                  />
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-gray-400">No values excluded</span>
+                            )}
+                          </span>
+                          <ChevronsUpDown className="w-4 h-4 ml-2 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search values..." />
+                          <CommandList>
+                            <CommandEmpty>No values found.</CommandEmpty>
+                            <CommandGroup>
+                              {availableValues.map((v) => (
+                                <CommandItem
+                                  key={v.code}
+                                  onSelect={() => handleExcludedCodeToggle(v.code)}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      field.excluded_codes?.includes(v.code)
+                                        ? 'opacity-100'
+                                        : 'opacity-0'
+                                    )}
+                                  />
+                                  <span className="flex-1">{v.label}</span>
+                                  <span className="text-xs text-gray-400 font-mono">{v.code}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <p className="text-xs text-gray-400">
+                    Use allowed_codes to show only specific values, or excluded_codes to hide specific values from the set.
                   </p>
                 </div>
               )}

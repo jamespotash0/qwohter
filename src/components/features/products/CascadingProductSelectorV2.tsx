@@ -78,10 +78,9 @@ export function CascadingProductSelectorV2({
     } else if (initialValues && !initialized) {
       setConfigValues({ ...initialValues } as ConfigFormValues);
       setInitialized(true);
-    } else {
-      setConfigValues({});
     }
-  }, [selectedModel, configSchema, initialValues, initialized]);
+    // Don't reset to empty object when selectedModel becomes null - keep existing values
+  }, [selectedModel?.id, initialValues, initialized]);
 
   const handleConfigChange = useCallback((values: ConfigFormValues) => {
     setConfigValues(values);

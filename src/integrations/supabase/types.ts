@@ -1032,9 +1032,9 @@ export interface Database {
           product_line_id: string | null;
           product_manufacturer_id: string | null;
           name: string;
-          default_configurations: Record<string, any> | null;
+          default_configurations: Record<string, unknown> | null;
           /** Product configuration schema (v2.0) - replaces default_configurations */
-          config_schema: import('@/lib/types/configSchema').ConfigSchema | null;
+          config_schema: Record<string, unknown> | null;
           created_at: string;
           updated_at: string;
         };
@@ -1047,8 +1047,8 @@ export interface Database {
           product_line_id?: string | null;
           product_manufacturer_id?: string | null;
           name: string;
-          default_configurations?: Record<string, any> | null;
-          config_schema?: import('@/lib/types/configSchema').ConfigSchema | null;
+          default_configurations?: Record<string, unknown> | null;
+          config_schema?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1061,53 +1061,14 @@ export interface Database {
           product_line_id?: string | null;
           product_manufacturer_id?: string | null;
           name?: string;
-          default_configurations?: Record<string, any> | null;
-          config_schema?: import('@/lib/types/configSchema').ConfigSchema | null;
+          default_configurations?: Record<string, unknown> | null;
+          config_schema?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
-      /**
-       * Product Variants - Variant options for product models
-       */
-      product_variants: {
-        Row: {
-          id: string;
-          model_id: string;
-          name: string;
-          description: string | null;
-          specifications: Record<string, any>;
-          pricing: Record<string, any>;
-          is_default: boolean;
-          sort_order: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          model_id: string;
-          name: string;
-          description?: string | null;
-          specifications?: Record<string, any>;
-          pricing?: Record<string, any>;
-          is_default?: boolean;
-          sort_order?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          model_id?: string;
-          name?: string;
-          description?: string | null;
-          specifications?: Record<string, any>;
-          pricing?: Record<string, any>;
-          is_default?: boolean;
-          sort_order?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
+  
       // ============================================================================
       // Config Value Sets - Shared value libraries for product configuration
       // ============================================================================
@@ -1122,7 +1083,7 @@ export interface Database {
           name: string;
           category: string | null;
           manufacturer_id: string | null;
-          values: import('@/lib/types/configValueSet').ValueOption[];
+          values: Record<string, unknown>[];
           created_at: string;
           updated_at: string;
         };
@@ -1132,7 +1093,7 @@ export interface Database {
           name: string;
           category?: string | null;
           manufacturer_id?: string | null;
-          values?: import('@/lib/types/configValueSet').ValueOption[];
+          values?: Record<string, unknown>[];
           created_at?: string;
           updated_at?: string;
         };
@@ -1142,272 +1103,14 @@ export interface Database {
           name?: string;
           category?: string | null;
           manufacturer_id?: string | null;
-          values?: import('@/lib/types/configValueSet').ValueOption[];
+          values?: Record<string, unknown>[];
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
-      // ============================================================================
-      // Product Configuration Tables (pc_ prefix) - DEPRECATED
-      // These tables are being replaced by config_schema on product_models
-      // and config_value_sets. See TICKET-9 for deprecation plan.
-      // ============================================================================
-      /**
-       * Option Groups - Shared option definitions (Track System, Panel Face, etc.)
-       * @deprecated Use config_value_sets and config_schema instead
-       */
-      pc_option_groups: {
-        Row: {
-          id: string;
-          name: string;
-          slug: string;
-          description: string | null;
-          field_type: 'dropdown' | 'input' | 'multi-select' | 'auto';
-          input_type: 'string' | 'number' | 'decimal' | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          slug: string;
-          description?: string | null;
-          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
-          input_type?: 'string' | 'number' | 'decimal' | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          slug?: string;
-          description?: string | null;
-          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
-          input_type?: 'string' | 'number' | 'decimal' | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      /**
-       * Option Values - All possible values for each option group
-       */
-      pc_option_values: {
-        Row: {
-          id: string;
-          option_group_id: string;
-          value: string;
-          sort_order: number;
-          is_active: boolean;
-          category: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          option_group_id: string;
-          value: string;
-          sort_order?: number;
-          is_active?: boolean;
-          category?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          option_group_id?: string;
-          value?: string;
-          sort_order?: number;
-          is_active?: boolean;
-          category?: string | null;
-          created_at?: string;
-        };
-      };
-      /**
-       * Model Options - Links models to option groups with model-specific UI settings
-       */
-      pc_model_options: {
-        Row: {
-          id: string;
-          model_id: string;
-          option_group_id: string;
-          display_order: number;
-          display_group: 'primary' | 'secondary' | 'advanced' | 'hidden';
-          grid_span: number;
-          placeholder: string | null;
-          help_text: string | null;
-          is_required: boolean;
-          is_multi_select: boolean;
-          is_manual_select: boolean;
-          is_visible: boolean;
-          default_value_id: string | null;
-          default_input_value: string | null;
-          min_value: number | null;
-          max_value: number | null;
-          step_value: number | null;
-          validation_pattern: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          model_id: string;
-          option_group_id: string;
-          display_order?: number;
-          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
-          grid_span?: number;
-          placeholder?: string | null;
-          help_text?: string | null;
-          is_required?: boolean;
-          is_multi_select?: boolean;
-          is_manual_select?: boolean;
-          is_visible?: boolean;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          min_value?: number | null;
-          max_value?: number | null;
-          step_value?: number | null;
-          validation_pattern?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          model_id?: string;
-          option_group_id?: string;
-          display_order?: number;
-          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
-          grid_span?: number;
-          placeholder?: string | null;
-          help_text?: string | null;
-          is_required?: boolean;
-          is_multi_select?: boolean;
-          is_manual_select?: boolean;
-          is_visible?: boolean;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          min_value?: number | null;
-          max_value?: number | null;
-          step_value?: number | null;
-          validation_pattern?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      /**
-       * Model Allowed Values - Restricts which option values are available for a specific model
-       */
-      pc_model_allowed_values: {
-        Row: {
-          id: string;
-          model_option_id: string;
-          option_value_id: string;
-          is_default: boolean;
-          sort_order: number;
-          is_active: boolean;
-        };
-        Insert: {
-          id?: string;
-          model_option_id: string;
-          option_value_id: string;
-          is_default?: boolean;
-          sort_order?: number;
-          is_active?: boolean;
-        };
-        Update: {
-          id?: string;
-          model_option_id?: string;
-          option_value_id?: string;
-          is_default?: boolean;
-          sort_order?: number;
-          is_active?: boolean;
-        };
-      };
-      /**
-       * Product Rules - Business rules for conditional option behavior
-       */
-      pc_rules: {
-        Row: {
-          id: string;
-          model_id: string | null;
-          variant_id: string | null;
-          name: string;
-          description: string | null;
-          priority: number;
-          is_active: boolean;
-          condition: Record<string, any>;
-          effect: Record<string, any>;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          model_id?: string | null;
-          variant_id?: string | null;
-          name: string;
-          description?: string | null;
-          priority?: number;
-          is_active?: boolean;
-          condition: Record<string, any>;
-          effect: Record<string, any>;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          model_id?: string | null;
-          variant_id?: string | null;
-          name?: string;
-          description?: string | null;
-          priority?: number;
-          is_active?: boolean;
-          condition?: Record<string, any>;
-          effect?: Record<string, any>;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      /**
-       * Variant Option Overrides - Variant-specific overrides for model option configurations
-       */
-      pc_variant_option_overrides: {
-        Row: {
-          id: string;
-          variant_id: string;
-          model_option_id: string;
-          is_required: boolean | null;
-          is_visible: boolean | null;
-          is_manual_select: boolean | null;
-          default_value_id: string | null;
-          default_input_value: string | null;
-          allowed_value_ids: string[];
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          variant_id: string;
-          model_option_id: string;
-          is_required?: boolean | null;
-          is_visible?: boolean | null;
-          is_manual_select?: boolean | null;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          allowed_value_ids?: string[];
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          variant_id?: string;
-          model_option_id?: string;
-          is_required?: boolean | null;
-          is_visible?: boolean | null;
-          is_manual_select?: boolean | null;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          allowed_value_ids?: string[];
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
+
+      
       // ============================================================================
       // Notifications Table
       // ============================================================================

@@ -38,15 +38,21 @@ export function ConfigSchemaEditor({
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Fetch available value sets
+  // Fetch available value sets (with values for allowed_codes filtering UI)
   const { data: valueSets = [] } = useQuery({
-    queryKey: ['configValueSets', 'list'],
+    queryKey: ['configValueSets', 'listWithValues'],
     queryFn: async () => {
       const sets = await configValueSetsService.getValueSets();
       return sets.map((s): ValueSetOption => ({
         slug: s.slug,
         name: s.name,
         category: s.category,
+        values: (s.values || []).map((v) => ({
+          code: v.code,
+          label: v.label,
+          hex: v.hex,
+          category: v.category,
+        })),
       }));
     },
   });

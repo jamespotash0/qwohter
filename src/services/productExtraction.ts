@@ -45,8 +45,8 @@ interface PricingBreakdown {
 interface ConfigurableProductResponse {
   id: string;
   manufacturer: string | null;
-  productType: string | null;
-  productCategory: string | null;
+  productDomain: string | null;
+  productLine: string | null;
   series: string | null;
   model: string | null;
   name: string;
@@ -106,8 +106,8 @@ interface ConfigurableProductResponse {
 interface SimpleProductResponse {
   id: string;
   manufacturer: string | null;
-  productType: string | null;
-  productCategory: string | null;
+  productDomain: string | null;
+  productLine: string | null;
   series: string | null;
   model: string | null;
   name: string;
@@ -236,8 +236,8 @@ export interface ExtractedProduct {
 
   // Product hierarchy
   manufacturer?: string | null;
-  productType?: string | null;
-  productCategory?: string | null;
+  productDomain?: string | null;
+  productLine?: string | null;
   series?: string | null;
   model?: string | null;
 
@@ -309,8 +309,8 @@ export interface ExtractedProduct {
   // Raw data for backward compatibility
   rawData?: {
     manufacturer?: string | null;
-    productType?: string | null;
-    productCategory?: string | null;
+    productDomain?: string | null;
+    productLine?: string | null;
     series?: string | null;
     model?: string | null;
     dimensions?: {
@@ -440,8 +440,8 @@ function convertConfigurableProduct(product: ConfigurableProductResponse): Extra
     isConfigurable: true,
 
     manufacturer: product.manufacturer,
-    productType: product.productType,
-    productCategory: product.productCategory,
+    productDomain: product.productDomain,
+    productLine: product.productLine,
     series: product.series,
     model: product.model,
 
@@ -461,8 +461,8 @@ function convertConfigurableProduct(product: ConfigurableProductResponse): Extra
 
     rawData: {
       manufacturer: product.manufacturer,
-      productType: product.productType,
-      productCategory: product.productCategory,
+      productDomain: product.productDomain,
+      productLine: product.productLine,
       series: product.series,
       model: product.model,
       dimensions: product.baseSpecifications?.dimensions,
@@ -536,8 +536,8 @@ function convertSimpleProduct(product: SimpleProductResponse): ExtractedProduct 
     isConfigurable: false,
 
     manufacturer: product.manufacturer,
-    productType: product.productType,
-    productCategory: product.productCategory,
+    productDomain: product.productDomain,
+    productLine: product.productLine,
     series: product.series,
     model: product.model,
 
@@ -555,8 +555,8 @@ function convertSimpleProduct(product: SimpleProductResponse): ExtractedProduct 
 
     rawData: {
       manufacturer: product.manufacturer,
-      productType: product.productType,
-      productCategory: product.productCategory,
+      productDomain: product.productDomain,
+      productLine: product.productLine,
       series: product.series,
       model: product.model,
       dimensions: product.dimensions,

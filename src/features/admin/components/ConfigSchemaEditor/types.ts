@@ -43,12 +43,24 @@ export interface ConfigSchemaEditorProps {
 }
 
 /**
+ * Value option within a value set
+ */
+export interface ValueOptionItem {
+  code: string;
+  label: string;
+  hex?: string;
+  category?: string;
+}
+
+/**
  * Available value sets for the values_ref dropdown
  */
 export interface ValueSetOption {
   slug: string;
   name: string;
   category: string | null;
+  /** Values from the value set (for allowed_codes filtering UI) */
+  values: ValueOptionItem[];
 }
 
 /**
@@ -95,7 +107,7 @@ export function editorStateToSchema(state: SchemaEditorState): ConfigSchema {
   return {
     version: state.version,
     options,
-    groups: state.groups.length > 0 ? state.groups : undefined,
+    groups: state.groups || [],
   };
 }
 

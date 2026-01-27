@@ -110,8 +110,8 @@ export interface MiscellaneousData {
 // ============ Products Tab Data ============
 export interface ProductRawData {
   manufacturer?: string | null;
-  productType?: string | null;
-  productCategory?: string | null;
+  productDomain?: string | null;
+  productLine?: string | null;
   series?: string | null;
   model?: string | null;
   sku?: string | null;
@@ -155,6 +155,41 @@ export interface Product {
   unitCost?: number;
   /** Discount percentage (0-100) */
   discountPercent?: number;
+  /** Whether this is a configurable product with options */
+  isConfigurable?: boolean;
+  /** Configuration options for configurable products */
+  options?: Array<{
+    optionName: string;
+    optionCategory: string;
+    values: Array<{
+      label: string;
+      priceDelta?: number | null;
+      absolutePrice?: number | null;
+      isSelected?: boolean;
+    }>;
+  }>;
+  /** Selected configuration values */
+  selectedConfiguration?: Record<string, string>;
+  /** Pricing data from AI extraction */
+  pricing?: {
+    material?: {
+      subtotal?: number | null;
+      components?: Record<string, number>;
+      pricePerUnit?: number | null;
+      pricePerSqFt?: number | null;
+    };
+    freight?: {
+      items?: Record<string, number>;
+      total?: number | null;
+    };
+    escalation?: {
+      terms?: string | null;
+      percentage?: number | null;
+      validUntil?: string | null;
+    };
+    unitPrice?: number | null;
+    totalPrice?: number | null;
+  };
 }
 
 export interface ProductsData {

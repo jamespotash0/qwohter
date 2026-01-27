@@ -39,7 +39,7 @@ import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { ExtractionProgressDialog } from './ExtractionProgressDialog';
 import { ExtractedProductEditor } from './ExtractedProductEditor';
 import { generateProductAlias } from '../../utils/productVariables';
-import { CascadingProductSelector } from '@/components/features/products/CascadingProductSelector';
+import { CascadingProductSelectorV2 } from '@/components/features/products/CascadingProductSelectorV2';
 import { useProductStore, type ProductSelection } from '@/stores/products/productStore';
 
 interface ProductsTabProps {
@@ -174,9 +174,10 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     }));
 
     // Only update pricing if something changed
-    const hasChanges = pricingSections.some((section, i) =>
-      section.lineItems.length !== updatedPricingSections[i].lineItems.length
-    );
+    const hasChanges = pricingSections.some((section, i) => {
+      const updatedSection = updatedPricingSections[i];
+      return updatedSection && section.lineItems.length !== updatedSection.lineItems.length;
+    });
 
     if (hasChanges) {
       setPricingData({
@@ -378,18 +379,20 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const handleCatalogProductSelect = useCallback((selection: ProductSelection) => {
     const { product_hierarchy, specifications } = selection;
 
+    // Extract quantity safely - ensure it's a number
+    const qty = typeof specifications.Quantity === 'number' ? specifications.Quantity : null;
+
     if (editingProduct) {
       // Update existing product
       const updatedProduct: Product = {
         ...editingProduct,
         name: `${product_hierarchy.manufacturer} ${product_hierarchy.series} ${product_hierarchy.model}`.trim(),
-        quantity: specifications.Quantity || editingProduct.quantity || 1,
+        quantity: qty ?? editingProduct.quantity ?? 1,
         rawData: {
-          // Catalog hierarchy (domain is the new top level)
+          // Catalog hierarchy
           productDomain: product_hierarchy.domain,
-          productType: product_hierarchy.domain, // Keep for backward compatibility
+          productLine: product_hierarchy.product_line,
           manufacturer: product_hierarchy.manufacturer,
-          productCategory: product_hierarchy.category,
           series: product_hierarchy.series,
           model: product_hierarchy.model,
           // Specifications from model
@@ -417,15 +420,14 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       const newProduct: Product = {
         id: Math.random().toString(36).substr(2, 9),
         name: `${product_hierarchy.manufacturer} ${product_hierarchy.series} ${product_hierarchy.model}`.trim(),
-        quantity: specifications.Quantity || 1,
+        quantity: qty ?? 1,
         unit: 'ea',
         description: '',
         rawData: {
-          // Catalog hierarchy (domain is the new top level)
+          // Catalog hierarchy
           productDomain: product_hierarchy.domain,
-          productType: product_hierarchy.domain, // Keep for backward compatibility
+          productLine: product_hierarchy.product_line,
           manufacturer: product_hierarchy.manufacturer,
-          productCategory: product_hierarchy.category,
           series: product_hierarchy.series,
           model: product_hierarchy.model,
           // Specifications from model
@@ -560,7 +562,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   // Helper to get specification fields from rawData (exclude metadata and key info fields)
   const getSpecificationFields = useCallback((rawData: Record<string, unknown> | undefined) => {
     if (!rawData) return [];
-    const metaFields = ['source', 'productType', 'manufacturer', 'productCategory', 'series', 'model'];
+    const metaFields = ['source', 'productDomain', 'productLine', 'manufacturer', 'series', 'model'];
     // Also exclude key info fields that are shown separately
     const keyInfoFields = [
       ...KEY_INFO_FIELDS.height,
@@ -754,32 +756,36 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                           const widthVal = findFieldValue(rawData, KEY_INFO_FIELDS.width);
                           const panelCountVal = findFieldValue(rawData, KEY_INFO_FIELDS.panelCount);
                           const quantityVal = findFieldValue(rawData, KEY_INFO_FIELDS.quantity);
-                          const hasKeyInfo = rawData?.model || heightVal || widthVal || panelCountVal || quantityVal;
+                          const modelVal = rawData?.model;
+                          const hasKeyInfo = modelVal || heightVal || widthVal || panelCountVal || quantityVal;
 
                           if (!hasKeyInfo) return null;
 
+                          // Build size string
+                          const sizeStr = [
+                            heightVal ? `${String(heightVal)}' H` : null,
+                            widthVal ? `${String(widthVal)}' W` : null,
+                          ].filter(Boolean).join(' × ');
+
                           return (
                             <div className="flex flex-wrap gap-x-4 gap-y-1 py-1.5 border-b border-gray-200 dark:border-gray-600">
-                              {rawData?.model && (
+                              {modelVal != null && (
                                 <div>
                                   <span className="text-gray-500 dark:text-gray-400">Model: </span>
                                   <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
-                                    {String(rawData.model)}
+                                    {String(modelVal)}
                                   </span>
                                 </div>
                               )}
-                              {(heightVal || widthVal) && (
+                              {sizeStr && (
                                 <div>
                                   <span className="text-gray-500 dark:text-gray-400">Size: </span>
                                   <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    {[
-                                      heightVal && `${heightVal}' H`,
-                                      widthVal && `${widthVal}' W`
-                                    ].filter(Boolean).join(' × ')}
+                                    {sizeStr}
                                   </span>
                                 </div>
                               )}
-                              {panelCountVal && (
+                              {panelCountVal != null && (
                                 <div>
                                   <span className="text-gray-500 dark:text-gray-400">Panels: </span>
                                   <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -787,7 +793,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                                   </span>
                                 </div>
                               )}
-                              {quantityVal && (
+                              {quantityVal != null && (
                                 <div>
                                   <span className="text-gray-500 dark:text-gray-400">Qty: </span>
                                   <span className="font-medium text-gray-900 dark:text-gray-100">
@@ -800,14 +806,19 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                         })()}
 
                         {/* Other Specification Fields */}
-                        {getSpecificationFields(product.rawData as unknown as Record<string, unknown>).map(([key, value]) => (
-                          <div key={key} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
-                            <span className="text-gray-600 dark:text-gray-400">{key}:</span>
-                            <span className="text-gray-900 dark:text-gray-100 text-right max-w-[60%] truncate" title={String(value)}>
-                              {Array.isArray(value) ? value.join(', ') : String(value)}
-                            </span>
-                          </div>
-                        ))}
+                        {getSpecificationFields(product.rawData as unknown as Record<string, unknown>).map(([key, value]) => {
+                          const displayValue = Array.isArray(value)
+                            ? (value as unknown[]).map(v => String(v)).join(', ')
+                            : String(value);
+                          return (
+                            <div key={key} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                              <span className="text-gray-600 dark:text-gray-400">{key}:</span>
+                              <span className="text-gray-900 dark:text-gray-100 text-right max-w-[60%] truncate" title={displayValue}>
+                                {displayValue}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1056,7 +1067,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
               )}
             </DialogTitle>
           </DialogHeader>
-          <CascadingProductSelector
+          <CascadingProductSelectorV2
             onProductSelect={handleCatalogProductSelect}
             onCancel={handleCatalogCancel}
             initialValues={editingProduct?.rawData as Record<string, unknown> | undefined}
@@ -1090,8 +1101,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                 description: editingAiProduct.description,
                 isConfigurable: !!aiProduct.isConfigurable,
                 manufacturer: editingAiProduct.rawData?.manufacturer as string | undefined,
-                productType: editingAiProduct.rawData?.productType as string | undefined,
-                productCategory: editingAiProduct.rawData?.productCategory as string | undefined,
+                productDomain: editingAiProduct.rawData?.productDomain as string | undefined,
+                productLine: editingAiProduct.rawData?.productLine as string | undefined,
                 series: editingAiProduct.rawData?.series as string | undefined,
                 model: editingAiProduct.rawData?.model as string | undefined,
                 options: aiProduct.options as ExtractedProduct['options'],
