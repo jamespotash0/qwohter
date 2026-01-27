@@ -41,26 +41,17 @@ function escapeHtml(text: string | undefined | null): string {
 // Database Field Normalizers
 // ============================================================================
 
-/** Valid signature types that match database constraints */
-const SIGNATURE_TYPES = ['Type', 'Draw'] as const;
-type SignatureType = typeof SIGNATURE_TYPES[number];
-
-/** Valid signing token statuses */
-const SIGNING_TOKEN_STATUSES = ['Pending', 'Viewed', 'Signed', 'Expired', 'Revoked'] as const;
-type SigningTokenStatus = typeof SIGNING_TOKEN_STATUSES[number];
-
-/** Valid proposal statuses */
-const PROPOSAL_STATUSES = ['Draft', 'Submitted', 'Won', 'Rejected'] as const;
-type ProposalStatus = typeof PROPOSAL_STATUSES[number];
-
 /**
- * Normalize signature type (accepts any case: "draw", "DRAW", "Draw" -> "Draw")
+ * Normalize signature type to match database constraint
+ * Database expects: 'Draw' or 'Type' (capitalized)
+ * Accepts any case: "draw", "DRAW", "Draw" -> "Draw"
  */
-function normalizeSignatureType(type: string | null | undefined): SignatureType | null {
+function normalizeSignatureType(type: string | null | undefined): 'Draw' | 'Type' | null {
   if (!type) return null;
   const normalized = type.trim().toLowerCase();
-  const match = SIGNATURE_TYPES.find(v => v.toLowerCase() === normalized);
-  return match ?? null;
+  if (normalized === 'draw') return 'Draw';
+  if (normalized === 'type') return 'Type';
+  return null;
 }
 
 interface RequestBody {
@@ -302,7 +293,16 @@ async function uploadSignedPdfToDrive(
 
     // Build multipart body
     const metadataStr = JSON.stringify(metadata);
-    const base64Data = btoa(String.fromCharCode(...pdfBytes));
+
+    // Convert Uint8Array to base64 in chunks to avoid stack overflow
+    // (Using spread operator on large arrays causes "Maximum call stack size exceeded")
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length));
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Data = btoa(binaryString);
 
     const requestBody =
       delimiter +
@@ -996,6 +996,16 @@ serve(async (req) => {
       console.error('[submit-signature] Google Drive upload failed (non-blocking):', driveError);
     }
 
+    // Normalize signature type to match database constraint (lowercase: 'draw' or 'type')
+    const normalizedSignatureType = normalizeSignatureType(signatureType);
+    if (!normalizedSignatureType) {
+      console.error('[submit-signature] Invalid signature type:', signatureType);
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature type. Must be "draw" or "type".' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create signature record
     console.log('[submit-signature] Creating signature record...');
     const { error: signatureError } = await supabase
@@ -1007,7 +1017,7 @@ serve(async (req) => {
         signer_name: signerName,
         signer_email: signerEmail,
         signer_company: signerCompany,
-        signature_type: signatureType,
+        signature_type: normalizedSignatureType,
         signature_data: signatureData,
         signature_font: signatureFont,
         signed_pdf_url: signedPdfUrl,
@@ -1019,6 +1029,10 @@ serve(async (req) => {
 
     if (signatureError) {
       console.error('[submit-signature] Failed to create signature record:', signatureError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to save signature record. Please try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Update signing token status
