@@ -6,13 +6,14 @@
  * Hierarchy: Domain → Manufacturer → Product Line → Series → Model
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useProductStore, type ProductSelection } from '@/stores/products/productStore';
 import { ProductHierarchySelector } from './ProductHierarchySelector';
 import { ConfigSchemaFields } from './ConfigSchemaFields';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import type { ConfigSchema, ConfigFormValues } from '@/lib/types/configSchema';
+import { useConfigSchema } from '@/hooks/useConfigSchema';
 
 interface CascadingProductSelectorV2Props {
   onProductSelect: (product: ProductSelection) => void;
@@ -45,6 +46,12 @@ export function CascadingProductSelectorV2({
 
   // Get config_schema from the selected model
   const configSchema = selectedModel?.config_schema as ConfigSchema | null | undefined;
+
+  // Use the config schema hook to get access to resolved options for label lookup
+  const { getFieldOptions } = useConfigSchema({
+    schema: configSchema,
+    initialValues: configValues,
+  });
 
   // Initialize config values when model is selected or when editing
   useEffect(() => {
@@ -86,8 +93,40 @@ export function CascadingProductSelectorV2({
     setConfigValues(values);
   }, []);
 
+  // Build a map of field codes to their display labels
+  const resolveSpecificationLabels = useCallback(
+    (values: ConfigFormValues): Record<string, string> => {
+      const labels: Record<string, string> = {};
+
+      for (const [fieldKey, value] of Object.entries(values)) {
+        if (value === null || value === undefined) continue;
+
+        const options = getFieldOptions(fieldKey);
+
+        if (Array.isArray(value)) {
+          // Multi-select: resolve each code to its label
+          const resolvedLabels = value.map((code) => {
+            const option = options.find((opt) => opt.code === String(code));
+            return option?.label || String(code);
+          });
+          labels[fieldKey] = resolvedLabels.join(', ');
+        } else {
+          // Single value: find matching option
+          const option = options.find((opt) => opt.code === String(value));
+          labels[fieldKey] = option?.label || String(value);
+        }
+      }
+
+      return labels;
+    },
+    [getFieldOptions]
+  );
+
   const handleAddProduct = () => {
     if (!selectedModel) return;
+
+    // Resolve codes to labels for display purposes
+    const specificationLabels = resolveSpecificationLabels(configValues);
 
     const selection: ProductSelection = {
       product_model_id: selectedModel.id,
@@ -103,6 +142,7 @@ export function CascadingProductSelectorV2({
         model: selectedModel.name || '',
       },
       specifications: configValues,
+      specification_labels: specificationLabels,
       pricing: {
         unit_price: 0,
         quantity: 1,

@@ -377,7 +377,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
   // Handle product selected from catalog (add or update)
   const handleCatalogProductSelect = useCallback((selection: ProductSelection) => {
-    const { product_hierarchy, specifications } = selection;
+    const { product_hierarchy, specifications, specification_labels } = selection;
 
     // Extract quantity safely - ensure it's a number
     const qty = typeof specifications.Quantity === 'number' ? specifications.Quantity : null;
@@ -397,6 +397,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           model: product_hierarchy.model,
           // Specifications from model
           ...specifications,
+          // Human-readable labels for specifications
+          _specificationLabels: specification_labels,
           // Mark as catalog product
           source: 'catalog',
         },
@@ -432,6 +434,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           model: product_hierarchy.model,
           // Specifications from model
           ...specifications,
+          // Human-readable labels for specifications
+          _specificationLabels: specification_labels,
           // Mark as catalog product
           source: 'catalog',
         },
@@ -562,7 +566,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   // Helper to get specification fields from rawData (exclude metadata and key info fields)
   const getSpecificationFields = useCallback((rawData: Record<string, unknown> | undefined) => {
     if (!rawData) return [];
-    const metaFields = ['source', 'productDomain', 'productLine', 'manufacturer', 'series', 'model'];
+    const metaFields = ['source', 'productDomain', 'productLine', 'manufacturer', 'series', 'model', '_specificationLabels'];
     // Also exclude key info fields that are shown separately
     const keyInfoFields = [
       ...KEY_INFO_FIELDS.height,
@@ -807,9 +811,14 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
                         {/* Other Specification Fields */}
                         {getSpecificationFields(product.rawData as unknown as Record<string, unknown>).map(([key, value]) => {
-                          const displayValue = Array.isArray(value)
+                          // Check if we have a human-readable label for this specification
+                          const specLabels = (product.rawData as unknown as Record<string, unknown>)?._specificationLabels as Record<string, string> | undefined;
+                          const label = specLabels?.[key];
+
+                          // Use the label if available, otherwise fall back to the raw value
+                          const displayValue = label || (Array.isArray(value)
                             ? (value as unknown[]).map(v => String(v)).join(', ')
-                            : String(value);
+                            : String(value));
                           return (
                             <div key={key} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
                               <span className="text-gray-600 dark:text-gray-400">{key}:</span>

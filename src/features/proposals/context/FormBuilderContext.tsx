@@ -140,6 +140,8 @@ export interface ProductRawData {
   };
   certifications?: string[];
   specifications?: Record<string, unknown>;
+  /** Human-readable labels for specification codes (code -> label mapping) */
+  _specificationLabels?: Record<string, string>;
 }
 
 export interface Product {

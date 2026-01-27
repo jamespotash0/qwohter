@@ -102,6 +102,8 @@ export interface ProductSelection {
     model: string;
   };
   specifications: Record<string, unknown>;
+  /** Human-readable labels for specification codes */
+  specification_labels?: Record<string, string>;
   pricing: {
     unit_price: number;
     quantity: number;
