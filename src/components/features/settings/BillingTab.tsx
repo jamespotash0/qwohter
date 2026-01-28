@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CreditCard, Loader2, Download, Search, Filter, Check } from 'lucide-react';
+import { CreditCard, Loader2, Download, Search, Check, AlertTriangle, FileText, ChevronDown, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
-import { formatTimestamp } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/auth";
@@ -96,6 +104,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   });
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [planFilter, setPlanFilter] = useState<string>('all');
+  const [showDownloadDropdown, setShowDownloadDropdown] = useState(false);
   const [plans, setPlans] = useState<SubscriptionPlan[]>(() => {
     try {
       const cached = localStorage.getItem('billing_plans_cache');
@@ -512,15 +525,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     window.open(invoiceUrl, '_blank');
   };
 
-  const handleDownloadSelected = () => {
-    selectedInvoices.forEach(invoiceId => {
-      const invoice = invoices.find(inv => inv.id === invoiceId);
-      if (invoice?.invoice_pdf) {
-        window.open(invoice.invoice_pdf, '_blank');
-      }
-    });
-  };
-
   const toggleInvoiceSelection = (invoiceId: string) => {
     setSelectedInvoices(prev =>
       prev.includes(invoiceId)
@@ -529,20 +533,94 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     );
   };
 
-  const toggleSelectAll = () => {
-    const filteredInvoices = filterCycleInvoices(invoices);
-    if (selectedInvoices.length === filteredInvoices.length) {
-      setSelectedInvoices([]);
-    } else {
-      setSelectedInvoices(filteredInvoices.map(inv => inv.id));
+  const getInvoiceName = (invoice: Invoice): string => {
+    const date = new Date(invoice.billing_date);
+    const month = date.toLocaleString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+
+    // Check if it's a proration invoice
+    if (invoice.billing_reason === 'subscription_update' && invoice.proration_quantity && invoice.proration_quantity > 0) {
+      return `Invoice_${invoice.proration_quantity}_Prorated_User${invoice.proration_quantity > 1 ? 's' : ''}_${month}_${year}`;
     }
+
+    return `Invoice_${month}_${year}`;
   };
 
-  const formatDate = (dateString: string): string => {
-    return formatTimestamp(dateString, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+  const getFilteredAndSortedInvoices = () => {
+    let filtered = filterCycleInvoices(invoices);
+
+    // Apply search filter
+    if (invoiceSearch.trim()) {
+      const search = invoiceSearch.toLowerCase();
+      filtered = filtered.filter(inv =>
+        getInvoiceName(inv).toLowerCase().includes(search) ||
+        inv.plan_name?.toLowerCase().includes(search)
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(inv => {
+        const status = inv.status.toLowerCase();
+        if (statusFilter === 'paid') return status === 'paid' || status === 'success';
+        if (statusFilter === 'refunded') return inv.amount_refunded && inv.amount_refunded > 0;
+        if (statusFilter === 'open') return status === 'open';
+        return true;
+      });
+    }
+
+    // Apply plan filter
+    if (planFilter !== 'all') {
+      filtered = filtered.filter(inv => inv.plan_name === planFilter);
+    }
+
+    // Apply sorting by billing date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.billing_date).getTime();
+      const dateB = new Date(b.billing_date).getTime();
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  };
+
+  // Get unique plan names for filter dropdown
+  const uniquePlanNames = [...new Set(filterCycleInvoices(invoices).map(inv => inv.plan_name).filter(Boolean))];
+
+  const handleDownloadCSV = () => {
+    const invoicesToDownload = selectedInvoices.length > 0
+      ? invoices.filter(inv => selectedInvoices.includes(inv.id))
+      : getFilteredAndSortedInvoices();
+
+    const headers = ['Invoice Name', 'Billing Date', 'Plan', 'Users', 'Amount', 'Status'];
+    const rows = invoicesToDownload.map(inv => [
+      getInvoiceName(inv),
+      new Date(inv.billing_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      inv.plan_name || 'N/A',
+      subscription?.number_of_active_users || '1',
+      `$${inv.amount.toFixed(2)}`,
+      inv.status
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `billing_history_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPDF = () => {
+    const invoicesToDownload = selectedInvoices.length > 0
+      ? invoices.filter(inv => selectedInvoices.includes(inv.id))
+      : getFilteredAndSortedInvoices();
+
+    invoicesToDownload.forEach(invoice => {
+      if (invoice.invoice_pdf) {
+        window.open(invoice.invoice_pdf, '_blank');
+      }
     });
   };
 
@@ -557,13 +635,10 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   // };
 
   const isCurrentPlan = (plan: SubscriptionPlan) => {
-    // Only consider it current if subscription exists, is active, AND not cancelled/paused
+    // Consider it current if subscription exists and is active (even if scheduled to cancel)
     if (!subscription) return false;
 
-    return subscription.plan_id === plan.id &&
-           subscription.is_active &&
-           !subscription.cancel_at_period_end &&
-           !subscription.pause_at_period_end;
+    return subscription.plan_id === plan.id && subscription.is_active;
   };
 
   if (!hasPermission) {
@@ -612,9 +687,17 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       <div className="mb-6">
         {/* Cancellation Notice - Show when subscription is cancelled but still active */}
         {subscription?.cancel_at_period_end && subscription?.is_active && subscription?.current_period_end && (
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            <strong>Your subscription will end in {Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</strong> on {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
-          </p>
+          <div className="flex items-start gap-3 p-4 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Your subscription is scheduled to cancel
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                Access ends on {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ({Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days remaining). Click Manage Plan to reactivate.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Billing/Trial Period Progress Bar - Show when subscription exists and is active */}
@@ -854,143 +937,224 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       </div>
 
       {/* Billing History */}
-      <div className="space-y-4">
+      <div className="space-y-4 relative mt-8">
+        {/* Header with count */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Billing History
+            Billing History{' '}
+            <span className="text-gray-500 dark:text-gray-400 font-normal">
+              {getFilteredAndSortedInvoices().length}
+            </span>
           </h3>
           <div className="flex items-center gap-2">
+            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Search..."
-                className="pl-9 w-64 h-9"
+                placeholder="Search invoices..."
+                value={invoiceSearch}
+                onChange={(e) => setInvoiceSearch(e.target.value)}
+                className="pl-9 w-56 h-9"
               />
             </div>
-            <Button variant="outline" size="sm" className="h-9">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              onClick={handleDownloadSelected}
-              disabled={selectedInvoices.length === 0}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
+            {/* Filters dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <SlidersHorizontal className="w-4 h-4 mr-2" />
+                  Filters
+                  {(statusFilter !== 'all' || planFilter !== 'all') && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-[#EE6C4D] text-white rounded-full">
+                      {(statusFilter !== 'all' ? 1 : 0) + (planFilter !== 'all' ? 1 : 0)}
+                    </span>
+                  )}
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Status</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={statusFilter === 'all'}
+                  onCheckedChange={() => setStatusFilter('all')}
+                >
+                  All
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={statusFilter === 'paid'}
+                  onCheckedChange={() => setStatusFilter('paid')}
+                >
+                  Paid
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={statusFilter === 'refunded'}
+                  onCheckedChange={() => setStatusFilter('refunded')}
+                >
+                  Refunded
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={statusFilter === 'open'}
+                  onCheckedChange={() => setStatusFilter('open')}
+                >
+                  Open
+                </DropdownMenuCheckboxItem>
+                {uniquePlanNames.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Plan</DropdownMenuLabel>
+                    <DropdownMenuCheckboxItem
+                      checked={planFilter === 'all'}
+                      onCheckedChange={() => setPlanFilter('all')}
+                    >
+                      All Plans
+                    </DropdownMenuCheckboxItem>
+                    {uniquePlanNames.map(planName => (
+                      <DropdownMenuCheckboxItem
+                        key={planName}
+                        checked={planFilter === planName}
+                        onCheckedChange={() => setPlanFilter(planName as string)}
+                      >
+                        {planName}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {/* Download all dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download All
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleDownloadCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadPDF}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Download as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
         {/* Table */}
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <tr>
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="px-4 py-3 text-left w-12">
-                    <Checkbox
-                      checked={selectedInvoices.length === filterCycleInvoices(invoices).length && filterCycleInvoices(invoices).length > 0}
-                      onCheckedChange={toggleSelectAll}
-                      className="data-[state=checked]:bg-[#EE6C4D] data-[state=checked]:border-[#EE6C4D]"
-                    />
+                    {(() => {
+                      const filteredCount = getFilteredAndSortedInvoices().length;
+                      const selectedCount = selectedInvoices.length;
+                      const isAllSelected = selectedCount === filteredCount && filteredCount > 0;
+                      const isIndeterminate = selectedCount > 0 && selectedCount < filteredCount;
+
+                      return (
+                        <Checkbox
+                          checked={isIndeterminate ? "indeterminate" : isAllSelected}
+                          onCheckedChange={() => {
+                            const filtered = getFilteredAndSortedInvoices();
+                            if (selectedCount === filtered.length) {
+                              setSelectedInvoices([]);
+                            } else {
+                              setSelectedInvoices(filtered.map(inv => inv.id));
+                            }
+                          }}
+                          className="h-4 w-4 rounded-[3px]"
+                        />
+                      );
+                    })()}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Plan Name
+                  <th className="px-4 py-3 text-left text-xs font-normal text-gray-400 dark:text-gray-500">
+                    {selectedInvoices.length > 0 ? (
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {selectedInvoices.length} invoice{selectedInvoices.length > 1 ? 's' : ''} selected
+                      </span>
+                    ) : 'Invoice'}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Amount
+                  <th className="px-4 py-3 text-left text-xs font-normal text-gray-400 dark:text-gray-500">
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                      className="flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      Billing date
+                      <ArrowUpDown className="w-3 h-3" />
+                    </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Date
+                  <th className="px-4 py-3 text-left text-xs font-normal text-gray-400 dark:text-gray-500">
+                    Plan
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
+                  <th className="px-4 py-3 text-left text-xs font-normal text-gray-400 dark:text-gray-500">
+                    Users
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Action
+                  <th className="px-4 py-3 text-left w-12">
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {filterCycleInvoices(invoices).length > 0 ? (
-                  filterCycleInvoices(invoices).map((invoice) => (
-                    <tr key={invoice.id}>
+                {getFilteredAndSortedInvoices().length > 0 ? (
+                  getFilteredAndSortedInvoices().map((invoice) => (
+                    <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <td className="px-4 py-4">
                         <Checkbox
                           checked={selectedInvoices.includes(invoice.id)}
                           onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
-                          className="data-[state=checked]:bg-[#EE6C4D] data-[state=checked]:border-[#EE6C4D]"
+                          className="h-4 w-4 rounded-[3px] data-[state=checked]:bg-[#EE6C4D] data-[state=checked]:border-[#EE6C4D]"
                         />
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900 dark:text-white font-medium">
-                        {invoice.plan_name}
-                        {invoice.billing_reason === 'subscription_update' && invoice.proration_quantity && invoice.proration_quantity > 0 && (
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">
-                            {' '}(Prorated {invoice.proration_quantity} New {invoice.proration_quantity === 1 ? 'User' : 'Users'})
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                        $ {invoice.amount.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(invoice.billing_date)}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          {(() => {
-                            // Check for refunds first
-                            if (invoice.amount_refunded && invoice.amount_refunded > 0) {
-                              if (invoice.amount_refunded >= invoice.amount) {
-                                return 'Refunded';
-                              } else {
-                                return 'Partially Refunded';
-                              }
-                            }
-                            // Handle standard statuses
-                            switch (invoice.status.toLowerCase()) {
-                              case 'paid':
-                              case 'success':
-                                return 'Paid';
-                              case 'open':
-                                return 'Open';
-                              case 'draft':
-                                return 'Draft';
-                              case 'void':
-                                return 'Voided';
-                              case 'uncollectible':
-                                return 'Uncollectible';
-                              default:
-                                return invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
-                            }
-                          })()}
-                        </span>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2"
-                            onClick={() => handleDownloadInvoice(invoice.invoice_pdf)}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2"
-                            onClick={() => handleDownloadInvoice(invoice.invoice_pdf)}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </Button>
+                          <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-900 dark:text-white font-medium">
+                            {getInvoiceName(invoice)}
+                          </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        {new Date(invoice.billing_date).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                          {invoice.plan_name || 'Team'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
+                        {invoice.proration_quantity ? '-' : (subscription?.number_of_active_users || '-')}
+                      </td>
+                      <td className="px-4 py-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                              </svg>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleDownloadInvoice(invoice.invoice_pdf)}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadInvoice(invoice.invoice_pdf)}>
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View invoice
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))
@@ -1005,6 +1169,43 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             </table>
           </div>
         </div>
+
+        {/* Selection overlay */}
+        {selectedInvoices.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <div className="flex items-center gap-4 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-lg">
+              <span className="text-sm font-medium">
+                {selectedInvoices.length} invoice{selectedInvoices.length > 1 ? 's' : ''} selected
+              </span>
+              <div className="h-4 w-px bg-gray-600"></div>
+              <button
+                onClick={handleDownloadCSV}
+                className="text-sm text-gray-300 hover:text-white transition-colors"
+              >
+                Download CSV
+              </button>
+              <button
+                onClick={() => {
+                  selectedInvoices.forEach(id => {
+                    const invoice = invoices.find(inv => inv.id === id);
+                    if (invoice?.invoice_pdf) {
+                      window.open(invoice.invoice_pdf, '_blank');
+                    }
+                  });
+                }}
+                className="text-sm text-gray-300 hover:text-white transition-colors"
+              >
+                Download PDF
+              </button>
+              <button
+                onClick={() => setSelectedInvoices([])}
+                className="text-sm text-gray-400 hover:text-white transition-colors ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
 

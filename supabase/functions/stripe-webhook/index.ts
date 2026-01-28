@@ -361,20 +361,31 @@ serve(async (req) => {
           return isNaN(date.getTime()) ? null : date.toISOString();
         };
 
+        // Build update object, only including date fields if they have valid values
+        // This prevents overwriting existing data with null
+        const currentPeriodStartISO = safeToISOString(subscription.current_period_start);
+        const currentPeriodEndISO = safeToISOString(subscription.current_period_end);
+        const trialStartISO = safeToISOString(subscription.trial_start);
+        const trialEndISO = safeToISOString(subscription.trial_end);
+
+        const updateData: Record<string, any> = {
+          stripe_subscription_status: displayStatus,
+          has_payment_method: hasPaymentMethod,
+          cancel_at_period_end: subscription.cancel_at_period_end || false,
+          is_active: ['active', 'trialing'].includes(status),
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only update date fields if they have valid values (don't overwrite with null)
+        if (currentPeriodStartISO) updateData.current_period_start = currentPeriodStartISO;
+        if (currentPeriodEndISO) updateData.current_period_end = currentPeriodEndISO;
+        if (trialStartISO) updateData.trial_start = trialStartISO;
+        if (trialEndISO) updateData.trial_end = trialEndISO;
+
         // Update subscription status and billing period
         await supabase
           .from('subscriptions')
-          .update({
-            stripe_subscription_status: displayStatus,
-            current_period_start: safeToISOString(subscription.current_period_start),
-            current_period_end: safeToISOString(subscription.current_period_end),
-            trial_start: safeToISOString(subscription.trial_start),
-            trial_end: safeToISOString(subscription.trial_end),
-            has_payment_method: hasPaymentMethod,
-            cancel_at_period_end: subscription.cancel_at_period_end || false,
-            is_active: ['active', 'trialing'].includes(status),
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('stripe_subscription_id', stripeSubscriptionId);
 
         console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'hasPayment:', hasPaymentMethod);
