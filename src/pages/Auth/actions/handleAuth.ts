@@ -1,15 +1,21 @@
 /**
  * handleAuth Action
  * Handles sign-in and sign-up authentication
+ * Includes rate limiting to prevent brute force attacks
  */
 
 import { authFlowHelpers } from '@/utils/authFlowHelpers';
 import { NavigateFunction } from 'react-router-dom';
+import {
+  checkLoginRateLimit,
+  recordFailedLogin,
+  clearRateLimit,
+  getRateLimitMessage,
+} from '@/services/authRateLimitService';
 
 interface HandleAuthParams {
   email: string;
   password: string;
-  confirmPassword: string;
   firstName: string;
   lastName: string;
   isSignUp: boolean;
@@ -28,7 +34,6 @@ export const handleAuth = async (params: HandleAuthParams) => {
   const {
     email,
     password,
-    confirmPassword,
     firstName,
     lastName,
     isSignUp,
@@ -45,27 +50,6 @@ export const handleAuth = async (params: HandleAuthParams) => {
 
   // Validation
   if (!email || !password) return;
-
-  // Sign-up specific validation
-  if (isSignUp) {
-    if (!confirmPassword) {
-      toast({
-        title: 'Password confirmation required',
-        description: 'Please confirm your password',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({
-        title: 'Passwords do not match',
-        description: 'Please make sure both passwords are identical',
-        variant: 'destructive',
-      });
-      return;
-    }
-  }
 
   console.log('=== AUTH FORM SUBMISSION ===');
   console.log('Email:', email);
@@ -88,27 +72,39 @@ export const handleAuth = async (params: HandleAuthParams) => {
         console.log('SignUp successful, setting step to verify-otp');
         setStep('verify-otp');
         saveAuthState({ step: 'verify-otp', email, fullName: combinedFullName });
-
-        // Show different message if this was a resend to an unconfirmed user
-        if (result.data?.isResend) {
-          toast({
-            title: 'Verification code resent!',
-            description: 'We found your pending account. Check your email for a new code.',
-          });
-        } else {
-          toast({
-            title: 'Verification code sent!',
-            description: 'Please check your email and enter the 6-digit code.',
-          });
-        }
       }
     } else {
-      // Handle sign-in
+      // Handle sign-in with rate limiting
+      console.log('Checking login rate limit...');
+      const rateCheck = await checkLoginRateLimit(email);
+
+      if (!rateCheck.allowed) {
+        toast({
+          title: 'Too Many Attempts',
+          description: getRateLimitMessage(rateCheck),
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Show warning if close to limit
+      if (rateCheck.remaining_attempts && rateCheck.remaining_attempts <= 2) {
+        toast({
+          title: 'Warning',
+          description: `${rateCheck.remaining_attempts} login attempt${rateCheck.remaining_attempts !== 1 ? 's' : ''} remaining before temporary lockout.`,
+          variant: 'destructive',
+        });
+      }
+
       console.log('Calling handleSignIn...');
       result = await authFlowHelpers.handleSignIn(email, password);
       console.log('SignIn result:', result);
 
       if (result.success) {
+        // Clear rate limit on successful login
+        await clearRateLimit(email, 'login');
+
         console.log('Auth form: signin success with nextStep:', result.nextStep);
 
         // Handle different nextStep outcomes
@@ -117,17 +113,8 @@ export const handleAuth = async (params: HandleAuthParams) => {
           console.log('Auth form: unconfirmed user, redirecting to OTP verification');
           setStep('verify-otp');
           saveAuthState({ step: 'verify-otp', email });
-          toast({
-            title: 'Verification required',
-            description: 'Please check your email for a verification code to complete sign-in.',
-          });
         } else if (result.nextStep === 'complete') {
           console.log('Auth form: User onboarding complete, redirecting to dashboard');
-          toast({
-            title: 'Welcome back!',
-            description: "You've been successfully signed in.",
-          });
-          // Clear auth state and redirect
           clearAuthState();
           redirectingRef.current = true;
           navigate('/dashboard');
@@ -136,11 +123,10 @@ export const handleAuth = async (params: HandleAuthParams) => {
           setUserId(result.data?.userId || '');
           setStep('organization');
           saveAuthState({ step: 'organization', email, userId: result.data?.userId });
-          toast({
-            title: 'Welcome back!',
-            description: 'Please complete your organization setup to continue.',
-          });
         }
+      } else {
+        // Record failed login attempt
+        await recordFailedLogin(email);
       }
     }
 
@@ -152,6 +138,10 @@ export const handleAuth = async (params: HandleAuthParams) => {
       });
     }
   } catch (error: any) {
+    // Record failed attempt on exception (for sign-in only)
+    if (!isSignUp) {
+      await recordFailedLogin(email);
+    }
     toast({
       title: 'Authentication Error',
       description: error.message,

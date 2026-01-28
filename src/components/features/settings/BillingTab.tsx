@@ -15,7 +15,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
-import { formatDateEST } from "@/utils/dateUtils";
+import { formatTimestamp } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStripe } from '@stripe/stripe-js';
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,17 +39,16 @@ interface Invoice {
   period_end: string;
   amount_refunded?: number;
   billing_reason?: string; // subscription_cycle, subscription_create, subscription_update, etc.
+  proration_quantity?: number | null; // Number of seats added for proration invoices
 }
 
-// Filter invoices to only show meaningful billing events
-// Excludes: $0 invoices (trial periods), prorations, and updates
+// Filter invoices to show meaningful billing events
+// Excludes only $0 invoices (trial periods with no charge)
+// Includes: subscription cycles, creates, updates (prorations), and legacy invoices
 const filterCycleInvoices = (invoices: Invoice[]): Invoice[] => {
   return invoices.filter(invoice =>
-    invoice.amount > 0 && // Exclude $0 invoices (trial periods)
-    (invoice.billing_reason === 'subscription_cycle' ||
-     invoice.billing_reason === 'subscription_create' ||
-     invoice.billing_reason === 'unknown' || // Include legacy invoices without billing_reason
-     !invoice.billing_reason)
+    invoice.amount > 0 // Exclude $0 invoices (trial periods)
+    // Include all billing reasons: cycle, create, update (proration), etc.
   );
 };
 
@@ -133,6 +132,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   // const [showCompareModal, setShowCompareModal] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  // Force re-render every minute to update billing period progress bar
+  const [, setCurrentTime] = useState(Date.now());
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
@@ -145,6 +146,15 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       setLoading(false);
     }
   }, [organization?.id, hasPermission]);
+
+  // Update billing period progress bar every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle success parameter from Stripe Checkout redirect
   useEffect(() => {
@@ -230,10 +240,14 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       // Close the manage dialog if open
       setShowCancelDialog(false);
 
-      // Reload billing data after a short delay to allow webhook to process
+      // Reload billing data after delay to allow webhook to process
+      // First reload after 2 seconds, then again after 5 seconds to catch slow webhooks
       setTimeout(() => {
         loadBillingData();
-      }, 1500);
+      }, 2000);
+      setTimeout(() => {
+        loadBillingData();
+      }, 5000);
     }
   }, [searchParams, organization?.id]);
 
@@ -727,7 +741,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const formatDate = (dateString: string): string => {
-    return formatDateEST(dateString, {
+    return formatTimestamp(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -860,7 +874,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </div>
                 </div>
                 <Button
-                  onClick={() => setShowCancelDialog(true)}
+                  onClick={handleOpenPortal}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                   disabled={!hasPermission || processingPlan !== null}
@@ -1118,6 +1132,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 dark:text-white font-medium">
                         {invoice.plan_name}
+                        {invoice.billing_reason === 'subscription_update' && invoice.proration_quantity && invoice.proration_quantity > 0 && (
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">
+                            {' '}(Prorated {invoice.proration_quantity} New {invoice.proration_quantity === 1 ? 'User' : 'Users'})
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
                         $ {invoice.amount.toFixed(2)}

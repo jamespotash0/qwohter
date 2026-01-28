@@ -43,6 +43,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
   const [checkingMembership, setCheckingMembership] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Check if current route should show sidebar
   // Public routes that don't require authentication
@@ -75,12 +76,27 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       // Skip if not on protected route, not initialized, or no user
       if (!shouldShowSidebar || !isInitialized || !user) {
         setMembershipStatus(null);
+        setIsSuperAdmin(false);
         return;
       }
 
       setCheckingMembership(true);
 
       try {
+        // First check if user is a super admin - they bypass membership requirements
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle<{ is_super_admin: boolean }>();
+
+        if (profile?.is_super_admin) {
+          setIsSuperAdmin(true);
+          setMembershipStatus('Active'); // Treat super admin as active
+          setCheckingMembership(false);
+          return;
+        }
+
         const { data: membership, error } = await supabase
           .from('memberships')
           .select('status, role') //membership_status
@@ -134,7 +150,8 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     if (location.pathname === '/account-inactive') return; // Prevent redirect loop
 
     if (membershipStatus === 'Inactive' && !checkingMembership) {
-      navigate('/account-inactive');
+      // Pass fromApp: true so AccountInactive knows this is a valid redirect
+      navigate('/account-inactive', { state: { fromApp: true } });
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 

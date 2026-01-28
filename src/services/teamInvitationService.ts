@@ -171,6 +171,7 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
         inviteToken: token,
         inviterName,
         role,
+        appUrl: window.location.origin, // Pass current origin for dev support
       }),
     });
 
@@ -266,6 +267,7 @@ export const resendInvitation = async (
         inviteToken: invite.token,
         inviterName,
         role: invite.role,
+        appUrl: window.location.origin, // Pass current origin for dev support
       }),
     });
 

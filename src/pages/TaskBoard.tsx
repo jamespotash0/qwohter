@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Link2 } from 'lucide-react';
 import { parseLocalDate } from '@/lib/utils';
@@ -30,6 +31,7 @@ import {
 import {
   useOrganizationTasks,
   useCreateProjectTask,
+  useReorderTask,
 } from '@/hooks/useProjectTasks';
 import {
   useTaskBoardColumns,
@@ -41,10 +43,27 @@ import {
 import { useOrganizationMembers, useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { useProjects } from '@/hooks/queries/useBoard';
 import { useUser } from '@/auth';
-import { TaskDetailOverlay } from '@/components/features/board/TaskDetailOverlay';
-import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { TaskDetailOverlay } from '@/components/features/board/task-detail';
+import {
+  useTaskComments,
+  useCreateTaskComment,
+  useUpdateTaskComment,
+  useDeleteTaskComment,
+  useTaskAttachments,
+  useUploadTaskAttachment,
+  useDeleteTaskAttachment,
+  useTaskActivity,
+} from '@/hooks/useTaskComments';
+import {
+  notifyTaskCommentMention,
+  notifyTaskCommentAdded,
+  notifyTaskCommentReply,
+} from '@/services/notificationService';
+import { TaskDeleteDialog } from '@/components/features/board/task-detail/TaskDeleteDialog';
+import { getTaskReminders, type TaskReminder } from '@/services/scheduledNotificationsService';
 import type { ProjectTask } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
+import type { TaskAttachment } from '@/lib/types/taskComments';
 import { COLUMN_COLORS } from '@/lib/types/taskBoardColumns';
 import {
   Plus,
@@ -59,7 +78,14 @@ import {
   CaretDown,
   CaretRight,
   User,
+  BellSimple,
 } from '@phosphor-icons/react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Format date as local ISO string (without UTC conversion)
@@ -72,6 +98,31 @@ function toLocalISOString(date: Date): string {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Get reminder display text for tooltip (from scheduled_notifications)
+ */
+function getReminderDisplayText(reminder: TaskReminder | undefined): string | null {
+  if (!reminder) return null;
+
+  try {
+    const reminderDate = new Date(reminder.scheduledFor);
+    const dateStr = reminderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const timeStr = reminderDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+    if (reminder.status === 'Sent') {
+      return `Reminder sent: ${dateStr} @ ${timeStr}`;
+    }
+
+    if (reminder.recurrence === 'Daily') {
+      return `Daily reminder starting ${dateStr} @ ${timeStr}`;
+    }
+
+    return `Reminder: ${dateStr} @ ${timeStr}`;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -132,12 +183,17 @@ export default function TaskBoard() {
   const { organization } = useCurrentOrganization(user?.id || '');
   const organizationId = organization?.id || '';
 
+  // URL-based task selection (like Jira's ?selectedIssue=TASK-123)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const taskFromUrl = searchParams.get('task');
+
   // Fetch columns, tasks, and projects
   const { data: columns = [], isLoading: columnsLoading } = useTaskBoardColumns(organizationId);
   const { data: tasks = [], isLoading: tasksLoading } = useOrganizationTasks(organizationId);
   const { data: members = [] } = useOrganizationMembers(organizationId);
   const { data: projects = [] } = useProjects(organizationId, !!organizationId);
   const createTask = useCreateProjectTask(organizationId, '');
+  const reorderTask = useReorderTask(organizationId);
   const createColumn = useCreateTaskBoardColumn(organizationId);
   const updateColumn = useUpdateTaskBoardColumn(organizationId);
   const deleteColumn = useDeleteTaskBoardColumn(organizationId);
@@ -148,11 +204,77 @@ export default function TaskBoard() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskPriority, setNewTaskPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const addTaskInputRef = useRef<HTMLInputElement>(null);
 
   // State for task detail overlay
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+  // Track if user manually closed (to prevent useEffect from re-opening)
+  const userClosedRef = useRef(false);
+
+  // State for task reminders (from scheduled_notifications)
+  const [taskReminders, setTaskReminders] = useState<Map<string, TaskReminder>>(new Map());
+
+  // Fetch reminders for all tasks
+  useEffect(() => {
+    const fetchReminders = async () => {
+      if (tasks.length > 0) {
+        const taskIds = tasks.map(t => t.id);
+        const reminders = await getTaskReminders(taskIds);
+        setTaskReminders(reminders);
+      }
+    };
+    fetchReminders();
+  }, [tasks]);
+
+  // Open task from URL param on load (e.g., ?task=TASK-123)
+  useEffect(() => {
+    // Don't re-open if user just closed the overlay
+    if (userClosedRef.current) {
+      userClosedRef.current = false;
+      return;
+    }
+    if (taskFromUrl && tasks.length > 0 && !selectedTask) {
+      // Try to find by reference first, then by ID
+      const foundTask = tasks.find(
+        (t) => t.reference === taskFromUrl || t.id === taskFromUrl
+      );
+      if (foundTask) {
+        setSelectedTask(foundTask);
+      }
+    }
+  }, [taskFromUrl, tasks, selectedTask]);
+
+  // Helper to open task and update URL
+  const openTaskOverlay = (task: ProjectTask) => {
+    setSelectedTask(task);
+    setSearchParams({ task: task.reference || task.id });
+  };
+
+  // Helper to close task and clear URL
+  const closeTaskOverlay = () => {
+    userClosedRef.current = true;
+    setSelectedTask(null);
+    // Clear the task param from URL
+    searchParams.delete('task');
+    setSearchParams(searchParams);
+  };
+
+  // Task comments and attachments hooks (only fetch when task is selected)
+  const { data: taskComments = [], isLoading: isLoadingComments } = useTaskComments(selectedTask?.id);
+  const { data: taskAttachments = [], isLoading: isLoadingAttachments } = useTaskAttachments(selectedTask?.id);
+  const { data: taskActivities = [], isLoading: isLoadingActivities } = useTaskActivity(selectedTask?.id);
+  // Get current user's profile for optimistic comment updates
+  const currentUserProfile = members.find((m) => m.user_id === user?.id);
+  const createComment = useCreateTaskComment(selectedTask?.id || '', organizationId, {
+    id: user?.id || '',
+    full_name: currentUserProfile?.full_name,
+    email: user?.email,
+  });
+  const updateComment = useUpdateTaskComment(selectedTask?.id || '');
+  const deleteComment = useDeleteTaskComment(selectedTask?.id || '');
+  const uploadAttachment = useUploadTaskAttachment(selectedTask?.id || '', organizationId);
+  const deleteAttachment = useDeleteTaskAttachment(selectedTask?.id || '');
 
   // State for delete task dialog
   const [deleteTaskDialog, setDeleteTaskDialog] = useState<{ open: boolean; task: ProjectTask | null }>({
@@ -179,9 +301,11 @@ export default function TaskBoard() {
   const [editingColumnName, setEditingColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
 
-  // Drag state for tasks
+  // Drag state for tasks (matches Board.tsx pattern)
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [dragOverCard, setDragOverCard] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
 
   // Drag state for columns
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
@@ -198,17 +322,21 @@ export default function TaskBoard() {
     }
   }, [addingToColumn]);
 
-  // Group tasks by status (column slug)
+  // Group tasks by status (column slug) - sorted by position
   const getTasksByStatus = (status: string) => {
-    return tasks.filter((task: ProjectTask) => task.status === status);
+    return tasks
+      .filter((task: ProjectTask) => task.status === status)
+      .sort((a: ProjectTask, b: ProjectTask) => (a.position ?? 0) - (b.position ?? 0));
   };
 
-  const handleDragStart = (taskId: string) => {
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
     setDraggedTask(taskId);
   };
 
   const handleDragOver = (e: React.DragEvent, columnSlug: string) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverColumn(columnSlug);
   };
 
@@ -216,16 +344,100 @@ export default function TaskBoard() {
     setDragOverColumn(null);
   };
 
-  const handleDrop = (e: React.DragEvent, newStatus: string) => {
+  // Handle drag over a specific task card (matches Board.tsx pattern)
+  const handleCardDragOver = (e: React.DragEvent, cardId: string) => {
     e.preventDefault();
-    if (draggedTask) {
-      const task = tasks.find((t: ProjectTask) => t.id === draggedTask);
-      if (task && task.status !== newStatus) {
-        handleStatusUpdate(task.id, newStatus, task.project_id);
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+
+    // Don't show card drop indicators if we're dragging a column
+    if (draggedColumnId) return;
+
+    // Determine if hovering over top or bottom half of the card
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const isTopHalf = e.clientY < midpoint;
+
+    setDragOverCard(cardId);
+    setDropPosition(isTopHalf ? 'before' : 'after');
+  };
+
+  const handleCardDragLeave = () => {
+    setDragOverCard(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+
+    // Clear drag states immediately to remove blue border
+    setDragOverColumn(null);
+    setDragOverCard(null);
+
+    if (!draggedTask) {
+      resetDragState();
+      return;
+    }
+
+    // Find the dragged task to get its current status and position
+    const draggedTaskData = tasks.find((t: ProjectTask) => t.id === draggedTask);
+    if (!draggedTaskData) {
+      resetDragState();
+      return;
+    }
+
+    const oldStatus = draggedTaskData.status;
+    const oldPosition = draggedTaskData.position ?? 0;
+
+    const columnTasks = getTasksByStatus(newStatus);
+    let newPosition: number;
+
+    if (dragOverCard && dragOverCard !== draggedTask) {
+      // Dropping relative to a specific card
+      const targetCardIndex = columnTasks.findIndex((t: ProjectTask) => t.id === dragOverCard);
+      if (targetCardIndex >= 0) {
+        if (dropPosition === 'before') {
+          newPosition = targetCardIndex;
+        } else {
+          newPosition = targetCardIndex + 1;
+        }
+      } else {
+        // Card not found, add to end
+        newPosition = columnTasks.length;
+      }
+    } else {
+      // Dropped in empty space - add to end
+      newPosition = columnTasks.length;
+    }
+
+    // Check if position actually changed - skip reorder if same position in same column
+    const isSameColumn = oldStatus === newStatus;
+    if (isSameColumn) {
+      // If dropping before/after self or in same effective position, skip
+      const effectivelySamePosition =
+        newPosition === oldPosition ||
+        newPosition === oldPosition + 1; // Dropping right after self
+
+      if (effectivelySamePosition) {
+        resetDragState();
+        return;
       }
     }
+
+    // Reorder the task
+    await reorderTask.mutateAsync({
+      taskId: draggedTask,
+      newStatus,
+      newPosition,
+    });
+
+    resetDragState();
+  };
+
+  const resetDragState = () => {
     setDraggedTask(null);
     setDragOverColumn(null);
+    setDragOverCard(null);
+    setDropPosition('before');
   };
 
   const handleStatusUpdate = async (taskId: string, newStatus: string, projectId: string | null) => {
@@ -284,6 +496,109 @@ export default function TaskBoard() {
     }
   };
 
+  // Comment handlers with notifications
+  const handleAddComment = async (content: string, mentions: string[], parentId?: string) => {
+    if (!selectedTask || !user) return;
+
+    try {
+      await createComment.mutateAsync({
+        content,
+        mentions,
+        parent_id: parentId,
+      });
+
+      // Get commenter info
+      const commenter = activeMembers.find(m => m.user_id === user.id);
+      const commenterName = commenter?.full_name || user.email || 'Someone';
+
+      // Send notifications (non-blocking)
+      if (mentions.length > 0) {
+        notifyTaskCommentMention({
+          organizationId,
+          taskId: selectedTask.id,
+          taskTitle: selectedTask.title,
+          taskReference: selectedTask.reference || undefined,
+          commentId: '', // Will be set by the notification service
+          commentContent: content,
+          commenterName,
+          commenterId: user.id,
+          mentionedUserIds: mentions,
+        }).catch(console.error);
+      }
+
+      // Notify assignee if different from commenter
+      if (selectedTask.assigned_to && selectedTask.assigned_to !== user.id && !parentId) {
+        notifyTaskCommentAdded({
+          organizationId,
+          taskId: selectedTask.id,
+          taskTitle: selectedTask.title,
+          taskReference: selectedTask.reference || undefined,
+          commentId: '',
+          commentContent: content,
+          commenterName,
+          commenterId: user.id,
+          assigneeId: selectedTask.assigned_to,
+        }).catch(console.error);
+      }
+
+      // Notify parent comment author if this is a reply
+      if (parentId) {
+        const parentComment = taskComments.find(c => c.id === parentId);
+        if (parentComment && parentComment.user_id !== user.id) {
+          notifyTaskCommentReply({
+            organizationId,
+            taskId: selectedTask.id,
+            taskTitle: selectedTask.title,
+            taskReference: selectedTask.reference || undefined,
+            commentId: '',
+            commentContent: content,
+            commenterName,
+            commenterId: user.id,
+            parentCommentUserId: parentComment.user_id,
+          }).catch(console.error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
+  };
+
+  const handleEditComment = async (commentId: string, content: string, mentions: string[]) => {
+    try {
+      await updateComment.mutateAsync({
+        commentId,
+        input: { content, mentions },
+      });
+    } catch (error) {
+      console.error('Failed to edit comment:', error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await deleteComment.mutateAsync(commentId);
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+    }
+  };
+
+  // Attachment handlers
+  const handleUploadAttachment = async (file: File) => {
+    try {
+      await uploadAttachment.mutateAsync(file);
+    } catch (error) {
+      console.error('Failed to upload attachment:', error);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachment: TaskAttachment) => {
+    try {
+      await deleteAttachment.mutateAsync(attachment);
+    } catch (error) {
+      console.error('Failed to delete attachment:', error);
+    }
+  };
+
   // Quick add task with optional due date and assignee
   const handleAddTask = async (columnSlug: string) => {
     if (!newTaskTitle.trim()) return;
@@ -300,7 +615,7 @@ export default function TaskBoard() {
     setNewTaskTitle('');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
-    setNewTaskPriority('medium');
+    setNewTaskPriority('Medium');
     setAddingToColumn(null);
   };
 
@@ -308,7 +623,7 @@ export default function TaskBoard() {
     setNewTaskTitle('');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
-    setNewTaskPriority('medium');
+    setNewTaskPriority('Medium');
     setAddingToColumn(null);
   };
 
@@ -479,10 +794,10 @@ export default function TaskBoard() {
               )}
 
               <div
-                className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col max-h-[calc(100vh-10rem)] ${
+                className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-10rem)] ${
                   isCollapsed ? 'w-12' : 'w-72'
                 } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
-                  isDragOver && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+                  isDragOver && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50/50' : ''
                 }`}
                 onDragOver={(e) => handleDragOver(e, column.slug)}
                 onDragLeave={handleDragLeave}
@@ -647,21 +962,28 @@ export default function TaskBoard() {
 
                 {/* Tasks List */}
                 {!isCollapsed && (
-                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  <div className="flex-1 overflow-y-auto p-2 flex flex-col min-h-[120px]">
                     {/* Task Cards */}
+                    <div className="space-y-2 flex-1">
                     {columnTasks.map((task: ProjectTask) => {
                       const projectName = getProjectName(task);
 
                       return (
-                        <div
-                          key={task.id}
-                          draggable
-                          onDragStart={() => handleDragStart(task.id)}
-                          onClick={() => setSelectedTask(task)}
-                          className={`group bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200 relative ${
-                            draggedTask === task.id ? 'opacity-50' : ''
-                          }`}
-                        >
+                        <div key={task.id} className="relative">
+                          {/* Drop indicator above card (matches Board.tsx) */}
+                          {dragOverCard === task.id && draggedTask !== task.id && (
+                            <div className="h-0.5 bg-blue-500 rounded-full mb-2" />
+                          )}
+                          <div
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, task.id)}
+                            onDragOver={(e) => handleCardDragOver(e, task.id)}
+                            onDragLeave={handleCardDragLeave}
+                            onClick={() => openTaskOverlay(task)}
+                            className={`group bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200 relative ${
+                              draggedTask === task.id ? 'opacity-50 scale-95' : ''
+                            }`}
+                          >
                           {/* Top Right: Menu only */}
                           <div className="absolute top-2 right-2">
                             {/* Task Menu - 3 dot ellipsis */}
@@ -766,9 +1088,9 @@ export default function TaskBoard() {
                                     <Flag
                                       weight="fill"
                                       className={`w-3.5 h-3.5 ${
-                                        task.priority === 'high' ? 'text-red-500' :
-                                        task.priority === 'medium' ? 'text-yellow-500' :
-                                        task.priority === 'low' ? 'text-gray-400' : 'text-gray-300'
+                                        task.priority === 'High' ? 'text-red-500' :
+                                        task.priority === 'Medium' ? 'text-yellow-500' :
+                                        task.priority === 'Low' ? 'text-gray-400' : 'text-gray-300'
                                       }`}
                                     />
                                   </button>
@@ -776,7 +1098,7 @@ export default function TaskBoard() {
                                 <PopoverContent className="w-32 p-2" align="start" onClick={(e) => e.stopPropagation()}>
                                   <div className="space-y-1">
                                     <p className="text-xs font-medium text-gray-500 px-2 pb-1">Priority</p>
-                                    {(['high', 'medium', 'low'] as const).map((priority) => (
+                                    {(['High', 'Medium', 'Low'] as const).map((priority) => (
                                       <button
                                         key={priority}
                                         onClick={() => handleUpdateTask(task.id, { priority } as any)}
@@ -787,11 +1109,11 @@ export default function TaskBoard() {
                                         <Flag
                                           weight="fill"
                                           className={`w-3.5 h-3.5 ${
-                                            priority === 'high' ? 'text-red-500' :
-                                            priority === 'medium' ? 'text-yellow-500' : 'text-gray-400'
+                                            priority === 'High' ? 'text-red-500' :
+                                            priority === 'Medium' ? 'text-yellow-500' : 'text-gray-400'
                                           }`}
                                         />
-                                        <span className="capitalize">{priority}</span>
+                                        <span>{priority}</span>
                                       </button>
                                     ))}
                                     {task.priority && (
@@ -870,6 +1192,30 @@ export default function TaskBoard() {
                                   </PopoverContent>
                                 </Popover>
                               )}
+
+                              {/* Reminder Indicator */}
+                              {(() => {
+                                const reminder = taskReminders.get(task.id);
+                                const reminderText = getReminderDisplayText(reminder);
+                                if (!reminderText) return null;
+                                const isSent = reminder?.status === 'Sent';
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <button className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${
+                                          isSent ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                                        }`}>
+                                          <BellSimple className="w-3 h-3" weight="fill" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {reminderText}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })()}
                             </div>
 
                             {/* Assignee */}
@@ -940,11 +1286,15 @@ export default function TaskBoard() {
                             )}
                           </div>
                         </div>
+
+                        </div>
                       );
                     })}
+                    </div>
 
-                    {/* Add Task Form - at bottom of column */}
-                    {addingToColumn === column.slug ? (
+                    {/* Add Task Form - at bottom of column (hidden during drag) */}
+                    <div className={columnTasks.length === 0 ? 'mt-auto' : 'mt-2'}>
+                    {!draggedTask && addingToColumn === column.slug ? (
                       <div className="bg-white rounded-lg border border-blue-200 p-2 shadow-sm">
                         <Input
                           ref={addTaskInputRef}
@@ -1065,8 +1415,8 @@ export default function TaskBoard() {
                                 >
                                   <Flag
                                     className={`w-4 h-4 ${
-                                      newTaskPriority === 'high' ? 'text-red-500' :
-                                      newTaskPriority === 'medium' ? 'text-yellow-500' :
+                                      newTaskPriority === 'High' ? 'text-red-500' :
+                                      newTaskPriority === 'Medium' ? 'text-yellow-500' :
                                       'text-gray-400'
                                     }`}
                                     weight="fill"
@@ -1075,7 +1425,7 @@ export default function TaskBoard() {
                               </PopoverTrigger>
                               <PopoverContent className="w-32 p-2" align="start">
                                 <div className="space-y-1">
-                                  {(['high', 'medium', 'low'] as const).map((priority) => (
+                                  {(['High', 'Medium', 'Low'] as const).map((priority) => (
                                     <button
                                       key={priority}
                                       onClick={() => setNewTaskPriority(priority)}
@@ -1085,13 +1435,13 @@ export default function TaskBoard() {
                                     >
                                       <Flag
                                         className={`w-3 h-3 ${
-                                          priority === 'high' ? 'text-red-500' :
-                                          priority === 'medium' ? 'text-yellow-500' :
+                                          priority === 'High' ? 'text-red-500' :
+                                          priority === 'Medium' ? 'text-yellow-500' :
                                           'text-gray-400'
                                         }`}
                                         weight="fill"
                                       />
-                                      <span className="capitalize">{priority}</span>
+                                      <span>{priority}</span>
                                     </button>
                                   ))}
                                 </div>
@@ -1110,12 +1460,13 @@ export default function TaskBoard() {
                     ) : (
                       <button
                         onClick={() => setAddingToColumn(column.slug)}
-                        className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                        className="w-full py-2 text-sm text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                         Create
                       </button>
                     )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1195,11 +1546,12 @@ export default function TaskBoard() {
           members={activeMembers}
           projects={projects}
           currentUserId={user?.id}
-          onClose={() => setSelectedTask(null)}
+          organizationId={organizationId}
+          onClose={closeTaskOverlay}
           onUpdate={handleUpdateTask}
           onDelete={(taskId) => {
             handleDeleteTask(taskId, selectedTask.project_id);
-            setSelectedTask(null);
+            closeTaskOverlay();
           }}
           onStatusChange={(taskId, newStatus) => {
             handleStatusUpdate(taskId, newStatus, selectedTask.project_id);
@@ -1207,11 +1559,26 @@ export default function TaskBoard() {
             setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
           }}
           onLinkProject={handleLinkProject}
+          // Comments
+          comments={taskComments}
+          isLoadingComments={isLoadingComments}
+          onAddComment={handleAddComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          // Attachments
+          attachments={taskAttachments}
+          isLoadingAttachments={isLoadingAttachments}
+          isUploadingAttachment={uploadAttachment.isPending}
+          onUploadAttachment={handleUploadAttachment}
+          onDeleteAttachment={handleDeleteAttachment}
+          // Activity
+          activities={taskActivities}
+          isLoadingActivities={isLoadingActivities}
         />
       )}
 
       {/* Delete Task Confirmation Dialog */}
-      <ConfirmDeleteDialog
+      <TaskDeleteDialog
         open={deleteTaskDialog.open}
         onOpenChange={(open) => setDeleteTaskDialog({ open, task: open ? deleteTaskDialog.task : null })}
         onConfirm={() => {
@@ -1220,9 +1587,8 @@ export default function TaskBoard() {
           }
           setDeleteTaskDialog({ open: false, task: null });
         }}
-        title="Delete Task"
-        description="This action cannot be undone. This task will be permanently deleted."
-        itemName={deleteTaskDialog.task?.title}
+        taskTitle={deleteTaskDialog.task?.title || ''}
+        taskReference={deleteTaskDialog.task?.reference ?? undefined}
       />
     </PageContent>
   );

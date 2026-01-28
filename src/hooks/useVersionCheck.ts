@@ -39,8 +39,8 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}) {
   } = options;
 
   const [hasNewVersion, setHasNewVersion] = useState(false);
-  const checkIntervalRef = useRef<NodeJS.Timeout>();
-  const autoReloadTimeoutRef = useRef<NodeJS.Timeout>();
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoReloadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Check for new version and notify user
@@ -98,11 +98,11 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}) {
     }
 
     // Show persistent toast with action
-    toast.info('New version available!', {
-      description: `A new version has been deployed. Reload to get the latest features and fixes. (Auto-reload in ${autoReloadDelay}s unless you're working)`,
+    toast.info('Update available', {
+      description: `Reload to get the latest version.`,
       duration: Infinity, // Don't auto-dismiss (user needs to act or wait)
       action: {
-        label: 'Reload Now',
+        label: 'Reload',
         onClick: () => {
           forceReload();
         },
@@ -114,11 +114,11 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}) {
       if (isUserActive()) {
         console.log('⏸️ Auto-reload delayed - user is active (typing/editing)');
         // Show reminder toast and try again in 2 minutes
-        toast.warning('Update Waiting', {
-          description: 'A new version is available. Please save your work and reload when ready.',
+        toast.warning('Update pending', {
+          description: 'Save your work and reload when ready.',
           duration: 10000,
           action: {
-            label: 'Reload Now',
+            label: 'Reload',
             onClick: () => forceReload(),
           },
         });
@@ -166,6 +166,24 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}) {
       }
     };
   }, [enabled, checkInterval]);
+
+  /**
+   * Dev-only: Keyboard shortcut to test version toast (Ctrl+Shift+V)
+   */
+  useEffect(() => {
+    if (import.meta.env.PROD) return; // Only in development
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+        e.preventDefault();
+        console.log('🧪 Testing version update toast...');
+        showUpdateNotification();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return {
     hasNewVersion,

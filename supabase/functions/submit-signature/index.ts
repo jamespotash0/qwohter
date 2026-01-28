@@ -24,10 +24,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ============================================================================
+// Database Field Normalizers
+// ============================================================================
+
+/**
+ * Normalize signature type to match database constraint
+ * Database expects: 'Draw' or 'Type' (capitalized)
+ * Accepts any case: "draw", "DRAW", "Draw" -> "Draw"
+ */
+function normalizeSignatureType(type: string | null | undefined): 'Draw' | 'Type' | null {
+  if (!type) return null;
+  const normalized = type.trim().toLowerCase();
+  if (normalized === 'draw') return 'Draw';
+  if (normalized === 'type') return 'Type';
+  return null;
+}
+
 interface RequestBody {
   token: string;              // Signing token for validation
   signatureData: string;      // Base64 PNG image of signature
-  signatureType: 'draw' | 'type';
+  signatureType: 'Draw' | 'Type';
   signatureFont?: string;     // Font name if typed
   signerName: string;
   signerEmail: string;
@@ -263,7 +293,16 @@ async function uploadSignedPdfToDrive(
 
     // Build multipart body
     const metadataStr = JSON.stringify(metadata);
-    const base64Data = btoa(String.fromCharCode(...pdfBytes));
+
+    // Convert Uint8Array to base64 in chunks to avoid stack overflow
+    // (Using spread operator on large arrays causes "Maximum call stack size exceeded")
+    let binaryString = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = pdfBytes.subarray(i, Math.min(i + chunkSize, pdfBytes.length));
+      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Data = btoa(binaryString);
 
     const requestBody =
       delimiter +
@@ -650,11 +689,11 @@ async function sendSignatureNotifications(
           </div>
 
           <div class="content">
-            <p>Great news! <strong>${signerName}</strong> has signed the proposal.</p>
+            <p>Great news! <strong>${escapeHtml(signerName)}</strong> has signed the proposal.</p>
 
             <div class="info-box">
-              <p style="margin: 0;"><strong>Proposal:</strong> ${proposalNumber}</p>
-              <p style="margin: 5px 0 0 0;"><strong>Project:</strong> ${projectName || 'N/A'}</p>
+              <p style="margin: 0;"><strong>Proposal:</strong> ${escapeHtml(proposalNumber)}</p>
+              <p style="margin: 5px 0 0 0;"><strong>Project:</strong> ${escapeHtml(projectName) || 'N/A'}</p>
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
@@ -685,7 +724,7 @@ async function sendSignatureNotifications(
     body: JSON.stringify({
       from: 'Qwohter <notifications@qwohter.com>',
       to: [orgEmail],
-      subject: `✓ Proposal ${proposalNumber} Signed by ${signerName}`,
+      subject: `✓ Proposal ${escapeHtml(proposalNumber)} Signed by ${escapeHtml(signerName)}`,
       html: emailHtml,
     }),
   });
@@ -695,7 +734,7 @@ async function sendSignatureNotifications(
     'Great news!',
     'Thank you for signing!'
   ).replace(
-    `<strong>${signerName}</strong> has signed the proposal.`,
+    `<strong>${escapeHtml(signerName)}</strong> has signed the proposal.`,
     `You have successfully signed the proposal. A copy is attached for your records.`
   );
 
@@ -708,7 +747,7 @@ async function sendSignatureNotifications(
     body: JSON.stringify({
       from: 'Qwohter <notifications@qwohter.com>',
       to: [clientEmail],
-      subject: `Your Signed Proposal - ${proposalNumber}`,
+      subject: `Your Signed Proposal - ${escapeHtml(proposalNumber)}`,
       html: clientHtml,
     }),
   });
@@ -769,14 +808,14 @@ serve(async (req) => {
     }
 
     // Check token status
-    if (signingToken.status === 'signed') {
+    if (signingToken.status === 'Signed') {
       return new Response(
         JSON.stringify({ error: 'This proposal has already been signed' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (signingToken.status === 'expired' || signingToken.status === 'revoked') {
+    if (signingToken.status === 'Expired' || signingToken.status === 'Revoked') {
       return new Response(
         JSON.stringify({ error: 'This signing link is no longer valid' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -787,7 +826,7 @@ serve(async (req) => {
     if (signingToken.expires_at && new Date(signingToken.expires_at) < new Date()) {
       await supabase
         .from('proposal_signing_tokens')
-        .update({ status: 'expired' })
+        .update({ status: 'Expired' })
         .eq('id', signingToken.id);
 
       return new Response(
@@ -796,10 +835,10 @@ serve(async (req) => {
       );
     }
 
-    // Get proposal data
+    // Get proposal data (including created_by for notification routing)
     const { data: proposal, error: proposalError } = await supabase
       .from('proposals')
-      .select('id, proposal_number, project_name, organization_id, form_data')
+      .select('id, proposal_number, project_name, organization_id, form_data, created_by')
       .eq('id', signingToken.proposal_id)
       .single();
 
@@ -957,6 +996,16 @@ serve(async (req) => {
       console.error('[submit-signature] Google Drive upload failed (non-blocking):', driveError);
     }
 
+    // Normalize signature type to match database constraint (lowercase: 'draw' or 'type')
+    const normalizedSignatureType = normalizeSignatureType(signatureType);
+    if (!normalizedSignatureType) {
+      console.error('[submit-signature] Invalid signature type:', signatureType);
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature type. Must be "draw" or "type".' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create signature record
     console.log('[submit-signature] Creating signature record...');
     const { error: signatureError } = await supabase
@@ -968,7 +1017,7 @@ serve(async (req) => {
         signer_name: signerName,
         signer_email: signerEmail,
         signer_company: signerCompany,
-        signature_type: signatureType,
+        signature_type: normalizedSignatureType,
         signature_data: signatureData,
         signature_font: signatureFont,
         signed_pdf_url: signedPdfUrl,
@@ -980,13 +1029,17 @@ serve(async (req) => {
 
     if (signatureError) {
       console.error('[submit-signature] Failed to create signature record:', signatureError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to save signature record. Please try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Update signing token status
     await supabase
       .from('proposal_signing_tokens')
       .update({
-        status: 'signed',
+        status: 'Signed',
         signed_at: signedAt.toISOString(),
       })
       .eq('id', signingToken.id);
@@ -1024,7 +1077,7 @@ serve(async (req) => {
         organization_id: organizationId,
         proposal_id: proposal.id,
         signing_token_id: signingToken.id,
-        event_type: 'signed',
+        event_type: 'Signed',
         event_data: {
           signer_name: signerName,
           signer_email: signerEmail,
@@ -1050,6 +1103,69 @@ serve(async (req) => {
       } catch (emailError) {
         console.error('[submit-signature] Email sending failed:', emailError);
         // Don't fail the request if email fails
+      }
+
+      // Send notification to proposal creator based on their preferences
+      if (proposal.created_by) {
+        try {
+          // Get creator's notification preferences
+          const { data: prefs } = await supabase
+            .from('notification_preferences')
+            .select('email_enabled, email_on_signature_signed')
+            .eq('user_id', proposal.created_by)
+            .eq('organization_id', organizationId)
+            .single();
+
+          // Default to enabled if no preferences set
+          const shouldSendEmail = !prefs || (prefs.email_enabled !== false && prefs.email_on_signature_signed !== false);
+
+          if (shouldSendEmail) {
+            // Get creator's email from profiles
+            const { data: creatorProfile } = await supabase
+              .from('profiles')
+              .select('email, first_name')
+              .eq('id', proposal.created_by)
+              .single();
+
+            if (creatorProfile?.email && creatorProfile.email !== orgEmail) {
+              // Send immediate notification to creator
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${resendApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'Qwohter Notifications <notifications@qwohter.com>',
+                  to: [creatorProfile.email],
+                  subject: `${signerName} signed ${proposal.proposal_number}!`,
+                  html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                      <div style="background: #10b981; color: white; padding: 24px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 20px;">Document Signed!</h1>
+                      </div>
+                      <div style="padding: 24px;">
+                        <p>Hi ${creatorProfile.first_name || 'there'},</p>
+                        <p>Great news! <strong>${signerName}</strong> (${signerEmail}) has signed your document <strong>${proposal.proposal_number}</strong>.</p>
+                        <div style="text-align: center; margin: 24px 0;">
+                          <a href="${signedPdfUrl}" style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">View Signed Document</a>
+                        </div>
+                      </div>
+                      <div style="background: #f8f9fa; padding: 16px; text-align: center; font-size: 12px; color: #6b7280;">
+                        <p style="margin: 0;">Sent from <a href="https://www.qwohter.com" style="color: #EE6C4D;">Qwohter</a></p>
+                        <p style="margin: 8px 0 0 0;"><a href="https://www.qwohter.com/settings?tab=notifications" style="color: #EE6C4D;">Manage preferences</a></p>
+                      </div>
+                    </div>
+                  `,
+                }),
+              });
+              console.log('[submit-signature] Creator notification sent');
+            }
+          }
+        } catch (notifError) {
+          console.error('[submit-signature] Creator notification failed:', notifError);
+          // Don't fail the request if notification fails
+        }
       }
     }
 

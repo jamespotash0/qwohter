@@ -6,7 +6,6 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ProjectAttachmentsService } from '@/services/projectAttachmentsService';
-import type { ProjectAttachment } from '@/lib/types/projectAttachments';
 
 /**
  * Hook to fetch project attachments

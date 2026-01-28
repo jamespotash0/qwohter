@@ -22,7 +22,7 @@ export interface SigningToken {
   client_email: string;
   client_name: string | null;
   client_company: string | null;
-  status: 'pending' | 'viewed' | 'signed' | 'expired' | 'revoked';
+  status: 'Pending' | 'Viewed' | 'Signed' | 'Expired' | 'Revoked';
   unsigned_pdf_url: string | null;
   unsigned_pdf_path: string | null;
   sent_at: string;
@@ -43,7 +43,7 @@ export interface ProposalSignature {
   signer_name: string;
   signer_email: string;
   signer_company: string | null;
-  signature_type: 'draw' | 'type';
+  signature_type: 'Draw' | 'Type';
   signature_data: string;
   signature_font: string | null;
   signed_pdf_url: string | null;
@@ -288,7 +288,7 @@ export async function getProposalSigningTokens(proposalId: string): Promise<Sign
 export async function revokeSigningToken(tokenId: string): Promise<{ success: boolean; error?: string }> {
   const { error } = await supabase
     .from('proposal_signing_tokens')
-    .update({ status: 'revoked' })
+    .update({ status: 'Revoked' })
     .eq('id', tokenId);
 
   if (error) {
@@ -407,7 +407,7 @@ export async function getSigningActivity(proposalId: string): Promise<SigningAct
  * Check if a signing token is still valid (not expired, signed, or revoked)
  */
 export function isTokenValid(token: SigningToken): boolean {
-  if (token.status !== 'pending' && token.status !== 'viewed') {
+  if (token.status !== 'Pending' && token.status !== 'Viewed') {
     return false;
   }
 

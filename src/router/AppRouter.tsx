@@ -1,12 +1,58 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
+import { ScrollToTop } from "@/components/common/ScrollToTop";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { useUser, useAuthStatus } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
+// DISABLED FOR PRODUCTION TESTING
+// import { AdaFloatingWidget } from "@/components/features/ada";
 
 import React from "react";
+
+// Auth-aware Ada wrapper - DISABLED FOR PRODUCTION TESTING
+// const AdaWithAuthCheck: React.FC = () => {
+//   const user = useUser();
+//   const location = useLocation();
+//
+//   // List of paths where Ada should NOT appear (public/auth pages)
+//   const publicPaths = [
+//     '/sign-in',
+//     '/create-account',
+//     '/forgot-password',
+//     '/reset-password',
+//     '/access-denied',
+//     '/account-inactive',
+//     '/invalid-invitation',
+//     '/auth',
+//     '/login',
+//     '/signup',
+//     '/',
+//     '/demo',
+//     '/contact-us',
+//     '/privacy-policy',
+//     '/privacy-notice',
+//     '/terms-of-service',
+//     '/faq',
+//     '/legal',
+//     '/cookie-settings',
+//     '/accessibility-statement',
+//     '/do-not-sell-my-personal-information',
+//     '/404',
+//   ];
+//
+//   // Check if current path is a public page or starts with /sign (signing page)
+//   const isPublicPage = publicPaths.includes(location.pathname) ||
+//     location.pathname.startsWith('/sign/');
+//
+//   // Don't render Ada on public pages or when not authenticated
+//   if (!user || isPublicPage) {
+//     return null;
+//   }
+//
+//   return <AdaFloatingWidget />;
+// };
 
 // Protected auth route wrapper - redirects to dashboard if already logged in AND completed onboarding
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
@@ -14,17 +60,39 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const user = useUser();
   const { isInitialized } = useAuthStatus();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
 
-  // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
+  // Check if URL has invite token - if so, let Auth.tsx handle the loading state
+  const hasInviteToken = React.useMemo(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return !!(urlParams.get('invite') || urlParams.get('appinvite'));
+  }, []);
+
+  // IMPORTANT: Check if user has completed onboarding OR is super admin (BEFORE any early returns!)
   // Hooks must always be called in the same order - move this BEFORE the loading check
   React.useEffect(() => {
     const checkOnboarding = async () => {
       if (!user) {
         setHasCompletedOnboarding(null);
+        setIsSuperAdmin(false);
         return;
       }
 
       try {
+        // First check if user is a super admin - they bypass organization requirement
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle() as { data: { is_super_admin: boolean } | null; error: unknown };
+
+        if (profile?.is_super_admin) {
+          setIsSuperAdmin(true);
+          setHasCompletedOnboarding(true);
+          return;
+        }
+
+        // Otherwise check for active membership
         const { data: membership } = await supabase
           .from('memberships')
           .select('id, status')
@@ -43,7 +111,8 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   // Show loading spinner while auth is initializing (prevents flash of sign-in page)
-  if (!isInitialized) {
+  // Skip this spinner if there's an invite token - Auth.tsx shows its own "Validating invitation..." spinner
+  if (!isInitialized && !hasInviteToken) {
     return (
       <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
         <div className="text-center">
@@ -54,9 +123,10 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // If user is logged in AND has completed onboarding, redirect to dashboard
+  // If user is logged in AND has completed onboarding, redirect appropriately
   if (user && hasCompletedOnboarding) {
-    return <Navigate to="/dashboard" replace />;
+    // Super admins go to admin panel, regular users go to dashboard
+    return <Navigate to={isSuperAdmin ? "/admin" : "/dashboard"} replace />;
   }
 
   return <>{children}</>;
@@ -77,8 +147,10 @@ const AccessibilityStatement = lazy(() => import("@/pages/legal/AccessibilitySta
 const DoNotSell = lazy(() => import("@/pages/legal/DoNotSell"));
 const ProposalSigningPage = lazy(() => import("@/pages/ProposalSigningPage"));
 
-// Authentication pages
-const Auth = lazy(() => import("@/pages/Auth"));
+// Authentication pages - import eagerly to prevent loading spinner flash
+// Auth is needed immediately on login/signup and handles its own loading states
+import Auth from "@/pages/Auth";
+import InvalidInvitation from "@/pages/InvalidInvitation";
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
@@ -118,15 +190,14 @@ const ManufacturersPage = lazy(() => import("@/features/admin/pages/Manufacturer
 const ProductLinesPage = lazy(() => import("@/features/admin/pages/ProductLinesPage").then(m => ({ default: m.ProductLinesPage })));
 const SeriesPage = lazy(() => import("@/features/admin/pages/SeriesPage").then(m => ({ default: m.SeriesPage })));
 const ModelsPage = lazy(() => import("@/features/admin/pages/ModelsPage").then(m => ({ default: m.ModelsPage })));
-const VariantsPage = lazy(() => import("@/features/admin/pages/VariantsPage").then(m => ({ default: m.VariantsPage })));
-const OptionGroupsPage = lazy(() => import("@/features/admin/pages/OptionGroupsPage").then(m => ({ default: m.OptionGroupsPage })));
-const OptionValuesPage = lazy(() => import("@/features/admin/pages/OptionValuesPage").then(m => ({ default: m.OptionValuesPage })));
-const ModelOptionsPage = lazy(() => import("@/features/admin/pages/ModelOptionsPage").then(m => ({ default: m.ModelOptionsPage })));
-const ModelAllowedValuesPage = lazy(() => import("@/features/admin/pages/ModelAllowedValuesPage").then(m => ({ default: m.ModelAllowedValuesPage })));
-const RulesPage = lazy(() => import("@/features/admin/pages/RulesPage").then(m => ({ default: m.RulesPage })));
+const ValueSetsPage = lazy(() => import("@/features/admin/pages/ValueSetsPage").then(m => ({ default: m.ValueSetsPage })));
+const AdminInvitePage = lazy(() => import("@/features/admin/pages/AdminInvitePage").then(m => ({ default: m.AdminInvitePage })));
 
 // Products page - HIDDEN for now
 // const Products = lazy(() => import("@/pages/Products"));
+
+// Dev preview pages (only in development)
+const ErrorBoundaryPreview = lazy(() => import("@/pages/dev/ErrorBoundaryPreview"));
 
 // Loading component
 const PageLoader = () => (
@@ -148,6 +219,12 @@ const PageLoader = () => (
 export const AppRouter = () => (
   <ErrorBoundary>
     <BrowserRouter>
+      {/* Scroll to top on route change */}
+      <ScrollToTop />
+
+      {/* Ada - Global AI Assistant (DISABLED FOR PRODUCTION TESTING) */}
+      {/* <AdaWithAuthCheck /> */}
+
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Landing page (public) */}
@@ -172,6 +249,14 @@ export const AppRouter = () => (
           {/* E-signature signing page (public - accessed via token) */}
           <Route path="/sign/:token" element={<ProposalSigningPage />} />
 
+          {/* Dev preview pages (only accessible in development) */}
+          {import.meta.env.DEV && (
+            <Route path="/dev/error-test" element={<ErrorBoundaryPreview />} />
+          )}
+
+          {/* 404 page - outside MainLayout for full screen */}
+          <Route path="/404" element={<NotFound />} />
+
           {/* Authentication routes - redirect to dashboard if already logged in */}
           <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -179,6 +264,7 @@ export const AppRouter = () => (
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
+          <Route path="/invalid-invitation" element={<InvalidInvitation />} />
 
           {/* OAuth callback routes */}
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
@@ -186,7 +272,8 @@ export const AppRouter = () => (
           {/* Legacy redirects */}
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
-          <Route path="/signup" element={<Navigate to="/create-account" replace />} />
+          {/* Public signup is disabled - redirect to sign-in */}
+          <Route path="/signup" element={<Navigate to="/sign-in" replace />} />
 
           {/* Proposal Builder V4 - Full screen Apple-level design */}
           <Route path="/proposals/builder" element={<FormBuilderV4 />} />
@@ -200,17 +287,13 @@ export const AppRouter = () => (
           {/* Admin Panel - Product Catalog Management (full-screen with own layout) */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
+            <Route path="appinvite" element={<AdminInvitePage />} />
             <Route path="products/domains" element={<DomainsPage />} />
             <Route path="products/manufacturers" element={<ManufacturersPage />} />
             <Route path="products/lines" element={<ProductLinesPage />} />
             <Route path="products/series" element={<SeriesPage />} />
             <Route path="products/models" element={<ModelsPage />} />
-            <Route path="products/variants" element={<VariantsPage />} />
-            <Route path="options/groups" element={<OptionGroupsPage />} />
-            <Route path="options/values" element={<OptionValuesPage />} />
-            <Route path="config/model-options" element={<ModelOptionsPage />} />
-            <Route path="config/allowed-values" element={<ModelAllowedValuesPage />} />
-            <Route path="config/rules" element={<RulesPage />} />
+            <Route path="options/value-sets" element={<ValueSetsPage />} />
           </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}
@@ -220,7 +303,7 @@ export const AppRouter = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Board workflow */}
-          <Route path="/board" element={<Board />} />
+          <Route path="/project-board" element={<Board />} />
           <Route path="/task-board" element={<TaskBoard />} />
 
           {/* Contacts CRM */}
@@ -244,8 +327,8 @@ export const AppRouter = () => (
                 <Route path="/forms" element={<Forms />} />
                 <Route path="/forms/library" element={<Forms />} />
 
-                {/* 404 page */}
-                <Route path="*" element={<NotFound />} />
+                {/* Catch-all redirects to full-screen 404 */}
+                <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
             </MainLayout>
           } />

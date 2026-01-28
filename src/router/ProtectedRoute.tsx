@@ -82,10 +82,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Check if user has required role
     if (!hasRequiredRole(userRole, requiresRole)) {
       // Redirect to access denied page with required role info
+      // fromAdminPanel: true tells AccessDenied.tsx this is a valid redirect (not direct URL access)
       return (
         <Navigate
           to="/access-denied"
-          state={{ requiredRole: String(requiresRole), userRole: String(userRole) }}
+          state={{
+            requiredRole: String(requiresRole),
+            userRole: String(userRole),
+            fromAdminPanel: true
+          }}
           replace
         />
       );

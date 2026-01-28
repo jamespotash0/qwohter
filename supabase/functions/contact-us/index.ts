@@ -7,6 +7,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/**
+ * Escape HTML special characters to prevent XSS/injection in email templates
+ */
+function escapeHtml(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface ContactUsData {
   firstName: string;
   lastName: string;
@@ -95,22 +108,22 @@ serve(async (req) => {
 
               <div class="field">
                 <div class="label">Name:</div>
-                <div class="value">${requestData.firstName} ${requestData.lastName}</div>
+                <div class="value">${escapeHtml(requestData.firstName)} ${escapeHtml(requestData.lastName)}</div>
               </div>
 
               <div class="field">
                 <div class="label">Email:</div>
-                <div class="value"><a href="mailto:${requestData.email}">${requestData.email}</a></div>
+                <div class="value"><a href="mailto:${escapeHtml(requestData.email)}">${escapeHtml(requestData.email)}</a></div>
               </div>
 
               <div class="field">
                 <div class="label">Phone:</div>
-                <div class="value"><a href="tel:${requestData.phone}">${requestData.phone}</a></div>
+                <div class="value"><a href="tel:${escapeHtml(requestData.phone)}">${escapeHtml(requestData.phone)}</a></div>
               </div>
 
               <div class="field">
                 <div class="label">Message:</div>
-                <div class="message-box">${requestData.message.replace(/\n/g, '<br>')}</div>
+                <div class="message-box">${escapeHtml(requestData.message).replace(/\n/g, '<br>')}</div>
               </div>
 
               <div class="footer">
@@ -134,7 +147,7 @@ serve(async (req) => {
         from: 'Qwohter Contact <onboarding@resend.dev>', // Change to 'contact@qwohter.com' after domain verification
         to: ['james.potash0@gmail.com'], // Change to contact/support email
         reply_to: requestData.email,
-        subject: `Contact Form: Message from ${requestData.firstName} ${requestData.lastName}`,
+        subject: `Contact Form: Message from ${escapeHtml(requestData.firstName)} ${escapeHtml(requestData.lastName)}`,
         html: emailHtml,
       }),
     });

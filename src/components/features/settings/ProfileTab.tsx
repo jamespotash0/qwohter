@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
-import { Mail, AlertTriangle, Edit2, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Mail, Edit2, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { useResetPassword, useSignOut, useUpdateProfile } from "@/auth";
+import { useResetPassword, useUpdateProfile } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface ProfileTabProps {
   user: SupabaseUser;
   profile: any;
-  userRole: string;
 }
 
-export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole }) => {
-  const navigate = useNavigate();
+export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
   const [editedFullName, setEditedFullName] = useState(profile?.full_name || '');
   const [isEditingName, setIsEditingName] = useState(false);
 
@@ -31,14 +28,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordResetSent, setPasswordResetSent] = useState(false);
 
-  // Delete account dialog states
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-
   // ✅ v3.0.0: Use new auth mutation hooks
   const { mutate: updateProfile, isPending: isUpdatingProfile } = useUpdateProfile();
   const { mutate: resetPassword, isPending: isResettingPassword } = useResetPassword();
-  const { mutate: signOut, isPending: isDeleting } = useSignOut();
 
   // Update editedFullName when profile changes
   React.useEffect(() => {
@@ -142,45 +134,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
         });
       }
     });
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== 'DELETE') {
-      toast({
-        title: "Error",
-        description: "Please type 'DELETE' to confirm.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Soft delete: Inactivate all memberships instead of deleting the user
-      const { error: membershipError } = await supabase
-        .from('memberships')
-        .update({ status: 'Inactive' }) //membership_status
-        .eq('user_id', user.id);
-
-      if (membershipError) throw membershipError;
-
-      toast({
-        title: "Account Deactivated",
-        description: "Your account has been deactivated. Contact support to reactivate.",
-      });
-
-      // Sign out the user using the new auth hook
-      signOut(undefined, {
-        onSuccess: () => {
-          navigate('/sign-in', { replace: true });
-        }
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to deactivate account",
-        variant: "destructive",
-      });
-    }
   };
 
   return (
@@ -425,96 +378,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
           </div>
         </div>
 
-        {/* Delete Account Section - Only show for non-Owners */}
-        {userRole !== 'Owner' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Danger Zone</h2>
-            <div className="h-px bg-gray-200 dark:bg-gray-700 mb-2"></div>
-
-            <div className="space-y-1">
-            {userRole !== 'Owner' && (
-              <div className="flex items-start justify-between py-4 px-6 rounded-lg">
-            <div className="flex-1 pr-8">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Deactivate Account</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                Deactivate your account and revoke access to all organizations
-              </p>
-            </div>
-            <div className="flex items-center gap-3 min-w-[480px] justify-end">
-              <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogTrigger asChild>
-                  <button className="h-9 px-4 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
-                    Deactivate Account
-                  </button>
-                </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                    <AlertTriangle className="w-5 h-5" />
-                    Deactivate Account
-                  </DialogTitle>
-                  <DialogDescription>
-                    This will deactivate your account and revoke access to all organizations. Contact support to reactivate.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                    <h4 className="font-medium text-red-900 dark:text-red-200 mb-2">What will happen:</h4>
-                    <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
-                      <li>• Your account will be marked as Inactive</li>
-                      <li>• You'll lose access to all organizations</li>
-                      <li>• Your proposals and data will show as "Deactivated User"</li>
-                      <li>• You can contact support to reactivate your account</li>
-                    </ul>
-                  </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      <strong>Need permanent deletion?</strong> To permanently delete your account and all data, please contact{' '}
-                      <a
-                        href="mailto:support@qwohter.com?subject=Account Deletion Request"
-                        className="underline hover:text-blue-600 dark:hover:text-blue-300"
-                      >
-                        info@qwohter.com
-                      </a>
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="delete-confirm">Type 'DELETE' to confirm</Label>
-                    <Input
-                      id="delete-confirm"
-                      value={deleteConfirmText}
-                      onChange={(e) => setDeleteConfirmText(e.target.value)}
-                      placeholder="Type DELETE here"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowDeleteDialog(false);
-                      setDeleteConfirmText('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleDeleteAccount}
-                    disabled={isDeleting || deleteConfirmText !== 'DELETE'}
-                  >
-                    {isDeleting ? 'Deactivating...' : 'Deactivate Account'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            </div>
-              </div>
-            )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

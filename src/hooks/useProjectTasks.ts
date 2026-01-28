@@ -15,6 +15,7 @@ import {
   assignTask,
   updateTaskStatus,
   updateTaskPriority,
+  reorderTask,
 } from '@/services/projectTasksService';
 import type {
   CreateProjectTaskInput,
@@ -188,6 +189,31 @@ export function useUpdateTaskPriority(organizationId: string, projectId?: string
   return useMutation({
     mutationFn: ({ taskId, priority }: { taskId: string; priority: TaskPriority }) =>
       updateTaskPriority(taskId, priority),
+    onSuccess: () => {
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
+    },
+  });
+}
+
+/**
+ * Reorder a task within or across columns (drag and drop)
+ */
+export function useReorderTask(organizationId: string, projectId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      newStatus,
+      newPosition,
+    }: {
+      taskId: string;
+      newStatus: string;
+      newPosition: number;
+    }) => reorderTask(organizationId, taskId, newStatus, newPosition),
     onSuccess: () => {
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });

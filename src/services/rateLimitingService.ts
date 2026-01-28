@@ -1,7 +1,8 @@
 /**
  * Rate Limiting Service for Organization Creation
  *
- * Prevents spam organization creation with user and IP-based limits
+ * Prevents spam organization creation with user and IP-based limits.
+ * Uses RPC functions with SECURITY DEFINER for secure database access.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,58 +13,53 @@ export interface RateLimitResult {
   resetTime?: Date;
 }
 
+interface OrgRateLimitResponse {
+  allowed: boolean;
+  user_attempts_used: number;
+  ip_attempts_used: number;
+  user_reset_at: string;
+  ip_reset_at: string;
+  reason: string;
+}
+
 export class OrganizationCreationLimiter {
   /**
    * Check if user can create organization based on rate limits
+   * Uses RPC function with SECURITY DEFINER for secure access
    */
-  static async canCreateOrganization(userId: string, ipAddress?: string): Promise<RateLimitResult> {
+  static async canCreateOrganization(
+    userId: string,
+    ipAddress?: string
+  ): Promise<RateLimitResult> {
     try {
-      // Check user-based rate limit (max 3 organizations per day)
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // Note: RPC function created in migration 20260119000000
+      const { data, error } = await (supabase.rpc as any)('check_org_creation_rate_limit', {
+        p_user_id: userId,
+        p_ip_address: ipAddress || null,
+      });
 
-      const { data: userAttempts, error: userError } = await (supabase as any)
-        .from('organization_creation_log')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'Success')
-        .gte('timestamp', oneDayAgo);
-
-      if (userError) {
-        console.error('Error checking user rate limit:', userError);
-        // Allow creation if we can't check (fail open for better UX)
+      if (error) {
+        console.error('Rate limit check error:', error);
+        // Fail open - allow creation if rate limit check fails
         return { allowed: true };
       }
 
-      if (userAttempts && userAttempts.length >= 3) {
-        const resetTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        return {
-          allowed: false,
-          reason: 'Maximum 3 organizations per day limit reached',
-          resetTime
-        };
+      const result = (data as OrgRateLimitResponse[])?.[0];
+      if (!result) {
+        return { allowed: true };
       }
 
-      // Check IP-based rate limit (max 10 per hour if IP provided)
-      if (ipAddress) {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      if (!result.allowed) {
+        // Determine which reset time to use based on which limit was hit
+        const resetTime = result.reason.includes('network')
+          ? new Date(result.ip_reset_at)
+          : new Date(result.user_reset_at);
 
-        const { data: ipAttempts, error: ipError } = await supabase
-          .from('organization_creation_log')
-          .select('*')
-          .eq('ip_address', ipAddress)
-          .gte('timestamp', oneHourAgo);
-
-        if (ipError) {
-          console.error('Error checking IP rate limit:', ipError);
-          // Continue without IP check if error
-        } else if (ipAttempts && ipAttempts.length >= 10) {
-          const resetTime = new Date(Date.now() + 60 * 60 * 1000);
-          return {
-            allowed: false,
-            reason: 'Too many creation attempts from this network',
-            resetTime
-          };
-        }
+        return {
+          allowed: false,
+          reason: result.reason,
+          resetTime,
+        };
       }
 
       return { allowed: true };
@@ -76,6 +72,7 @@ export class OrganizationCreationLimiter {
 
   /**
    * Log organization creation attempt for rate limiting
+   * Uses RPC function with SECURITY DEFINER to bypass RLS
    */
   static async logCreationAttempt(
     userId: string,
@@ -84,15 +81,13 @@ export class OrganizationCreationLimiter {
     errorMessage?: string
   ): Promise<void> {
     try {
-      const { error } = await (supabase as any)
-        .from('organization_creation_log')
-        .insert({
-          user_id: userId,
-          timestamp: new Date().toISOString(),
-          ip_address: ipAddress || null,
-          status,
-          error_message: errorMessage || null
-        });
+      // Note: RPC function created in migration 20260119000000
+      const { error } = await (supabase.rpc as any)('log_org_creation_attempt', {
+        p_user_id: userId,
+        p_status: status,
+        p_ip_address: ipAddress || null,
+        p_error_message: errorMessage || null,
+      });
 
       if (error) {
         console.error('Failed to log creation attempt:', error);
@@ -106,12 +101,16 @@ export class OrganizationCreationLimiter {
 
   /**
    * Get user's recent creation attempts for debugging/admin purposes
+   * Note: RLS allows users to see only their own records
    */
-  static async getUserCreationHistory(userId: string, hours: number = 24): Promise<any[]> {
+  static async getUserCreationHistory(
+    userId: string,
+    hours: number = 24
+  ): Promise<OrgCreationLogEntry[]> {
     try {
       const timeAgo = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('organization_creation_log')
         .select('*')
         .eq('user_id', userId)
@@ -123,7 +122,7 @@ export class OrganizationCreationLimiter {
         return [];
       }
 
-      return data || [];
+      return (data as OrgCreationLogEntry[]) || [];
     } catch (error) {
       console.error('Error in getUserCreationHistory:', error);
       return [];
@@ -132,30 +131,35 @@ export class OrganizationCreationLimiter {
 
   /**
    * Check how many more organizations user can create today
+   * Uses RPC function for accurate count
    */
   static async getRemainingCreations(userId: string): Promise<number> {
     try {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      const { data, error } = await (supabase as any)
-        .from('organization_creation_log')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'Success')
-        .gte('timestamp', oneDayAgo);
+      // Note: RPC function created in migration 20260119000000
+      const { data, error } = await (supabase.rpc as any)('get_remaining_org_creations', {
+        p_user_id: userId,
+      });
 
       if (error) {
         console.error('Error checking remaining creations:', error);
         return 3; // Default to max if can't check
       }
 
-      const used = data?.length || 0;
-      return Math.max(0, 3 - used);
+      return (data as number) ?? 3;
     } catch (error) {
       console.error('Error in getRemainingCreations:', error);
       return 3;
     }
   }
+}
+
+interface OrgCreationLogEntry {
+  id: string;
+  user_id: string;
+  timestamp: string;
+  ip_address: string | null;
+  status: 'Success' | 'Failed' | 'Rate_Limited';
+  error_message: string | null;
 }
 
 /**
@@ -164,14 +168,13 @@ export class OrganizationCreationLimiter {
  */
 export const getClientIpAddress = async (): Promise<string | undefined> => {
   try {
-    // In production, you might want to use a service to get real IP
-    // For now, we'll use a simple approach
-    const response = await fetch('https://api.ipify.org?format=json');
+    const response = await fetch('https://api.ipify.org?format=json', {
+      signal: AbortSignal.timeout(2000),
+    });
     const data = await response.json();
     return data.ip;
   } catch (error) {
     console.warn('Could not determine client IP:', error);
-    // Fallback to hostname for some basic rate limiting
-    return window.location.hostname;
+    return undefined;
   }
 };

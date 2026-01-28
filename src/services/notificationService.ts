@@ -46,7 +46,7 @@ export async function createNotification(
       message: input.message,
       link: input.link,
       metadata: input.metadata || {},
-    })
+    } as any)
     .select()
     .single();
 
@@ -92,7 +92,7 @@ export async function deleteAllNotifications(userId: string): Promise<void> {
 }
 
 /**
- * Create a task assignment notification
+ * Create a task assignment notification (in-app + email)
  */
 export async function notifyTaskAssigned(params: {
   assigneeId: string;
@@ -103,17 +103,464 @@ export async function notifyTaskAssigned(params: {
   taskTitle: string;
   assignedByName: string;
 }): Promise<Notification> {
-  return createNotification({
+  // Create in-app notification
+  const notification = await createNotification({
     user_id: params.assigneeId,
     organization_id: params.organizationId,
     type: 'task_assigned',
     title: 'New Task Assigned',
     message: `${params.assignedByName} assigned you a task: "${params.taskTitle}" in ${params.projectName}`,
-    link: `/board?project=${params.projectId}`,
+    link: `/project-board?project=${params.projectId}`,
     metadata: {
       task_id: params.taskId,
       project_id: params.projectId,
       assigned_by_name: params.assignedByName,
     },
   });
+
+  // Send email notification (async, non-blocking)
+  sendTaskAssignedEmail({
+    assigneeId: params.assigneeId,
+    organizationId: params.organizationId,
+    taskId: params.taskId,
+    taskTitle: params.taskTitle,
+    projectId: params.projectId,
+    projectName: params.projectName,
+    assignedByName: params.assignedByName,
+  }).catch((err) => {
+    console.error('[notifyTaskAssigned] Email failed:', err);
+  });
+
+  return notification;
+}
+
+/**
+ * Send email notification for task assignments
+ * Calls the send-notification-email edge function
+ */
+async function sendTaskAssignedEmail(params: {
+  assigneeId: string;
+  organizationId: string;
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  projectName: string;
+  assignedByName: string;
+}): Promise<void> {
+  try {
+    // Get assignee's email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', params.assigneeId)
+      .single<{ email: string | null; full_name: string | null }>();
+
+    if (!profile?.email) {
+      console.warn('[sendTaskAssignedEmail] Assignee has no email');
+      return;
+    }
+
+    const recipientName = profile.full_name || 'User';
+
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.assigneeId,
+        organizationId: params.organizationId,
+        notificationType: 'task_assigned',
+        recipientEmail: profile.email,
+        recipientName,
+        data: {
+          taskTitle: params.taskTitle,
+          projectName: params.projectName,
+          actorName: params.assignedByName,
+          link: `/project-board?project=${params.projectId}`,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendTaskAssignedEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendTaskAssignedEmail] Failed to send email:', err);
+  }
+}
+
+/**
+ * Send email notification for proposal status changes
+ * Calls the send-notification-email edge function
+ */
+export async function sendProposalStatusEmail(params: {
+  userId: string;
+  organizationId: string;
+  recipientEmail: string;
+  recipientName: string;
+  notificationType: 'proposal_won' | 'proposal_rejected' | 'proposal_submitted';
+  proposalNumber: string;
+  proposalName?: string;
+  proposalId: string;
+}): Promise<void> {
+  try {
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.userId,
+        organizationId: params.organizationId,
+        notificationType: params.notificationType,
+        recipientEmail: params.recipientEmail,
+        recipientName: params.recipientName,
+        data: {
+          proposalNumber: params.proposalNumber,
+          proposalName: params.proposalName,
+          link: `/proposals/${params.proposalId}`,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendProposalStatusEmail] Edge function error:', error);
+      // Don't throw - email failures shouldn't break the status update
+    }
+  } catch (err) {
+    console.error('[sendProposalStatusEmail] Failed to send email:', err);
+    // Don't throw - email failures shouldn't break the status update
+  }
+}
+
+/**
+ * Create an in-app notification for proposal status changes
+ */
+export async function notifyProposalStatusChange(params: {
+  userId: string;
+  organizationId: string;
+  proposalId: string;
+  proposalNumber: string;
+  proposalName?: string;
+  newStatus: 'Won' | 'Rejected' | 'Submitted';
+}): Promise<Notification> {
+  const statusMessages = {
+    Won: {
+      title: 'Proposal Won!',
+      message: `Congratulations! Proposal ${params.proposalNumber}${params.proposalName ? ` (${params.proposalName})` : ''} has been marked as won.`,
+    },
+    Rejected: {
+      title: 'Proposal Rejected',
+      message: `Proposal ${params.proposalNumber}${params.proposalName ? ` (${params.proposalName})` : ''} has been marked as rejected.`,
+    },
+    Submitted: {
+      title: 'Proposal Submitted',
+      message: `Proposal ${params.proposalNumber}${params.proposalName ? ` (${params.proposalName})` : ''} has been submitted.`,
+    },
+  };
+
+  const notificationTypes = {
+    Won: 'proposal_won',
+    Rejected: 'proposal_rejected',
+    Submitted: 'proposal_submitted',
+  } as const;
+
+  const { title, message } = statusMessages[params.newStatus];
+
+  return createNotification({
+    user_id: params.userId,
+    organization_id: params.organizationId,
+    type: notificationTypes[params.newStatus],
+    title,
+    message,
+    link: `/proposals/${params.proposalId}`,
+    metadata: {
+      proposal_id: params.proposalId,
+      proposal_number: params.proposalNumber,
+      to_status: params.newStatus,
+    },
+  });
+}
+
+// =============================================================================
+// Member Joined Notifications
+// =============================================================================
+
+interface MemberJoinedNotificationParams {
+  organizationId: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  memberRole: string;
+}
+
+interface AdminWithProfile {
+  user_id: string;
+  profiles: { email: string | null; full_name: string | null };
+}
+
+/**
+ * Notify Admins and Owners when a new member joins via invitation
+ */
+export async function notifyMemberJoined(
+  params: MemberJoinedNotificationParams
+): Promise<void> {
+  try {
+    // Get all Admins and Owners in the organization
+    const { data, error: fetchError } = await supabase
+      .from('memberships')
+      .select('user_id, profiles!inner(email, full_name)')
+      .eq('organization_id', params.organizationId)
+      .eq('status', 'Active')
+      .or('role.eq.Owner,role.eq.Admin');
+
+    if (fetchError) {
+      console.error('[notifyMemberJoined] Failed to fetch admins:', fetchError);
+      return;
+    }
+
+    const admins = data as unknown as AdminWithProfile[] | null;
+
+    if (!admins || admins.length === 0) {
+      console.log('[notifyMemberJoined] No admins/owners to notify');
+      return;
+    }
+
+    // Create notifications for each admin/owner
+    for (const admin of admins) {
+      // Skip notifying the new member themselves if they're an admin
+      if (admin.user_id === params.memberId) continue;
+
+      // Create in-app notification
+      await createNotification({
+        user_id: admin.user_id,
+        organization_id: params.organizationId,
+        type: 'member_joined',
+        title: 'New Team Member',
+        message: `${params.memberName} (${params.memberEmail}) has joined as ${params.memberRole}`,
+        link: '/settings?tab=team',
+        metadata: {
+          member_id: params.memberId,
+          member_name: params.memberName,
+          member_email: params.memberEmail,
+          member_role: params.memberRole,
+        },
+      });
+
+      // Send email notification (non-blocking)
+      if (admin.profiles?.email) {
+        sendMemberJoinedEmail({
+          recipientId: admin.user_id,
+          recipientEmail: admin.profiles.email,
+          recipientName: admin.profiles.full_name || 'Admin',
+          organizationId: params.organizationId,
+          memberName: params.memberName,
+          memberEmail: params.memberEmail,
+          memberRole: params.memberRole,
+        }).catch((err) => {
+          console.error('[notifyMemberJoined] Email failed:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[notifyMemberJoined] Error:', err);
+  }
+}
+
+/**
+ * Send email notification for member joined events
+ */
+async function sendMemberJoinedEmail(params: {
+  recipientId: string;
+  recipientEmail: string;
+  recipientName: string;
+  organizationId: string;
+  memberName: string;
+  memberEmail: string;
+  memberRole: string;
+}): Promise<void> {
+  try {
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.recipientId,
+        organizationId: params.organizationId,
+        notificationType: 'member_joined',
+        recipientEmail: params.recipientEmail,
+        recipientName: params.recipientName,
+        data: {
+          memberName: params.memberName,
+          memberEmail: params.memberEmail,
+          memberRole: params.memberRole,
+          link: '/settings?tab=team',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendMemberJoinedEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendMemberJoinedEmail] Failed to send email:', err);
+  }
+}
+
+// =============================================================================
+// Task Comment & Mention Notifications
+// =============================================================================
+
+interface TaskCommentNotificationParams {
+  organizationId: string;
+  taskId: string;
+  taskTitle: string;
+  taskReference?: string;
+  commentId: string;
+  commentContent: string;
+  commenterName: string;
+  commenterId: string;
+}
+
+/**
+ * Notify users who are mentioned in a task comment
+ */
+export async function notifyTaskCommentMention(
+  params: TaskCommentNotificationParams & { mentionedUserIds: string[] }
+): Promise<void> {
+  try {
+    // Get mentioned users' info
+    for (const userId of params.mentionedUserIds) {
+      // Don't notify the commenter if they mention themselves
+      if (userId === params.commenterId) continue;
+
+      // Create in-app notification
+      await createNotification({
+        user_id: userId,
+        organization_id: params.organizationId,
+        type: 'update_mention',
+        title: 'You were mentioned',
+        message: `${params.commenterName} mentioned you in a comment on "${params.taskTitle}"`,
+        link: `/task-board?task=${params.taskId}`,
+        metadata: {
+          task_id: params.taskId,
+          task_reference: params.taskReference,
+          comment_id: params.commentId,
+          assigned_by_name: params.commenterName,
+        },
+      });
+
+      // Send email notification (async, non-blocking)
+      sendMentionEmail({
+        userId,
+        organizationId: params.organizationId,
+        taskId: params.taskId,
+        taskTitle: params.taskTitle,
+        commentContent: params.commentContent,
+        commenterName: params.commenterName,
+      }).catch((err) => {
+        console.error('[notifyTaskCommentMention] Email failed:', err);
+      });
+    }
+  } catch (err) {
+    console.error('[notifyTaskCommentMention] Error:', err);
+  }
+}
+
+/**
+ * Notify the task assignee when someone comments on their task
+ */
+export async function notifyTaskCommentAdded(
+  params: TaskCommentNotificationParams & { assigneeId?: string }
+): Promise<void> {
+  try {
+    // Don't notify if there's no assignee or if the commenter is the assignee
+    if (!params.assigneeId || params.assigneeId === params.commenterId) return;
+
+    // Create in-app notification
+    await createNotification({
+      user_id: params.assigneeId,
+      organization_id: params.organizationId,
+      type: 'update_reply',
+      title: 'New comment on your task',
+      message: `${params.commenterName} commented on "${params.taskTitle}"`,
+      link: `/task-board?task=${params.taskId}`,
+      metadata: {
+        task_id: params.taskId,
+        task_reference: params.taskReference,
+        comment_id: params.commentId,
+        assigned_by_name: params.commenterName,
+      },
+    });
+  } catch (err) {
+    console.error('[notifyTaskCommentAdded] Error:', err);
+  }
+}
+
+/**
+ * Notify when someone replies to a comment
+ */
+export async function notifyTaskCommentReply(
+  params: TaskCommentNotificationParams & { parentCommentUserId: string }
+): Promise<void> {
+  try {
+    // Don't notify if replying to own comment
+    if (params.parentCommentUserId === params.commenterId) return;
+
+    // Create in-app notification
+    await createNotification({
+      user_id: params.parentCommentUserId,
+      organization_id: params.organizationId,
+      type: 'update_reply',
+      title: 'Reply to your comment',
+      message: `${params.commenterName} replied to your comment on "${params.taskTitle}"`,
+      link: `/task-board?task=${params.taskId}`,
+      metadata: {
+        task_id: params.taskId,
+        task_reference: params.taskReference,
+        comment_id: params.commentId,
+        assigned_by_name: params.commenterName,
+      },
+    });
+  } catch (err) {
+    console.error('[notifyTaskCommentReply] Error:', err);
+  }
+}
+
+/**
+ * Send email notification for mentions
+ */
+async function sendMentionEmail(params: {
+  userId: string;
+  organizationId: string;
+  taskId: string;
+  taskTitle: string;
+  commentContent: string;
+  commenterName: string;
+}): Promise<void> {
+  try {
+    // Get user's email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', params.userId)
+      .single<{ email: string | null; full_name: string | null }>();
+
+    if (!profile?.email) {
+      console.warn('[sendMentionEmail] User has no email');
+      return;
+    }
+
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.userId,
+        organizationId: params.organizationId,
+        notificationType: 'update_mention',
+        recipientEmail: profile.email,
+        recipientName: profile.full_name || 'User',
+        data: {
+          taskTitle: params.taskTitle,
+          commentPreview: params.commentContent.slice(0, 200),
+          actorName: params.commenterName,
+          link: `/task-board?task=${params.taskId}`,
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendMentionEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendMentionEmail] Failed to send email:', err);
+  }
 }

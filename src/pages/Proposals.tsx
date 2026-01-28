@@ -26,13 +26,15 @@ import { EnhancedProposalsTable } from '@/components/features/proposals/table/En
 import CreateProposalDialog, { type ProposalInitialData } from '@/components/features/proposals/creation/CreateProposalDialog';
 import { ImportProposalDialog } from '@/components/features/proposals/import';
 import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
-import { formatDateEST } from '@/utils/dateUtils';
+import { formatTimestamp } from '@/lib/utils';
 import { createProposal, type CreateProposalData } from '@/services/proposalsService';
+import { checkApprovalRequired, requestApproval, approveProposal, getLatestApprovalRequest } from '@/services/proposalApprovalService';
+import { ApprovalRequestDialog } from '@/components/features/proposals/ApprovalRequestDialog';
 
 export default function Proposals() {
   const navigate = useNavigate();
   const user = useUser();
-  const { organization } = useCurrentOrganization(user?.id || '', !!user?.id);
+  const { organization, role } = useCurrentOrganization(user?.id || '', !!user?.id);
 
   // Data fetching
   const { data: allProposals = [], isLoading } = useProposals(organization?.id);
@@ -51,6 +53,11 @@ export default function Proposals() {
   const [showArchived, setShowArchived] = useState(false);
   const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [approvalDialog, setApprovalDialog] = useState<{
+    open: boolean;
+    proposalIds: string[];
+    proposalNumber?: string;
+  }>({ open: false, proposalIds: [] });
 
   // Filter proposals by archived status
   const activeProposals = useMemo(() => allProposals.filter(p => !p.archived), [allProposals]);
@@ -129,7 +136,26 @@ export default function Proposals() {
     }
   };
 
-  const handleStatusChange = (id: string, status: string) => {
+  const handleStatusChange = async (id: string, status: string) => {
+    // Check if this is a Member trying to change to "Submitted"
+    // and approval workflow is enabled
+    if (status === 'Submitted' && role === 'Member' && organization?.id && user?.id) {
+      const approvalRequired = await checkApprovalRequired(organization.id);
+
+      if (approvalRequired) {
+        // Find the proposal to get its number for the dialog
+        const proposal = allProposals.find(p => p.id === id);
+        // Show approval dialog instead of direct status change
+        setApprovalDialog({
+          open: true,
+          proposalIds: [id],
+          proposalNumber: proposal?.proposal_number || undefined,
+        });
+        return;
+      }
+    }
+
+    // Direct status change (for Admins/Owners or when approval not required)
     updateStatusMutation.mutate({ proposalId: id, status }, {
       onError: () => toast.error('Failed to update status'),
     });
@@ -197,9 +223,79 @@ export default function Proposals() {
     }
   };
 
-  const handleBulkStatusChange = (ids: string[], status: string) => {
+  const handleBulkStatusChange = async (ids: string[], status: string) => {
+    // Check if this is a Member trying to change to "Submitted" and approval is required
+    if (status === 'Submitted' && role === 'Member' && organization?.id && user?.id) {
+      const approvalRequired = await checkApprovalRequired(organization.id);
+
+      if (approvalRequired) {
+        // Show approval dialog for bulk approval
+        setApprovalDialog({
+          open: true,
+          proposalIds: ids,
+          proposalNumber: ids.length === 1
+            ? allProposals.find(p => p.id === ids[0])?.proposal_number || undefined
+            : undefined,
+        });
+        return;
+      }
+    }
+
+    // Direct status change (for Admins/Owners or when approval not required)
     Promise.all(ids.map(id => updateStatusMutation.mutateAsync({ proposalId: id, status })))
       .catch(() => toast.error('Failed to update some proposals'));
+  };
+
+  const handleApprovalConfirm = async (comment?: string) => {
+    if (!organization?.id || !user?.id) return;
+
+    const results = await Promise.all(
+      approvalDialog.proposalIds.map(id =>
+        requestApproval({
+          proposalId: id,
+          organizationId: organization.id!,
+          requestedBy: user.id!,
+          comment,
+        })
+      )
+    );
+
+    const successCount = results.filter(r => r.success).length;
+    if (successCount === approvalDialog.proposalIds.length) {
+      toast.success(
+        approvalDialog.proposalIds.length === 1
+          ? 'Approval request sent to your admin'
+          : `Approval requested for ${successCount} proposal(s)`
+      );
+    } else if (successCount > 0) {
+      toast.warning(`Approval requested for ${successCount} of ${approvalDialog.proposalIds.length} proposals`);
+    } else {
+      toast.error('Failed to request approval');
+    }
+  };
+
+  // Handler for Admin/Owner to approve a pending proposal
+  const handleApproveProposal = async (proposalId: string) => {
+    if (!user?.id) return;
+
+    try {
+      // Get the latest approval request for this proposal
+      const approvalRequest = await getLatestApprovalRequest(proposalId);
+      if (!approvalRequest) {
+        toast.error('No pending approval request found');
+        return;
+      }
+
+      const result = await approveProposal(approvalRequest.id, user.id);
+      if (result.success) {
+        toast.success('Proposal approved and submitted');
+      } else {
+        toast.error(result.error || 'Failed to approve proposal');
+      }
+    } catch (error) {
+      console.error('Error approving proposal:', error);
+      toast.error('Failed to approve proposal');
+    }
   };
 
   const handleExportCSV = (data: Proposal[]) => {
@@ -230,7 +326,7 @@ export default function Proposals() {
         formatCurrency(p.total_value || 0),
         p.status || 'Draft',
         p.proposal_source || '',
-        formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
+        formatTimestamp(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
       ].map(escapeCsvField).join(',');
     });
 
@@ -256,7 +352,7 @@ export default function Proposals() {
       doc.setFontSize(16);
       doc.text('Proposals Export', 14, 15);
       doc.setFontSize(10);
-      doc.text(`Exported on: ${formatDateEST(new Date().toISOString(), {
+      doc.text(`Exported on: ${formatTimestamp(new Date().toISOString(), {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -277,7 +373,7 @@ export default function Proposals() {
         formatCurrency(p.total_value || 0),
         p.status || 'Draft',
         p.proposal_source || '',
-        formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
+        formatTimestamp(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
       ]);
 
       autoTable(doc, {
@@ -445,6 +541,8 @@ export default function Proposals() {
             onExportCSV={handleExportCSV}
             onExportPDF={handleExportPDF}
             onSetMainVersion={handleSetMainVersion}
+            userRole={role || undefined}
+            onApproveProposal={handleApproveProposal}
           />
         </>
       )}
@@ -458,6 +556,13 @@ export default function Proposals() {
       <ImportProposalDialog
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
+      />
+
+      <ApprovalRequestDialog
+        open={approvalDialog.open}
+        onOpenChange={(open) => setApprovalDialog(prev => ({ ...prev, open }))}
+        proposalNumber={approvalDialog.proposalIds.length === 1 ? approvalDialog.proposalNumber : undefined}
+        onConfirm={handleApprovalConfirm}
       />
     </PageContent>
   );

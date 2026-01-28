@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug } from "lucide-react";
+import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug, Bell } from "lucide-react";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile } from "@/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { BillingTab } from "@/components/features/settings/BillingTab";
 import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
 import { TeamTab } from "@/components/features/settings/TeamTab";
 import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
+import { NotificationsTab } from "@/components/features/settings/NotificationsTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
@@ -124,7 +125,7 @@ const Settings = () => {
         id: "profile",
         label: "Account",
         icon: <UserIcon className="w-4 h-4" />,
-        component: <ProfileTab user={user as any} profile={profile} userRole={userRole || 'Member'} />,
+        component: <ProfileTab user={user as any} profile={profile} />,
         alwaysAvailable: true
       },
       {
@@ -146,6 +147,13 @@ const Settings = () => {
         component: <TeamTab />,
         requiresPermission: "team",
         requiresSubscription: true
+      },
+      {
+        id: "notifications",
+        label: "Notifications",
+        icon: <Bell className="w-4 h-4" />,
+        component: <NotificationsTab userId={user?.id} organizationId={organization?.id} userEmail={profile?.email} userRole={userRole || 'Member'} />,
+        alwaysAvailable: true
       },
       {
         id: "integrations",
@@ -241,7 +249,7 @@ const Settings = () => {
           {availableTabs.map((tab) => (
             <button
               key={tab.id}
-              ref={(el) => (tabRefs.current[tab.id] = el)}
+              ref={(el) => { tabRefs.current[tab.id] = el; }}
               onClick={() => handleTabChange(tab.id)}
               className={`relative z-10 px-6 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap min-w-[140px] text-center ${
                 activeTab === tab.id

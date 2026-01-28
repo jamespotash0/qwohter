@@ -12,7 +12,6 @@ import type {
   UpdateProductInput,
 } from '@/lib/types/products';
 import { useToast } from '@/hooks/use-toast';
-import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 /**
  * Query key factory for products
@@ -26,17 +25,10 @@ export const productQueryKeys = {
 };
 
 /**
- * Fetch all products for an organization with realtime updates
+ * Fetch all products for an organization
+ * Updates via mutation cache invalidation (no realtime polling)
  */
 export const useProducts = (organizationId: string | undefined) => {
-  // Set up centralized realtime subscription
-  useRealtimeSubscription(
-    'products',
-    productQueryKeys.list(organizationId || ''),
-    { filter: `organization_id=eq.${organizationId}` },
-    !!organizationId
-  );
-
   return useQuery({
     queryKey: productQueryKeys.list(organizationId || ''),
     queryFn: () => {
@@ -44,9 +36,9 @@ export const useProducts = (organizationId: string | undefined) => {
       return productsService.getProducts(organizationId);
     },
     enabled: !!organizationId,
-    staleTime: 2 * 60 * 1000, // 2 minutes - products change moderately
-    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
-    refetchOnWindowFocus: true, // Keep data fresh when user returns
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
   });
 };
 

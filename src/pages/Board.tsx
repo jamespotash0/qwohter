@@ -1,13 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
-import { type TimelineMilestone } from '@/lib/timelineMilestones';
-import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
-import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
-import { AIMilestoneSuggestions } from '@/components/features/board/AIMilestoneSuggestions';
-import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { useProjectAttachments } from '@/hooks/useProjectAttachments';
-import { AIMilestoneService } from '@/services/aiMilestoneService';
 import {
   useProjects,
   useWorkflowColumns,
@@ -29,7 +24,6 @@ import {
   CaretRight as CaretRightIcon,
   PencilSimple as PencilSimpleIcon,
   MapPin as MapPinIcon,
-  CurrencyDollar as CurrencyDollarIcon,
   Hash as HashIcon,
   X as XIcon,
   Check as CheckIcon,
@@ -51,10 +45,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatDateEST } from '@/utils/dateUtils';
-import { Button } from '@/components/ui/button';
-import { File as FileIcon } from '@phosphor-icons/react';
-import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
+import { formatLocalDate } from '@/lib/utils';
+import { ProjectDeleteDialog } from '@/components/features/board/ProjectDeleteDialog';
+import { ProjectBoardOverlay } from '@/components/features/board/ProjectBoardOverlay';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -69,16 +62,17 @@ const COLUMN_COLORS = [
   { name: 'Teal', value: '#14B8A6', icon: '🟦' },
 ];
 
-// const AVATAR_COLORS = [
-//   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-//   '#DFE6E9', '#74B9FF', '#A29BFE', '#FD79A8', '#FDCB6E'
-// ];
+
 
 export default function Board() {
   // Get user and organization
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id || '');
   const organizationId = organization?.id || '';
+
+  // URL Search Params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectFromUrl = searchParams.get('project');
 
   // Fetch data using React Query (includes automatic realtime subscriptions)
   const { data: projects = [], isLoading: projectsLoading } = useProjects(organizationId, !!organizationId);
@@ -105,16 +99,41 @@ export default function Board() {
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
-  // AI Milestone Suggestions state
-  const [showAISuggestions, setShowAISuggestions] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<TimelineMilestone[]>([]);
-  const [aiReasoning, setAiReasoning] = useState<string>('');
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  const userClosedRef = useRef(false);
+
+  const openProjectOverlay = (project: Project) => {
+    setSelectedProjectId(project.id);
+    setSearchParams({ project: project.id });
+  };
+
+  const closeProjectOverlay = () => {
+    userClosedRef.current = true;
+    setSelectedProjectId(null);
+    // Clear the project param from URL
+    searchParams.delete('project');
+    setSearchParams(searchParams);
+  };
+
+  // Sync URL parameter to overlay state (like TaskBoard pattern)
+  useEffect(() => {
+    // Don't re-open if user just closed the overlay
+    if (userClosedRef.current) {
+      userClosedRef.current = false;
+      return;
+    }
+    if (projectFromUrl && projects.length > 0 && !selectedProjectId) {
+      // Try to find by ID (projects don't have reference field like tasks)
+      const foundProject = projects.find((p) => p.id === projectFromUrl);
+      if (foundProject) {
+        setSelectedProjectId(foundProject.id);
+      }
+    }
+  }, [projectFromUrl, projects, selectedProjectId]);
 
   // Delete confirmation state
   const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({
@@ -136,62 +155,10 @@ export default function Board() {
   // - Cleanup on unmount
   // No manual initialization needed!
 
-  const toggleSection = (sectionId: string) => {
-    setCollapsedSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionId)) {
-        newSet.delete(sectionId);
-      } else {
-        newSet.add(sectionId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleRequestAISuggestions = async () => {
-    if (!selectedProject?.proposal) {
-      alert('No proposal data found for this project. AI suggestions require project information.');
-      return;
-    }
-
-    setIsGeneratingAI(true);
-    try {
-      const result = await AIMilestoneService.generateMilestones(
-        selectedProject.proposal,
-        selectedProject.created_at
-      );
-      setAiSuggestions(result.milestones);
-      setAiReasoning(result.reasoning);
-      setShowAISuggestions(true);
-    } catch (error) {
-      console.error('Failed to generate AI suggestions:', error);
-      alert('Failed to generate milestone suggestions. Please check your API key and try again.');
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
-
-  const handleAddAIMilestones = (selectedMilestones: TimelineMilestone[]) => {
-    if (!selectedProject) return;
-
-    const existingMilestones = selectedProject.timeline_milestones || [];
-    const updatedMilestones = [...existingMilestones, ...selectedMilestones];
-
-    updateProject({
-      id: selectedProject.id,
-      updates: { timeline_milestones: updatedMilestones }
-    });
-
-    setShowAISuggestions(false);
-    setAiSuggestions([]);
-  };
-
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
-
-    // Set board_order to null when picking up the card
-    updateProject({ id: projectId, updates: { board_order: null } });
+    // Don't update board_order here - just track visually until drop
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -211,6 +178,7 @@ export default function Board() {
   const handleCardDragOver = (e: React.DragEvent, cardId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
 
     // Don't show card drop indicators if we're dragging a column
     if (draggedColumnId) return;
@@ -242,10 +210,9 @@ export default function Board() {
 
     const isSameColumn = sourceProject.workflow_status === targetStatus;
 
-    // STEP 1: Get all projects in target column with non-null board_order
-    // (dragged card already has null board_order from handleDragStart)
+    // STEP 1: Get all projects in target column excluding the dragged card
     let cardsInTargetColumn = getProjectsByStatus(targetStatus)
-      .filter(p => p.board_order !== null) // Only cards with valid positions
+      .filter(p => p.id !== draggedProject) // Exclude the card being dragged
       .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
 
 
@@ -268,6 +235,20 @@ export default function Board() {
     } else {
       // Dropped in empty space - add to end
       insertPosition = cardsInTargetColumn.length + 1;
+    }
+
+    // Check if position actually changed - skip reorder if same position in same column
+    if (isSameColumn) {
+      const oldPosition = sourceProject.board_order ?? 0;
+      const effectivelySamePosition =
+        insertPosition === oldPosition ||
+        insertPosition === oldPosition + 1; // Dropping right after self
+
+      if (effectivelySamePosition) {
+        setDraggedProject(null);
+        setDropPosition('before');
+        return;
+      }
     }
 
     // STEP 3: Build the final order array by inserting dragged card at the calculated position
@@ -316,7 +297,7 @@ export default function Board() {
     // STEP 5: If moving between columns, reorder the source column
     if (!isSameColumn) {
       const sourceColumnCards = getProjectsByStatus(sourceProject.workflow_status)
-        .filter(p => p.board_order !== null) // Only cards with valid positions (dragged card is null)
+        .filter(p => p.id !== draggedProject) // Exclude the card being moved
         .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
 
 
@@ -531,16 +512,6 @@ export default function Board() {
       });
   };
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '$0';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const getPriorityColor = (priority?: ProjectPriority | null) => {
     switch (priority) {
       case 'Highest':
@@ -682,10 +653,10 @@ export default function Board() {
                   )}
 
                   <div
-                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col max-h-[calc(100vh-10rem)] ${
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-10rem)] ${
                       isCollapsed ? 'w-12' : 'w-72'
                     } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
-                      dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
+                      dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50/50' : ''
                     }`}
                     onDragOver={(e) => handleDragOver(e, column.name)}
                     onDragLeave={handleDragLeave}
@@ -842,7 +813,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto"
+                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto min-h-[120px]"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -876,10 +847,7 @@ export default function Board() {
                           <div key={project.id} className="relative">
                             {/* Drop indicator above card */}
                             {dragOverCard === project.id && draggedProject !== project.id && (
-                              <div className="h-0.5 bg-blue-500 rounded-full mb-2 shadow-sm relative">
-                                <div className="absolute -top-1 left-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                                <div className="absolute -top-1 right-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                              </div>
+                              <div className="h-0.5 bg-blue-500 rounded-full mb-2" />
                             )}
                             <div
                               draggable
@@ -890,7 +858,7 @@ export default function Board() {
                                 // Prevent column drag when clicking on card
                                 e.stopPropagation();
                               }}
-                              onClick={() => setSelectedProjectId(project.id)}
+                              onClick={() => openProjectOverlay(project)}
                               className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
@@ -986,7 +954,7 @@ export default function Board() {
                                     <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                       <button className="flex items-center gap-1 text-purple-600 cursor-pointer hover:opacity-80">
                                         <CalendarIcon className="w-3 h-3" />
-                                        <span>{formatDateEST(project.completion_date)}</span>
+                                        <span>{formatLocalDate(project.completion_date)}</span>
                                       </button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>
@@ -1067,10 +1035,7 @@ export default function Board() {
 
                       {/* Drop zone at the end of column - only show when column has cards */}
                       {columnProjects.length > 0 && draggedProject && dragOverColumn === column.name && !dragOverCard && (
-                        <div className="h-0.5 bg-blue-500 rounded-full mt-2 shadow-sm relative">
-                          <div className="absolute -top-1 left-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                          <div className="absolute -top-1 right-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                        </div>
+                        <div className="h-0.5 bg-blue-500 rounded-full mt-2" />
                       )}
 
                       {/* Empty state message - only show when not dragging */}
@@ -1129,231 +1094,20 @@ export default function Board() {
         </div>
       )}
 
-      {/* Simplified Sidebar */}
+      {/* Project Sidebar Overlay */}
       {selectedProject && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setSelectedProjectId(null)}
-          />
-
-          <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
-                  <span className="text-base font-semibold text-gray-900">
-                    {selectedProject.proposal?.project_name || 'Untitled Project'}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Proposal #:</span>
-                  <span className="text-sm text-gray-700">
-                    {selectedProject.proposal?.proposal_number || 'N/A'}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedProjectId(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <XIcon className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-4 space-y-5">
-              {/* Status Section - No card background */}
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Status:</span>
-                  <span className="text-sm text-gray-900">{selectedProject.workflow_status}</span>
-                </div>
-                <span className="text-gray-300">|</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Priority:</span>
-                  <select
-                    value={selectedProject.priority || ''}
-                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
-                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer w-24`}
-                  >
-                    <option value="">None</option>
-                    <option value="Lowest">Lowest</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Highest">Highest</option>
-                  </select>
-                </div>
-                <span className="text-gray-300">|</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-500">Completion:</span>
-                  <Input
-                    type="date"
-                    value={selectedProject.completion_date || ''}
-                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
-                    className="text-xs h-7 w-32"
-                  />
-                </div>
-              </div>
-
-              {/* Project Summary */}
-              <div>
-                <button
-                  onClick={() => toggleSection('summary')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Project Summary</span>
-                  {collapsedSections.has('summary') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
-                  )}
-                </button>
-                {!collapsedSections.has('summary') && (
-                  <div className="space-y-2 text-sm">
-                  {selectedProject.proposal?.client_name && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Client:</span>
-                      <span className="text-gray-900">
-                        {selectedProject.proposal.client_name}
-                      </span>
-                    </div>
-                  )}
-                  {selectedProject.proposal?.client_company && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Company:</span>
-                      <span className="text-gray-900">
-                        {selectedProject.proposal.client_company}
-                      </span>
-                    </div>
-                  )}
-                  {selectedProject.proposal?.job_location && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
-                      <span className="text-gray-900">
-                        {selectedProject.proposal.job_location}
-                      </span>
-                    </div>
-                  )}
-                  {selectedProject.proposal?.total_value && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Total Price:</span>
-                      <span className="text-gray-900 font-semibold text-blue-600">
-                        {formatCurrency(selectedProject.proposal.total_value)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Quick Actions */}
-                  {selectedProject.proposal?.id && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full h-8 text-xs justify-start"
-                        onClick={() => {
-                          window.location.href = `/proposals/${selectedProject.proposal!.id}/edit`;
-                        }}
-                      >
-                        <FileIcon className="w-3.5 h-3.5 mr-1.5" />
-                        View Proposal
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                )}
-              </div>
-
-              {/* Project Timeline */}
-              <div>
-                <button
-                  onClick={() => toggleSection('timeline')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Project Timeline</span>
-                  {collapsedSections.has('timeline') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
-                  )}
-                </button>
-                {!collapsedSections.has('timeline') && (
-                  <TimelineVisualizer
-                    milestones={selectedProject.timeline_milestones || []}
-                    wonDate={selectedProject.created_at}
-                    onMilestoneUpdate={(updatedMilestones) => {
-                      updateProject({
-                        id: selectedProject.id,
-                        updates: { timeline_milestones: updatedMilestones }
-                      });
-                    }}
-                    onRequestAISuggestions={handleRequestAISuggestions}
-                    isGeneratingAI={isGeneratingAI}
-                  />
-                )}
-              </div>
-
-              {/* Project Tasks */}
-              <div>
-                <button
-                  onClick={() => toggleSection('tasks')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Tasks</span>
-                  {collapsedSections.has('tasks') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
-                  )}
-                </button>
-                {!collapsedSections.has('tasks') && (
-                  <ProjectTasks
-                    projectId={selectedProject.id}
-                    organizationId={organizationId}
-                    projectName={selectedProject.proposal?.project_name || 'Project'}
-                  />
-                )}
-              </div>
-
-              {/* Documents/Links */}
-              <div>
-                <button
-                  onClick={() => toggleSection('documents')}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
-                >
-                  <span>Documents</span>
-                  {collapsedSections.has('documents') ? (
-                    <CaretRightIcon className="w-4 h-4" />
-                  ) : (
-                    <CaretDownIcon className="w-4 h-4" />
-                  )}
-                </button>
-                {!collapsedSections.has('documents') && (
-                  <ProjectAttachments
-                    projectId={selectedProject.id}
-                    attachments={attachments}
-                    onAttachmentsChange={refetchAttachments}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </>
+        <ProjectBoardOverlay
+          project={selectedProject}
+          organizationId={organizationId}
+          attachments={attachments}
+          onClose={closeProjectOverlay}
+          onUpdate={(projectId, updates) => updateProject({ id: projectId, updates })}
+          onAttachmentsChange={refetchAttachments}
+        />
       )}
 
-      {/* AI Milestone Suggestions Dialog */}
-      <AIMilestoneSuggestions
-        suggestions={aiSuggestions}
-        reasoning={aiReasoning}
-        isOpen={showAISuggestions}
-        onClose={() => setShowAISuggestions(false)}
-        onAddMilestones={handleAddAIMilestones}
-      />
-
       {/* Delete Project Confirmation Dialog */}
-      <ConfirmDeleteDialog
+      <ProjectDeleteDialog
         open={deleteProjectDialog.open}
         onOpenChange={(open) => setDeleteProjectDialog({ open, project: open ? deleteProjectDialog.project : null })}
         onConfirm={() => {
@@ -1362,9 +1116,8 @@ export default function Board() {
             setDeleteProjectDialog({ open: false, project: null });
           }
         }}
-        title="Delete Project"
-        description="This action cannot be undone. All tasks, attachments, and milestones associated with this project will be permanently removed."
-        itemName={deleteProjectDialog.project?.proposal?.project_name || 'Untitled Project'}
+        projectName={deleteProjectDialog.project?.proposal?.project_name || 'Untitled Project'}
+        proposalNumber={deleteProjectDialog.project?.proposal?.proposal_number ?? undefined}
       />
     </PageContent>
   );

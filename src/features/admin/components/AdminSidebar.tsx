@@ -9,13 +9,11 @@ import {
   Factory,
   Layers,
   BoxesIcon,
-  Package,
-  Tags,
-  Settings2,
   ListTree,
   ChevronLeft,
   LogOut,
   ListChecks,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logoutAdmin } from './AdminPasswordGate';
@@ -33,29 +31,25 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    title: 'Product Hierarchy',
+    title: 'User Management',
+    items: [
+      { label: 'Send App Invite', path: '/admin/appinvite', icon: UserPlus },
+    ],
+  },
+  {
+    title: 'Product Catalog',
     items: [
       { label: 'Domains', path: '/admin/products/domains', icon: LayoutGrid },
       { label: 'Manufacturers', path: '/admin/products/manufacturers', icon: Factory },
       { label: 'Product Lines', path: '/admin/products/lines', icon: Layers },
       { label: 'Series', path: '/admin/products/series', icon: ListTree },
       { label: 'Models', path: '/admin/products/models', icon: BoxesIcon },
-      { label: 'Variants', path: '/admin/products/variants', icon: Package },
-    ],
-  },
-  {
-    title: 'Option Library',
-    items: [
-      { label: 'Option Groups', path: '/admin/options/groups', icon: Tags },
-      { label: 'Option Values', path: '/admin/options/values', icon: Settings2 },
     ],
   },
   {
     title: 'Configuration',
     items: [
-      { label: 'Model Options', path: '/admin/config/model-options', icon: Settings2 },
-      { label: 'Allowed Values', path: '/admin/config/allowed-values', icon: ListChecks },
-      { label: 'Business Rules', path: '/admin/config/rules', icon: ListTree },
+      { label: 'Value Sets', path: '/admin/options/value-sets', icon: ListChecks },
     ],
   },
 ];

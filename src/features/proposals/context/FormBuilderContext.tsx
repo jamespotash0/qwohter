@@ -20,6 +20,8 @@ import {
 export interface PricingLineItem {
   id: string;
   name: string;
+  /** Model number from product (for display) */
+  modelNumber?: string;
   quantity: number;
   sellRule: string;
   unitCost: number;
@@ -108,10 +110,19 @@ export interface MiscellaneousData {
 // ============ Products Tab Data ============
 export interface ProductRawData {
   manufacturer?: string | null;
-  productType?: string | null;
-  productCategory?: string | null;
+  productDomain?: string | null;
+  productLine?: string | null;
   series?: string | null;
   model?: string | null;
+  // Hierarchy IDs (for restoring state when editing catalog products)
+  domain_id?: string | null;
+  manufacturer_id?: string | null;
+  product_line_id?: string | null;
+  series_id?: string | null;
+  model_id?: string | null;
+  sku?: string | null;
+  specs?: string | null;
+  source?: string | null; // Source of the product (e.g., 'catalog', 'ai-extraction')
   dimensions?: {
     height?: string | null;
     width?: string | null;
@@ -135,6 +146,8 @@ export interface ProductRawData {
   };
   certifications?: string[];
   specifications?: Record<string, unknown>;
+  /** Human-readable labels for specification codes (code -> label mapping) */
+  _specificationLabels?: Record<string, string>;
 }
 
 export interface Product {
@@ -150,6 +163,41 @@ export interface Product {
   unitCost?: number;
   /** Discount percentage (0-100) */
   discountPercent?: number;
+  /** Whether this is a configurable product with options */
+  isConfigurable?: boolean;
+  /** Configuration options for configurable products */
+  options?: Array<{
+    optionName: string;
+    optionCategory: string;
+    values: Array<{
+      label: string;
+      priceDelta?: number | null;
+      absolutePrice?: number | null;
+      isSelected?: boolean;
+    }>;
+  }>;
+  /** Selected configuration values */
+  selectedConfiguration?: Record<string, string>;
+  /** Pricing data from AI extraction */
+  pricing?: {
+    material?: {
+      subtotal?: number | null;
+      components?: Record<string, number>;
+      pricePerUnit?: number | null;
+      pricePerSqFt?: number | null;
+    };
+    freight?: {
+      items?: Record<string, number>;
+      total?: number | null;
+    };
+    escalation?: {
+      terms?: string | null;
+      percentage?: number | null;
+      validUntil?: string | null;
+    };
+    unitPrice?: number | null;
+    totalPrice?: number | null;
+  };
 }
 
 export interface ProductsData {

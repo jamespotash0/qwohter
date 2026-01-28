@@ -4,13 +4,14 @@
  * Type definitions for project task management system
  */
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
 
-export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskPriority = 'Low' | 'Medium' | 'High';
 
 export interface ProjectTask {
   id: string;
   project_id: string | null; // Nullable for standalone tasks
+  proposal_id: string | null; // Optional link to a proposal
   organization_id: string;
   created_by: string;
   assigned_to: string | null;
@@ -20,6 +21,7 @@ export interface ProjectTask {
   priority: TaskPriority;
   due_date: string | null;
   reference: string | null; // Auto-generated reference (e.g., CW-1, TES-2)
+  position: number; // Position within column for drag/drop ordering
   created_at: string;
   updated_at: string;
   // Joined data
@@ -61,28 +63,35 @@ export interface UpdateProjectTaskInput {
   priority?: TaskPriority;
   assigned_to?: string | null;
   due_date?: string | null;
+  position?: number;
+}
+
+export interface ReorderTasksInput {
+  taskId: string;
+  newStatus: string;
+  newPosition: number;
 }
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  done: 'Done',
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  'Done': 'Done',
 };
 
 export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
-  todo: 'bg-gray-100 text-gray-700 border-gray-200',
-  in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
-  done: 'bg-green-100 text-green-700 border-green-200',
+  'To Do': 'bg-gray-100 text-gray-700 border-gray-200',
+  'In Progress': 'bg-blue-100 text-blue-700 border-blue-200',
+  'Done': 'bg-green-100 text-green-700 border-green-200',
 };
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
+  'Low': 'Low',
+  'Medium': 'Medium',
+  'High': 'High',
 };
 
 export const TASK_PRIORITY_COLORS: Record<TaskPriority, string> = {
-  low: 'bg-gray-100 text-gray-600',
-  medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-red-100 text-red-700',
+  'Low': 'bg-gray-100 text-gray-600',
+  'Medium': 'bg-yellow-100 text-yellow-700',
+  'High': 'bg-red-100 text-red-700',
 };

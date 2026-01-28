@@ -17,7 +17,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical, Calculator } from '@phosphor-icons/react';
+import { Plus, Trash, DotsSixVertical, Calculator, Package } from '@phosphor-icons/react';
 import {
   DndContext,
   closestCenter,
@@ -68,12 +68,13 @@ const SELL_RULES = [
 interface PricingLineItem {
   id: string;
   name: string;
+  modelNumber?: string; // Model number for display (from product)
   quantity: number;
   sellRule: string;
   unitCost: number;
   markupValue: number; // Markup value - interpreted based on markupType
   markupType?: 'percent' | 'dollar'; // Markup type (default: percent)
-  isTaxable: boolean; // Whether this item has sales tax applied
+  isTaxable?: boolean; // Whether this item has sales tax applied
   discountValue?: number; // Discount value (applied after markup, before tax)
   discountType?: 'percent' | 'dollar'; // Discount type
   sourceProductId?: string; // Optional: links to a product, if any
@@ -496,8 +497,9 @@ function SortableSectionRow({
 export function PricingTab({ mode }: PricingTabProps) {
   const isBuilderMode = mode === 'builder';
 
-  // Get context data and setter
+  // Get context data and setter (including products for linking)
   const { data: formData, setPricingData } = useFormBuilder();
+  const products = formData.products?.items || [];
 
   // Initialize local state from context or defaults
   const [sections, setSections] = useState<PricingSection[]>(() => {
@@ -1303,20 +1305,75 @@ export function PricingTab({ mode }: PricingTabProps) {
                   const itemTax = item.isTaxable ? sellPrice * (salesTaxPercent / 100) : 0;
                   const taxAdjustedPrice = sellPrice + itemTax;
 
+                  // Find linked product if this item came from Products tab
+                  const linkedProduct = item.sourceProductId
+                    ? products.find(p => p.id === item.sourceProductId)
+                    : null;
+
                   return (
                     <div
                       key={item.id}
                       className="grid grid-cols-12 gap-1 px-3 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
                     >
-                      {/* Name */}
-                      <div className="col-span-3">
+                      {/* Name with Product Link */}
+                      <div className="col-span-3 flex items-center gap-1">
+                        {linkedProduct && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-0.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-colors rounded hover:bg-purple-50 dark:hover:bg-purple-900/20 flex-shrink-0"
+                                title="Linked to product"
+                              >
+                                <Package className="w-3.5 h-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-56 p-3">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                                  <Package className="w-4 h-4 text-purple-500" />
+                                  <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                                    Linked Product
+                                  </span>
+                                </div>
+                                <div className="space-y-1.5 text-xs">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Name:</span>
+                                    <span className="font-medium text-right max-w-[120px] truncate">{linkedProduct.name || '—'}</span>
+                                  </div>
+                                  {linkedProduct.rawData?.model && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">Model #:</span>
+                                      <span className="font-mono font-medium">{String(linkedProduct.rawData.model)}</span>
+                                    </div>
+                                  )}
+                                  {linkedProduct.rawData?.sku && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">SKU:</span>
+                                      <span className="font-mono font-medium">{String(linkedProduct.rawData.sku)}</span>
+                                    </div>
+                                  )}
+                                  {linkedProduct.description && (
+                                    <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700">
+                                      <span className="text-gray-500">Description:</span>
+                                      <p className="mt-0.5 text-gray-700 dark:text-gray-300 line-clamp-2">{linkedProduct.description}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 pt-1 italic">
+                                  Edit in Products tab
+                                </p>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
                         <Input
                           value={item.name}
                           onChange={(e) =>
                             updateLineItem(section.id, item.id, { name: e.target.value })
                           }
                           placeholder="Item name"
-                          className={inputClassName}
+                          className={cn(inputClassName, 'flex-1')}
                         />
                       </div>
 

@@ -72,8 +72,12 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
   const displayValue = isCustomSelected ? 'Other' : value;
 
   return (
-    <div className="space-y-3">
-      <Label htmlFor="industry" className="text-slate-700 font-medium text-sm">
+    <div className="space-y-2">
+      <Label
+        htmlFor="industry"
+        className="text-[#171717] font-medium text-sm"
+        style={{ fontFamily: 'Urbanist, sans-serif' }}
+      >
         Industry {required && <span className="text-red-500">*</span>}
       </Label>
 
@@ -82,7 +86,7 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
         onValueChange={handleSelectChange}
         disabled={disabled}
       >
-        <SelectTrigger className="bg-slate-50 border-slate-200 h-12">
+        <SelectTrigger className="bg-[#f7f2e9]/50 border-[#171717]/10 h-12 rounded-full hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70 focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white">
           <SelectValue placeholder="Select your industry" />
         </SelectTrigger>
         <SelectContent>
@@ -96,7 +100,11 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
 
       {isCustomSelected && (
         <div className="space-y-2">
-          <Label htmlFor="custom-industry" className="text-slate-600 text-sm">
+          <Label
+            htmlFor="custom-industry"
+            className="text-[#171717]/60 text-sm"
+            style={{ fontFamily: 'Urbanist, sans-serif' }}
+          >
             Please specify your industry
           </Label>
           <Input
@@ -105,7 +113,7 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
             value={customIndustry}
             onChange={(e) => handleCustomChange(e.target.value)}
             placeholder="Enter your industry"
-            className="bg-slate-50 border-slate-200 h-12"
+            className="bg-[#f7f2e9]/50 border-[#171717]/10 h-12 rounded-full placeholder:text-[#171717]/40 hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70 focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white"
             disabled={disabled}
             required={required && isCustomSelected}
           />

@@ -21,7 +21,10 @@ import { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-type TableName = 'reminders' | 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'invite_tokens' | 'contacts' | 'profiles' | 'subscription_plans' | 'project_tasks' | 'task_board_columns' | 'project_workflow_columns' | 'products' | 'proposals' | 'proposal_activities' | 'proposal_status_transitions' | 'forms' | 'document_templates' | 'form_document_templates';
+// Channel registry to prevent duplicate subscriptions
+const channelRegistry = new Map<string, { channel: RealtimeChannel; refCount: number }>();
+
+type TableName = 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'contacts' | 'profiles' | 'subscription_plans' | 'project_tasks' | 'task_board_columns' | 'project_workflow_columns' | 'products' | 'proposals' | 'proposal_activities' | 'proposal_status_transitions' | 'forms' | 'document_templates' | 'form_document_templates' | 'notifications' | 'proposal_approval_requests';
 
 interface SubscriptionOptions {
   /**
@@ -96,74 +99,96 @@ export function subscribeToTableChanges(
     }, debounceMs);
   };
 
-  // Create unique channel name
-  const channelName = `realtime_${table}_${JSON.stringify(queryKey)}`;
+  // Create stable channel name based on table and filter only (not queryKey)
+  // This prevents channel churn when queryKey changes (pagination, etc.)
+  const channelName = `realtime_${table}_${filter || 'all'}`;
 
-  // Subscribe to changes
-  channel = supabase.channel(channelName);
+  // Check if channel already exists in registry
+  const existingEntry = channelRegistry.get(channelName);
+  if (existingEntry) {
+    // Reuse existing channel, just increment ref count
+    existingEntry.refCount++;
+    channel = existingEntry.channel;
+    console.log(`♻️ Realtime: Reusing channel ${channelName} (refs: ${existingEntry.refCount})`);
+  } else {
+    // Create new channel
+    channel = supabase.channel(channelName);
 
-  // Separate filtered events (INSERT, UPDATE) from unfiltered (DELETE)
-  const filteredEvents = events.filter(e => e !== 'DELETE');
-  const hasDelete = events.includes('DELETE');
+    // Separate filtered events (INSERT, UPDATE) from unfiltered (DELETE)
+    const filteredEvents = events.filter(e => e !== 'DELETE');
+    const hasDelete = events.includes('DELETE');
 
-  // Add filtered event listeners (INSERT, UPDATE use the filter)
-  filteredEvents.forEach((event) => {
-    const config: any = {
-      event,
-      schema: 'public',
-      table,
-    };
+    // Add filtered event listeners (INSERT, UPDATE use the filter)
+    filteredEvents.forEach((event) => {
+      const config: any = {
+        event,
+        schema: 'public',
+        table,
+      };
 
-    if (filter) {
-      config.filter = filter;
+      if (filter) {
+        config.filter = filter;
+      }
+
+      channel!.on('postgres_changes', config, (payload) => {
+        console.log(`🔔 Realtime ${event} on ${table}:`, payload);
+        invalidateCache();
+      });
+    });
+
+    // Add DELETE listener WITHOUT filter
+    // IMPORTANT: Supabase DELETE payloads only include the primary key (id), not other columns
+    // So filters like organization_id=eq.xxx will never match DELETE events
+    if (hasDelete) {
+      channel!.on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table,
+      }, (payload) => {
+        // Extract the deleted record's ID from payload.old
+        const deletedId = payload.old?.id as string | undefined;
+        console.log(`🔔 Realtime DELETE on ${table}:`, payload, `deletedId: ${deletedId}`);
+        // Pass the ID so we can remove it from cache immediately
+        invalidateCache(deletedId);
+      });
     }
 
-    channel!.on('postgres_changes', config, (payload) => {
-      console.log(`🔔 Realtime ${event} on ${table}:`, payload);
-      invalidateCache();
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ Realtime: Subscribed to ${table}`, { filter, queryKey });
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn(
+          `⚠️ Realtime: Connection failed for ${table} (${status}).\n` +
+          `This is non-critical - the app will continue to work with regular polling.\n` +
+          `Possible causes:\n` +
+          `1. RLS policies may need SELECT permission for authenticated users\n` +
+          `2. Check Supabase Dashboard → Database → Replication → ${table} table\n` +
+          `3. Ensure realtime is enabled for INSERT, UPDATE, DELETE events`
+        );
+      }
     });
-  });
 
-  // Add DELETE listener WITHOUT filter
-  // IMPORTANT: Supabase DELETE payloads only include the primary key (id), not other columns
-  // So filters like organization_id=eq.xxx will never match DELETE events
-  if (hasDelete) {
-    channel!.on('postgres_changes', {
-      event: 'DELETE',
-      schema: 'public',
-      table,
-    }, (payload) => {
-      // Extract the deleted record's ID from payload.old
-      const deletedId = payload.old?.id as string | undefined;
-      console.log(`🔔 Realtime DELETE on ${table}:`, payload, `deletedId: ${deletedId}`);
-      // Pass the ID so we can remove it from cache immediately
-      invalidateCache(deletedId);
-    });
+    // Register the channel
+    channelRegistry.set(channelName, { channel, refCount: 1 });
   }
 
-  channel.subscribe((status) => {
-    if (status === 'SUBSCRIBED') {
-      console.log(`✅ Realtime: Subscribed to ${table}`, { filter, queryKey });
-    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      console.warn(
-        `⚠️ Realtime: Connection failed for ${table} (${status}).\n` +
-        `This is non-critical - the app will continue to work with regular polling.\n` +
-        `Possible causes:\n` +
-        `1. RLS policies may need SELECT permission for authenticated users\n` +
-        `2. Check Supabase Dashboard → Database → Replication → ${table} table\n` +
-        `3. Ensure realtime is enabled for INSERT, UPDATE, DELETE events`
-      );
-    }
-  });
-
-  // Return cleanup function
+  // Return cleanup function with ref counting
   return () => {
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
     }
-    if (channel) {
-      console.log(`🧹 Realtime: Unsubscribing from ${table}`);
-      supabase.removeChannel(channel);
+
+    const entry = channelRegistry.get(channelName);
+    if (entry) {
+      entry.refCount--;
+      console.log(`🧹 Realtime: Decremented ref for ${channelName} (refs: ${entry.refCount})`);
+
+      // Only remove channel when no more references
+      if (entry.refCount <= 0) {
+        console.log(`🗑️ Realtime: Removing channel ${channelName}`);
+        supabase.removeChannel(entry.channel);
+        channelRegistry.delete(channelName);
+      }
     }
   };
 }

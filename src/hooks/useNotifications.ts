@@ -1,10 +1,12 @@
 /**
  * useNotifications Hook
  *
- * React Query hooks for notifications management
+ * React Query hooks for notifications management with real-time updates
  */
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -18,21 +20,63 @@ import type { Notification } from '@/lib/types/notifications';
 
 const QUERY_KEY = 'notifications';
 
+/**
+ * Hook for real-time notification subscription
+ * Automatically invalidates queries when notifications change
+ */
+export function useNotificationRealtime(userId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('[NotificationRealtime] Change received:', payload.eventType);
+          // Invalidate all notification-related queries for this user
+          queryClient.invalidateQueries({ queryKey: [QUERY_KEY, userId] });
+          queryClient.invalidateQueries({ queryKey: [QUERY_KEY, 'unread-count', userId] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('[NotificationRealtime] Subscription status:', status);
+      });
+
+    return () => {
+      console.log('[NotificationRealtime] Unsubscribing...');
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
+}
+
 export function useNotifications(userId: string | undefined) {
+  // Set up real-time subscription
+  useNotificationRealtime(userId);
+
   return useQuery({
     queryKey: [QUERY_KEY, userId],
     queryFn: () => fetchNotifications(userId!),
     enabled: !!userId,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 1000 * 60, // Consider data fresh for 1 minute (real-time handles updates)
   });
 }
 
 export function useUnreadNotificationCount(userId: string | undefined) {
+  // Real-time is handled by useNotifications hook, no need to duplicate
   return useQuery({
     queryKey: [QUERY_KEY, 'unread-count', userId],
     queryFn: () => fetchUnreadCount(userId!),
     enabled: !!userId,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 1000 * 60, // Consider data fresh for 1 minute (real-time handles updates)
   });
 }
 

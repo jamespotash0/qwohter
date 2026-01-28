@@ -2,11 +2,114 @@
 export interface Database {
   public: {
     Tables: {
+      // ============================================================================
+      // Security Tables
+      // ============================================================================
+      auth_rate_limits: {
+        Row: {
+          id: string;
+          identifier: string;
+          identifier_type: 'email' | 'ip';
+          attempt_type: 'login' | 'otp' | 'password_reset' | 'signup';
+          attempt_count: number;
+          first_attempt_at: string;
+          last_attempt_at: string;
+          blocked_until: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          identifier: string;
+          identifier_type: 'email' | 'ip';
+          attempt_type: 'login' | 'otp' | 'password_reset' | 'signup';
+          attempt_count?: number;
+          first_attempt_at?: string;
+          last_attempt_at?: string;
+          blocked_until?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          identifier?: string;
+          identifier_type?: 'email' | 'ip';
+          attempt_type?: 'login' | 'otp' | 'password_reset' | 'signup';
+          attempt_count?: number;
+          first_attempt_at?: string;
+          last_attempt_at?: string;
+          blocked_until?: string | null;
+          created_at?: string;
+        };
+      };
+      security_audit_log: {
+        Row: {
+          id: string;
+          event_type: string;
+          user_id: string | null;
+          organization_id: string | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          details: Record<string, any>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_type: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          details?: Record<string, any>;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_type?: string;
+          user_id?: string | null;
+          organization_id?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          details?: Record<string, any>;
+          created_at?: string;
+        };
+      };
+      password_reset_audit: {
+        Row: {
+          id: string;
+          email: string;
+          ip_address: string | null;
+          user_agent: string | null;
+          requested_at: string;
+          completed_at: string | null;
+          success: boolean | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          requested_at?: string;
+          completed_at?: string | null;
+          success?: boolean | null;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          requested_at?: string;
+          completed_at?: string | null;
+          success?: boolean | null;
+        };
+      };
+      // ============================================================================
+      // User & Auth Tables
+      // ============================================================================
       profiles: {
         Row: {
           id: string;
           email: string;
           full_name: string | null;
+          is_super_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -14,6 +117,7 @@ export interface Database {
           id: string;
           email: string;
           full_name?: string | null;
+          is_super_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -21,6 +125,7 @@ export interface Database {
           id?: string;
           email?: string;
           full_name?: string | null;
+          is_super_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -29,6 +134,7 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          org_prefix: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -42,6 +148,7 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
+          org_prefix?: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -55,6 +162,7 @@ export interface Database {
         Update: {
           id?: string;
           name?: string;
+          org_prefix?: string;
           found_via?: string;
           phone_number?: string;
           fax_number?: string | null;
@@ -117,6 +225,79 @@ export interface Database {
           {
             foreignKeyName: "invite_tokens_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      signup_invites: {
+        Row: {
+          id: string;
+          token: string;
+          email: string;
+          expires_at: string;
+          is_used: boolean;
+          used_at: string | null;
+          used_by_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by_user_id: string | null;
+          revoked_at: string | null;
+          revoked_by_user_id: string | null;
+          email_sent_at: string | null;
+          email_error: string | null;
+        };
+        Insert: {
+          id?: string;
+          token: string;
+          email: string;
+          expires_at: string;
+          is_used?: boolean;
+          used_at?: string | null;
+          used_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by_user_id?: string | null;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          email_sent_at?: string | null;
+          email_error?: string | null;
+        };
+        Update: {
+          id?: string;
+          token?: string;
+          email?: string;
+          expires_at?: string;
+          is_used?: boolean;
+          used_at?: string | null;
+          used_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by_user_id?: string | null;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          email_sent_at?: string | null;
+          email_error?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "signup_invites_used_by_user_id_fkey";
+            columns: ["used_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "signup_invites_created_by_user_id_fkey";
+            columns: ["created_by_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "signup_invites_revoked_by_user_id_fkey";
+            columns: ["revoked_by_user_id"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
@@ -387,50 +568,6 @@ export interface Database {
           organization_id?: string;
           created_at?: string;
           updated_at?: string;
-        };
-      };
-      reminders: {
-        Row: {
-          id: string;
-          organization_id: string;
-          title: string;
-          description: string | null;
-          due_date: string;
-          priority: 'High' | 'Medium' | 'Low';
-          reminder_status: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
-          assigned_to: string | null;
-          created_by: string;
-          created_at: string;
-          updated_at: string;
-          completed_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          title: string;
-          description?: string | null;
-          due_date: string;
-          priority?: 'High' | 'Medium' | 'Low';
-          reminder_status?: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
-          assigned_to?: string | null;
-          created_by: string;
-          created_at?: string;
-          updated_at?: string;
-          completed_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          title?: string;
-          description?: string | null;
-          due_date?: string;
-          priority?: 'High' | 'Medium' | 'Low';
-          reminder_status?: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
-          assigned_to?: string | null;
-          created_by?: string;
-          created_at?: string;
-          updated_at?: string;
-          completed_at?: string | null;
         };
       };
       invite_token_attempts: {
@@ -895,7 +1032,9 @@ export interface Database {
           product_line_id: string | null;
           product_manufacturer_id: string | null;
           name: string;
-          default_configurations: Record<string, any> | null;
+          default_configurations: Record<string, unknown> | null;
+          /** Product configuration schema (v2.0) - replaces default_configurations */
+          config_schema: Record<string, unknown> | null;
           created_at: string;
           updated_at: string;
         };
@@ -908,7 +1047,8 @@ export interface Database {
           product_line_id?: string | null;
           product_manufacturer_id?: string | null;
           name: string;
-          default_configurations?: Record<string, any> | null;
+          default_configurations?: Record<string, unknown> | null;
+          config_schema?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -921,305 +1061,166 @@ export interface Database {
           product_line_id?: string | null;
           product_manufacturer_id?: string | null;
           name?: string;
-          default_configurations?: Record<string, any> | null;
+          default_configurations?: Record<string, unknown> | null;
+          config_schema?: Record<string, unknown> | null;
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
+  
+      // ============================================================================
+      // Config Value Sets - Shared value libraries for product configuration
+      // ============================================================================
       /**
-       * Product Variants - Variant options for product models
+       * Config Value Sets - Shared value libraries (colors, materials, etc.)
+       * Referenced by config_schema via values_ref property
        */
-      product_variants: {
+      config_value_sets: {
         Row: {
           id: string;
-          model_id: string;
+          slug: string;
           name: string;
-          description: string | null;
-          specifications: Record<string, any>;
-          pricing: Record<string, any>;
-          is_default: boolean;
-          sort_order: number;
+          category: string | null;
+          manufacturer_id: string | null;
+          values: Record<string, unknown>[];
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
-          model_id: string;
+          slug: string;
           name: string;
-          description?: string | null;
-          specifications?: Record<string, any>;
-          pricing?: Record<string, any>;
-          is_default?: boolean;
-          sort_order?: number;
+          category?: string | null;
+          manufacturer_id?: string | null;
+          values?: Record<string, unknown>[];
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          model_id?: string;
-          name?: string;
-          description?: string | null;
-          specifications?: Record<string, any>;
-          pricing?: Record<string, any>;
-          is_default?: boolean;
-          sort_order?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      // ============================================================================
-      // Product Configuration Tables (pc_ prefix)
-      // ============================================================================
-      /**
-       * Option Groups - Shared option definitions (Track System, Panel Face, etc.)
-       */
-      pc_option_groups: {
-        Row: {
-          id: string;
-          name: string;
-          slug: string;
-          description: string | null;
-          field_type: 'dropdown' | 'input' | 'multi-select' | 'auto';
-          input_type: 'string' | 'number' | 'decimal' | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          slug: string;
-          description?: string | null;
-          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
-          input_type?: 'string' | 'number' | 'decimal' | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
           slug?: string;
-          description?: string | null;
-          field_type?: 'dropdown' | 'input' | 'multi-select' | 'auto';
-          input_type?: 'string' | 'number' | 'decimal' | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      /**
-       * Option Values - All possible values for each option group
-       */
-      pc_option_values: {
-        Row: {
-          id: string;
-          option_group_id: string;
-          value: string;
-          sort_order: number;
-          is_active: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          option_group_id: string;
-          value: string;
-          sort_order?: number;
-          is_active?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          option_group_id?: string;
-          value?: string;
-          sort_order?: number;
-          is_active?: boolean;
-          created_at?: string;
-        };
-      };
-      /**
-       * Model Options - Links models to option groups with model-specific UI settings
-       */
-      pc_model_options: {
-        Row: {
-          id: string;
-          model_id: string;
-          option_group_id: string;
-          display_order: number;
-          display_group: 'primary' | 'secondary' | 'advanced' | 'hidden';
-          grid_span: number;
-          placeholder: string | null;
-          help_text: string | null;
-          is_required: boolean;
-          is_multi_select: boolean;
-          is_manual_select: boolean;
-          is_visible: boolean;
-          default_value_id: string | null;
-          default_input_value: string | null;
-          min_value: number | null;
-          max_value: number | null;
-          step_value: number | null;
-          validation_pattern: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          model_id: string;
-          option_group_id: string;
-          display_order?: number;
-          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
-          grid_span?: number;
-          placeholder?: string | null;
-          help_text?: string | null;
-          is_required?: boolean;
-          is_multi_select?: boolean;
-          is_manual_select?: boolean;
-          is_visible?: boolean;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          min_value?: number | null;
-          max_value?: number | null;
-          step_value?: number | null;
-          validation_pattern?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          model_id?: string;
-          option_group_id?: string;
-          display_order?: number;
-          display_group?: 'primary' | 'secondary' | 'advanced' | 'hidden';
-          grid_span?: number;
-          placeholder?: string | null;
-          help_text?: string | null;
-          is_required?: boolean;
-          is_multi_select?: boolean;
-          is_manual_select?: boolean;
-          is_visible?: boolean;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          min_value?: number | null;
-          max_value?: number | null;
-          step_value?: number | null;
-          validation_pattern?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      /**
-       * Model Allowed Values - Restricts which option values are available for a specific model
-       */
-      pc_model_allowed_values: {
-        Row: {
-          id: string;
-          model_option_id: string;
-          option_value_id: string;
-          is_default: boolean;
-          sort_order: number;
-          is_active: boolean;
-        };
-        Insert: {
-          id?: string;
-          model_option_id: string;
-          option_value_id: string;
-          is_default?: boolean;
-          sort_order?: number;
-          is_active?: boolean;
-        };
-        Update: {
-          id?: string;
-          model_option_id?: string;
-          option_value_id?: string;
-          is_default?: boolean;
-          sort_order?: number;
-          is_active?: boolean;
-        };
-      };
-      /**
-       * Product Rules - Business rules for conditional option behavior
-       */
-      pc_rules: {
-        Row: {
-          id: string;
-          model_id: string | null;
-          variant_id: string | null;
-          name: string;
-          description: string | null;
-          priority: number;
-          is_active: boolean;
-          condition: Record<string, any>;
-          effect: Record<string, any>;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          model_id?: string | null;
-          variant_id?: string | null;
-          name: string;
-          description?: string | null;
-          priority?: number;
-          is_active?: boolean;
-          condition: Record<string, any>;
-          effect: Record<string, any>;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          model_id?: string | null;
-          variant_id?: string | null;
           name?: string;
-          description?: string | null;
-          priority?: number;
-          is_active?: boolean;
-          condition?: Record<string, any>;
-          effect?: Record<string, any>;
+          category?: string | null;
+          manufacturer_id?: string | null;
+          values?: Record<string, unknown>[];
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
-      /**
-       * Variant Option Overrides - Variant-specific overrides for model option configurations
-       */
-      pc_variant_option_overrides: {
+
+      
+      // ============================================================================
+      // Notifications Table
+      // ============================================================================
+      notifications: {
         Row: {
           id: string;
-          variant_id: string;
-          model_option_id: string;
-          is_required: boolean | null;
-          is_visible: boolean | null;
-          is_manual_select: boolean | null;
-          default_value_id: string | null;
-          default_input_value: string | null;
-          allowed_value_ids: string[];
+          user_id: string;
+          organization_id: string;
+          type: string;
+          title: string;
+          message: string;
+          link: string | null;
+          is_read: boolean;
+          metadata: Record<string, any>;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
-          variant_id: string;
-          model_option_id: string;
-          is_required?: boolean | null;
-          is_visible?: boolean | null;
-          is_manual_select?: boolean | null;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          allowed_value_ids?: string[];
+          user_id: string;
+          organization_id: string;
+          type: string;
+          title: string;
+          message: string;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Record<string, any>;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
-          variant_id?: string;
-          model_option_id?: string;
-          is_required?: boolean | null;
-          is_visible?: boolean | null;
-          is_manual_select?: boolean | null;
-          default_value_id?: string | null;
-          default_input_value?: string | null;
-          allowed_value_ids?: string[];
+          user_id?: string;
+          organization_id?: string;
+          type?: string;
+          title?: string;
+          message?: string;
+          link?: string | null;
+          is_read?: boolean;
+          metadata?: Record<string, any>;
+          created_at?: string;
+        };
+      };
+      // ============================================================================
+      // Scheduled Notifications Table
+      // ============================================================================
+      scheduled_notifications: {
+        Row: {
+          id: string;
+          entity_type: 'Task' | 'Proposal' | 'Invoice' | 'Project';
+          entity_id: string;
+          user_id: string;
+          organization_id: string;
+          scheduled_for: string;
+          recurrence: 'Once' | 'Daily' | 'Weekly';
+          recurrence_end_date: string | null;
+          notification_type: string;
+          title: string;
+          message: string | null;
+          link: string | null;
+          metadata: Record<string, any>;
+          status: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
+          sent_at: string | null;
+          last_sent_at: string | null;
+          failure_reason: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          entity_type: 'Task' | 'Proposal' | 'Invoice' | 'Project';
+          entity_id: string;
+          user_id: string;
+          organization_id: string;
+          scheduled_for: string;
+          recurrence?: 'Once' | 'Daily' | 'Weekly';
+          recurrence_end_date?: string | null;
+          notification_type?: string;
+          title: string;
+          message?: string | null;
+          link?: string | null;
+          metadata?: Record<string, any>;
+          status?: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
+          sent_at?: string | null;
+          last_sent_at?: string | null;
+          failure_reason?: string | null;
           created_at?: string;
           updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          entity_type?: 'Task' | 'Proposal' | 'Invoice' | 'Project';
+          entity_id?: string;
+          user_id?: string;
+          organization_id?: string;
+          scheduled_for?: string;
+          recurrence?: 'Once' | 'Daily' | 'Weekly';
+          recurrence_end_date?: string | null;
+          notification_type?: string;
+          title?: string;
+          message?: string | null;
+          link?: string | null;
+          metadata?: Record<string, any>;
+          status?: 'Pending' | 'Sent' | 'Cancelled' | 'Failed';
+          sent_at?: string | null;
+          last_sent_at?: string | null;
+          failure_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
         };
       };
     };
@@ -1227,6 +1228,100 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      // ============================================================================
+      // Auth Rate Limiting Functions (Security)
+      // ============================================================================
+      check_login_rate_limit: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          allowed: boolean;
+          blocked: boolean;
+          remaining_attempts: number | null;
+          remaining_seconds: number | null;
+          blocked_until: string | null;
+          message: string | null;
+        };
+      };
+      check_otp_rate_limit: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          allowed: boolean;
+          blocked: boolean;
+          remaining_attempts: number | null;
+          remaining_seconds: number | null;
+          blocked_until: string | null;
+          message: string | null;
+        };
+      };
+      record_failed_login: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          recorded: boolean;
+          blocked: boolean;
+          attempt_count: number;
+        };
+      };
+      record_failed_otp: {
+        Args: {
+          p_email: string;
+        };
+        Returns: {
+          recorded: boolean;
+          blocked: boolean;
+          attempt_count: number;
+        };
+      };
+      clear_auth_rate_limit: {
+        Args: {
+          p_email: string;
+          p_attempt_type: string;
+        };
+        Returns: void;
+      };
+      check_auth_rate_limit: {
+        Args: {
+          p_identifier: string;
+          p_identifier_type: string;
+          p_attempt_type: string;
+          p_max_attempts: number;
+          p_window_minutes: number;
+          p_block_duration_minutes: number;
+        };
+        Returns: {
+          allowed: boolean;
+          blocked: boolean;
+          remaining_attempts: number | null;
+          blocked_until: string | null;
+          message: string | null;
+        };
+      };
+      record_auth_attempt: {
+        Args: {
+          p_identifier: string;
+          p_identifier_type: string;
+          p_attempt_type: string;
+          p_success: boolean;
+          p_max_attempts: number;
+          p_window_minutes: number;
+          p_block_duration_minutes: number;
+        };
+        Returns: {
+          success: boolean;
+          attempt_count: number | null;
+          blocked: boolean | null;
+          blocked_until: string | null;
+          cleared: boolean | null;
+        };
+      };
+      // ============================================================================
+      // User & Organization Functions
+      // ============================================================================
       update_user_profile: {
         Args: {
           user_id: string;
@@ -1244,11 +1339,11 @@ export interface Database {
         Returns: any;
       };
       get_current_user_organization: {
-        Args: {};
+        Args: Record<string, never>;
         Returns: string;
       };
       cleanup_expired_onboarding: {
-        Args: {};
+        Args: Record<string, never>;
         Returns: void;
       };
       check_invite_rate_limit: {

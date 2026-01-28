@@ -11,10 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 /**
- * Fetch all contacts for an organization with realtime updates
+ * Fetch all contacts for an organization
+ * Includes realtime for collaborative proposal creation
  */
 export const useContacts = (organizationId: string | undefined) => {
-  // Set up centralized realtime subscription
   useRealtimeSubscription(
     'contacts',
     ['contacts', organizationId || ''],
@@ -29,6 +29,9 @@ export const useContacts = (organizationId: string | undefined) => {
       return contactsService.getContacts(organizationId);
     },
     enabled: !!organizationId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 };
 

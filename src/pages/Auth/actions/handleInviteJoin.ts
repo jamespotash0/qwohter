@@ -18,6 +18,7 @@ import { NavigateFunction } from 'react-router-dom';
 import { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { stripeService } from '@/services/stripeService';
+import { notifyMemberJoined } from '@/services/notificationService';
 
 interface HandleInviteJoinParams {
   userId: string | null;
@@ -359,6 +360,18 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
       console.error('Seat sync error:', error);
       // Don't fail the join process if seat sync fails
     }
+
+    // Notify admins/owners about the new member (non-blocking)
+    notifyMemberJoined({
+      organizationId: orgData.id,
+      memberId: userId,
+      memberName: user.email?.split('@')[0] || 'New Member',
+      memberEmail: user.email,
+      memberRole: tokenData?.role || 'Member',
+    }).catch((err) => {
+      console.error('Member joined notification error:', err);
+      // Don't fail the join process if notification fails
+    });
 
     // Log successful attempt
     await logInviteAttempt({

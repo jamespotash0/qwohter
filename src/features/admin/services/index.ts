@@ -20,3 +20,5 @@ export type {
   ModelAllowedValue,
   ProductRule,
 } from './optionAdminService';
+
+export { configValueSetsService } from './configValueSetsService';

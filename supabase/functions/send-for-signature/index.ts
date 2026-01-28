@@ -22,6 +22,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Escape HTML special characters to prevent XSS/injection
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Sanitize error messages to prevent information disclosure
+ * Returns user-friendly messages without exposing system details
+ */
+function sanitizeErrorMessage(error: unknown): { message: string; needsAuth: boolean } {
+  if (!(error instanceof Error)) {
+    return { message: 'An unexpected error occurred', needsAuth: false };
+  }
+
+  const rawMessage = error.message;
+
+  // Check if this is an auth-related error
+  const needsAuth = rawMessage.includes('connect') ||
+                    rawMessage.includes('reconnect') ||
+                    rawMessage.includes('expired');
+
+  // Map specific error patterns to user-friendly messages
+  if (rawMessage.includes('Google Doc not found')) {
+    return { message: 'The associated document could not be found. Please regenerate the document.', needsAuth: false };
+  }
+  if (rawMessage.includes('Access denied')) {
+    return { message: 'Access to the document was denied. Please check permissions.', needsAuth: false };
+  }
+  if (rawMessage.includes('Google Docs not configured')) {
+    return { message: 'Google Docs is not configured. An admin needs to connect Google in Settings.', needsAuth: true };
+  }
+  if (rawMessage.includes('connection expired') || rawMessage.includes('reconnect')) {
+    return { message: 'Google connection expired. Please reconnect in Settings.', needsAuth: true };
+  }
+  if (rawMessage.includes('refresh') && rawMessage.includes('token')) {
+    return { message: 'Authentication expired. Please reconnect Google in Settings.', needsAuth: true };
+  }
+
+  // Default: return a generic message (don't expose internal details like stack traces)
+  return { message: 'Failed to send for signature. Please try again.', needsAuth };
+}
+
 interface RequestBody {
   proposalId: string;
   organizationId: string;
@@ -323,20 +372,22 @@ async function sendSigningEmail(params: {
   // Email appears from the organization, reply goes to Qwohter
   const fromAddress = `${organizationName} via Qwohter <noreply@qwohter.com>`;
 
-  // Use custom subject or default
-  const subject = customSubject || `Please sign: ${proposalNumber} - ${projectName}`;
+  // Use custom subject or default (escape HTML in custom subject)
+  const subject = customSubject
+    ? escapeHtml(customSubject)
+    : `Please sign: ${escapeHtml(proposalNumber)} - ${escapeHtml(projectName)}`;
 
-  // Convert custom body to HTML (replace newlines with <br>) or use default
+  // Convert custom body to HTML (escape HTML to prevent injection, then replace newlines)
   const bodyHtml = customBody
-    ? customBody.split('\n').map(line => `<p style="margin: 0 0 12px 0;">${line || '&nbsp;'}</p>`).join('')
+    ? escapeHtml(customBody).split('\n').map(line => `<p style="margin: 0 0 12px 0;">${line || '&nbsp;'}</p>`).join('')
     : `
-      <p>Hi ${displayName},</p>
+      <p>Hi ${escapeHtml(displayName)},</p>
 
-      <p><strong>${organizationName}</strong> has sent you a proposal for your review and signature.</p>
+      <p><strong>${escapeHtml(organizationName)}</strong> has sent you a proposal for your review and signature.</p>
 
       <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 24px 0;">
-        <p style="margin: 0 0 8px 0;"><strong>Proposal:</strong> ${proposalNumber}</p>
-        <p style="margin: 0;"><strong>Project:</strong> ${projectName}</p>
+        <p style="margin: 0 0 8px 0;"><strong>Proposal:</strong> ${escapeHtml(proposalNumber)}</p>
+        <p style="margin: 0;"><strong>Project:</strong> ${escapeHtml(projectName)}</p>
       </div>
 
       <p>Please review the proposal and sign electronically by clicking the button below:</p>
@@ -371,7 +422,7 @@ async function sendSigningEmail(params: {
 
           <p style="color: #999; font-size: 12px;">
             This is an automated message from Qwohter. If you have questions about this proposal,
-            please contact ${organizationName} directly.
+            please contact ${escapeHtml(organizationName)} directly.
           </p>
         </div>
       `,
@@ -509,7 +560,7 @@ serve(async (req) => {
         client_email: clientEmail,
         client_name: clientName || proposal.client_name,
         client_company: clientCompany || proposal.client_company,
-        status: 'pending',
+        status: 'Pending',
         unsigned_pdf_url: pdfUrl,
         unsigned_pdf_path: pdfPath,
         expires_at: expiresAt,
@@ -566,13 +617,51 @@ serve(async (req) => {
       organization_id: organizationId,
       proposal_id: proposalId,
       signing_token_id: signingToken.id,
-      event_type: 'sent',
+      event_type: 'Sent',
       event_data: {
         sent_to: clientEmail,
         sent_by_user_id: user.id,
         custom_body: emailBody || null,
       },
     });
+
+    // Send notification email to user (non-blocking)
+    try {
+      const { data: userProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (userProfile?.email) {
+        // Call send-notification-email function
+        const notificationUrl = `${supabaseUrl}/functions/v1/send-notification-email`;
+        fetch(notificationUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId,
+            notificationType: 'signature_sent',
+            recipientEmail: userProfile.email,
+            recipientName: userProfile.full_name || 'User',
+            data: {
+              proposalNumber: proposal.proposal_number,
+              proposalName: proposal.project_name,
+              signerEmail: clientEmail,
+              signerName: clientName || proposal.client_name,
+              link: `/proposals/${proposalId}`,
+            },
+          }),
+        }).catch(err => console.error('[send-for-signature] Notification error:', err));
+      }
+    } catch (notifError) {
+      console.error('[send-for-signature] Failed to send notification:', notifError);
+      // Don't fail the request for notification errors
+    }
 
     console.log('[send-for-signature] Success!');
 
@@ -591,14 +680,15 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    // Log the full error for debugging (server-side only)
     console.error('[send-for-signature] Error:', error);
 
-    const errorMessage = error instanceof Error ? error.message : 'Failed to send for signature';
-    const needsAuth = errorMessage.includes('connect') || errorMessage.includes('reconnect');
+    // Sanitize error message before sending to client (prevents information disclosure)
+    const { message, needsAuth } = sanitizeErrorMessage(error);
 
     return new Response(
       JSON.stringify({
-        error: errorMessage,
+        error: message,
         needsAuth,
       }),
       {

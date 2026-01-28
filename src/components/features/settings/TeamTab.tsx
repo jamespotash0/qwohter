@@ -8,7 +8,6 @@ import {
   useInviteTokens,
   useRevokeInvitation
 } from "@/hooks/queries/useOrganization";
-import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MoreVertical, Trash2, Crown, AlertTriangle, RotateCcw, Plus, X } from "lucide-react";
+import { MoreVertical, UserMinus, Crown, AlertTriangle, RotateCcw, Plus, X } from "lucide-react";
 import type { Role } from "@/utils/teamManagementHelpers";
 import { cleanupExpiredTokens } from "@/utils/inviteTokens";
 import { InviteBillingConfirmDialog } from "./InviteBillingConfirmDialog";
@@ -73,14 +72,6 @@ export function TeamTab() {
   // Fetch pending invites
   const { data: inviteTokens = [] } = useInviteTokens(organizationId || '', !!organizationId);
   const { mutateAsync: revokeInviteMutation } = useRevokeInvitation(organizationId || '');
-
-  // Enable real-time updates for invite tokens
-  useRealtimeSubscription(
-    'invite_tokens',
-    queryKeys.organization.invites(organizationId || ''),
-    { filter: `organization_id=eq.${organizationId}` },
-    !!organizationId
-  );
 
   // Filter for all pending invites (not used, includes revoked and expired for resending)
   const pendingInvites = inviteTokens.filter(invite => !invite.is_used);
@@ -243,7 +234,7 @@ export function TeamTab() {
     }
   };
 
-  const handleRemoveMember = async () => {
+  const handleDeactivateMember = async () => {
     if (!currentOrganization) return;
 
     // Close dialog immediately for responsive feel
@@ -252,7 +243,7 @@ export function TeamTab() {
     try {
       // Show immediate feedback
       toast({
-        title: "Removing member...",
+        title: "Deactivating member...",
         description: `Deactivating ${removeDialog.memberName}`,
       });
 
@@ -260,12 +251,12 @@ export function TeamTab() {
 
       // Success confirmation
       toast({
-        title: "Member removed",
-        description: `${removeDialog.memberName} has been removed from the organization.`,
+        title: "Member deactivated",
+        description: `${removeDialog.memberName} has been deactivated. Their access has been revoked.`,
       });
     } catch (error: any) {
       toast({
-        title: "Failed to remove member",
+        title: "Failed to deactivate member",
         description: error.message,
         variant: "destructive",
       });
@@ -339,19 +330,14 @@ export function TeamTab() {
     if (!currentOrganization || !user?.id) return;
 
     try {
-      // Transfer ownership: Set new member to Owner and current user to Admin
-      const { error: newOwnerError } = await (supabase.from('memberships') as any)
-        .update({ role: 'Owner', updated_at: new Date().toISOString() })
-        .eq('id', transferDialog.memberId);
+      // Use atomic RPC function for secure ownership transfer
+      // This ensures both role changes succeed or both fail
+      const { error } = await (supabase.rpc as any)('transfer_ownership', {
+        p_new_owner_id: transferDialog.memberId, // This is actually user_id from line 747
+        p_organization_id: currentOrganization.id,
+      });
 
-      if (newOwnerError) throw newOwnerError;
-
-      const { error: currentUserError } = await (supabase.from('memberships') as any)
-        .update({ role: 'Admin', updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .eq('organization_id', currentOrganization.id);
-
-      if (currentUserError) throw currentUserError;
+      if (error) throw error;
 
       toast({
         title: "Ownership transferred",
@@ -729,7 +715,7 @@ export function TeamTab() {
                       {member.status === 'Inactive' ? ( //membership_status
                         <Button
                           size="sm"
-                          onClick={() => handleReactivateMember(member.user_id, member.full_name || member.email)}
+                          onClick={() => handleReactivateMember(member.user_id, member.full_name || member.email || 'Unknown User')}
                           className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <RotateCcw className="w-3 h-3 mr-1" />
@@ -744,18 +730,18 @@ export function TeamTab() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setTransferDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email })}
+                              onClick={() => setTransferDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email || 'Unknown User' })}
                               className="text-amber-600 hover:text-amber-700"
                             >
                               <Crown className="w-4 h-4 mr-2" />
                               Transfer Ownership
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => setRemoveDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email })}
+                              onClick={() => setRemoveDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email || 'Unknown User' })}
                               className="text-red-600 hover:text-red-700"
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Remove
+                              <UserMinus className="w-4 h-4 mr-2" />
+                              Deactivate
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -768,11 +754,11 @@ export function TeamTab() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setRemoveDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email })}
+                              onClick={() => setRemoveDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email || 'Unknown User' })}
                               className="text-red-600 hover:text-red-700"
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Remove
+                              <UserMinus className="w-4 h-4 mr-2" />
+                              Deactivate
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -786,25 +772,38 @@ export function TeamTab() {
         </div>
       </div>
 
-      {/* Remove Member Dialog */}
+      {/* Deactivate Member Dialog */}
       <Dialog open={removeDialog.open} onOpenChange={(open) => setRemoveDialog({ ...removeDialog, open })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Team Member</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <UserMinus className="w-5 h-5 text-red-600" />
+              Deactivate Team Member
+            </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-3">
-                <p>Are you sure you want to remove <span className="font-semibold">{removeDialog.memberName}</span> from the organization?</p>
-                <p className="text-sm">This action will:</p>
-                <ul className="text-sm list-disc list-inside space-y-1 ml-2">
-                  <li>Revoke their access immediately</li>
-                  <li>Preserve their proposals and data</li>
-                  <li>Display their name as "Deactivated User" on proposals</li>
-                </ul>
+                <p>Are you sure you want to deactivate <span className="font-semibold">{removeDialog.memberName}</span>?</p>
+
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">What happens when you deactivate:</p>
+                  <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 ml-4 list-disc">
+                    <li>Their access is revoked immediately</li>
+                    <li>They cannot log in or access any organization data</li>
+                    <li>All their proposals and data are preserved</li>
+                    <li>Their name shows as "Deactivated User" on their work</li>
+                  </ul>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>This can be undone.</strong> You can reactivate this member at any time from the Team page.
+                  </p>
+                </div>
 
                 {/* Billing Impact Notice */}
-                <div className="flex items-start gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mt-2">
+                <div className="flex items-start gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                   <span className="text-sm text-green-800 dark:text-green-200">
-                    Your monthly bill will <span className="font-semibold">decrease by $20</span>. Any unused time will be credited to your next invoice.
+                    Your next monthly bill will <span className="font-semibold">decrease by $20</span>.
                   </span>
                 </div>
               </div>
@@ -819,9 +818,9 @@ export function TeamTab() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleRemoveMember}
+              onClick={handleDeactivateMember}
             >
-              Remove Member
+              Deactivate Member
             </Button>
           </DialogFooter>
         </DialogContent>

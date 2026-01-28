@@ -204,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     queryClient.clear();
 
     // Reset remaining Zustand stores (only appStore remains - others migrated to React Query)
-    // Note: proposalsStore, organizationStore, boardStore, and remindersStore
+    // Note: proposalsStore, organizationStore, boardStore
     //       have all been migrated to React Query and are cleared with queryClient.clear() above
     try {
       // Only appStore remains as a Zustand store for app-level UI state

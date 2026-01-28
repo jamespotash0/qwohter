@@ -1,9 +1,16 @@
 /**
  * handleOtpVerification Action
  * Handles OTP code verification after sign-up
+ * Includes rate limiting to prevent brute force attacks
  */
 
 import { authFlowHelpers } from '@/utils/authFlowHelpers';
+import {
+  checkOtpRateLimit,
+  recordFailedOtp,
+  clearRateLimit,
+  getRateLimitMessage,
+} from '@/services/authRateLimitService';
 
 interface HandleOtpVerificationParams {
   email: string;
@@ -37,9 +44,34 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
 
   setLoading(true);
   try {
+    // Check OTP rate limit before attempting verification
+    const rateCheck = await checkOtpRateLimit(email);
+
+    if (!rateCheck.allowed) {
+      toast({
+        title: 'Too Many Attempts',
+        description: getRateLimitMessage(rateCheck),
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return { success: false, error: getRateLimitMessage(rateCheck) };
+    }
+
+    // Show warning if close to limit (OTP only allows 3 attempts)
+    if (rateCheck.remaining_attempts && rateCheck.remaining_attempts <= 1) {
+      toast({
+        title: 'Warning',
+        description: `Last attempt before temporary lockout.`,
+        variant: 'destructive',
+      });
+    }
+
     const result = await authFlowHelpers.handleOtpVerification(email, otpCode);
 
     if (result.success && result.data?.userId) {
+      // Clear OTP rate limit on successful verification
+      await clearRateLimit(email, 'otp');
+
       setUserId(result.data.userId);
 
       // Automatically create profile with the name collected during signup
@@ -85,10 +117,14 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
         return { success: false };
       }
     } else {
+      // Record failed OTP attempt
+      await recordFailedOtp(email);
       // Don't show toast here - let parent component handle it with attempt tracking
       return { success: false, error: result.error };
     }
   } catch (error: any) {
+    // Record failed OTP attempt on exception
+    await recordFailedOtp(email);
     toast({
       title: 'Verification Error',
       description: error.message,

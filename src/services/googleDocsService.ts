@@ -6,6 +6,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { FormBuilderData } from '@/features/proposals/context/FormBuilderContext';
+import { formatLocalDate } from '@/lib/utils';
 
 /** Data for dynamic table row duplication */
 export interface TableRowData {
@@ -111,18 +112,10 @@ export function buildProposalVariables(
     }).format(amount);
   };
 
-  // Format date helper
+  // Format date helper using centralized utility with long month format
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '';
-    try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
+    return formatLocalDate(dateStr, { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const variables: Record<string, string> = {

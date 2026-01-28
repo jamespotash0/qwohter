@@ -653,8 +653,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             </nav>
           </div>
 
-          {/* Right: Auto-save status indicator (both modes) */}
-          <div className="flex items-center gap-2 text-sm">
+          {/* Right: Auto-save status indicator */}
+          <div className="flex items-center gap-3 text-sm">
             {saveStatus === 'saving' && (
               <motion.div
                 className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400"

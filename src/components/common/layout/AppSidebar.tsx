@@ -12,10 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile, useAuthStatus, useSignOut } from "@/auth";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { stripeService } from "@/services/stripeService";
 import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 // import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
 
 interface AppSidebarProps {
@@ -50,11 +51,11 @@ const menuItems: MenuItem[] = [
   {
     title: "Board",
     icon: Stack,
-    path: "/board",
+    path: "/project-board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
     subItems: [
       { title: "Task Board", path: "/task-board", icon: CheckSquare },
-      { title: "Project Board", path: "/board", icon: Kanban },
+      { title: "Project Board", path: "/project-board", icon: Kanban },
     ],
   },
   {
@@ -120,13 +121,13 @@ export function AppSidebar({
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
 
   // Toggle expanded state for menu items with subItems
-  const toggleExpanded = (title: string) => {
+  const toggleExpanded = useCallback((title: string) => {
     setExpandedItems(prev =>
       prev.includes(title)
         ? prev.filter(t => t !== title)
         : [...prev, title]
     );
-  };
+  }, []);
 
   // Use React Query hooks for organization data
   const user = useUser();
@@ -136,10 +137,15 @@ export function AppSidebar({
 
   // Get current organization and role from React Query
   const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id || '');
-  const { data: members = [] } = useOrganizationMembers(currentOrganization?.id || '', !!currentOrganization?.id); 
+  const { data: members = [] } = useOrganizationMembers(currentOrganization?.id || '', !!currentOrganization?.id);
 
-  // Generate user initials
-  const getUserInitials = (name?: string, email?: string) => {
+  // Get unread notification count for badge
+  const { data: unreadNotificationCount = 0 } = useUnreadNotificationCount(user?.id); 
+
+  // Memoize user initials calculation
+  const userInitials = useMemo(() => {
+    const name = userProfile?.full_name;
+    const email = user?.email;
     if (name) {
       return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
@@ -147,34 +153,37 @@ export function AppSidebar({
       return email.slice(0, 2).toUpperCase();
     }
     return 'U';
-  };
+  }, [userProfile?.full_name, user?.email]);
 
-  const userDisplayName = userProfile?.full_name || user?.email || 'User';
-  const userInitials = getUserInitials(userProfile?.full_name ?? undefined, user?.email);
+  // Memoize display values
+  const userDisplayName = useMemo(
+    () => userProfile?.full_name || user?.email || 'User',
+    [userProfile?.full_name, user?.email]
+  );
+
   const effectiveRole = currentUserRole || 'Member';
 
-  // Get current user's department from members (will be available after members load)
-  const currentMember = members.find(m => m.user_id === user?.id);
-  const userDepartment = currentMember?.department;
+  // Memoize member lookup
+  const currentMember = useMemo(
+    () => members.find(m => m.user_id === user?.id),
+    [members, user?.id]
+  );
 
-  // Display department if available, otherwise show role
-  const displayText = userDepartment || effectiveRole;
+  // Memoize display text
+  const displayText = useMemo(
+    () => currentMember?.department || effectiveRole,
+    [currentMember?.department, effectiveRole]
+  );
+
+  // Memoize filtered menu items based on user role
+  const filteredMenuItems = useMemo(
+    () => menuItems.filter(item => !currentUserRole || item.roles.includes(currentUserRole)),
+    [currentUserRole]
+  );
 
   // Wait for members to load before showing profile (prevents role→department flip)
   const hasMembersData = members.length > 0;
   const shouldShowProfile = isAuthInitialized && hasMembersData;
-
-  // Debug: Log render state
-  console.log('[AppSidebar Footer] Render state:', {
-    isAuthInitialized,
-    hasMembersData,
-    shouldShowProfile,
-    user: !!user,
-    userProfile: !!userProfile,
-    currentOrganization: !!currentOrganization,
-    membersCount: members.length,
-    displayText,
-  });
 
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -288,14 +297,14 @@ export function AppSidebar({
     checkTrialStatus();
   }, [currentOrganization?.id]);
 
-  const handleNavigate = (path: string, title: string, event?: React.MouseEvent) => {
+  const handleNavigate = useCallback((path: string, title: string, event?: React.MouseEvent) => {
     event?.preventDefault();
     event?.stopPropagation();
     setClickedItem(title);
     navigate(path);
-  };
+  }, [navigate]);
 
-  const handleSwitchOrganization = async (orgId: string) => {
+  const handleSwitchOrganization = useCallback(async (orgId: string) => {
     if (orgId === currentOrganization?.id || !user?.id) return;
 
     const result = await switchOrganization(user.id, orgId);
@@ -305,7 +314,7 @@ export function AppSidebar({
       // React Query will automatically fetch the new organization data
       window.location.reload();
     }
-  };
+  }, [currentOrganization?.id, user?.id]);
 
   return (
     <Sidebar
@@ -405,7 +414,7 @@ export function AppSidebar({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="p-0 rounded-lg transition-all duration-200 focus:outline-none focus-visible:outline-none" style={{ backgroundColor: 'transparent' }}>
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
+                    <div className="h-9 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
                       <Buildings size={18} weight="fill" className="text-orange-800 dark:text-orange-700" />
                     </div>
                   </button>
@@ -455,9 +464,7 @@ export function AppSidebar({
 
           <SidebarGroupContent>
             <SidebarMenu className={`space-y-0 ${isCollapsed ? 'space-y-1' : 'space-y-0'}`}>
-              {menuItems
-                .filter(item => !currentUserRole || item.roles.includes(currentUserRole))
-                .map((item, index) => {
+              {filteredMenuItems.map((item, index) => {
                 const isActive = location.pathname === item.path ||
                   (item.subItems?.some(sub => location.pathname === sub.path) ?? false);
                 const Icon = item.icon;
@@ -626,7 +633,7 @@ export function AppSidebar({
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:scale-[1.02] active:scale-[0.98]'
                       } transition-all duration-300 ease-out`}
                       style={{
-                        borderRadius: 'var(--sidebar-nav-border-radius)',
+                        borderRadius: isCollapsed ? '10px' : 'var(--sidebar-nav-border-radius)',
                         ...(isActive && !isDisabled
                           ? {
                               backgroundColor: 'var(--sidebar-nav-bg-active)',
@@ -665,7 +672,7 @@ export function AppSidebar({
                       )}
 
                       <div className="relative flex items-center gap-3 z-10">
-                        <div className={`transition-all duration-300 ${
+                        <div className={`relative transition-all duration-300 ${
                           isActive && !isDisabled ? 'scale-110' : isClicked ? 'scale-95' : 'scale-100'
                         }`}>
                           <Icon
@@ -680,6 +687,12 @@ export function AppSidebar({
                             }`}
                             style={isActive && !isDisabled ? { color: 'var(--sidebar-icon-active)' } : {}}
                           />
+                          {/* Notification badge for Dashboard */}
+                          {item.title === 'Dashboard' && unreadNotificationCount > 0 && (
+                            <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 px-0.5 flex items-center justify-center text-[8px] font-semibold text-white bg-red-500 rounded-full">
+                              {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                            </span>
+                          )}
                         </div>
                         {isDisabled && (
                           <Lock

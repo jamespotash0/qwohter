@@ -18,29 +18,23 @@ import type {
   UpdateTaskBoardColumnInput,
 } from '@/lib/types/taskBoardColumns';
 import { useToast } from '@/hooks/use-toast';
-import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 const QUERY_KEY = 'task-board-columns';
 
+/**
+ * Fetch task board columns for an organization
+ * Updates via mutation cache invalidation (no realtime polling)
+ */
 export function useTaskBoardColumns(organizationId: string | undefined) {
   const queryKey = [QUERY_KEY, organizationId] as const;
-
-  // Set up realtime subscription for this organization's columns
-  useRealtimeSubscription(
-    'task_board_columns',
-    queryKey,
-    {
-      filter: `organization_id=eq.${organizationId}`,
-    },
-    !!organizationId
-  );
 
   return useQuery({
     queryKey,
     queryFn: () => fetchTaskBoardColumns(organizationId!),
     enabled: !!organizationId,
-    staleTime: 1 * 60 * 1000, // 1 minute - refresh more often with realtime
-    gcTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - columns rarely change
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
   });
 }
 

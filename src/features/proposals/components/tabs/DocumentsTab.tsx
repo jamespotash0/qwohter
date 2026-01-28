@@ -20,6 +20,7 @@ import {
   getFileCategory,
   type ProposalDocument,
 } from '@/services/proposalDocumentsService';
+import { formatTimestamp } from '@/lib/utils';
 import {
   getProposalSignaturesWithUrls,
   type ProposalSignature,
@@ -44,12 +45,6 @@ const getFileIcon = (mimeType: string | null) => {
     default:
       return <FileIcon className="w-5 h-5 text-gray-500" />;
   }
-};
-
-// Format date for display
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabProps) {
@@ -281,7 +276,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDate(sig.signed_at)}
+                      {formatTimestamp(sig.signed_at, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
 
@@ -321,7 +316,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
                   <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <span>{formatFileSize(doc.file_size)}</span>
                     <span>•</span>
-                    <span>{formatDate(doc.created_at)}</span>
+                    <span>{formatTimestamp(doc.created_at, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
                 </div>
 

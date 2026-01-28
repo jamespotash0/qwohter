@@ -157,14 +157,6 @@ export const queryKeys = {
       [...queryKeys.board.all, 'tasks', organizationId] as const,
   },
 
-  // Reminders
-  reminders: {
-    all: ['reminders'] as const,
-    lists: () => [...queryKeys.reminders.all, 'list'] as const,
-    list: (organizationId: string) =>
-      [...queryKeys.reminders.lists(), organizationId] as const,
-  },
-
   // Integrations
   integrations: {
     all: ['integrations'] as const,
@@ -172,6 +164,13 @@ export const queryKeys = {
       [...queryKeys.integrations.all, 'available', organizationPlan] as const,
     connected: (organizationId: string) =>
       [...queryKeys.integrations.all, 'connected', organizationId] as const,
+  },
+
+  // Notification Preferences
+  notificationPreferences: {
+    all: ['notificationPreferences'] as const,
+    byUserOrg: (userId: string, organizationId: string) =>
+      [...queryKeys.notificationPreferences.all, userId, organizationId] as const,
   },
 } as const;
 

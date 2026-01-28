@@ -10,6 +10,167 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, Stripe-Signature',
 };
+
+// =============================================================================
+// Payment Notification Helper
+// =============================================================================
+
+type PaymentNotificationType =
+  | 'payment_success'
+  | 'payment_failed'
+  | 'trial_ending'
+  | 'subscription_activated'
+  | 'subscription_canceled'
+  | 'subscription_renewed'
+  | 'seat_count_changed';
+
+interface PaymentNotificationData {
+  amount?: number;
+  currency?: string;
+  planName?: string;
+  daysRemaining?: number;
+}
+
+function getNotificationContent(
+  eventType: PaymentNotificationType,
+  data: PaymentNotificationData
+): { title: string; message: string } {
+  const formatAmount = (amount?: number, currency?: string): string => {
+    if (!amount) return '';
+    const dollars = amount / 100;
+    return `$${dollars.toFixed(2)} ${(currency || 'USD').toUpperCase()}`;
+  };
+
+  const messages: Record<PaymentNotificationType, { title: string; message: string }> = {
+    payment_success: {
+      title: 'Payment Successful',
+      message: data.amount
+        ? `Your payment of ${formatAmount(data.amount, data.currency)} was processed successfully.`
+        : 'Your payment was processed successfully.',
+    },
+    payment_failed: {
+      title: 'Payment Failed',
+      message: 'Your payment could not be processed. Please update your payment method to avoid service interruption.',
+    },
+    trial_ending: {
+      title: 'Trial Ending Soon',
+      message: `Your free trial ends in ${data.daysRemaining || 3} days. Add a payment method to continue using all features.`,
+    },
+    subscription_activated: {
+      title: 'Subscription Activated',
+      message: data.planName
+        ? `Your ${data.planName} subscription is now active. Thank you for subscribing!`
+        : 'Your subscription is now active. Thank you for subscribing!',
+    },
+    subscription_canceled: {
+      title: 'Subscription Canceled',
+      message: 'Your subscription has been canceled. You will have access until the end of your billing period.',
+    },
+    subscription_renewed: {
+      title: 'Subscription Renewed',
+      message: data.amount
+        ? `Your subscription has been renewed. Amount charged: ${formatAmount(data.amount, data.currency)}.`
+        : 'Your subscription has been renewed successfully.',
+    },
+    seat_count_changed: {
+      title: 'Seat Count Updated',
+      message: 'Your team seat count has been updated.',
+    },
+  };
+
+  return messages[eventType];
+}
+
+async function createPaymentNotification(
+  supabase: ReturnType<typeof createClient>,
+  organizationId: string,
+  eventType: PaymentNotificationType,
+  data: PaymentNotificationData = {}
+): Promise<void> {
+  try {
+    // Get all Admins and Owners
+    const { data: admins, error: fetchError } = await supabase
+      .from('memberships')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .eq('status', 'Active')
+      .or('role.eq.Owner,role.eq.Admin');
+
+    if (fetchError) {
+      console.error('[createPaymentNotification] Failed to fetch admins:', fetchError);
+      return;
+    }
+
+    if (!admins || admins.length === 0) {
+      console.log('[createPaymentNotification] No admins/owners to notify');
+      return;
+    }
+
+    const { title, message } = getNotificationContent(eventType, data);
+
+    // Create notifications for each admin/owner
+    for (const admin of admins) {
+      const { error: insertError } = await supabase.from('notifications').insert({
+        user_id: admin.user_id,
+        organization_id: organizationId,
+        type: eventType,
+        title,
+        message,
+        link: '/settings?tab=billing',
+        metadata: {
+          amount: data.amount,
+          currency: data.currency,
+          plan_name: data.planName,
+          days_remaining: data.daysRemaining,
+        },
+      });
+
+      if (insertError) {
+        console.error('[createPaymentNotification] Failed to create notification:', insertError);
+      }
+    }
+
+    console.log(`[createPaymentNotification] Created ${eventType} notifications for ${admins.length} admins`);
+  } catch (err) {
+    console.error('[createPaymentNotification] Error:', err);
+  }
+}
+
+async function getOrganizationIdFromCustomer(
+  supabase: ReturnType<typeof createClient>,
+  stripeCustomerId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('organization_id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .single();
+
+  if (error || !data) {
+    console.error('[getOrganizationIdFromCustomer] Not found:', stripeCustomerId);
+    return null;
+  }
+
+  return data.organization_id;
+}
+
+async function getOrganizationIdFromSubscription(
+  supabase: ReturnType<typeof createClient>,
+  stripeSubscriptionId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('organization_id')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .single();
+
+  if (error || !data) {
+    console.error('[getOrganizationIdFromSubscription] Not found:', stripeSubscriptionId);
+    return null;
+  }
+
+  return data.organization_id;
+}
 //@ts-ignore
 serve(async (req) => {
   // Handle CORS preflight
@@ -164,6 +325,11 @@ serve(async (req) => {
           console.log('Created new subscription for org:', organizationId, 'with number of users:', quantity);
         }
 
+        // Send subscription activated notification
+        await createPaymentNotification(supabase, organizationId, 'subscription_activated', {
+          planName: billingInterval === 'Yearly' ? 'Annual' : 'Monthly',
+        });
+
         break;
       }
 
@@ -207,6 +373,9 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeSubscriptionId = subscription.id;
 
+        // Get organization ID before updating
+        const deletedOrgId = await getOrganizationIdFromSubscription(supabase, stripeSubscriptionId);
+
         // Mark subscription as inactive
         await supabase
           .from('subscriptions')
@@ -217,6 +386,11 @@ serve(async (req) => {
           })
           .eq('stripe_subscription_id', stripeSubscriptionId);
 
+        // Send subscription canceled notification
+        if (deletedOrgId) {
+          await createPaymentNotification(supabase, deletedOrgId, 'subscription_canceled');
+        }
+
         console.log('Canceled subscription:', stripeSubscriptionId);
         break;
       }
@@ -224,6 +398,17 @@ serve(async (req) => {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         console.log('Payment succeeded for invoice:', invoice.id);
+
+        // Send payment success notification (only for actual charges, not $0 invoices)
+        if (invoice.amount_paid > 0 && invoice.customer) {
+          const paymentOrgId = await getOrganizationIdFromCustomer(supabase, invoice.customer as string);
+          if (paymentOrgId) {
+            await createPaymentNotification(supabase, paymentOrgId, 'payment_success', {
+              amount: invoice.amount_paid,
+              currency: invoice.currency,
+            });
+          }
+        }
 
         // Check if subscription should be paused after this payment
         if (invoice.subscription) {
@@ -273,6 +458,12 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_customer_id', stripeCustomerId);
+
+        // Send payment failed notification
+        const failedOrgId = await getOrganizationIdFromCustomer(supabase, stripeCustomerId);
+        if (failedOrgId) {
+          await createPaymentNotification(supabase, failedOrgId, 'payment_failed');
+        }
 
         console.log('Payment failed for customer:', stripeCustomerId);
         break;
@@ -329,6 +520,20 @@ serve(async (req) => {
       case 'customer.subscription.trial_will_end': {
         const subscription = event.data.object as Stripe.Subscription;
         console.log('Trial ending soon for subscription:', subscription.id);
+
+        // Send trial ending notification
+        const trialOrgId = await getOrganizationIdFromSubscription(supabase, subscription.id);
+        if (trialOrgId) {
+          // Calculate days remaining (Stripe sends this event 3 days before trial ends)
+          const daysRemaining = subscription.trial_end
+            ? Math.ceil((subscription.trial_end * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+            : 3;
+
+          await createPaymentNotification(supabase, trialOrgId, 'trial_ending', {
+            daysRemaining: Math.max(daysRemaining, 1),
+          });
+        }
+
         break;
       }
 
@@ -384,6 +589,33 @@ serve(async (req) => {
             })
             .eq('stripe_customer_id', invoice.customer as string)
             .eq('access_blocked_reason', 'Payment failed');
+        }
+
+        // Update billing period dates ONLY on actual subscription renewals
+        // Skip prorated invoices (seat changes, plan upgrades) - they don't change the billing period
+        // billing_reason: 'subscription_cycle' = renewal, 'subscription_update' = proration, 'subscription_create' = initial
+        const isRenewalInvoice = invoice.billing_reason === 'subscription_cycle';
+
+        if (invoice.subscription && isRenewalInvoice) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+
+            await supabase
+              .from('subscriptions')
+              .update({
+                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                stripe_subscription_status: subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('stripe_subscription_id', subscription.id);
+
+            console.log('Updated billing period from invoice.paid (renewal):', subscription.id);
+          } catch (err) {
+            console.error('Failed to update billing period from invoice.paid:', err);
+          }
+        } else if (invoice.subscription) {
+          console.log('Skipping billing period update - not a renewal invoice:', invoice.billing_reason);
         }
 
         console.log('Invoice paid:', invoice.id);

@@ -93,7 +93,9 @@ const SortableProductRow = ({
               ? product.category || ''
               : field === 'amount_unit'
                 ? product.amount_unit || 'Flat'
-                : product.name;
+                : field === 'model'
+                  ? product.model || ''
+                  : product.name;
 
       if (value === currentValue) return;
 
@@ -103,6 +105,7 @@ const SortableProductRow = ({
         category: product.category || undefined,
         amount: product.amount ?? undefined,
         amount_unit: product.amount_unit || 'Flat',
+        model: product.model || undefined,
       };
 
       if (field === 'amount') {
@@ -118,6 +121,8 @@ const SortableProductRow = ({
       } else if (field === 'name') {
         if (!value.trim()) return;
         input.name = value.trim();
+      } else if (field === 'model') {
+        input.model = value.trim() || undefined;
       }
 
       await onEdit(product.id, input);
@@ -178,12 +183,23 @@ const SortableProductRow = ({
       </div>
 
       {/* Name */}
-      <div className="w-[400px] flex-shrink-0">
+      <div className="w-[280px] flex-shrink-0">
         <Input
           defaultValue={product.name}
           onBlur={(e) => handleFieldBlur('name', e.target.value)}
           placeholder="Product name"
           className="h-11 rounded-sm"
+          disabled={isSaving}
+        />
+      </div>
+
+      {/* Model # */}
+      <div className="w-32 flex-shrink-0">
+        <Input
+          defaultValue={product.model || ''}
+          onBlur={(e) => handleFieldBlur('model', e.target.value)}
+          placeholder="Model #"
+          className="h-11 text-sm font-mono rounded-sm"
           disabled={isSaving}
         />
       </div>
@@ -325,7 +341,8 @@ export const ProductsTable = ({
           >
             <Skeleton className="h-5 w-5" />
             <Skeleton className="h-11 w-28" />
-            <Skeleton className="h-11 w-[400px]" />
+            <Skeleton className="h-11 w-[280px]" />
+            <Skeleton className="h-11 w-32" />
             <Skeleton className="h-11 w-52" />
             <Skeleton className="h-11 w-36" />
             <Skeleton className="h-11 w-32" />
@@ -372,9 +389,14 @@ export const ProductsTable = ({
                   {activeProduct.display_id || ''}
                 </div>
               </div>
-              <div className="w-[400px] flex-shrink-0">
+              <div className="w-[280px] flex-shrink-0">
                 <div className="h-11 px-3 flex items-center bg-muted/50 rounded-sm border">
                   {activeProduct.name}
+                </div>
+              </div>
+              <div className="w-32 flex-shrink-0">
+                <div className="h-11 px-3 flex items-center text-sm font-mono bg-muted/50 rounded-sm border">
+                  {activeProduct.model || ''}
                 </div>
               </div>
               <div className="w-52 flex-shrink-0">

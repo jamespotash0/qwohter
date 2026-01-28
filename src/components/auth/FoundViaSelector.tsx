@@ -62,8 +62,12 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
   const displayValue = isCustomSelected ? 'Other' : value;
 
   return (
-    <div className="space-y-3">
-      <Label htmlFor="found-via" className="text-slate-700 font-medium text-sm">
+    <div className="space-y-2">
+      <Label
+        htmlFor="found-via"
+        className="text-[#171717] font-medium text-sm"
+        style={{ fontFamily: 'Urbanist, sans-serif' }}
+      >
         How did you find out about us? {required && <span className="text-red-500">*</span>}
       </Label>
 
@@ -72,7 +76,7 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
         onValueChange={handleSelectChange}
         disabled={disabled}
       >
-        <SelectTrigger className="bg-slate-50 border-slate-200 h-12">
+        <SelectTrigger className="bg-[#f7f2e9]/50 border-[#171717]/10 h-12 rounded-full hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70 focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white">
           <SelectValue placeholder="Select how you found us" />
         </SelectTrigger>
         <SelectContent>
@@ -86,7 +90,11 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
 
       {isCustomSelected && (
         <div className="space-y-2">
-          <Label htmlFor="custom-source" className="text-slate-600 text-sm">
+          <Label
+            htmlFor="custom-source"
+            className="text-[#171717]/60 text-sm"
+            style={{ fontFamily: 'Urbanist, sans-serif' }}
+          >
             Please tell us how you found us
           </Label>
           <Input
@@ -95,7 +103,7 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
             value={customSource}
             onChange={(e) => handleCustomChange(e.target.value)}
             placeholder="How did you find out about us?"
-            className="bg-slate-50 border-slate-200 h-12"
+            className="bg-[#f7f2e9]/50 border-[#171717]/10 h-12 rounded-full placeholder:text-[#171717]/40 hover:border-[#171717]/20 hover:bg-[#f7f2e9]/70 focus:ring-2 focus:ring-[#ee6c4d]/20 focus:border-[#ee6c4d] focus:bg-white"
             disabled={disabled}
             required={required && isCustomSelected}
           />

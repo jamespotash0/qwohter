@@ -10,6 +10,7 @@ import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { useUser } from "@/auth";
 import { DocumentNumberingSection } from "./DocumentNumberingSection";
+import { WorkflowSettingsSection } from "./WorkflowSettingsSection";
 
 /**
  * Format a phone number as (xxx) xxx-xxxx
@@ -594,6 +595,16 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
           <DocumentNumberingSection
             organizationId={organization.id}
             hasEditPermission={hasEditPermission}
+          />
+        )}
+
+        {/* Workflow Settings Section */}
+        {organization?.id && (
+          <WorkflowSettingsSection
+            organizationId={organization.id}
+            requireProposalApproval={organization?.require_proposal_approval ?? false}
+            hasEditPermission={hasEditPermission}
+            onUpdate={() => onOrganizationUpdate(undefined, true)}
           />
         )}
       </div>

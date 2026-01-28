@@ -19,8 +19,8 @@ import {
   updateMilestone,
   deleteMilestone
 } from '@/lib/timelineMilestones';
-import { formatDateEST } from '@/utils/dateUtils';
-import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { formatLocalDate } from '@/lib/utils';
+import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TimelineVisualizerProps {
   milestones: TimelineMilestone[];
@@ -28,8 +28,6 @@ interface TimelineVisualizerProps {
   onMilestoneUpdate: (updatedMilestones: TimelineMilestone[]) => void;
   isAddingMilestone?: boolean;
   onAddingMilestoneChange?: (isAdding: boolean) => void;
-  onRequestAISuggestions?: () => void;
-  isGeneratingAI?: boolean;
 }
 
 export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
@@ -38,8 +36,6 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
   onMilestoneUpdate,
   isAddingMilestone: externalIsAddingMilestone,
   onAddingMilestoneChange,
-  onRequestAISuggestions,
-  isGeneratingAI = false,
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [internalIsAddingMilestone, setInternalIsAddingMilestone] = useState(false);
@@ -228,7 +224,7 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
                       <div className="flex items-center gap-1.5 mt-1">
                         <Calendar className="w-3 h-3 text-gray-400" />
                         <span className="text-xs text-gray-600">
-                          {formatDateEST(item.date)}
+                          {formatLocalDate(item.date)}
                         </span>
                       </div>
 
@@ -445,20 +441,6 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
             <Plus className="w-4 h-4 mr-1" />
             Add
           </Button>
-
-          {onRequestAISuggestions && (
-            <Button
-              onClick={onRequestAISuggestions}
-              size="sm"
-              variant="outline"
-              disabled={true}
-              // disabled={isGeneratingAI}
-              className="flex-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4 mr-1" />
-              {isGeneratingAI ? 'Generating...' : 'AI Suggest'}
-            </Button>
-          )}
         </div>
       )}
     </div>

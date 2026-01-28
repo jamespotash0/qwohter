@@ -280,17 +280,33 @@ export async function verifyOtp(email: string, token: string): Promise<AuthRespo
 
 /**
  * Resend OTP code
+ *
+ * Note: Supabase has rate limiting on OTP resends:
+ * - 60 second cooldown between resends
+ * - 4 emails per hour per email on free tier
+ *
+ * The API may return success even when rate limited and no email is sent.
  */
 export async function resendOtp(email: string): Promise<{ error: Error | null }> {
   try {
-    const { error } = await supabase.auth.resend({
+    console.log('[Auth] Attempting to resend OTP to:', email);
+
+    const { data, error } = await supabase.auth.resend({
       type: 'signup',
       email,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Auth] Resend OTP error:', error.message, error);
+      throw error;
+    }
+
+    // Log the response to help debug delivery issues
+    console.log('[Auth] Resend OTP response:', data);
+
     return { error: null };
   } catch (error) {
+    console.error('[Auth] Resend OTP caught error:', error);
     return {
       error: error instanceof Error ? error : new Error(String(error)),
     };

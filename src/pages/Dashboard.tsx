@@ -1,43 +1,82 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { parseLocalDate } from "@/lib/utils";
 import { PageContent } from "@/components/common/layout";
-import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
-import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CurrencyDollar,
   ChartLineUp,
-  CheckCircle,
   Bell,
-  PencilSimple,
-  Trash,
-  BellRinging,
   Plus,
   Clock,
   FileText,
-  DotsThreeVertical
 } from '@phosphor-icons/react';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useProposals } from "@/hooks/queries/useProposals";
 import { useUser, useProfile } from "@/auth";
-import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
-import { reminderService, type Reminder } from "@/services/reminderService";
-import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
+import { useNotifications, useMarkNotificationAsRead } from "@/hooks/useNotifications";
+import type { Notification } from "@/lib/types/notifications";
+import { useUpcomingReminders, type TaskReminder } from "@/hooks/useUpcomingReminders";
 import { toast } from "sonner";
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
 import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
 import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Real-time clock component - isolated to prevent parent re-renders
+ */
+const DashboardClock = memo(() => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-end gap-1 ml-6">
+      <div className="flex items-baseline gap-2">
+        <span className="text-3xl font-bold text-[var(--content-header-text)] tabular-nums">
+          {currentTime.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+          })}
+        </span>
+        <span className="text-lg font-medium text-[var(--content-muted-text)]">
+          {currentTime.toLocaleDateString('en-US', {
+            year: 'numeric'
+          })}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-[var(--content-muted-text)]">
+          {currentTime.toLocaleDateString('en-US', {
+            weekday: 'long'
+          })}
+        </span>
+        <span className="text-sm text-[var(--content-muted-text)]">•</span>
+        <span className="text-sm font-medium text-[var(--content-header-text)] tabular-nums">
+          {currentTime.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })}
+        </span>
+        <span className="text-xs text-[var(--content-muted-text)]">
+          {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ')}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+DashboardClock.displayName = 'DashboardClock';
 
 /**
  * Dashboard - Executive Overview
@@ -57,11 +96,13 @@ const Dashboard = () => {
   const organizationId = currentOrganization?.id || null;
   const { data: proposals = [], isLoading: proposalsLoading } = useProposals(organizationId || undefined);
 
-  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
+  // Notifications hooks
+  const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(user?.id);
+  const markNotificationAsRead = useMarkNotificationAsRead(user?.id || '');
 
-  const [showAddReminderModal, setShowAddReminderModal] = useState(false);
-  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  // Upcoming reminders from scheduled_notifications
+  const { data: upcomingReminders = [], isLoading: remindersLoading } = useUpcomingReminders(user?.id);
+
   const [showNewProposalDialog, setShowNewProposalDialog] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
@@ -163,160 +204,6 @@ const Dashboard = () => {
 
   // React Query automatically fetches proposals - no manual fetching needed!
 
-  const queryClient = useQueryClient();
-
-  // Fetch reminders and subscribe to real-time updates
-  useEffect(() => {
-    const fetchReminders = async () => {
-      if (!user || !organizationId) {
-        return;
-      }
-
-      const { data, error } = await reminderService.getReminders({
-        organizationId,
-        includeCompleted: true
-      });
-
-      if (error) {
-        console.error('Failed to fetch reminders:', error);
-        return;
-      }
-
-      if (data) {
-
-        // Filter out completed reminders older than 3 days
-        const now = new Date();
-        const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-
-        const filteredReminders = data.filter(reminder => {
-          if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
-            // Use updated_at as the completion date
-            const completedDate = new Date(reminder.updated_at);
-            return completedDate > threeDaysAgo;
-          }
-          return true; // Keep all non-completed reminders
-        });
-
-        setReminders(filteredReminders);
-      } else {
-      }
-    };
-
-    fetchReminders();
-  }, [user, organizationId]);
-
-  // Set up centralized realtime subscription for reminders
-  useRealtimeSubscription(
-    'reminders',
-    ['reminders', organizationId || ''],
-    { filter: `organization_id=eq.${organizationId}` },
-    !!(user && organizationId)
-  );
-
-  // Watch for reminders changes via query invalidation
-  useEffect(() => {
-    if (!user || !organizationId) return;
-
-    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
-      if (event?.query.queryKey[0] === 'reminders' && event?.query.queryKey[1] === organizationId) {
-        // Refetch all reminders to ensure we have complete data with joins
-        const { data } = await reminderService.getReminders({
-          organizationId,
-          includeCompleted: true
-        });
-        if (data) {
-          // Filter out completed reminders older than 3 days
-          const now = new Date();
-          const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-
-          const filteredReminders = data.filter(reminder => {
-            if (reminder.reminder_status === 'Completed') {
-              const completedDate = new Date(reminder.updated_at);
-              return completedDate > threeDaysAgo;
-            }
-            return true;
-          });
-
-          setReminders(filteredReminders);
-        }
-      }
-    });
-
-    return unsubscribe;
-  }, [user, organizationId, queryClient]);
-
-  // Reminder action handlers
-  const handleCompleteReminder = async (reminderId: string) => {
-    if (!user?.id || !organizationId) return;
-
-    const { error } = await reminderService.completeReminder(reminderId, {
-      status: 'Completed',
-      completed_by: user.id,
-    });
-
-    if (error) {
-      toast.error('Failed to complete reminder');
-      return;
-    }
-
-    toast.success('Reminder marked as completed');
-
-    // Refresh reminders list
-    const { data } = await reminderService.getReminders({
-      organizationId,
-      includeCompleted: true
-    });
-    if (data) {
-      // Filter out completed reminders older than 3 days
-      const now = new Date();
-      const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-
-      const filteredReminders = data.filter(reminder => {
-        if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
-          const completedDate = new Date(reminder.updated_at);
-          return completedDate > threeDaysAgo;
-        }
-        return true;
-      });
-
-      setReminders(filteredReminders);
-    }
-  };
-
-  const handleDeleteReminder = async (reminderId: string) => {
-    if (!user?.id || !organizationId) return;
-
-    const { success } = await reminderService.deleteReminder(reminderId);
-
-    if (!success) {
-      toast.error('Failed to delete reminder');
-      return;
-    }
-
-    toast.success('Reminder deleted');
-
-    // Refresh reminders list
-    const { data } = await reminderService.getReminders({
-      organizationId,
-      includeCompleted: true
-    });
-    if (data) {
-      // Filter out completed reminders older than 3 days
-      const now = new Date();
-      const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-
-      const filteredReminders = data.filter(reminder => {
-        if (reminder.reminder_status === 'Completed') { //reminder_status
-          const completedDate = new Date(reminder.updated_at);
-          return completedDate > threeDaysAgo;
-        }
-        return true;
-      });
-
-      setReminders(filteredReminders);
-    }
-  };
-
   // Calculate key metrics
   const metrics = useMemo(() => {
     const now = new Date();
@@ -387,14 +274,6 @@ const Dashboard = () => {
     const decidedLastMonth = wonLastMonth + rejectedLastMonth;
     const winRateLastMonth = decidedLastMonth > 0 ? ((wonLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';
 
-    // Calculate overdue reminders (not completed/dismissed and past due date)
-    const today = new Date();
-    const overdueReminders = reminders.filter(r => {
-      if (r.reminder_status === 'Completed' || r.reminder_status === 'Dismissed') return false; //reminder_status formerly status
-      const dueDate = parseLocalDate(r.due_date);
-      return dueDate < today;
-    }).length;
-
     return {
       totalRevenue,
       lastMonthRevenue,
@@ -404,75 +283,16 @@ const Dashboard = () => {
       winRateLastMonth,
       wonProposals,
       rejectedProposals,
-      overdueReminders
     };
-  }, [proposals, reminders]);
+  }, [proposals]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount);
-  };
-
-  // Real-time clock for dashboard header
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Quote of the Day - Fetch from API
-  const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string }>({
-    text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
-    author: "Stephen Covey"
-  });
-
-  useEffect(() => {
-    const fetchDailyQuote = async () => {
-      try {
-        // Check localStorage cache
-        const today = new Date().toISOString().split('T')[0] ?? '';
-        const cachedDate = localStorage.getItem('daily_quote_date');
-        const cachedQuote = localStorage.getItem('daily_quote');
-
-        if (cachedDate === today && cachedQuote) {
-          setDailyQuote(JSON.parse(cachedQuote));
-          return;
-        }
-
-        // Fetch from QuoteSlate API (free, no key required)
-        const response = await fetch('https://quoteslate.vercel.app/api/quotes/random?categories=motivational,business,success');
-
-        if (!response.ok) {
-          return; // Keep default quote
-        }
-
-        const data = await response.json();
-
-        if (data && data.quote) {
-          const newQuote = {
-            text: data.quote,
-            author: data.author || 'Unknown'
-          };
-          setDailyQuote(newQuote);
-
-          // Cache for today
-          localStorage.setItem('daily_quote', JSON.stringify(newQuote));
-          localStorage.setItem('daily_quote_date', today);
-        }
-      } catch {
-        // Keep default quote on error
-      }
-    };
-
-    fetchDailyQuote();
   }, []);
 
   return (
@@ -504,49 +324,12 @@ const Dashboard = () => {
 
       {/* Dashboard Header */}
       <div className="mb-8 flex items-start justify-between">
-        <div className="flex-1 max-w-3xl">
-          <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
-            Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}!
+        <div className="flex-1">
+          <h1 className="text-3xl font-semibold text-[var(--content-header-text)]">
+            Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}
           </h1>
-          <div className="mt-3">
-            <p className="text-[15px] text-[var(--content-header-text)] italic leading-relaxed">
-              &ldquo;{dailyQuote?.text}&rdquo; <span className="text-[14px] text-[var(--content-header-text)] not-italic font-bold">— {dailyQuote?.author}</span>
-            </p>
-          </div>
         </div>
-        <div className="flex flex-col items-end gap-1 ml-6">
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[var(--content-header-text)] tabular-nums">
-              {currentTime.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-              })}
-            </span>
-            <span className="text-lg font-medium text-[var(--content-muted-text)]">
-              {currentTime.toLocaleDateString('en-US', {
-                year: 'numeric'
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-[var(--content-muted-text)]">
-              {currentTime.toLocaleDateString('en-US', {
-                weekday: 'long'
-              })}
-            </span>
-            <span className="text-sm text-[var(--content-muted-text)]">•</span>
-            <span className="text-sm font-medium text-[var(--content-header-text)] tabular-nums">
-              {currentTime.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-              })}
-            </span>
-            <span className="text-xs text-[var(--content-muted-text)]">
-              {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ')}
-            </span>
-          </div>
-        </div>
+        <DashboardClock />
       </div>
 
       {/* Key Metrics Row */}
@@ -636,16 +419,19 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Overdue Reminders */}
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+            {/* Tasks */}
+            <Card
+              className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer"
+              onClick={() => navigate('/task-board')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueReminders > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
-                    <BellRinging weight="duotone" className={`w-6 h-6 ${metrics.overdueReminders > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
+                  <div className="p-3 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900 dark:to-amber-800">
+                    <Clock weight="duotone" className="w-6 h-6 text-amber-600 dark:text-amber-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Reminders</h3>
-                    <p className={`text-2xl font-bold ${metrics.overdueReminders > 0 ? 'text-red-600 dark:text-red-400' : 'text-[var(--content-header-text)]'}`}>{metrics.overdueReminders}</p>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Task Board</h3>
+                    <p className="text-sm text-[var(--content-muted-text)]">View & manage tasks</p>
                   </div>
                 </div>
               </CardContent>
@@ -705,186 +491,109 @@ const Dashboard = () => {
             </CardContent>
             </Card>
 
-            {/* Reminders & Alerts Card */}
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col h-[600px]">
+            {/* Reminders Card - Shows upcoming scheduled reminders */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col h-[300px]">
               <CardHeader className="pb-4 flex-shrink-0">
-                <CardTitle className="flex items-center justify-between text-[var(--content-header-text)]">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-5 h-5" />
-                    Reminders & Alerts
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowAddReminderModal(true)}
-                    className="h-8 px-3 bg-dark-gray hover:bg-charcoal"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add
-                  </Button>
+                <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
+                  <Clock className="w-5 h-5" />
+                  Upcoming Reminders
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pb-0 flex-1 flex flex-col">
+              <CardContent className="flex-1 flex flex-col overflow-hidden">
                 {(() => {
-                  return null;
-                })()}
-                {reminders.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                      <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                      <p className="text-[var(--content-muted-text)]">
-                        No reminders
-                      </p>
-                      <p className="text-sm text-[var(--content-muted-text)] mt-1">
-                        Click "Add" to create a reminder
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 flex-1 overflow-y-auto pr-2 -mr-2">
-                    {reminders.map((reminder) => {
-                      const dueDate = parseLocalDate(reminder.due_date);
-                      const isOverdue = isPast(dueDate) && !isToday(dueDate);
-                      const isDueToday = isToday(dueDate);
-                      const isDueTomorrow = isTomorrow(dueDate);
-
-                      const getTypeColor = (type: string) => {
-                        switch (type) {
-                          case 'Proposal_Follow_Up':
-                            return 'text-blue-600 bg-blue-50';
-                          case 'Meeting':
-                            return 'text-purple-600 bg-purple-50';
-                          case 'Deadline':
-                            return 'text-red-600 bg-red-50';
-                          case 'Task':
-                            return 'text-green-600 bg-green-50';
-                          default:
-                            return 'text-gray-600 bg-gray-50';
-                        }
-                      };
- 
-                      const isCompleted = reminder.reminder_status === 'Completed'; //reminder_status formerly status
-
-                      return (
-                        <div
-                          key={reminder.id}
-                          className={`p-4 rounded-lg border transition-all group ${
-                            isCompleted
-                              ? 'border-green-200 bg-green-50 opacity-75'
-                              : 'border-gray-200 bg-white hover:bg-blue-50 cursor-pointer'
-                          }`}
-                        >
-                          {/* Header: Title, Time, and Ellipsis */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                {isCompleted && (
-                                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                                )}
-                                <h4 className={`font-semibold ${isCompleted ? 'text-gray-600 line-through' : 'text-gray-900'}`}>
-                                  {reminder.title}
-                                </h4>
-                              </div>
-
-                              {/* Proposal Reference (no spacing) */}
-                              {reminder.proposal_number && (
-                                <p className={`text-xs ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
-                                  #{reminder.proposal_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
-                                </p>
-                              )}
-
-                              {/* Description with spacing from quote */}
-                              {reminder.description && (
-                                <p className={`text-sm mt-2 line-clamp-2 ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
-                                  {reminder.description}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Time and Ellipsis on right side */}
-                            <div className="flex flex-col items-end flex-shrink-0">
-                              {/* Time in top right */}
-                              <span className={`text-xs font-medium whitespace-nowrap ${
-                                isOverdue
-                                  ? 'text-red-600'
-                                  : isDueToday
-                                  ? 'text-yellow-600'
-                                  : 'text-gray-500'
-                              }`}>
-                                {isOverdue && `Overdue by ${formatDistanceToNow(dueDate)}`}
-                                {isDueToday && 'Due today'}
-                                {isDueTomorrow && 'Due tomorrow'}
-                                {!isOverdue && !isDueToday && !isDueTomorrow &&
-                                  `Due ${formatDistanceToNow(dueDate, { addSuffix: true })}`}
-                              </span>
-
-                              {/* Ellipsis in middle right with custom spacing */}
-                              <div className="mt-6">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                      <DotsThreeVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {!isCompleted && (
-                                    <>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setEditingReminder(reminder);
-                                          setShowAddReminderModal(true);
-                                        }}
-                                      >
-                                        <PencilSimple className="w-4 h-4 mr-2" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleCompleteReminder(reminder.id)}
-                                      >
-                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                        Complete
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteReminder(reminder.id)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Footer: Type Badge + Creator */}
-                          <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
-                            <span className="text-xs text-gray-500">
-                              Created by {reminder.creator_name || 'Unknown'}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-1 rounded-full font-medium ${getTypeColor(
-                                reminder.reminder_type
-                              )}`}
-                            >
-                              {reminder.reminder_type.replace('_', ' ')}
-                            </span>
-                          </div>
+                  if (remindersLoading) {
+                    return (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="animate-pulse">
+                          <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-3"></div>
+                          <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mx-auto"></div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </div>
+                    );
+                  }
+
+                  if (upcomingReminders.length === 0) {
+                    return (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center">
+                          <Clock className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                          <p className="text-[var(--content-muted-text)]">
+                            No upcoming reminders
+                          </p>
+                          <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                            Set reminders on tasks to see them here
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
+                      {upcomingReminders.map((reminder: TaskReminder) => {
+                        // Extract task reference for navigation
+                        const taskReference = reminder.metadata?.task_reference as string | undefined;
+
+                        const handleReminderClick = () => {
+                          // Navigate to task board with task reference (preferred) or task id
+                          const taskParam = taskReference || reminder.taskId;
+                          navigate(`/task-board?task=${taskParam}`);
+                        };
+
+                        const scheduledDate = new Date(reminder.scheduledFor);
+                        const isPast = scheduledDate < new Date();
+
+                        // Extract task title from "Reminder: {title}" format
+                        const taskTitle = (reminder.title || 'Task Reminder').replace(/^Reminder:\s*/i, '') || 'Task';
+
+                        return (
+                          <div
+                            key={reminder.id}
+                            onClick={handleReminderClick}
+                            className={`p-3 rounded-lg border transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 ${
+                              isPast
+                                ? 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
+                                : 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <Clock className={`w-4 h-4 ${isPast ? 'text-red-500' : 'text-amber-500'}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                                  {taskReference && <span>{taskReference} - </span>}
+                                  {taskTitle}
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1">
+                                  {reminder.recurrence !== 'Once' && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 mr-1">
+                                      {reminder.recurrence}
+                                    </span>
+                                  )}
+                                  {scheduledDate.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                  {formatDistanceToNow(scheduledDate, { addSuffix: true })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - Notifications (Coming Soon) */}
+          {/* Right Column - Notifications */}
           <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col self-start" style={{ height: '900px' }}>
             <CardHeader className="pb-4 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
@@ -893,56 +602,100 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="relative pb-4 flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
-                  <p className="text-[var(--content-muted-text)]">
-                    No notifications
-                  </p>
-                  <p className="text-sm text-[var(--content-muted-text)] mt-1">
-                    Notifications will appear here
-                  </p>
+              {notificationsLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-pulse">
+                      <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-3"></div>
+                      <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mx-auto"></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : notifications.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
+                    <p className="text-[var(--content-muted-text)]">
+                      No notifications
+                    </p>
+                    <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                      Notifications will appear here
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
+                  {notifications.map((notification: Notification) => {
+                    // Notification types that require action (should show "View" button)
+                    const ACTION_REQUIRED_TYPES = ['approval_requested', 'task_assigned'];
+                    const requiresAction = ACTION_REQUIRED_TYPES.includes(notification.type) && notification.link;
+
+                    // Mark as read when clicking on the notification
+                    const handleMarkAsRead = () => {
+                      if (!notification.is_read) {
+                        markNotificationAsRead.mutate(notification.id);
+                      }
+                    };
+
+                    // Navigate to the linked page (separate action)
+                    const handleViewAction = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      if (notification.link) {
+                        handleMarkAsRead();
+                        navigate(notification.link);
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={notification.id}
+                        onClick={handleMarkAsRead}
+                        className={`p-4 rounded-lg border transition-all cursor-pointer ${
+                          !notification.is_read
+                            ? 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700'
+                            : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Red dot for unread, invisible placeholder for read */}
+                          <div className="flex-shrink-0 mt-1.5">
+                            {!notification.is_read ? (
+                              <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            ) : (
+                              <div className="w-2 h-2"></div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${!notification.is_read ? 'font-semibold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
+                              {notification.title}
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-xs text-gray-400 dark:text-gray-500">
+                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                              </p>
+                              {requiresAction && (
+                                <button
+                                  onClick={handleViewAction}
+                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                                >
+                                  View
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Add Reminder Modal */}
-      <AddReminderModal
-        open={showAddReminderModal}
-        editingReminder={editingReminder}
-        onClose={() => {
-          setShowAddReminderModal(false);
-          setEditingReminder(null);
-        }}
-        onReminderCreated={async () => {
-          // Refresh reminders list
-          if (organizationId) {
-            const { data } = await reminderService.getReminders({
-              organizationId,
-              includeCompleted: true
-            });
-            if (data) {
-              // Filter out completed reminders older than 3 days
-              const now = new Date();
-              const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
-
-              const filteredReminders = data.filter(reminder => {
-                if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
-                  const completedDate = new Date(reminder.updated_at);
-                  return completedDate > threeDaysAgo;
-                }
-                return true;
-              });
-
-              setReminders(filteredReminders);
-            }
-          }
-          setEditingReminder(null);
-        }}
-      />
 
       {/* Create Proposal Dialog */}
       <CreateProposalDialog

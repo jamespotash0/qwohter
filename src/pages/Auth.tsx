@@ -1,27 +1,26 @@
 /**
- * Auth Page - Refactored
- * Clean, modular multi-step authentication flow
+ * Auth Page - Redesigned to Match Landing Page
  *
- * Structure:
- * - Uses extracted hooks for state management
- * - Uses extracted actions for business logic
- * - Uses extracted utilities for helpers
- * - Main component is just orchestration (~200 lines)
+ * Matches the landing page aesthetic:
+ * - Warm cream (#FFFEFA) background
+ * - Dark gradient panel with coral blur orbs
+ * - Urbanist typography
+ * - Clean, award-winning design
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
-import { LogoUploadResult } from "@/services/LogoUploadService";
-import { validateInviteTokenDetailed } from "@/utils/inviteTokens";
+import { SignupRecoveryPrompt } from "@/components/auth/SignupRecoveryPrompt";
+import { InviteRequiredScreen } from "@/components/auth/InviteRequiredScreen";
+import { validateInviteTokenDetailed, validateSignupInviteToken } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
 import * as authService from "@/auth/services/authService";
@@ -36,9 +35,6 @@ import {
   handleOrganizationSubmit,
   handleInviteJoin,
   handleCompanyInfoSubmit,
-  handleCompanyInfoSkip,
-  handleLogoUpload,
-  handleLogoError,
 } from "./Auth/actions";
 
 // Import extracted utilities
@@ -63,14 +59,49 @@ const Auth = () => {
   const [otpAttempts, setOtpAttempts] = useState(0);
   const MAX_OTP_ATTEMPTS = 3;
 
+  // Track invite token validation to prevent form flash
+  const [validatingInviteToken, setValidatingInviteToken] = useState(() => {
+    // Initialize to true if URL has invite token - prevents form flash
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasTeamInvite = !!(urlParams.get('invite') && location.pathname === '/create-account');
+    const hasAppInvite = !!(urlParams.get('appinvite') && location.pathname === '/create-account');
+    return hasTeamInvite || hasAppInvite;
+  });
+
+  // Track processed app invite tokens to prevent loops
+  const processedAppInviteTokenRef = useRef<string | null>(null);
+
+  // Track when user tries to access create-account without an invite
+  const [showInviteRequired, setShowInviteRequired] = useState(false);
+
   // Determine if user is an invitee (has pending invite token or organizationId set)
   const isInvitee = !!(formState.organizationId || sessionStorage.getItem('pendingInviteToken'));
+
+  // ============================================================================
+  // BLOCK PUBLIC SIGN-UP (require invite token)
+  // ============================================================================
+  useEffect(() => {
+    // Only check on /create-account route
+    if (location.pathname !== '/create-account') return;
+
+    const urlParams = new URLSearchParams(location.search);
+    const inviteToken = urlParams.get('invite');
+    const appInvite = urlParams.get('appinvite');
+    const pendingInvite = sessionStorage.getItem('pendingInviteToken');
+    const pendingSignupInvite = sessionStorage.getItem('pendingSignupInviteToken');
+
+    // If no invite token of any kind, show the invite required screen
+    if (!inviteToken && !appInvite && !pendingInvite && !pendingSignupInvite) {
+      setShowInviteRequired(true);
+    } else {
+      setShowInviteRequired(false);
+    }
+  }, [location.pathname, location.search]);
 
   // ============================================================================
   // RESET FORM WHEN SWITCHING BETWEEN SIGN-IN AND CREATE-ACCOUNT
   // ============================================================================
   useEffect(() => {
-    // Reset form fields when route changes between sign-in and create-account
     formState.resetFormFields();
   }, [location.pathname]);
 
@@ -81,30 +112,22 @@ const Auth = () => {
     const urlParams = new URLSearchParams(location.search);
     const inviteToken = urlParams.get('invite');
 
-    // Skip if no invite token or already processed this token
     if (!inviteToken || !inviteToken.trim()) return;
     if (processedInviteTokenRef.current === inviteToken.trim()) {
-      console.log('Invite token already processed, skipping');
       return;
     }
 
-    // Prevent multiple executions
     if (formState.organizationId) return;
 
-    // Handle secure invite token
     const handleInviteToken = async () => {
+      setValidatingInviteToken(true);
       try {
-        // Mark token as being processed to prevent loops
         processedInviteTokenRef.current = inviteToken.trim();
 
-        // FIRST: Check if user is currently logged in
         const session = await authService.getSession();
 
         if (session) {
-          console.log('User logged in, signing out to process invite token');
-          // Sign out the current user to allow invite acceptance
           await authService.signOut();
-          // Clear any cached auth state
           clearAuthState();
 
           toast({
@@ -113,18 +136,13 @@ const Auth = () => {
           });
         }
 
-        // THEN: Validate the invite token with detailed error information
         const validationResult = await validateInviteTokenDetailed(inviteToken.trim());
 
         if (validationResult.success && validationResult.data) {
-          console.log('✅ Invite token validated, setting organizationId:', validationResult.data.organization_id);
           formState.setOrganizationId(validationResult.data.organization_id);
-          // Store both invite token AND organizationId for later use after OTP verification
           sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
           sessionStorage.setItem('pendingOrganizationId', validationResult.data.organization_id);
-          console.log('✅ Stored pendingInviteToken and pendingOrganizationId in sessionStorage');
 
-          // SECURITY: Remove token from URL to prevent leakage via history/logs/screenshots
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete('invite');
           window.history.replaceState({}, '', newUrl.toString());
@@ -133,40 +151,44 @@ const Auth = () => {
             title: "Invite link detected",
             description: "You've been invited to join an organization",
           });
+
+          // Token is valid - show the form
+          setValidatingInviteToken(false);
         } else {
-          // Show specific error message based on failure type
-          const errorMessage = validationResult.error?.userMessage || "This invite link is invalid.";
-          const errorTitle = validationResult.error?.type === 'expired'
-            ? "Invitation Expired"
-            : validationResult.error?.type === 'used'
-            ? "Invitation Already Used"
-            : validationResult.error?.type === 'revoked'
-            ? "Invitation Revoked"
-            : "Invalid Invitation";
+          // Navigate to the invalid invitation page with error type
+          const errorType = validationResult.error?.type || 'Invalid';
 
-          toast({
-            title: errorTitle,
-            description: errorMessage,
-            variant: "destructive",
-          });
-
-          // Clear the ref if token was invalid so user can try again
           processedInviteTokenRef.current = null;
 
-          // Redirect to login page since invite is invalid
-          setTimeout(() => {
-            navigate('/');
-          }, 3000);
+          // Remove the invite param from URL before navigating
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('invite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          navigate('/invalid-invitation', {
+            replace: true,
+            state: {
+              errorType,
+              fromInviteValidation: true,
+            },
+          });
         }
       } catch (error) {
         console.error('Error validating invite token:', error);
-        toast({
-          title: "Error",
-          description: "Could not validate invite link",
-          variant: "destructive",
-        });
-        // Clear the ref on error so user can retry
         processedInviteTokenRef.current = null;
+
+        // Remove the invite param from URL before navigating
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('invite');
+        window.history.replaceState({}, '', newUrl.toString());
+
+        navigate('/invalid-invitation', {
+          replace: true,
+          state: {
+            errorType: 'Invalid',
+            fromInviteValidation: true,
+          },
+        });
       }
     };
 
@@ -174,28 +196,122 @@ const Auth = () => {
   }, [location.search]);
 
   // ============================================================================
+  // APP INVITE TOKEN HANDLING (for new organization signups)
+  // ============================================================================
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const appInviteToken = urlParams.get('appinvite');
+
+    // Only process on /create-account route
+    if (location.pathname !== '/create-account') return;
+    if (!appInviteToken || !appInviteToken.trim()) return;
+    if (processedAppInviteTokenRef.current === appInviteToken.trim()) {
+      return;
+    }
+
+    // Skip if we already have a pending signup invite
+    if (sessionStorage.getItem('pendingSignupInviteToken')) {
+      setValidatingInviteToken(false);
+      return;
+    }
+
+    const handleAppInviteToken = async () => {
+      setValidatingInviteToken(true);
+      try {
+        processedAppInviteTokenRef.current = appInviteToken.trim();
+
+        // Sign out existing user if any
+        const session = await authService.getSession();
+        if (session) {
+          await authService.signOut();
+          clearAuthState();
+        }
+
+        // Validate the signup invite token
+        const validationResult = await validateSignupInviteToken(appInviteToken.trim());
+
+        if (validationResult.success && validationResult.data) {
+          // Store the validated signup invite for use after OTP verification
+          sessionStorage.setItem('pendingSignupInviteToken', appInviteToken.trim());
+          sessionStorage.setItem('pendingSignupInviteEmail', validationResult.data.email);
+
+          // Pre-fill the email if available
+          if (validationResult.data.email) {
+            formState.setEmail(validationResult.data.email);
+          }
+
+          // Remove the appinvite param from URL
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('appinvite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          toast({
+            title: "Signup invitation validated",
+            description: "Create your account to get started",
+          });
+
+          // Token is valid - show the form
+          setValidatingInviteToken(false);
+        } else {
+          // Navigate to the invalid invitation page with error type
+          const errorType = validationResult.error?.type || 'Invalid';
+
+          processedAppInviteTokenRef.current = null;
+
+          // Remove the appinvite param from URL before navigating
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('appinvite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          navigate('/invalid-invitation', {
+            replace: true,
+            state: {
+              errorType,
+              fromInviteValidation: true,
+              isSignupInvite: true,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Error validating app invite token:', error);
+        processedAppInviteTokenRef.current = null;
+
+        // Remove the appinvite param from URL before navigating
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('appinvite');
+        window.history.replaceState({}, '', newUrl.toString());
+
+        navigate('/invalid-invitation', {
+          replace: true,
+          state: {
+            errorType: 'Invalid',
+            fromInviteValidation: true,
+            isSignupInvite: true,
+          },
+        });
+      }
+    };
+
+    handleAppInviteToken();
+  }, [location.search, location.pathname]);
+
+  // ============================================================================
   // STATE RESTORATION
   // ============================================================================
   useEffect(() => {
-    // Prevent running if already redirecting
     if (authFlow.redirectingRef.current) return;
 
     const restoreState = async () => {
       const savedState = loadAuthState();
 
       if (savedState) {
-        console.log('Found saved auth state:', savedState);
-
-        // Validate that the session still exists before restoring state
         const session = await authService.getSession();
 
         if (!session || (savedState.userId && session.user.id !== savedState.userId)) {
-          console.log('Session invalid or user mismatch, clearing saved state');
           clearAuthState();
-          // Don't return here - check for temp signup data below
+          // Also clear temp signup data to prevent OTP state from being restored
+          tempSignupService.clear();
         } else {
-          console.log('Session valid, restoring auth state');
-
           if (savedState.email) formState.setEmail(savedState.email);
           if (savedState.userId) authFlow.setUserId(savedState.userId);
           if (savedState.fullName) formState.setFullName(savedState.fullName);
@@ -204,22 +320,28 @@ const Auth = () => {
           if (savedState.step && savedState.step !== 'auth') {
             authFlow.setStep(savedState.step as any);
           }
-          return; // State restored from session, we're done
+          return;
+        }
+      } else {
+        // loadAuthState() returned null - check for interrupted signup flow
+        const tempData = tempSignupService.get();
+        if (tempData && tempData.otpSent) {
+          // User was in OTP verification but got interrupted (reload/navigation)
+          // Show recovery prompt instead of auto-navigating to OTP or clearing
+          console.log('[Auth] Detected interrupted signup flow, showing recovery prompt');
+          formState.setEmail(tempData.email);
+          formState.setFullName(tempData.fullName);
+          authFlow.setStep('signup-recovery');
+          return;
         }
       }
 
-      // No valid session-based state - check for temp signup data
-      // This handles the case where user refreshed during OTP verification
+      // Only restore from tempSignupService if user hasn't sent OTP yet
+      // This allows pre-filled form data to persist, but prevents OTP loop
       const tempData = tempSignupService.get();
-      if (tempData && tempData.otpSent) {
-        console.log('Found temp signup data with OTP sent, restoring to OTP verification step');
+      if (tempData && !tempData.otpSent) {
         formState.setEmail(tempData.email);
         formState.setFullName(tempData.fullName);
-        authFlow.setStep('verify-otp');
-        // Save state so we can track the flow
-        saveAuthState({ step: 'verify-otp', email: tempData.email, fullName: tempData.fullName });
-      } else {
-        console.log('No restorable state found');
       }
     };
 
@@ -231,39 +353,31 @@ const Auth = () => {
   // ============================================================================
   useEffect(() => {
     const checkOnboardingCompletion = async () => {
-      // Only check on auth step
       if (authFlow.step !== 'auth') return;
       if (authFlow.redirectingRef.current) return;
 
-      // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
       const session = await authService.getSession();
       if (!session) return;
 
       try {
-        // Check if user has completed onboarding via memberships
         const { data: membership } = await supabase
           .from('memberships')
-          .select('id, status') //membership_status
+          .select('id, status')
           .eq('user_id', session.user.id)
-          .eq('status', 'Active') //membership_status
+          .eq('status', 'Active')
           .maybeSingle();
 
-        // Check if profile has full_name
         const { data: profile } = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', session.user.id)
           .maybeSingle();
 
-        // Explicitly type profile to avoid TS error
         const typedProfile = profile as { full_name?: string } | null;
 
-        // If user has completed onboarding (has name and active membership), redirect to dashboard
         if (typedProfile?.full_name && membership) {
-          console.log('User has completed onboarding, redirecting to dashboard');
           authFlow.redirectingRef.current = true;
           clearAuthState();
-          // Add delay to ensure session is fully established before redirect
           setTimeout(() => {
             redirectAfterAuth(navigate);
           }, 500);
@@ -277,7 +391,7 @@ const Auth = () => {
   }, [authFlow.step]);
 
   // ============================================================================
-  // EVENT HANDLERS (Using extracted actions)
+  // EVENT HANDLERS
   // ============================================================================
 
   const onAuthSubmit = async (e: React.FormEvent) => {
@@ -285,7 +399,6 @@ const Auth = () => {
     await handleAuth({
       email: formState.email,
       password: formState.password,
-      confirmPassword: formState.confirmPassword,
       firstName: formState.firstName,
       lastName: formState.lastName,
       isSignUp: authFlow.isSignUp,
@@ -304,28 +417,16 @@ const Auth = () => {
   const onOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check if there's a pending invite token BEFORE OTP verification
     const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
     const pendingOrgId = sessionStorage.getItem('pendingOrganizationId');
 
-    // Restore organizationId from sessionStorage if it's not in state
     if (pendingOrgId && !formState.organizationId) {
-      console.log('🔄 Restoring organizationId from sessionStorage:', pendingOrgId);
       formState.setOrganizationId(pendingOrgId);
     }
 
     const effectiveOrgId = formState.organizationId || pendingOrgId || undefined;
     const isInviteeCheck = !!(pendingInviteToken && effectiveOrgId);
 
-    console.log('🔍 OTP Submit - Checking invite status:', {
-      hasPendingToken: !!pendingInviteToken,
-      hasPendingOrgId: !!pendingOrgId,
-      hasFormStateOrgId: !!formState.organizationId,
-      effectiveOrgId,
-      isInvitee: isInviteeCheck,
-    });
-
-    // Check if max attempts reached
     if (otpAttempts >= MAX_OTP_ATTEMPTS) {
       toast({
         title: "Too Many Attempts",
@@ -348,12 +449,10 @@ const Auth = () => {
       organizationId: effectiveOrgId,
     });
 
-    // Track failed attempts
     if (!result.success) {
       const newAttempts = otpAttempts + 1;
       setOtpAttempts(newAttempts);
 
-      // Show contextual error message
       if (newAttempts >= MAX_OTP_ATTEMPTS) {
         toast({
           title: "Too Many Failed Attempts",
@@ -371,18 +470,9 @@ const Auth = () => {
       return;
     }
 
-    // Reset attempts on success
     setOtpAttempts(0);
 
-    // After successful OTP verification, if this is an invitee, join the organization
     if (result.success && isInviteeCheck && result.userId && effectiveOrgId && pendingInviteToken) {
-      console.log('🎯 Processing invite join after OTP verification', {
-        userId: result.userId,
-        organizationId: effectiveOrgId,
-        hasToken: !!pendingInviteToken
-      });
-
-      // Process the invite join automatically
       await handleInviteJoin({
         userId: result.userId,
         organizationId: effectiveOrgId,
@@ -393,7 +483,6 @@ const Auth = () => {
         queryClient,
       });
 
-      // Clear the pending invite data
       sessionStorage.removeItem('pendingInviteToken');
       sessionStorage.removeItem('pendingOrganizationId');
     }
@@ -403,7 +492,6 @@ const Auth = () => {
     const { error } = await authService.resendOtp(formState.email);
 
     if (error) {
-      // Extract the wait time from Supabase error message
       const waitTimeMatch = error.message?.match(/after (\d+) seconds/);
 
       if (waitTimeMatch && waitTimeMatch[1]) {
@@ -420,90 +508,26 @@ const Auth = () => {
           variant: "destructive"
         });
       } else {
-        // Show the actual error message so user knows what went wrong
         toast({
           title: "Resend Failed",
           description: error.message || "Failed to resend verification code.",
           variant: "destructive"
         });
       }
-      return;
+      // Throw so OtpVerificationForm knows resend failed and won't show success overlay
+      throw new Error(error.message || "Failed to resend code");
     }
 
-    // Update the OTP sent status if temp data exists
     const tempData = tempSignupService.get();
     if (tempData) {
       tempSignupService.markOtpSent();
     }
 
-    // Reset OTP attempts
     setOtpAttempts(0);
 
     toast({
       title: "Code Sent!",
-      description: "A new verification code has been sent to your email."
-    });
-  };
-
-  const onChangeEmail = async (newEmail: string) => {
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive"
-      });
-      throw new Error("Invalid email format");
-    }
-
-    const tempData = tempSignupService.get();
-    if (!tempData) {
-      toast({
-        title: "Session Expired",
-        description: "Please start the signup process again.",
-        variant: "destructive"
-      });
-      throw new Error("No temp signup data");
-    }
-
-    // Update the email in form state
-    formState.setEmail(newEmail);
-
-    // Clear OTP code
-    formState.setOtpCode("");
-
-    // Initiate a NEW signup with the new email (this will send a new OTP)
-    // This creates a fresh signup flow for the new email
-    const { error } = await authService.signUp({
-      email: newEmail,
-      password: tempData.password,
-      fullName: tempData.fullName
-    });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: `Failed to send code to new email: ${error.message}`,
-        variant: "destructive"
-      });
-      throw error;
-    }
-
-    // Update temp signup data with new email
-    tempSignupService.store({
-      email: newEmail,
-      password: tempData.password,
-      fullName: tempData.fullName
-    });
-    tempSignupService.markOtpSent();
-
-    // Reset OTP attempts
-    setOtpAttempts(0);
-
-    toast({
-      title: "Email Updated",
-      description: `A verification code has been sent to ${newEmail}`,
+      description: "Check your inbox. If no email arrives, wait 60 seconds before trying again."
     });
   };
 
@@ -524,9 +548,7 @@ const Auth = () => {
       saveAuthState,
     });
 
-    // Invalidate organization query to refetch the newly created org
     if (authFlow.userId) {
-      console.log('🔄 Invalidating organization query for userId:', authFlow.userId);
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.byUser(authFlow.userId)
       });
@@ -552,206 +574,408 @@ const Auth = () => {
     });
   };
 
-  const onCompanyInfoSkip = () => {
-    handleCompanyInfoSkip({
-      toast,
-      clearAuthState,
-      navigate,
+  // Recovery flow handlers
+  const onRecoveryContinue = async () => {
+    // Resend OTP and navigate to verification
+    const { error } = await authService.resendOtp(formState.email);
+
+    if (error) {
+      toast({
+        title: "Could not send code",
+        description: error.message || "Please try again or start over.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+
+    // Update temp signup to mark OTP as sent with fresh timestamp
+    const tempData = tempSignupService.get();
+    if (tempData) {
+      tempSignupService.store({
+        email: tempData.email,
+        password: tempData.password,
+        fullName: tempData.fullName,
+      });
+      tempSignupService.markOtpSent();
+    }
+
+    setOtpAttempts(0);
+    authFlow.setStep('verify-otp');
+    saveAuthState({ step: 'verify-otp', email: formState.email, fullName: formState.fullName });
+
+    toast({
+      title: "Code Sent!",
+      description: "Check your inbox for the verification code."
     });
   };
 
-  const onLogoUpload = (result: LogoUploadResult) => {
-    handleLogoUpload(result, {
-      setCurrentLogoUrl: companyInfo.setCurrentLogoUrl,
-      toast,
-    });
+  const onRecoveryStartOver = () => {
+    // Clear all temp data and go back to signup form
+    tempSignupService.clear();
+    clearAuthState();
+    sessionStorage.removeItem('pendingSignupInviteToken');
+    sessionStorage.removeItem('pendingSignupInviteEmail');
+    formState.setEmail('');
+    formState.setFullName('');
+    formState.setPassword('');
+    formState.setOtpCode('');
+    authFlow.setStep('auth');
+    navigate('/create-account');
   };
 
-  const onLogoError = (error: string) => {
-    handleLogoError(error, toast);
+  // Sign out and switch to different account
+  const handleSwitchAccount = async () => {
+    try {
+      // Sign out from Supabase if authenticated
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+
+    // Clear all state
+    tempSignupService.clear();
+    clearAuthState();
+    sessionStorage.removeItem('pendingSignupInviteToken');
+    sessionStorage.removeItem('pendingSignupInviteEmail');
+    sessionStorage.removeItem('pendingInviteToken');
+    sessionStorage.removeItem('pendingOrganizationId');
+    formState.setEmail('');
+    formState.setFullName('');
+    formState.setPassword('');
+    formState.setOtpCode('');
+    formState.setOrgName('');
+    companyInfo.setCompanyPhone('');
+    companyInfo.setCompanyFax('');
+    companyInfo.setCompanyAddress('');
+    companyInfo.setCompanyWebsite('');
+    formState.setIndustry('');
+    formState.setFoundVia('');
+
+    // Navigate to sign-in
+    authFlow.setStep('auth');
+    navigate('/sign-in');
+  };
+
+  // ============================================================================
+  // RENDER HELPERS
+  // ============================================================================
+
+  const getStepTitle = () => {
+    if (authFlow.step === "auth") return authFlow.isSignUp ? "Create your account" : "Welcome back";
+    if (authFlow.step === "signup-recovery") return "Welcome back";
+    if (authFlow.step === "verify-otp") return "Verify your email";
+    if (authFlow.step === "organization") return "Set up your organization";
+    if (authFlow.step === "company-info") return "Company details";
+    return "";
+  };
+
+  const getStepSubtitle = () => {
+    if (authFlow.step === "auth") return authFlow.isSignUp
+      ? "Start creating winning proposals in minutes"
+      : "Sign in to continue building proposals";
+    if (authFlow.step === "signup-recovery") return "Pick up where you left off";
+    if (authFlow.step === "verify-otp") return "We sent a code to your email";
+    if (authFlow.step === "organization") return "Create your workspace";
+    if (authFlow.step === "company-info") return "Help us personalize your experience";
+    return "";
   };
 
   // ============================================================================
   // RENDER
   // ============================================================================
 
-  return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Header with logo - matching landing page */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+  // Show loading state while validating invite token to prevent form flash
+  if (validatingInviteToken) {
+    return (
+      <div className="min-h-screen bg-[#FFFEFA] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-[#EE6C4D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p
+            className="text-[#171717]/50 text-sm"
+            style={{ fontFamily: 'Urbanist, sans-serif' }}
+          >
+            Validating invitation...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show invite required screen when accessing /create-account without an invite
+  if (showInviteRequired) {
+    return (
+      <div className="min-h-screen bg-[#FFFEFA] flex">
+        {/* Left Panel - Cream & Pink Style (same as main auth) */}
+        <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] flex-col items-center justify-center p-10 xl:p-12 relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div
-              className="flex items-center cursor-pointer"
+              className="absolute top-[-100px] right-[-150px] w-[500px] h-[500px] rounded-full blur-[100px] opacity-40"
+              style={{ background: '#EE6C4D' }}
+            />
+            <div
+              className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] rounded-full blur-[80px] opacity-30"
+              style={{ background: '#F7C4BB' }}
+            />
+          </div>
+          <div className="relative z-10 text-center max-w-[600px] px-4">
+            <div className="cursor-pointer mb-8" onClick={() => navigate('/')}>
+              <img
+                src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+                alt="Qwohter"
+                className="h-[42px] w-auto mx-auto"
+              />
+            </div>
+            <h1
+              className="text-[28px] xl:text-[32px] leading-[1.2] tracking-[-0.01em] text-[#171717] mb-8"
+              style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
+            >
+              The all-in-one tool to automate
+              <br />
+              proposals, billing, and management.
+            </h1>
+            <div className="pt-6 border-t border-[#171717]/10">
+              <p className="text-sm text-[#171717]/50 mb-3" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+                Trusted by companies in these industries
+              </p>
+              <p className="text-sm text-[#171717]/70" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+                Construction · Landscaping · HVAC · Roofing · Electrical · Plumbing
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Invite Required Screen */}
+        <div className="flex-1 flex flex-col min-h-screen bg-[#FFF9F7]">
+          <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#FFF9F7]/90 backdrop-blur-md border-b border-[#171717]/5">
+            <div className="px-6 py-4">
+              <div className="cursor-pointer" onClick={() => navigate('/')}>
+                <img
+                  src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+                  alt="Qwohter"
+                  className="h-7 w-auto"
+                />
+              </div>
+            </div>
+          </header>
+          <div className="flex-1 flex items-center justify-center px-6 py-20 lg:py-12">
+            <div className="w-full max-w-[420px]">
+              <InviteRequiredScreen />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FFFEFA] flex">
+      {/* Left Panel - Cream & Pink Style */}
+      <div className="hidden lg:flex lg:w-[42%] xl:w-[45%] bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] flex-col items-center justify-center p-10 xl:p-12 relative overflow-hidden">
+        {/* Soft pink blur orbs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div
+            className="absolute top-[-100px] right-[-150px] w-[500px] h-[500px] rounded-full blur-[100px] opacity-40"
+            style={{ background: '#EE6C4D' }}
+          />
+          <div
+            className="absolute bottom-[-100px] left-[-100px] w-[400px] h-[400px] rounded-full blur-[80px] opacity-30"
+            style={{ background: '#F7C4BB' }}
+          />
+        </div>
+
+        {/* Centered Content */}
+        <div className="relative z-10 text-center max-w-[600px] px-4">
+          {/* Logo */}
+          <div
+            className="cursor-pointer mb-8"
+            onClick={() => navigate('/')}
+          >
+            <img
+              src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
+              alt="Qwohter"
+              className="h-[42px] w-auto mx-auto"
+            />
+          </div>
+
+          {/* Main Title */}
+          <h1
+            className="text-[28px] xl:text-[32px] leading-[1.2] tracking-[-0.01em] text-[#171717] mb-8"
+            style={{
+              fontFamily: 'Urbanist, sans-serif',
+              fontWeight: 600,
+            }}
+          >
+            The all-in-one tool to automate
+            <br />
+            proposals, billing, and management.
+          </h1>
+
+          {/* Trusted By Section */}
+          <div className="pt-6 border-t border-[#171717]/10">
+            <p
+              className="text-sm text-[#171717]/50 mb-3"
+              style={{ fontFamily: 'Urbanist, sans-serif' }}
+            >
+              Trusted by companies in these industries
+            </p>
+            <p
+              className="text-sm text-[#171717]/70"
+              style={{ fontFamily: 'Urbanist, sans-serif' }}
+            >
+              Construction · Landscaping · HVAC · Roofing · Electrical · Plumbing
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form Area */}
+      <div className="flex-1 flex flex-col min-h-screen bg-[#FFF9F7]">
+        {/* Mobile header */}
+        <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#FFF9F7]/90 backdrop-blur-md border-b border-[#171717]/5">
+          <div className="px-6 py-4">
+            <div
+              className="cursor-pointer"
               onClick={() => navigate('/')}
             >
               <img
                 src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
-                alt="Qwohter Logo"
-                className="h-8 w-auto transition-transform duration-200 hover:scale-105"
+                alt="Qwohter"
+                className="h-7 w-auto"
               />
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Background pattern with proposal checkerboard design */}
-      <div className="absolute inset-0">
-        {/* Repeating quotation marks in checkerboard pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23EE6C4D' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
-            `,
-            backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat'
-          }}
-        />
-
-        {/* Alternating quotation pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.05]"
-          style={{
-            backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='45' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(15)'%3E%E2%80%9C%3C/text%3E%3Ctext x='75' y='75' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(-15)'%3E%E2%80%9D%3C/text%3E%3C/svg%3E")
-            `,
-            backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat',
-            backgroundPosition: '60px 60px'
-          }}
-        />
-
-        {/* Subtle gradient orbs for depth */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100/6 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-40 h-40 rounded-full blur-3xl" style={{ backgroundColor: 'rgba(238, 108, 77, 0.04)' }} />
-      </div>
-
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="w-full flex items-center justify-center">
-          <div className={`w-full relative z-10 ${
-            authFlow.step === "auth" && !authFlow.isSignUp
-              ? "max-w-md"
-              : authFlow.step === "company-info"
-                ? "max-w-2xl"
-                : "max-w-lg"
+        {/* Form container */}
+        <div className="flex-1 flex items-center justify-center px-6 py-20 lg:py-12">
+          <div className={`w-full ${
+            authFlow.step === "company-info" ? "max-w-2xl" : "max-w-[420px]"
           }`}>
-            {/* Main form card for all steps */}
-            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              {!["verify-otp"].includes(authFlow.step) && (
-                <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
-                  {/* Progress Indicator - show for all onboarding steps */}
-                  {authFlow.step !== "auth" && (
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} isInvitee={isInvitee} />
-                  )}
+            {/* Progress indicator - show for onboarding steps (not recovery) */}
+            {authFlow.step !== "auth" && authFlow.step !== "signup-recovery" && (
+              <div className="mb-6">
+                <OnboardingProgress
+                  currentStep={authFlow.step}
+                  isSignUp={authFlow.isSignUp}
+                  isInvitee={isInvitee}
+                />
+              </div>
+            )}
 
-                  <div className="space-y-1">
-                  <CardTitle className="text-2xl font-bold text-center">
-                    {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
-                    {authFlow.step === "organization" && "Organization Setup"}
-                    {authFlow.step === "company-info" && "Company Information"}
-                  </CardTitle>
-                  <CardDescription className="text-center">
-                    {authFlow.step === "auth" && (authFlow.isSignUp
-                    ? "Create your account to get started"
-                    : "Sign in to your account"
-                    )}
-                    {authFlow.step === "organization" && "Join or create your organization"}
-                    {authFlow.step === "company-info" && "Add your company details"}
-                  </CardDescription>
-                  </div>
-                </CardHeader>
-                )}
+            {/* Step header */}
+            <div className={`mb-6 ${(authFlow.step === "signup-recovery" || authFlow.step === "verify-otp" || authFlow.step === "organization" || authFlow.step === "company-info") ? "text-center" : ""}`}>
+              <h2
+                className="text-[28px] text-[#171717] tracking-[0.3px] leading-[1.2] mb-1"
+                style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
+              >
+                {getStepTitle()}
+              </h2>
+              <p
+                className="text-[#171717]/50 text-sm"
+                style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400 }}
+              >
+                {getStepSubtitle()}
+              </p>
+            </div>
 
-                {/* Progress Indicator for verify-otp step (standalone, no card header) */}
-                {authFlow.step === "verify-otp" && (
-                <div className="pt-6 px-8">
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} isInvitee={isInvitee} />
-                </div>
-                )}
-
-                <CardContent className={authFlow.step === "verify-otp" ? "px-8 pb-8 pt-4 space-y-4" : "px-8 pb-8 space-y-4"}>
-
+            {/* Form */}
+            <div>
               {/* Auth Form (Sign-in / Sign-up) */}
               {authFlow.step === "auth" && (
-              <AuthForm
-                isSignUp={authFlow.isSignUp}
-                email={formState.email}
-                password={formState.password}
-                confirmPassword={formState.confirmPassword}
-                firstName={formState.firstName}
-                lastName={formState.lastName}
-                showPassword={formState.showPassword}
-                loading={authFlow.loading}
-                onEmailChange={formState.setEmail}
-                onPasswordChange={formState.setPassword}
-                onConfirmPasswordChange={formState.setConfirmPassword}
-                onFirstNameChange={formState.setFirstName}
-                onLastNameChange={formState.setLastName}
-                onTogglePasswordVisibility={() => formState.setShowPassword(!formState.showPassword)}
-                onSubmit={onAuthSubmit}
-                onToggleMode={() => {
-                if (authFlow.isSignUp) {
-                  navigate("/sign-in");
-                } else {
-                  navigate("/create-account");
-                }
-                }}
-              />
+                <AuthForm
+                  isSignUp={authFlow.isSignUp}
+                  email={formState.email}
+                  password={formState.password}
+                  firstName={formState.firstName}
+                  lastName={formState.lastName}
+                  showPassword={formState.showPassword}
+                  loading={authFlow.loading}
+                  onEmailChange={formState.setEmail}
+                  onPasswordChange={formState.setPassword}
+                  onFirstNameChange={formState.setFirstName}
+                  onLastNameChange={formState.setLastName}
+                  onTogglePasswordVisibility={() => formState.setShowPassword(!formState.showPassword)}
+                  onSubmit={onAuthSubmit}
+                  onToggleMode={() => {
+                    if (authFlow.isSignUp) {
+                      navigate("/sign-in");
+                    } else {
+                      navigate("/create-account");
+                    }
+                  }}
+                />
+              )}
+
+              {/* Signup Recovery Prompt - shown when user returns with interrupted OTP flow */}
+              {authFlow.step === "signup-recovery" && (
+                <SignupRecoveryPrompt
+                  email={formState.email}
+                  fullName={formState.fullName}
+                  loading={authFlow.loading}
+                  onContinue={onRecoveryContinue}
+                  onStartOver={onRecoveryStartOver}
+                />
               )}
 
               {/* OTP Verification Form */}
               {authFlow.step === "verify-otp" && (
-              <OtpVerificationForm
-                otpCode={formState.otpCode}
-                email={formState.email}
-                loading={authFlow.loading}
-                onOtpCodeChange={formState.setOtpCode}
-                onSubmit={onOtpSubmit}
-                onResendCode={onResendCode}
-              />
+                <OtpVerificationForm
+                  otpCode={formState.otpCode}
+                  email={formState.email}
+                  loading={authFlow.loading}
+                  onOtpCodeChange={formState.setOtpCode}
+                  onSubmit={onOtpSubmit}
+                  onResendCode={onResendCode}
+                />
               )}
 
               {/* Organization Setup Form */}
               {authFlow.step === "organization" && (
-              <OrganizationSetupForm
-                orgName={formState.orgName}
-                loading={authFlow.loading}
-                onOrgNameChange={formState.setOrgName}
-                onSubmit={onOrganizationSubmit}
-              />
+                <OrganizationSetupForm
+                  orgName={formState.orgName}
+                  loading={authFlow.loading}
+                  onOrgNameChange={formState.setOrgName}
+                  onSubmit={onOrganizationSubmit}
+                />
               )}
 
               {/* Company Info Form */}
               {authFlow.step === "company-info" && (
-              <CompanyInfoSetupForm
-                organizationName={formState.orgName}
-                phone={companyInfo.companyPhone}
-                fax={companyInfo.companyFax}
-                address={companyInfo.companyAddress}
-                website={companyInfo.companyWebsite}
-                industry={formState.industry}
-                foundVia={formState.foundVia}
-                loading={authFlow.loading}
-                userId={authFlow.userId || ""}
-                currentLogoUrl={companyInfo.currentLogoUrl}
-                onPhoneChange={companyInfo.setCompanyPhone}
-                onFaxChange={companyInfo.setCompanyFax}
-                onAddressChange={companyInfo.setCompanyAddress}
-                onWebsiteChange={companyInfo.setCompanyWebsite}
-                onIndustryChange={formState.setIndustry}
-                onFoundViaChange={formState.setFoundVia}
-                onLogoUpload={onLogoUpload}
-                onLogoError={onLogoError}
-                onSubmit={onCompanyInfoSubmit}
-                onSkip={onCompanyInfoSkip}
-              />
+                <CompanyInfoSetupForm
+                  phone={companyInfo.companyPhone}
+                  fax={companyInfo.companyFax}
+                  address={companyInfo.companyAddress}
+                  website={companyInfo.companyWebsite}
+                  industry={formState.industry}
+                  foundVia={formState.foundVia}
+                  loading={authFlow.loading}
+                  onPhoneChange={companyInfo.setCompanyPhone}
+                  onFaxChange={companyInfo.setCompanyFax}
+                  onAddressChange={companyInfo.setCompanyAddress}
+                  onWebsiteChange={companyInfo.setCompanyWebsite}
+                  onIndustryChange={formState.setIndustry}
+                  onFoundViaChange={formState.setFoundVia}
+                  onSubmit={onCompanyInfoSubmit}
+                />
               )}
-            </CardContent>
-          </Card>
+
+              {/* Switch account link - shown during onboarding steps */}
+              {(authFlow.step === "verify-otp" || authFlow.step === "organization" || authFlow.step === "company-info") && (
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={handleSwitchAccount}
+                    className="text-xs text-[#171717]/40 hover:text-[#171717]/60 transition-colors"
+                    style={{ fontFamily: 'Urbanist, sans-serif' }}
+                  >
+                    Use a different account
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   );

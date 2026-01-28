@@ -14,9 +14,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import type { Form } from '@/services/formsService';
 import {
   fetchForms,
@@ -76,7 +74,7 @@ export const formsQueryKeys = {
  * Hook: Use Forms List
  *
  * Automatically fetches and caches forms with race condition prevention
- * Includes realtime subscriptions for automatic updates
+ * Updates via mutation cache invalidation (no realtime polling)
  *
  * Usage:
  * ```tsx
@@ -84,11 +82,9 @@ export const formsQueryKeys = {
  * ```
  */
 export function useForms(organizationId?: string, enabled: boolean = true) {
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
+  return useQuery({
     queryKey: formsQueryKeys.list(organizationId || '__pending__'),
-    queryFn: async ({ signal }) => {
+    queryFn: async () => {
       if (!organizationId) {
         throw new Error('Organization ID is required');
       }
@@ -97,40 +93,10 @@ export function useForms(organizationId?: string, enabled: boolean = true) {
     enabled: !!organizationId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes - forms don't change that frequently
     gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: true,
-    // Don't retry on errors - let them fail immediately
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
     retry: false,
-    // Suppress error throwing for cancelled queries (harmless warning when orgId changes)
     throwOnError: false,
   });
-
-  // Realtime subscription for automatic updates
-  useEffect(() => {
-    if (!organizationId || !enabled) return;
-
-    const channel = supabase
-      .channel(`forms:${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'forms',
-          filter: `organization_id=eq.${organizationId}`,
-        },
-        () => {
-          // Invalidate and refetch forms list when changes occur
-          queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(organizationId) });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organizationId, enabled, queryClient]);
-
-  return query;
 }
 
 /**

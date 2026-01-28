@@ -11,7 +11,27 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: true,
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', 'tests/**/*'],
+    exclude: ['node_modules', 'dist', 'tests/**/*', 'src/_deprecated/**/*'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      exclude: [
+        'node_modules',
+        'src/_deprecated/**',
+        'src/test/**',
+        '**/*.d.ts',
+        '**/*.config.ts',
+        '**/index.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        branches: 50,
+        statements: 60,
+      },
+    },
   },
   resolve: {
     alias: {

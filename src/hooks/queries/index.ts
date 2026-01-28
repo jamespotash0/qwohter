@@ -38,16 +38,6 @@ export {
   useSession,
 } from './useAuth';
 
-// Reminders
-export {
-  useReminders,
-  useUpcomingReminders,
-  useCreateReminder,
-  useUpdateReminder,
-  useCompleteReminder,
-  useDeleteReminder,
-} from './useReminders';
-
 // Board
 export {
   useProjects,
@@ -84,6 +74,13 @@ export {
 
 // Google Docs Generation
 export { useGenerateGoogleDoc } from './useGenerateGoogleDoc';
+
+// Notification Preferences
+export {
+  useNotificationPreferences,
+  useNotificationPreferencesWithDefaults,
+  useUpdateNotificationPreferences,
+} from './useNotificationPreferences';
 
 // Types
 export type { UserProfile, Session } from './useAuth';

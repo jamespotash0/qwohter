@@ -109,6 +109,31 @@ serve(async (req) => {
       const productId = lineItem?.price?.product as string;
       const planName = planMap.get(productId) || 'Legacy Plan';
 
+      // Calculate proration quantity for subscription_update invoices
+      // Stripe creates line items for seat changes - we want to show how many seats were added
+      let prorationQuantity: number | null = null;
+
+      if (invoice.billing_reason === 'subscription_update') {
+        // For subscription updates (seat changes), find the quantity difference
+        // Positive line items = new seats being charged
+        // We look at line items to determine how many seats were added
+        const lineItems = invoice.lines.data || [];
+
+        // Find line items with positive amounts (charges for new seats)
+        const positiveItems = lineItems.filter((item: any) => item.amount > 0 && item.quantity);
+        const negativeItems = lineItems.filter((item: any) => item.amount < 0 && item.quantity);
+
+        if (positiveItems.length > 0 && negativeItems.length > 0) {
+          // Standard proration: credit for old quantity, charge for new quantity
+          const newQuantity = positiveItems[0].quantity || 0;
+          const oldQuantity = negativeItems[0].quantity || 0;
+          prorationQuantity = newQuantity - oldQuantity;
+        } else if (positiveItems.length > 0) {
+          // Only positive items - this is the added quantity
+          prorationQuantity = positiveItems.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+        }
+      }
+
       return {
         id: invoice.id,
         invoice_pdf: invoice.invoice_pdf || '',
@@ -120,6 +145,7 @@ serve(async (req) => {
         period_end: new Date((invoice.period_end || invoice.created) * 1000).toISOString(),
         amount_refunded: invoice.amount_refunded ? (invoice.amount_refunded / 100) : 0, // Convert cents to dollars
         billing_reason: invoice.billing_reason || 'unknown', // subscription_cycle, subscription_create, subscription_update, etc.
+        proration_quantity: prorationQuantity, // Number of seats added (null if not a proration invoice)
       };
     });
 
