@@ -136,12 +136,27 @@ serve(async (req) => {
         organizationId: signingToken.organization_id,
       });
     } else if (organization) {
-      // Get logo URL from logo_data JSONB column (prefer logo_public_url, fallback to logo_url)
-      const logoData = organization.logo_data as { logo_public_url?: string; logo_url?: string } | null;
+      // Get logo path from logo_data JSONB column
+      const logoData = organization.logo_data as { logo_url?: string } | null;
+      let logoUrl: string | undefined;
+
+      // Generate signed URL for logo if path exists (bucket is private)
+      if (logoData?.logo_url) {
+        const { data: logoSignedUrl, error: logoUrlError } = await supabaseAdmin.storage
+          .from('organization-logos')
+          .createSignedUrl(logoData.logo_url, 3600); // 1 hour
+
+        if (!logoUrlError && logoSignedUrl?.signedUrl) {
+          logoUrl = logoSignedUrl.signedUrl;
+        } else {
+          console.warn('[get-signing-data] Failed to create logo signed URL:', logoUrlError);
+        }
+      }
+
       organizationData = {
         id: organization.id,
         name: organization.name || 'Company',
-        logo_url: logoData?.logo_public_url || logoData?.logo_url,
+        logo_url: logoUrl,
       };
     }
 

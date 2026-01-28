@@ -26,16 +26,14 @@ export interface WebsiteInfo extends ContactInfo {
 }
 
 export interface LogoInfo {
-  logo_url?: string;
+  logo_url?: string;         // File path in storage (not a displayable URL)
   logo_file_name?: string;
-  logo_public_url?: string;
   logo_updated_at?: string;
 }
 
 export interface LogoData {
-  logo_url?: string;
+  logo_url?: string;         // File path in storage (not a displayable URL)
   logo_file_name?: string;
-  logo_public_url?: string;
   logo_updated_at?: string;
 }
 
@@ -47,8 +45,7 @@ export interface OrganizationInfo {
   fax?: string;
   address?: string;
   website?: string;
-  logo_url?: string;
-  logo_public_url?: string;
+  logo_url?: string;  // Signed URL for display (generated on-demand)
 }
 
 // Organization with company information (matches actual database schema)

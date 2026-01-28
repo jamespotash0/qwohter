@@ -64,14 +64,19 @@ serve(async (req) => {
     });
 
     // Update in database
+    // IMPORTANT: Explicitly keep is_active: true - subscription remains active until period ends
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     await supabase
       .from('subscriptions')
       .update({
         cancel_at_period_end: true,
+        is_active: true, // Subscription stays active until period ends
+        stripe_subscription_status: 'Active', // Status remains Active (not Canceled) until period ends
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_subscription_id', subscriptionId);
+
+    console.log('Subscription marked for cancellation at period end:', subscriptionId, 'Period ends:', subscription.current_period_end);
 
     return new Response(
       JSON.stringify({ success: true, subscription }),

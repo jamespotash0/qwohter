@@ -102,8 +102,9 @@ interface UserOrganization {
   name: string;
   role: 'Owner' | 'Admin' | 'Member';
   logo_data?: {
-    logo_url?: string;
-    logo_public_url?: string;
+    logo_url?: string;       // File path in storage (not a displayable URL)
+    logo_file_name?: string;
+    logo_updated_at?: string;
   } | null;
 }
 

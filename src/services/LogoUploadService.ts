@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface LogoUploadResult {
   success: boolean;
   url?: string;
-  publicUrl?: string;
+  signedUrl?: string;
   error?: string;
   fileName?: string;
 }
@@ -22,6 +22,8 @@ export class LogoUploadService {
   // Template-optimized dimensions: 440px x 120px (template max size)
   private static readonly TEMPLATE_DIMENSIONS = { width: 440, height: 120 };
   private static readonly BUCKET_NAME = 'organization-logos';
+  // Signed URL duration: 7 days (logos are cached and refreshed periodically)
+  private static readonly SIGNED_URL_EXPIRY = 60 * 60 * 24 * 7; // 7 days in seconds
 
   /**
    * Validates an image file for logo upload
@@ -119,25 +121,25 @@ export class LogoUploadService {
       // Create a canvas to process the image
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
+
       if (!ctx) {
         throw new Error('Canvas context not available');
       }
 
       // Load the image
       const img = await this.loadImageFromFile(file);
-      
+
       // Calculate new dimensions optimized for template display (440x120 max)
       // Use template dimensions as target while maintaining aspect ratio
       const targetWidth = this.TEMPLATE_DIMENSIONS.width;
       const targetHeight = this.TEMPLATE_DIMENSIONS.height;
       let { width, height } = img;
-      
+
       // Calculate scaling to fit within template dimensions while maintaining aspect ratio
       const scaleX = targetWidth / width;
       const scaleY = targetHeight / height;
       const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
-      
+
       width = Math.floor(width * scale);
       height = Math.floor(height * scale);
 
@@ -147,7 +149,7 @@ export class LogoUploadService {
 
       // Draw and compress the image
       ctx.drawImage(img, 0, 0, width, height);
-      
+
       // Convert to blob with compression
       return new Promise((resolve, reject) => {
         canvas.toBlob(
@@ -156,13 +158,13 @@ export class LogoUploadService {
               reject(new Error('Failed to process image'));
               return;
             }
-            
+
             // Create a new file with the processed image
             const processedFile = new File([blob], file.name, {
               type: 'image/jpeg',
               lastModified: Date.now()
             });
-            
+
             resolve(processedFile);
           },
           'image/jpeg',
@@ -200,6 +202,7 @@ export class LogoUploadService {
 
   /**
    * Uploads a logo file to Supabase storage
+   * Uses UUID for filename to prevent enumeration attacks
    */
   static async uploadLogo(file: File, userId: string): Promise<LogoUploadResult> {
     try {
@@ -215,13 +218,12 @@ export class LogoUploadService {
 
       // Process the image
       const processedFile = await this.processImage(file);
-      
 
-      // Generate unique filename
-      const timestamp = Date.now();
-      const fileExtension = processedFile.name.substring(processedFile.name.lastIndexOf('.'));
-      const fileName = `logo_${timestamp}${fileExtension}`;
-      
+
+      // Generate UUID filename to prevent enumeration attacks
+      const fileExtension = processedFile.type === 'image/svg+xml' ? '.svg' : '.jpg';
+      const fileName = `${crypto.randomUUID()}${fileExtension}`;
+
       // Get the current authenticated user and their organization
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -271,16 +273,20 @@ export class LogoUploadService {
       }
 
 
-      // Get public URL (bucket will be made public)
-      const { data: urlData } = supabase.storage
+      // Get signed URL (bucket should be private, not public)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from(this.BUCKET_NAME)
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, this.SIGNED_URL_EXPIRY);
 
+      if (signedUrlError) {
+        console.error('Error creating signed URL:', signedUrlError);
+        // Still return success with just the path - URL can be regenerated
+      }
 
       const result = {
         success: true,
         url: filePath,
-        publicUrl: urlData.publicUrl,
+        signedUrl: signedUrlData?.signedUrl,
         fileName: fileName
       };
 
@@ -322,35 +328,40 @@ export class LogoUploadService {
   }
 
   /**
-   * Gets the public URL for a logo
+   * Gets a signed URL for a logo (for display)
+   * URLs expire after SIGNED_URL_EXPIRY seconds and should be refreshed
    */
-  static getLogoPublicUrl(filePath: string): string {
-    const { data } = supabase.storage
+  static async getLogoSignedUrl(filePath: string): Promise<string | null> {
+    const { data, error } = await supabase.storage
       .from(this.BUCKET_NAME)
-      .getPublicUrl(filePath);
-    
-    return data.publicUrl;
+      .createSignedUrl(filePath, this.SIGNED_URL_EXPIRY);
+
+    if (error) {
+      console.error('Error creating signed URL for logo:', error);
+      return null;
+    }
+
+    return data.signedUrl;
   }
 
   /**
    * Updates organization with logo information
    */
   static async updateOrganizationLogo(
-    organizationId: string, 
-    logoData: { 
-      logo_url: string; 
-      logo_file_name: string; 
-      logo_public_url: string; 
+    organizationId: string,
+    logoData: {
+      logo_url: string;
+      logo_file_name: string;
     } | null
   ): Promise<{ success: boolean; error?: string }> {
     try {
 
       // Update logo_data field directly
+      // Note: We store the file path, not the signed URL (URLs expire)
       const updatePayload = {
         logo_data: logoData ? {
-          logo_url: logoData.logo_url,
+          logo_url: logoData.logo_url, // This is the file path, not a URL
           logo_file_name: logoData.logo_file_name,
-          logo_public_url: logoData.logo_public_url,
           logo_updated_at: new Date().toISOString()
         } : null
       };

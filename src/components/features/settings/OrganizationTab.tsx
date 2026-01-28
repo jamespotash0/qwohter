@@ -7,7 +7,7 @@ import { hasAdminPermissions } from "@/utils/permissions";
 import { supabase } from "@/integrations/supabase/client";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
-import { LogoUploadResult } from "@/services/LogoUploadService";
+import { LogoUploadResult, LogoUploadService } from "@/services/LogoUploadService";
 import { useUser } from "@/auth";
 import { DocumentNumberingSection } from "./DocumentNumberingSection";
 import { WorkflowSettingsSection } from "./WorkflowSettingsSection";
@@ -84,6 +84,9 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
+  // State for logo signed URL
+  const [logoSignedUrl, setLogoSignedUrl] = useState<string | null>(null);
+
   // Update field values when organization changes
   useEffect(() => {
     if (organization) {
@@ -95,6 +98,20 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
       setEditedAddress(organization.company_address || '');
     }
   }, [organization]);
+
+  // Fetch signed URL for logo display (URLs expire, so we fetch fresh ones)
+  useEffect(() => {
+    const fetchLogoSignedUrl = async () => {
+      const logoPath = organization?.logo_data?.logo_url;
+      if (logoPath) {
+        const signedUrl = await LogoUploadService.getLogoSignedUrl(logoPath);
+        setLogoSignedUrl(signedUrl);
+      } else {
+        setLogoSignedUrl(null);
+      }
+    };
+    fetchLogoSignedUrl();
+  }, [organization?.logo_data?.logo_url]);
 
   // Handle logo upload success
   const handleLogoUploadSuccess = (result: LogoUploadResult) => {
@@ -214,7 +231,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                   <LogoUpload
                     onUploadSuccess={handleLogoUploadSuccess}
                     onUploadError={handleLogoUploadError}
-                    currentLogoUrl={organization?.logo_data?.logo_public_url || organization?.logo_data?.logo_url || ''}
+                    currentLogoUrl={logoSignedUrl || ''}
                     userId={currentUser.id}
                     disabled={false}
                   />

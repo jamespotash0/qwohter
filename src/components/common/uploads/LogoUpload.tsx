@@ -123,7 +123,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
             {
               logo_url: uploadResult.url || '',
               logo_file_name: uploadResult.fileName || '',
-              logo_public_url: uploadResult.publicUrl || '',
             }
           );
           
@@ -166,7 +165,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
         onUploadSuccess({
           success: true,
           url: uploadResult.url || '',
-          publicUrl: uploadResult.publicUrl || '',
+          signedUrl: uploadResult.signedUrl || '',
           fileName: uploadResult.fileName || ''
         });
 
