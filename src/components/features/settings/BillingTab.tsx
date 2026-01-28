@@ -1,25 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CreditCard, Loader2, Download, Search, Filter, Check, ArrowLeftRight, X } from 'lucide-react';
+import { CreditCard, Loader2, Download, Search, Filter, Check } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { formatTimestamp } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { loadStripe } from '@stripe/stripe-js';
 import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryClient";
 import { useSession } from "@/auth";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 
@@ -67,19 +58,6 @@ interface SubscriptionPlan {
   min_users: number | null;
   is_active: boolean;
   sort_order: number;
-}
-
-// Initialize Stripe.js (currently unused - checkout handled server-side via stripeService)
-// Priority: VITE_STRIPE_PUBLISHABLE_KEY_TEST (development) > VITE_STRIPE_PUBLISHABLE_KEY (fallback)
-const stripePublishableKey =
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY_TEST ||
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
-
-// Warn if Stripe key is missing
-if (!stripePublishableKey) {
-  console.warn('No Stripe publishable key found. Stripe functionality may be limited.');
 }
 
 export const BillingTab: React.FC<BillingTabProps> = ({
@@ -131,12 +109,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   // const [planIntervals, setPlanIntervals] = useState<Record<string, 'Monthly' | 'Yearly'>>({});
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   // const [showCompareModal, setShowCompareModal] = useState(false);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   // Force re-render every minute to update billing period progress bar
   const [, setCurrentTime] = useState(Date.now());
-  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
   const hasPermission = hasOwnerPermissions(userRole);
 
   useEffect(() => {
@@ -236,9 +210,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('portal_return');
       setSearchParams(newParams);
-
-      // Close the manage dialog if open
-      setShowCancelDialog(false);
 
       // Reload billing data after delay to allow webhook to process
       // First reload after 2 seconds, then again after 5 seconds to catch slow webhooks
@@ -537,179 +508,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   };
 
-  const handleCancelSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
-
-    try {
-      setIsCancelling(true);
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cancel-subscription`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.stripe_subscription_id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to cancel subscription');
-      }
-
-      toast({
-        title: "Subscription Canceled",
-        description: "Your subscription will remain active until the end of the current billing period.",
-      });
-
-      setShowCancelDialog(false);
-      await loadBillingData();
-    } catch (error) {
-      console.error('Error canceling subscription:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
-  const handleReactivateSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
-
-    try {
-      setIsReactivating(true);
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reactivate-subscription`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.stripe_subscription_id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Reactivate response error:', data);
-        throw new Error(data.error || 'Failed to reactivate subscription');
-      }
-
-      toast({
-        title: "Subscription Reactivated",
-        description: "Your subscription has been reactivated successfully.",
-      });
-
-      await loadBillingData();
-    } catch (error: any) {
-      console.error('Error reactivating subscription:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to reactivate subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReactivating(false);
-    }
-  };
-
-  const handleManageBilling = async () => {
-    // Open Stripe Customer Portal for managing payment methods
-    await handleOpenPortal();
-  };
-
-  // const handlePauseSubscription = async () => {
-  //   if (!subscription?.stripe_subscription_id) return;
-
-  //   try {
-  //     setIsCancelling(true); // Reuse cancelling state for loading
-
-  //     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pause-subscription`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         subscriptionId: subscription.stripe_subscription_id,
-  //       }),
-  //     });
-
-  //     const data = await response.json();
-
-  //     if (!response.ok) {
-  //       console.error('Pause response error:', data);
-  //       throw new Error(data.error || 'Failed to pause subscription');
-  //     }
-
-  //     toast({
-  //       title: "Subscription Paused",
-  //       description: "Your subscription has been paused. You can resume it anytime.",
-  //     });
-
-  //     setShowCancelDialog(false);
-  //     await loadBillingData();
-  //   } catch (error: any) {
-  //     console.error('Error pausing subscription:', error);
-  //     toast({
-  //       title: "Error",
-  //       description: error.message || "Failed to pause subscription. Please try again.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsCancelling(false);
-  //   }
-  // };
-
-  // const handleResumeSubscription = async () => {
-  //   if (!subscription?.stripe_subscription_id) return;
-
-  //   try {
-  //     setIsReactivating(true);
-
-  //     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resume-subscription`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${session?.access_token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         subscriptionId: subscription.stripe_subscription_id,
-  //       }),
-  //     });
-
-  //     const data = await response.json();
-
-  //     if (!response.ok) {
-  //       console.error('Resume response error:', data);
-  //       throw new Error(data.error || 'Failed to resume subscription');
-  //     }
-
-  //     toast({
-  //       title: "Subscription Resumed",
-  //       description: "Your subscription has been resumed successfully.",
-  //     });
-
-  //     setShowCancelDialog(false);
-  //     await loadBillingData();
-  //   } catch (error: any) {
-  //     console.error('Error resuming subscription:', error);
-  //     toast({
-  //       title: "Error",
-  //       description: error.message || "Failed to resume subscription. Please try again.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsReactivating(false);
-  //   }
-  // };
-
   const handleDownloadInvoice = (invoiceUrl: string) => {
     window.open(invoiceUrl, '_blank');
   };
@@ -874,12 +672,19 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </div>
                 </div>
                 <Button
-                  onClick={() => setShowCancelDialog(true)}
+                  onClick={handleOpenPortal}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  disabled={!hasPermission}
+                  disabled={!hasPermission || processingPlan === 'portal'}
                 >
-                  Manage Plan
+                  {processingPlan === 'portal' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Opening...
+                    </>
+                  ) : (
+                    'Manage Plan'
+                  )}
                 </Button>
               </>
             );
@@ -898,9 +703,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           const isCurrent = isCurrentPlan(plan);
           const isProcessing = processingPlan === plan.id;
           const isIndividualPlan = plan.name === 'Individual';
-          // UPDATED: Only monthly billing supported now
-          // const displayPrice = getDisplayPrice(plan);
-          const displayPrice = plan.price_per_month;
           // Disable Individual plan if organization has more than 1 user
           const isIndividualDisabled = isIndividualPlan && userCount > 1;
 
@@ -1205,187 +1007,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         </div>
       </div>
 
-      {/* Manage Plan Dialog */}
-      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Manage Plan</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 pt-2">
-            {/* Plan Summary */}
-            {subscription && (
-              <div className="flex items-center gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Plan: </span>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {plans.find(p => p.id === subscription.plan_id)?.display_name || 'Team'}
-                    {subscription.stripe_subscription_status?.toLowerCase() === 'trialing' && ' (Free Trial)'}
-                  </span>
-                </div>
-                <span className="text-gray-300 dark:text-gray-600">•</span>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400">Users: </span>
-                  <span className="font-medium text-gray-900 dark:text-white">{userCount}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Trial-specific messaging */}
-            {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' && (
-              <div className="space-y-3">
-                {!subscription.has_payment_method ? (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Add a payment method before your trial ends on{' '}
-                    <span className="font-medium">
-                      {subscription.trial_end
-                        ? new Date(subscription.trial_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-                        : 'the trial end date'}
-                    </span>{' '}
-                    to continue using the service. You can add payment anytime during your trial.
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Your trial ends on{' '}
-                    <span className="font-medium">
-                      {subscription.trial_end
-                        ? new Date(subscription.trial_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
-                        : 'the trial end date'}
-                    </span>.
-                    You have a payment method on file and will be billed automatically.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Canceled subscription messaging */}
-            {subscription?.cancel_at_period_end && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Your subscription ends on{' '}
-                <span className="font-medium">
-                  {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </span>.
-                Reactivate to continue your service.
-              </p>
-            )}
-
-            {/* Active paid subscription messaging */}
-            {subscription &&
-             subscription.stripe_subscription_status?.toLowerCase() !== 'trialing' &&
-             !subscription.cancel_at_period_end && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Your subscription renews on{' '}
-                <span className="font-medium">
-                  {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                </span>.
-              </p>
-            )}
-
-            {/* Action Buttons */}
-            <div className="space-y-2 pt-2">
-              {subscription?.cancel_at_period_end ? (
-                // Reactivate view
-                <>
-                  <Button
-                    onClick={handleReactivateSubscription}
-                    disabled={isReactivating}
-                    className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
-                  >
-                    {isReactivating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Reactivating...
-                      </>
-                    ) : (
-                      'Reactivate Subscription'
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleManageBilling}
-                    disabled={!hasPermission}
-                    className="w-full"
-                  >
-                    Update Payment Method
-                  </Button>
-                </>
-              ) : (
-                // Active subscription or trial
-                <>
-                  <Button
-                    onClick={handleManageBilling}
-                    disabled={!hasPermission}
-                    className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
-                  >
-                    {subscription?.has_payment_method ? 'Update Payment Method' : 'Add Payment Method'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCancelConfirmation(true)}
-                    disabled={isCancelling}
-                    className="w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
-                  >
-                    Cancel Subscription
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel Confirmation Dialog */}
-      <Dialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">Cancel Subscription</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 pt-2">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Are you sure you want to cancel your subscription?
-            </p>
-
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              You will continue to have access until{' '}
-              <span className="font-medium text-gray-900 dark:text-white">
-                {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' && subscription?.trial_end
-                  ? new Date(subscription.trial_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                  : subscription?.current_period_end
-                    ? new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                    : 'the end of your billing period'}
-              </span>.
-            </p>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowCancelConfirmation(false)}
-                className="flex-1"
-              >
-                Keep Subscription
-              </Button>
-              <Button
-                onClick={async () => {
-                  await handleCancelSubscription();
-                  setShowCancelConfirmation(false);
-                }}
-                disabled={isCancelling}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              >
-                {isCancelling ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Canceling...
-                  </>
-                ) : (
-                  'Yes, Cancel'
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* COMMENTED OUT: Compare Plans Modal - feature temporarily disabled */}
       {/* <Dialog open={showCompareModal} onOpenChange={setShowCompareModal}>

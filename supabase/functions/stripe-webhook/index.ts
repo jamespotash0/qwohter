@@ -199,7 +199,7 @@ serve(async (req) => {
     const signature = req.headers.get('Stripe-Signature');
     // @ts-ignore
     // Use production webhook secret first, fallback to CLI secret for local dev
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || Deno.env.get('STRIPE_CLI_WEBHOOK_SECRET') || '';
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || Deno.env.get('STRIPE_CLI_WEBHOOK_SECRET');
 
     // Get raw body for signature verification
     const body = await req.text();
@@ -256,8 +256,16 @@ serve(async (req) => {
         if (stripeSubscriptionId) {
           try {
             const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-            currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000).toISOString();
-            currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString();
+
+            // Safely convert Unix timestamps to ISO strings
+            if (stripeSubscription.current_period_start) {
+              const startDate = new Date(stripeSubscription.current_period_start * 1000);
+              currentPeriodStart = isNaN(startDate.getTime()) ? null : startDate.toISOString();
+            }
+            if (stripeSubscription.current_period_end) {
+              const endDate = new Date(stripeSubscription.current_period_end * 1000);
+              currentPeriodEnd = isNaN(endDate.getTime()) ? null : endDate.toISOString();
+            }
             cancelAtPeriodEnd = stripeSubscription.cancel_at_period_end || false;
 
             // Stripe statuses are: trialing, active, incomplete, incomplete_expired, past_due, canceled, or unpaid
@@ -337,10 +345,7 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeSubscriptionId = subscription.id;
         const status = subscription.status;
-
-        // Check if subscription is paused
-        const isPaused = subscription.pause_collection !== null && subscription.pause_collection !== undefined;
-        const displayStatus = isPaused ? 'Paused' : status.charAt(0).toUpperCase() + status.slice(1);
+        const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
 
         // Get customer payment methods
         const paymentMethods = await stripe.paymentMethods.list({
@@ -349,23 +354,30 @@ serve(async (req) => {
         });
         const hasPaymentMethod = paymentMethods.data.length > 0;
 
+        // Safely convert Unix timestamps to ISO strings
+        const safeToISOString = (unixTimestamp: number | undefined | null): string | null => {
+          if (!unixTimestamp) return null;
+          const date = new Date(unixTimestamp * 1000);
+          return isNaN(date.getTime()) ? null : date.toISOString();
+        };
+
         // Update subscription status and billing period
         await supabase
           .from('subscriptions')
           .update({
             stripe_subscription_status: displayStatus,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
-            trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+            current_period_start: safeToISOString(subscription.current_period_start),
+            current_period_end: safeToISOString(subscription.current_period_end),
+            trial_start: safeToISOString(subscription.trial_start),
+            trial_end: safeToISOString(subscription.trial_end),
             has_payment_method: hasPaymentMethod,
             cancel_at_period_end: subscription.cancel_at_period_end || false,
-            is_active: ['active', 'trialing'].includes(status) && !isPaused,
+            is_active: ['active', 'trialing'].includes(status),
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_subscription_id', stripeSubscriptionId);
 
-        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'isPaused:', isPaused, 'hasPayment:', hasPaymentMethod);
+        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'hasPayment:', hasPaymentMethod);
         break;
       }
 
@@ -407,38 +419,6 @@ serve(async (req) => {
               amount: invoice.amount_paid,
               currency: invoice.currency,
             });
-          }
-        }
-
-        // Check if subscription should be paused after this payment
-        if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-
-          // If pause_at_period_end metadata is set, pause the subscription now
-          if (subscription.metadata?.pause_at_period_end === 'true') {
-            console.log('Pausing subscription after payment:', subscription.id);
-
-            await stripe.subscriptions.update(subscription.id, {
-              pause_collection: {
-                behavior: 'void',
-              },
-              metadata: {
-                pause_at_period_end: null as any, // Clear the flag
-              },
-            });
-
-            // Update database
-            await supabase
-              .from('subscriptions')
-              .update({
-                stripe_subscription_status: 'Paused',
-                pause_at_period_end: false,
-                is_active: false,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('stripe_subscription_id', subscription.id);
-
-            console.log('Subscription paused:', subscription.id);
           }
         }
 
@@ -534,38 +514,6 @@ serve(async (req) => {
           });
         }
 
-        break;
-      }
-
-      case 'customer.subscription.paused': {
-        const subscription = event.data.object as Stripe.Subscription;
-
-        await supabase
-          .from('subscriptions')
-          .update({
-            stripe_subscription_status: 'Paused',
-            is_active: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('stripe_subscription_id', subscription.id);
-
-        console.log('Subscription paused:', subscription.id);
-        break;
-      }
-
-      case 'customer.subscription.resumed': {
-        const subscription = event.data.object as Stripe.Subscription;
-
-        await supabase
-          .from('subscriptions')
-          .update({
-            stripe_subscription_status: 'Active',
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('stripe_subscription_id', subscription.id);
-
-        console.log('Subscription resumed:', subscription.id);
         break;
       }
 
