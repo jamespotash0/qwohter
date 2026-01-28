@@ -642,7 +642,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   // Filler mode: Full functionality
   return (
     <div className="space-y-4">
-      {/* Header with Mode Toggle */}
+      {/* Header with Mode Toggle - PRODUCT SELECTOR DISABLED FOR PRODUCTION TESTING */}
+      {/*
       <div className="flex items-center justify-end">
         <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <button
@@ -669,6 +670,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           </button>
         </div>
       </div>
+      */}
 
       {/* Product Selector Mode */}
       {entryMode === 'selector' && (
