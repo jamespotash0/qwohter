@@ -19,13 +19,13 @@ Roadmap
 
 ## Add service management for recurring billing services (like service contracts or, software services to keep track of what’s getting charged to you) and then you could have recurring or flat rate 
 
-## Add a calender to be able to input events (links to reminders)
+## Add a calender to be able to input events
 
-## Add notifications for each users
+## Add notifications for each users [FINISHED]
 
-## Add an approval process for sending quotes, directly via the email and to customize the email…
+## Add an approval process for sending quotes, directly via the email and to customize the email… [FINISHED]
 
-## Add integrations for quickbooks and sending invoices
+## Add integrations for quickbooks and sending invoices [FINISHED]
 
 ## Need to figure out how to handle data ingestion from other platforms
 
