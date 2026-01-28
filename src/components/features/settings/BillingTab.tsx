@@ -874,19 +874,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </div>
                 </div>
                 <Button
-                  onClick={handleOpenPortal}
+                  onClick={() => setShowCancelDialog(true)}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  disabled={!hasPermission || processingPlan !== null}
+                  disabled={!hasPermission}
                 >
-                  {processingPlan !== null ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    'Manage Plan'
-                  )}
+                  Manage Plan
                 </Button>
               </>
             );

@@ -59,14 +59,24 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has access to this organization
-    const { data: membership } = await supabaseAdmin
-      .from('memberships')
-      .select('role')
-      .eq('organization_id', organizationId)
-      .eq('user_id', user.id)
-      .eq('status', 'Active') //membership_status
-      .single();
+    // Run membership and subscription queries in parallel for speed
+    const [membershipResult, subscriptionResult] = await Promise.all([
+      supabaseAdmin
+        .from('memberships')
+        .select('role')
+        .eq('organization_id', organizationId)
+        .eq('user_id', user.id)
+        .eq('status', 'Active')
+        .single(),
+      supabaseAdmin
+        .from('subscriptions')
+        .select('stripe_customer_id')
+        .eq('organization_id', organizationId)
+        .single(),
+    ]);
+
+    const { data: membership } = membershipResult;
+    const { data: subscription } = subscriptionResult;
 
     if (!membership) {
       return new Response(
@@ -75,20 +85,12 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has owner permissions
     if (membership.role !== 'Owner') {
       return new Response(
         JSON.stringify({ error: 'Forbidden - only owners can access billing portal' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Get organization's Stripe customer ID
-    const { data: subscription } = await supabaseAdmin
-      .from('subscriptions')
-      .select('stripe_customer_id')
-      .eq('organization_id', organizationId)
-      .single();
 
     if (!subscription?.stripe_customer_id) {
       return new Response(
