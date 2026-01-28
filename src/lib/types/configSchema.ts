@@ -445,16 +445,16 @@ export function filterValuesByCodes<T extends { code: string }>(
 ): T[] {
   let filtered = values;
 
-  // If allowed_codes is specified, only include those
+  // If allowed_codes is specified, only include those (case-insensitive)
   if (allowedCodes && allowedCodes.length > 0) {
-    const allowedSet = new Set(allowedCodes);
-    filtered = filtered.filter((v) => allowedSet.has(v.code));
+    const allowedSetUpper = new Set(allowedCodes.map(c => c.toUpperCase()));
+    filtered = filtered.filter((v) => allowedSetUpper.has(v.code.toUpperCase()));
   }
 
-  // If excluded_codes is specified, remove those
+  // If excluded_codes is specified, remove those (case-insensitive)
   if (excludedCodes && excludedCodes.length > 0) {
-    const excludedSet = new Set(excludedCodes);
-    filtered = filtered.filter((v) => !excludedSet.has(v.code));
+    const excludedSetUpper = new Set(excludedCodes.map(c => c.toUpperCase()));
+    filtered = filtered.filter((v) => !excludedSetUpper.has(v.code.toUpperCase()));
   }
 
   return filtered;

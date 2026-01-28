@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Trash2 } from 'lucide-react';
+import { X, Sparkles, Trash2, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdaChat } from './AdaChat';
 import { useUser } from '@/auth';
@@ -22,9 +22,30 @@ import type { LocalChatMessage } from '@/lib/types/aiWorkflow';
 // ============================================================================
 
 const STORAGE_KEY_PREFIX = 'ada_chat_messages_';
+const ADA_HIDDEN_KEY = 'ada_widget_hidden';
 
 const getStorageKey = (userId: string, orgId: string) =>
   `${STORAGE_KEY_PREFIX}${userId}_${orgId}`;
+
+const loadHiddenState = (): boolean => {
+  try {
+    return localStorage.getItem(ADA_HIDDEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const saveHiddenState = (hidden: boolean): void => {
+  try {
+    if (hidden) {
+      localStorage.setItem(ADA_HIDDEN_KEY, 'true');
+    } else {
+      localStorage.removeItem(ADA_HIDDEN_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
 
 const loadMessagesFromStorage = (userId: string, orgId: string): LocalChatMessage[] => {
   try {
@@ -64,6 +85,7 @@ const LAST_SEEN_COUNT_KEY = 'ada_last_seen_pending_count';
 
 export const AdaFloatingWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHidden, setIsHidden] = useState(() => loadHiddenState());
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   // Lift conversation state up so it persists when panel closes
@@ -126,8 +148,10 @@ export const AdaFloatingWidget: React.FC = () => {
     // 2. Haven't auto-opened this session yet
     // 3. There are pending suggestions
     // 4. User hasn't manually closed Ada this session
+    // 5. Widget is not hidden
     if (
       !isOpen &&
+      !isHidden &&
       !hasAutoOpenedRef.current &&
       pendingCount > 0 &&
       !sessionStorage.getItem(SESSION_CLOSED_KEY)
@@ -135,7 +159,7 @@ export const AdaFloatingWidget: React.FC = () => {
       hasAutoOpenedRef.current = true;
       setIsOpen(true);
     }
-  }, [isOpen, pendingCount]);
+  }, [isOpen, isHidden, pendingCount]);
 
   const handleOpen = useCallback(() => {
     // Clear the manual close flag when user opens Ada
@@ -158,14 +182,56 @@ export const AdaFloatingWidget: React.FC = () => {
     setShowClearConfirm(false);
   }, []);
 
+  const handleHide = useCallback(() => {
+    setIsHidden(true);
+    saveHiddenState(true);
+    setIsOpen(false);
+    setShowClearConfirm(false);
+  }, []);
+
+  const handleShow = useCallback(() => {
+    setIsHidden(false);
+    saveHiddenState(false);
+  }, []);
+
   // Don't render if not authenticated
   if (!user || !organization) return null;
 
   return (
     <>
-      {/* Floating Button - only show when closed */}
+      {/* Small toggle button - only show when Ada is hidden */}
       <AnimatePresence mode="wait">
-        {!isOpen && (
+        {isHidden && (
+          <motion.button
+            key="ada-show-button"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={handleShow}
+            className={cn(
+              'fixed bottom-6 right-20 z-[60]',
+              'w-10 h-10 rounded-full',
+              'bg-gray-200 dark:bg-gray-700',
+              'text-gray-500 dark:text-gray-400',
+              'shadow-md',
+              'hover:bg-gray-300 dark:hover:bg-gray-600',
+              'hover:scale-[1.05] active:scale-[0.95]',
+              'transition-all duration-200',
+              'cursor-pointer',
+              'flex items-center justify-center'
+            )}
+            aria-label="Show Ada AI Assistant"
+            title="Show Ada"
+          >
+            <Eye className="w-4 h-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Button - only show when closed and not hidden */}
+      <AnimatePresence mode="wait">
+        {!isOpen && !isHidden && (
           <motion.button
             key="ada-button"
             initial={{ scale: 0.8, opacity: 0 }}
@@ -231,9 +297,9 @@ export const AdaFloatingWidget: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Chat Panel */}
+      {/* Chat Panel - only show when open and not hidden */}
       <AnimatePresence mode="wait">
-        {isOpen && (
+        {isOpen && !isHidden && (
           <motion.div
             key="ada-panel"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -299,6 +365,22 @@ export const AdaFloatingWidget: React.FC = () => {
                     <Trash2 className="w-3 h-3" />
                   </button>
                 )}
+
+                {/* Hide button */}
+                <button
+                  onClick={handleHide}
+                  className={cn(
+                    'w-6 h-6 rounded-md',
+                    'flex items-center justify-center',
+                    'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200',
+                    'hover:bg-gray-100 dark:hover:bg-gray-800',
+                    'transition-colors duration-150'
+                  )}
+                  aria-label="Hide Ada"
+                  title="Hide Ada"
+                >
+                  <EyeOff className="w-3 h-3" />
+                </button>
 
                 <button
                   onClick={handleClose}

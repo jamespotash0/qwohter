@@ -17,6 +17,8 @@ import { useConfigSchema } from '@/hooks/useConfigSchema';
 
 interface CascadingProductSelectorV2Props {
   onProductSelect: (product: ProductSelection) => void;
+  /** Called when user wants to add and continue adding more products */
+  onProductSelectAndContinue?: (product: ProductSelection) => void;
   onCancel?: () => void;
   className?: string;
   initialValues?: Record<string, unknown>;
@@ -24,6 +26,7 @@ interface CascadingProductSelectorV2Props {
 
 export function CascadingProductSelectorV2({
   onProductSelect,
+  onProductSelectAndContinue,
   onCancel,
   className,
   initialValues,
@@ -122,13 +125,14 @@ export function CascadingProductSelectorV2({
     [getFieldOptions]
   );
 
-  const handleAddProduct = () => {
-    if (!selectedModel) return;
+  // Build the product selection object
+  const buildSelection = useCallback((): ProductSelection | null => {
+    if (!selectedModel) return null;
 
     // Resolve codes to labels for display purposes
     const specificationLabels = resolveSpecificationLabels(configValues);
 
-    const selection: ProductSelection = {
+    return {
       product_model_id: selectedModel.id,
       product_hierarchy: {
         domain: selectedDomain?.name || '',
@@ -149,8 +153,30 @@ export function CascadingProductSelectorV2({
         subtotal: 0,
       },
     };
+  }, [
+    selectedModel,
+    selectedDomain,
+    selectedManufacturer,
+    selectedProductLine,
+    selectedSeries,
+    configValues,
+    resolveSpecificationLabels,
+  ]);
 
-    onProductSelect(selection);
+  const handleAddProduct = () => {
+    const selection = buildSelection();
+    if (selection) {
+      onProductSelect(selection);
+    }
+  };
+
+  const handleAddAndContinue = () => {
+    const selection = buildSelection();
+    if (selection && onProductSelectAndContinue) {
+      onProductSelectAndContinue(selection);
+      // Reset config values for next product
+      setConfigValues({});
+    }
   };
 
   // Check if model has config options (either config_schema or legacy default_configurations)
@@ -202,13 +228,24 @@ export function CascadingProductSelectorV2({
             Cancel
           </Button>
         )}
+        {onProductSelectAndContinue && !initialValues && (
+          <Button
+            onClick={handleAddAndContinue}
+            disabled={!selectedModel}
+            variant="outline"
+            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+          >
+            <Check className="w-4 h-4 mr-2" />
+            Add & Continue
+          </Button>
+        )}
         <Button
           onClick={handleAddProduct}
           disabled={!selectedModel}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           <Check className="w-4 h-4 mr-2" />
-          {initialValues ? 'Update Product' : 'Add Product'}
+          {initialValues ? 'Update Product' : 'Add & Close'}
         </Button>
       </div>
     </div>

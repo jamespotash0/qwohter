@@ -69,6 +69,10 @@ export function ConfigSchemaFields({
     const fields = Object.entries(resolvedSchema.options);
     const groups = resolvedSchema.groups || [];
 
+    // Build a map of field key to schema position (for fallback ordering)
+    const schemaPositionMap = new Map<string, number>();
+    fields.forEach(([key], idx) => schemaPositionMap.set(key, idx));
+
     // Create field groups
     const fieldsByGroup = new Map<string, Array<[string, ResolvedOptionField]>>();
     const ungrouped: Array<[string, ResolvedOptionField]> = [];
@@ -86,13 +90,14 @@ export function ConfigSchemaFields({
       }
     }
 
-    // Sort fields within each group by order
+    // Sort fields within each group by order (use schema position as fallback)
     const sortFields = (
       a: [string, ResolvedOptionField],
       b: [string, ResolvedOptionField]
     ) => {
-      const orderA = a[1].order ?? 999;
-      const orderB = b[1].order ?? 999;
+      // Use explicit order if set, otherwise use schema position + 100 as fallback
+      const orderA = a[1].order ?? ((schemaPositionMap.get(a[0]) ?? 0) + 100);
+      const orderB = b[1].order ?? ((schemaPositionMap.get(b[0]) ?? 0) + 100);
       return orderA - orderB;
     };
 
@@ -128,11 +133,11 @@ export function ConfigSchemaFields({
 
   return (
     <div className={className}>
-      {/* Ungrouped fields */}
+      {/* Ungrouped fields - responsive 6 column grid */}
       {groupedFields.ungrouped.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-3 mb-4">
           {groupedFields.ungrouped.map(([key, field]) => (
-            <div key={key} className={cn('space-y-1.5', getGridColClass(field.grid_span))}>
+            <div key={key} className={cn('space-y-1', getGridColClass(field.grid_span))}>
               <FieldLabel field={field} fieldKey={key} />
               <FieldInput
                 fieldKey={key}
@@ -143,7 +148,7 @@ export function ConfigSchemaFields({
                 isEditMode={isEditMode}
               />
               {field.help_text && (
-                <p className="text-xs text-gray-400">{field.help_text}</p>
+                <p className="text-[10px] text-gray-400 leading-tight">{field.help_text}</p>
               )}
             </div>
           ))}
@@ -159,9 +164,9 @@ export function ConfigSchemaFields({
             <h5 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
               {group.label}
             </h5>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-3">
               {group.fields.map(([key, field]) => (
-                <div key={key} className={cn('space-y-1.5', getGridColClass(field.grid_span))}>
+                <div key={key} className={cn('space-y-1', getGridColClass(field.grid_span))}>
                   <FieldLabel field={field} fieldKey={key} />
                   <FieldInput
                     fieldKey={key}
@@ -172,7 +177,7 @@ export function ConfigSchemaFields({
                     isEditMode={isEditMode}
                   />
                   {field.help_text && (
-                    <p className="text-xs text-gray-400">{field.help_text}</p>
+                    <p className="text-[10px] text-gray-400 leading-tight">{field.help_text}</p>
                   )}
                 </div>
               ))}
@@ -424,6 +429,6 @@ function getGridColClass(gridSpan?: 1 | 2 | 3 | 4): string {
     case 2: return 'col-span-2';
     case 3: return 'col-span-3';
     case 4: return 'col-span-4';
-    default: return 'col-span-2';
+    default: return 'col-span-1'; // Default to single column for compact layout
   }
 }

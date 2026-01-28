@@ -114,6 +114,12 @@ export interface ProductRawData {
   productLine?: string | null;
   series?: string | null;
   model?: string | null;
+  // Hierarchy IDs (for restoring state when editing catalog products)
+  domain_id?: string | null;
+  manufacturer_id?: string | null;
+  product_line_id?: string | null;
+  series_id?: string | null;
+  model_id?: string | null;
   sku?: string | null;
   specs?: string | null;
   source?: string | null; // Source of the product (e.g., 'catalog', 'ai-extraction')

@@ -224,7 +224,8 @@ export function ProductHierarchySelector({
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-2 gap-4">
+      {/* 5-column responsive grid for hierarchy selection */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* Domain */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">

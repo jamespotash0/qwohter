@@ -167,6 +167,7 @@ export function useConfigSchema({
   // Track if this is the first mount to avoid re-initialization loops
   const isFirstMount = useRef(true);
   const prevSchemaRef = useRef(schema);
+  const prevValueSetsLoadedRef = useRef(false);
 
   // Initialize values when schema changes (not on initialValues changes to prevent loops)
   useEffect(() => {
@@ -179,6 +180,54 @@ export function useConfigSchema({
       isFirstMount.current = false;
     }
   }, [schema]); // Only depend on schema, not initialValues
+
+  // Auto-apply default values for readonly fields when value sets finish loading
+  // This handles fields with single allowed_code that should auto-select
+  useEffect(() => {
+    const valueSetsJustLoaded = !prevValueSetsLoadedRef.current && valueSets instanceof Map && valueSets.size > 0;
+    prevValueSetsLoadedRef.current = valueSets instanceof Map && valueSets.size > 0;
+
+    if (!schema || !valueSetsJustLoaded) return;
+
+    console.log('[useConfigSchema] Value sets loaded, checking for auto-select fields...');
+
+    setValuesState((prev) => {
+      const updated = { ...prev };
+      let hasChanges = false;
+
+      for (const [key, field] of Object.entries(schema.options)) {
+        // Skip if field already has a value
+        if (updated[key] !== null && updated[key] !== undefined && updated[key] !== '') {
+          continue;
+        }
+
+        // Auto-select for readonly fields with single allowed_code
+        if (field.readonly && field.allowed_codes?.length === 1) {
+          console.log(`[useConfigSchema] Auto-selecting readonly field "${key}" with single option: ${field.allowed_codes[0]}`);
+          updated[key] = field.allowed_codes[0];
+          hasChanges = true;
+          continue;
+        }
+
+        // Auto-select for readonly fields with default_value
+        if (field.readonly && field.default_value !== undefined) {
+          console.log(`[useConfigSchema] Auto-applying default value for readonly field "${key}": ${field.default_value}`);
+          updated[key] = field.default_value;
+          hasChanges = true;
+          continue;
+        }
+
+        // Auto-select if there's only one option available after filtering
+        if (field.values_ref && field.allowed_codes?.length === 1 && !field.depends_on) {
+          console.log(`[useConfigSchema] Auto-selecting field "${key}" with single allowed option: ${field.allowed_codes[0]}`);
+          updated[key] = field.allowed_codes[0];
+          hasChanges = true;
+        }
+      }
+
+      return hasChanges ? updated : prev;
+    });
+  }, [schema, valueSets]);
 
   // Notify parent of changes (skip on first render to avoid unnecessary calls)
   const isFirstOnChange = useRef(true);
@@ -491,14 +540,32 @@ function initializeValues(
   const values: ConfigFormValues = {};
 
   for (const [key, field] of Object.entries(schema.options)) {
-    // Use initial value if provided, otherwise use default
-    if (key in initialValues) {
+    // Use initial value if provided
+    if (key in initialValues && initialValues[key] !== null && initialValues[key] !== undefined) {
       values[key] = initialValues[key];
-    } else if (field.default_value !== undefined) {
-      values[key] = field.default_value;
-    } else {
-      values[key] = null;
+      continue;
     }
+
+    // For readonly fields with default_value, always apply it
+    if (field.readonly && field.default_value !== undefined) {
+      values[key] = field.default_value;
+      continue;
+    }
+
+    // For readonly fields with single allowed_code, auto-select it
+    if (field.readonly && field.allowed_codes?.length === 1 && field.allowed_codes[0]) {
+      values[key] = field.allowed_codes[0];
+      continue;
+    }
+
+    // For non-readonly fields with default_value
+    if (field.default_value !== undefined) {
+      values[key] = field.default_value;
+      continue;
+    }
+
+    // Default to null
+    values[key] = null;
   }
 
   return values;

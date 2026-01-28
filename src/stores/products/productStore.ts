@@ -163,6 +163,8 @@ interface ProductState {
   reset: () => void;
   clearFromLevel: (level: 'manufacturer' | 'productLine' | 'series' | 'model') => void;
   setError: (error: string | null) => void;
+  /** Restore hierarchy state from saved product data (for editing) */
+  restoreFromProduct: (rawData: Record<string, unknown>) => Promise<void>;
 
   // Legacy aliases for backward compatibility
   types: ProductDomain[];
@@ -610,6 +612,108 @@ export const useProductStore = create<ProductState>()(
         selectedModel: null,
         error: null,
       });
+    },
+
+    // Restore hierarchy state from saved product data (for editing)
+    restoreFromProduct: async (rawData: Record<string, unknown>) => {
+      // Reset first
+      set({
+        selectedDomain: null,
+        selectedManufacturer: null,
+        selectedProductLine: null,
+        selectedSeries: null,
+        selectedModel: null,
+        error: null,
+      });
+
+      // Extract hierarchy IDs from rawData
+      const domainId = rawData.domain_id as string | undefined;
+      const manufacturerId = rawData.manufacturer_id as string | undefined;
+      const productLineId = rawData.product_line_id as string | undefined;
+      const seriesId = rawData.series_id as string | undefined;
+      const modelId = rawData.model_id as string | undefined;
+
+      if (!domainId) {
+        console.warn('[productStore] No domain_id found in product rawData');
+        return;
+      }
+
+      try {
+        // 1. Fetch and select domain
+        await get().fetchDomains();
+        const domain = get().domains.find(d => d.id === domainId);
+        if (!domain) {
+          console.warn('[productStore] Domain not found:', domainId);
+          return;
+        }
+        set({ selectedDomain: domain });
+
+        if (!manufacturerId) return;
+
+        // 2. Fetch and select manufacturer
+        await get().fetchManufacturers(domainId);
+        const manufacturersList = get().manufacturers.get(domainId) || [];
+        const manufacturer = manufacturersList.find(m => m.id === manufacturerId);
+        if (!manufacturer) {
+          console.warn('[productStore] Manufacturer not found:', manufacturerId);
+          return;
+        }
+        set({ selectedManufacturer: manufacturer });
+
+        // 3. Fetch product lines
+        await get().fetchProductLines(manufacturerId);
+        const productLinesList = get().productLines.get(manufacturerId) || [];
+
+        // If product line exists, select it
+        if (productLineId && productLinesList.length > 0) {
+          const productLine = productLinesList.find(pl => pl.id === productLineId);
+          if (productLine) {
+            set({ selectedProductLine: productLine });
+
+            // 4. Fetch series for this product line
+            if (seriesId) {
+              await get().fetchSeries(productLineId);
+              const seriesList = get().series.get(productLineId) || [];
+              const series = seriesList.find(s => s.id === seriesId);
+              if (series) {
+                set({ selectedSeries: series });
+              }
+            }
+          }
+        } else if (seriesId) {
+          // No product line - try fetching series by manufacturer
+          await get().fetchSeriesByManufacturer(manufacturerId);
+          const seriesList = get().series.get(`mfr_${manufacturerId}`) || [];
+          const series = seriesList.find(s => s.id === seriesId);
+          if (series) {
+            set({ selectedSeries: series });
+          }
+        }
+
+        // 5. Fetch and select model
+        if (modelId) {
+          const currentSeries = get().selectedSeries;
+          if (currentSeries) {
+            await get().fetchModels(currentSeries.id);
+            const modelsList = get().models.get(currentSeries.id) || [];
+            const model = modelsList.find(m => m.id === modelId);
+            if (model) {
+              set({ selectedModel: model });
+            }
+          } else {
+            // Try fetching models by manufacturer (no series)
+            await get().fetchModelsByManufacturer(manufacturerId);
+            const modelsList = get().models.get(`mfr_${manufacturerId}`) || [];
+            const model = modelsList.find(m => m.id === modelId);
+            if (model) {
+              set({ selectedModel: model });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[productStore] Error restoring from product:', error);
+        set({ error: error instanceof Error ? error.message : 'Failed to restore product' });
+      }
     },
 
     setError: (error) => set({ error }),
