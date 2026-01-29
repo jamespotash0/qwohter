@@ -319,7 +319,7 @@ export const calculateAverageGrossProfitPerProposal = (proposals: Proposal[]): n
   wonProposals.forEach((p) => {
     // Try to get profit from form_data.pricing first
     const pricingData = p.form_data?.pricing;
-    const profitAmount = pricingData?.grossProfit;
+    const profitAmount = pricingData?.summary?.grossProfit;
     if (profitAmount !== undefined && profitAmount !== null) {
       totalProfit += profitAmount;
       proposalsWithProfit++;
@@ -819,7 +819,7 @@ export const calculateTotalsOverTime = (
         let grossProfit = 0;
         wonProposals.forEach((p) => {
           const pricingData = p.form_data?.pricing;
-          const profitAmount = pricingData?.grossProfit;
+          const profitAmount = pricingData?.summary?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
           } else if (p.margin_percentage && p.total_value) {
@@ -861,7 +861,7 @@ export const calculateTotalsOverTime = (
         let grossProfit = 0;
         wonProposals.forEach((p) => {
           const pricingData = p.form_data?.pricing;
-          const profitAmount = pricingData?.grossProfit;
+          const profitAmount = pricingData?.summary?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
           } else if (p.margin_percentage && p.total_value) {
@@ -904,7 +904,7 @@ export const calculateTotalsOverTime = (
         let grossProfit = 0;
         wonProposals.forEach((p) => {
           const pricingData = p.form_data?.pricing;
-          const profitAmount = pricingData?.grossProfit;
+          const profitAmount = pricingData?.summary?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
           } else if (p.margin_percentage && p.total_value) {
