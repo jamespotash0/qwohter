@@ -3,33 +3,30 @@
  *
  * Unified calendar with Day / Week / Month / Year views.
  * Shows proposals, tasks, reminders, and custom events.
+ * Centralized navigation bar with view switcher.
  */
 
-import { useState, useMemo } from 'react';
-import { format, isSameDay, getYear } from 'date-fns';
+import { useState, useMemo, useCallback } from 'react';
+import { format, isSameDay, getYear, addDays, startOfWeek } from 'date-fns';
 import { Plus } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-import { useCalendarItems } from '@/hooks/queries/useCalendarEvents';
+import {
+  useCalendarItems,
+  useDeleteCalendarEvent,
+} from '@/hooks/queries/useCalendarEvents';
+import { CalendarNavHeader } from '@/components/features/calendar/CalendarNavHeader';
+import type { CalendarViewType } from '@/components/features/calendar/CalendarNavHeader';
 import { CalendarMonthView } from '@/components/features/calendar/CalendarMonthView';
 import { CalendarWeekView } from '@/components/features/calendar/CalendarWeekView';
 import { CalendarDayView } from '@/components/features/calendar/CalendarDayView';
 import { CalendarYearView } from '@/components/features/calendar/CalendarYearView';
 import { CreateEventDialog } from '@/components/features/calendar/CreateEventDialog';
 import { CalendarItemDetailSheet } from '@/components/features/calendar/CalendarItemDetailSheet';
-import { cn } from '@/lib/utils';
 import type { CalendarEvent, UnifiedCalendarItem } from '@/lib/types/calendarEvents';
-
-type CalendarViewType = 'day' | 'week' | 'month' | 'year';
-const VIEW_OPTIONS: { value: CalendarViewType; label: string }[] = [
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'year', label: 'Year' },
-];
 
 const Calendar = () => {
   const user = useUser();
@@ -47,6 +44,9 @@ const Calendar = () => {
     organization?.id,
     currentMonth,
   );
+
+  const deleteEvent = useDeleteCalendarEvent();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Group items by date
   const itemsByDate = useMemo(() => {
@@ -66,6 +66,95 @@ const Calendar = () => {
     );
   }, [calendarItems, selectedDate]);
 
+  // ── Centralized navigation ──
+
+  const navTitle = useMemo(() => {
+    switch (view) {
+      case 'day':
+        return format(selectedDate, 'EEEE, MMMM d, yyyy');
+      case 'week': {
+        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+        const weekEnd = addDays(weekStart, 6);
+        return `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`;
+      }
+      case 'month':
+        return format(currentMonth, 'MMMM yyyy');
+      case 'year':
+        return String(currentYear);
+    }
+  }, [view, selectedDate, currentMonth, currentYear]);
+
+  const handlePrev = useCallback(() => {
+    switch (view) {
+      case 'day': {
+        const d = addDays(selectedDate, -1);
+        setSelectedDate(d);
+        setCurrentMonth(d);
+        break;
+      }
+      case 'week': {
+        const d = addDays(selectedDate, -7);
+        setSelectedDate(d);
+        setCurrentMonth(d);
+        break;
+      }
+      case 'month':
+        setCurrentMonth(
+          new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
+        );
+        break;
+      case 'year':
+        setCurrentYear((y) => y - 1);
+        break;
+    }
+  }, [view, selectedDate, currentMonth]);
+
+  const handleNext = useCallback(() => {
+    switch (view) {
+      case 'day': {
+        const d = addDays(selectedDate, 1);
+        setSelectedDate(d);
+        setCurrentMonth(d);
+        break;
+      }
+      case 'week': {
+        const d = addDays(selectedDate, 7);
+        setSelectedDate(d);
+        setCurrentMonth(d);
+        break;
+      }
+      case 'month':
+        setCurrentMonth(
+          new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
+        );
+        break;
+      case 'year':
+        setCurrentYear((y) => y + 1);
+        break;
+    }
+  }, [view, selectedDate, currentMonth]);
+
+  const handleToday = useCallback(() => {
+    const today = new Date();
+    setSelectedDate(today);
+    setCurrentMonth(today);
+    setCurrentYear(getYear(today));
+  }, []);
+
+  const handleViewChange = useCallback(
+    (newView: CalendarViewType) => {
+      if (newView === 'month') {
+        setCurrentMonth(selectedDate);
+      } else if (newView === 'year') {
+        setCurrentYear(getYear(selectedDate));
+      }
+      setView(newView);
+    },
+    [selectedDate],
+  );
+
+  // ── Event handlers ──
+
   const handleEventClick = (item: UnifiedCalendarItem) => {
     setDetailItem(item);
   };
@@ -74,6 +163,19 @@ const Calendar = () => {
     if (detailItem?.source === 'calendar_event' && detailItem.calendarEvent) {
       setEditingEvent(detailItem.calendarEvent);
       setDetailItem(null);
+    }
+  };
+
+  const handleDeleteFromDetail = async () => {
+    if (detailItem?.source === 'calendar_event' && detailItem.calendarEvent) {
+      const eventId = detailItem.calendarEvent.id;
+      setDeletingId(eventId);
+      try {
+        await deleteEvent.mutateAsync(eventId);
+        setDetailItem(null);
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -103,83 +205,69 @@ const Calendar = () => {
       subtitle="Track proposals, deadlines, and events"
       showPageHeader
       headerActions={
-        <div className="flex items-center gap-3">
-          {/* View switcher */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-            {VIEW_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setView(opt.value)}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-md transition-all',
-                  view === opt.value
-                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300',
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          <Button
-            onClick={() => setShowCreateDialog(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-          >
-            <Plus size={16} weight="bold" />
-            New Event
-          </Button>
-        </div>
+        <Button
+          onClick={() => setShowCreateDialog(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+        >
+          <Plus size={16} weight="bold" />
+          New Event
+        </Button>
       }
     >
-      <div className="flex-1 min-h-0">
-        {view === 'month' && (
-          <CalendarMonthView
-            currentMonth={currentMonth}
-            onMonthChange={setCurrentMonth}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            itemsByDate={itemsByDate}
-            isLoading={isLoading}
-            onEventClick={handleEventClick}
-            onDayZoom={handleDayZoom}
-            organizationId={organization?.id || ''}
-          />
-        )}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* Unified navigation bar with view switcher */}
+        <CalendarNavHeader
+          title={navTitle}
+          view={view}
+          onViewChange={handleViewChange}
+          onToday={handleToday}
+          todayLabel={view === 'year' ? 'This Year' : 'Today'}
+          onPrev={handlePrev}
+          onNext={handleNext}
+        />
 
-        {view === 'week' && (
-          <CalendarWeekView
-            selectedDate={selectedDate}
-            onDateChange={(date) => {
-              setSelectedDate(date);
-              setCurrentMonth(date);
-            }}
-            itemsByDate={itemsByDate}
-            onEventClick={handleEventClick}
-            onDayZoom={handleDayZoom}
-            organizationId={organization?.id || ''}
-          />
-        )}
+        {/* View content */}
+        <div className="flex-1 min-h-0">
+          {view === 'month' && (
+            <CalendarMonthView
+              currentMonth={currentMonth}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              itemsByDate={itemsByDate}
+              onEventClick={handleEventClick}
+              onDayZoom={handleDayZoom}
+              organizationId={organization?.id || ''}
+            />
+          )}
 
-        {view === 'day' && (
-          <CalendarDayView
-            date={selectedDate}
-            items={selectedDayItems}
-            onBack={() => setView('month')}
-            onEditEvent={handleEventClick}
-            organizationId={organization?.id || ''}
-          />
-        )}
+          {view === 'week' && (
+            <CalendarWeekView
+              selectedDate={selectedDate}
+              itemsByDate={itemsByDate}
+              onEventClick={handleEventClick}
+              onDayZoom={handleDayZoom}
+              organizationId={organization?.id || ''}
+            />
+          )}
 
-        {view === 'year' && (
-          <CalendarYearView
-            currentYear={currentYear}
-            onYearChange={setCurrentYear}
-            itemsByDate={itemsByDate}
-            onDayZoom={handleDayZoom}
-            onMonthZoom={handleMonthZoom}
-          />
-        )}
+          {view === 'day' && (
+            <CalendarDayView
+              date={selectedDate}
+              items={selectedDayItems}
+              onEditEvent={handleEventClick}
+              organizationId={organization?.id || ''}
+            />
+          )}
+
+          {view === 'year' && (
+            <CalendarYearView
+              currentYear={currentYear}
+              itemsByDate={itemsByDate}
+              onDayZoom={handleDayZoom}
+              onMonthZoom={handleMonthZoom}
+            />
+          )}
+        </div>
       </div>
 
       {/* Create/Edit Dialog */}
@@ -204,6 +292,8 @@ const Calendar = () => {
           if (!open) setDetailItem(null);
         }}
         onEdit={handleEditFromDetail}
+        onDelete={handleDeleteFromDetail}
+        isDeleting={!!deletingId}
       />
     </PageContent>
   );

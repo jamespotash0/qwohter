@@ -16,6 +16,7 @@ const corsHeaders = {
  * Creates actual Stripe subscription with trial_period_days: 14
  * No payment method required upfront
  */
+//@ts-ignore
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -134,13 +135,25 @@ serve(async (req) => {
       console.log('Created Stripe customer:', customerId);
     }
 
-    // Get the per-user price ID from environment
-    //@ts-ignore
-    const priceId = Deno.env.get('STRIPE_PRICE_ID_PER_USER_MONTHLY');
+    // Get Team plan and price ID from database
+    const { data: plan } = await supabase
+      .from('subscription_plans')
+      .select('id, stripe_price_id_monthly')
+      .eq('name', 'Team')
+      .single();
+
+    if (!plan) {
+      return new Response(
+        JSON.stringify({ error: 'Team plan not found in database' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const priceId = plan.stripe_price_id_monthly;
 
     if (!priceId) {
       return new Response(
-        JSON.stringify({ error: 'Stripe price ID not configured' }),
+        JSON.stringify({ error: 'Stripe price ID not configured for Team plan' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -169,20 +182,6 @@ serve(async (req) => {
     });
 
     console.log('Created Stripe subscription with trial:', subscription.id);
-
-    // Get or create Team plan reference
-    const { data: plan } = await supabase
-      .from('subscription_plans')
-      .select('id')
-      .eq('name', 'Team')
-      .single();
-
-    if (!plan) {
-      return new Response(
-        JSON.stringify({ error: 'Team plan not found in database' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Get customer payment methods to check if payment method is attached
     const paymentMethods = await stripe.paymentMethods.list({

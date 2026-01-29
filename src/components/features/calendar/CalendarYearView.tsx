@@ -5,7 +5,7 @@
  * Day numbers with event dot indicators. Click a day to zoom in.
  */
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import {
   startOfYear,
   addMonths,
@@ -17,16 +17,12 @@ import {
   format,
   isSameMonth,
   isToday,
-  getYear,
 } from 'date-fns';
-import { CaretLeft, CaretRight, CalendarBlankIcon } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { UnifiedCalendarItem } from '@/lib/types/calendarEvents';
 
 interface CalendarYearViewProps {
   currentYear: number;
-  onYearChange: (year: number) => void;
   /** All items for the year — keyed by yyyy-MM-dd */
   itemsByDate: Map<string, UnifiedCalendarItem[]>;
   onDayZoom: (date: Date) => void;
@@ -37,15 +33,10 @@ const MINI_WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export const CalendarYearView: React.FC<CalendarYearViewProps> = ({
   currentYear,
-  onYearChange,
   itemsByDate,
   onDayZoom,
   onMonthZoom,
 }) => {
-  const goToPrevYear = useCallback(() => onYearChange(currentYear - 1), [currentYear, onYearChange]);
-  const goToNextYear = useCallback(() => onYearChange(currentYear + 1), [currentYear, onYearChange]);
-  const goToCurrentYear = useCallback(() => onYearChange(getYear(new Date())), [onYearChange]);
-
   // 12 months
   const months = useMemo(() => {
     const yearStart = startOfYear(new Date(currentYear, 0, 1));
@@ -54,33 +45,6 @@ export const CalendarYearView: React.FC<CalendarYearViewProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToCurrentYear}
-            className="text-xs h-8 gap-1.5 rounded-lg border-gray-200 dark:border-gray-700"
-          >
-            <CalendarBlankIcon size={14} />
-            This Year
-          </Button>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={goToPrevYear} className="h-8 w-8 p-0 rounded-lg">
-              <CaretLeft size={16} />
-            </Button>
-            <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white min-w-[80px] text-center select-none">
-              {currentYear}
-            </h2>
-            <Button variant="ghost" size="sm" onClick={goToNextYear} className="h-8 w-8 p-0 rounded-lg">
-              <CaretRight size={16} />
-            </Button>
-          </div>
-        </div>
-{/* view label removed — shown in page-level view switcher */}
-      </div>
-
       {/* ── 12 Mini Months (4x3 grid) ── */}
       <div className="flex-1 grid grid-cols-4 gap-4 min-h-0 overflow-y-auto">
         {months.map((month) => (

@@ -1,8 +1,8 @@
 /**
  * Calendar Item Detail Sheet
  *
- * Right sidebar that opens when clicking on a proposal, task, or reminder
- * in the calendar. Shows item details and a link to the full view.
+ * Sleek right sidebar for viewing proposal, task, reminder, or event details.
+ * Color-accented header, grouped info cards, and polished action buttons.
  */
 
 import React from 'react';
@@ -21,6 +21,7 @@ import {
   CurrencyDollar,
   Buildings,
   Trash,
+  PencilSimple,
 } from '@phosphor-icons/react';
 import {
   Sheet,
@@ -29,7 +30,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProposal } from '@/hooks/queries/useProposals';
 import { cn } from '@/lib/utils';
@@ -62,7 +62,6 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
 }) => {
   const navigate = useNavigate();
 
-  // Fetch proposal details if the item is a proposal
   const proposalId = item?.source === 'proposal' ? item.sourceId : undefined;
   const { data: proposal, isLoading: proposalLoading } = useProposal(
     proposalId || '',
@@ -82,14 +81,38 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
 
   const formattedDate = (() => {
     try {
-      const date = parseISO(item.date);
-      return item.allDay
-        ? format(date, 'EEEE, MMMM d, yyyy')
-        : format(date, 'EEEE, MMMM d, yyyy · h:mm a');
+      return format(parseISO(item.date), 'EEEE, MMMM d, yyyy');
     } catch {
       return item.date;
     }
   })();
+
+  const formattedTime = (() => {
+    if (item.allDay) return null;
+    try {
+      const start = parseISO(item.date);
+      const startStr = format(start, 'h:mm a');
+      if (item.endDate) {
+        const end = parseISO(item.endDate);
+        return `${startStr} – ${format(end, 'h:mm a')}`;
+      }
+      return startStr;
+    } catch {
+      return null;
+    }
+  })();
+
+  const formattedEndDate = (() => {
+    if (!item.endDate || !item.allDay) return null;
+    try {
+      return format(parseISO(item.endDate), 'EEEE, MMMM d, yyyy');
+    } catch {
+      return item.endDate;
+    }
+  })();
+
+  const hasActions =
+    item.linkUrl || (item.source === 'calendar_event' && (onEdit || onDelete));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -97,26 +120,36 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
         side="right"
         className="sm:max-w-[420px] w-[420px] p-0 border-l border-gray-200 dark:border-gray-700 overflow-y-auto"
       >
-        <SheetHeader className="p-6 pb-4">
-          {/* Source badge */}
-          <div className="flex items-center gap-2 mb-2">
+        {/* ── Color accent strip ── */}
+        <div
+          className="h-1 w-full flex-shrink-0"
+          style={{ background: item.color }}
+        />
+
+        {/* ── Header ── */}
+        <SheetHeader className="px-6 pt-5 pb-4">
+          <div className="flex items-center justify-between mb-3">
             <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase"
               style={{
                 backgroundColor: `${item.color}15`,
                 color: item.color,
               }}
             >
-              <SourceIcon size={13} weight="bold" />
+              <SourceIcon size={12} weight="bold" />
               {CALENDAR_SOURCE_LABELS[item.source]}
             </span>
             {item.status && (
               <span
                 className={cn(
-                  'px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider',
-                  item.status === 'Won' || item.status === 'Done' || item.status === 'Completed'
+                  'px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider',
+                  item.status === 'Won' ||
+                    item.status === 'Done' ||
+                    item.status === 'Completed'
                     ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400'
-                    : item.status === 'Submitted' || item.status === 'In Progress' || item.status === 'Pending'
+                    : item.status === 'Submitted' ||
+                        item.status === 'In Progress' ||
+                        item.status === 'Pending'
                       ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400'
                       : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
                 )}
@@ -126,7 +159,7 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
             )}
           </div>
 
-          <SheetTitle className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
+          <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
             {item.title}
           </SheetTitle>
           <SheetDescription className="sr-only">
@@ -134,56 +167,62 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
           </SheetDescription>
         </SheetHeader>
 
-        {/* ── Details ── */}
-        <div className="px-6 space-y-5 pb-6">
-          {/* Date section */}
-          <DetailRow
-            icon={CalendarBlank}
-            label="Date"
-            value={formattedDate}
-          />
+        {/* ── Content ── */}
+        <div className="px-6 pb-6 space-y-5">
+          {/* Date / time card */}
+          <div className="rounded-xl bg-gray-50 dark:bg-gray-800/40 p-4 space-y-3">
+            <MetaRow icon={CalendarBlank} label="Date" value={formattedDate} />
+            {formattedTime && (
+              <MetaRow icon={Clock} label="Time" value={formattedTime} />
+            )}
+            {formattedEndDate && (
+              <MetaRow
+                icon={CalendarBlank}
+                label="End Date"
+                value={formattedEndDate}
+              />
+            )}
+            {item.allDay && (
+              <div className="flex items-center gap-2 pt-0.5">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 uppercase tracking-wider">
+                  All Day
+                </span>
+              </div>
+            )}
+          </div>
 
-          {item.endDate && (
-            <DetailRow
-              icon={Clock}
-              label="End"
-              value={(() => {
-                try {
-                  const end = parseISO(item.endDate);
-                  return item.allDay
-                    ? format(end, 'EEEE, MMMM d, yyyy')
-                    : format(end, 'EEEE, MMMM d, yyyy · h:mm a');
-                } catch {
-                  return item.endDate;
-                }
-              })()}
-            />
-          )}
-
-          {item.description && (
-            <DetailRow
-              icon={Tag}
-              label="Description"
-              value={item.description}
-            />
-          )}
-
-          {/* ── Calendar event type ── */}
+          {/* Event type (calendar events only) */}
           {item.source === 'calendar_event' && item.calendarEvent && (
-            <DetailRow
-              icon={CalendarBlank}
-              label="Event Type"
-              value={item.calendarEvent.event_type}
-            />
+            <div className="flex items-center gap-2.5 px-1">
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {item.calendarEvent.event_type}
+              </span>
+            </div>
           )}
 
-          {/* ── Proposal-specific details ── */}
+          {/* Description */}
+          {item.description && (
+            <div>
+              <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+                Description
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {item.description}
+              </p>
+            </div>
+          )}
+
+          {/* ── Proposal details ── */}
           {item.source === 'proposal' && (
             <>
-              <div className="border-t border-gray-100 dark:border-gray-700/50 pt-4">
-                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <div className="pt-1">
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
                   Proposal Details
-                </span>
+                </p>
               </div>
 
               {proposalLoading ? (
@@ -193,44 +232,44 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
                   <Skeleton className="h-5 w-2/3" />
                 </div>
               ) : proposal ? (
-                <div className="space-y-3">
+                <div className="rounded-xl bg-gray-50 dark:bg-gray-800/40 p-4 space-y-3">
                   {proposal.proposal_number && (
-                    <DetailRow
+                    <MetaRow
                       icon={FileText}
                       label="Proposal #"
                       value={proposal.proposal_number}
                     />
                   )}
                   {proposal.client_name && (
-                    <DetailRow
+                    <MetaRow
                       icon={User}
                       label="Client"
                       value={proposal.client_name}
                     />
                   )}
                   {proposal.client_company && (
-                    <DetailRow
+                    <MetaRow
                       icon={Buildings}
                       label="Company"
                       value={proposal.client_company}
                     />
                   )}
                   {proposal.job_location && (
-                    <DetailRow
+                    <MetaRow
                       icon={MapPin}
                       label="Location"
                       value={proposal.job_location}
                     />
                   )}
                   {proposal.total_value != null && (
-                    <DetailRow
+                    <MetaRow
                       icon={CurrencyDollar}
                       label="Value"
                       value={`$${Number(proposal.total_value).toLocaleString()}`}
                     />
                   )}
                   {proposal.document_type && (
-                    <DetailRow
+                    <MetaRow
                       icon={Tag}
                       label="Type"
                       value={proposal.document_type}
@@ -241,73 +280,82 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
             </>
           )}
 
-          {/* ── Task-specific details ── */}
-          {item.source === 'task_deadline' && (
+          {/* ── Task details ── */}
+          {item.source === 'task_deadline' && item.status && (
             <>
-              <div className="border-t border-gray-100 dark:border-gray-700/50 pt-4">
-                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <div className="pt-1">
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
                   Task Details
-                </span>
+                </p>
               </div>
-              <DetailRow
-                icon={CheckSquare}
-                label="Status"
-                value={item.status}
-              />
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-800/40 p-4">
+                <MetaRow icon={CheckSquare} label="Status" value={item.status} />
+              </div>
             </>
           )}
 
-          {/* ── Reminder-specific details ── */}
-          {item.source === 'reminder' && (
+          {/* ── Reminder details ── */}
+          {item.source === 'reminder' && item.status && (
             <>
-              <div className="border-t border-gray-100 dark:border-gray-700/50 pt-4">
-                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <div className="pt-1">
+                <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
                   Reminder Details
-                </span>
+                </p>
               </div>
-              <DetailRow
-                icon={Bell}
-                label="Status"
-                value={item.status}
-              />
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-800/40 p-4">
+                <MetaRow icon={Bell} label="Status" value={item.status} />
+              </div>
             </>
           )}
 
-          {/* ── Action buttons ── */}
-          {(item.linkUrl || (item.source === 'calendar_event' && (onEdit || onDelete))) && (
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-700/50 space-y-2">
+          {/* ── Actions ── */}
+          {hasActions && (
+            <div className="pt-3 space-y-2">
               {item.source === 'calendar_event' && onEdit && (
-                <Button
+                <button
                   onClick={onEdit}
                   disabled={isDeleting}
-                  className="w-full h-10 gap-2 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium text-sm"
-                >
-                  Edit Event
-                </Button>
-              )}
-              {item.linkUrl && (
-                <Button
-                  onClick={handleNavigate}
-                  variant={item.source === 'calendar_event' ? 'outline' : 'default'}
                   className={cn(
-                    'w-full h-10 gap-2 rounded-xl font-medium text-sm',
-                    item.source !== 'calendar_event' && 'bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900',
+                    'w-full h-10 rounded-xl text-sm font-medium transition-all inline-flex items-center justify-center gap-2',
+                    'bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100',
+                    'text-white dark:text-gray-900',
+                    'active:scale-[0.98]',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
-                  <ArrowSquareOut size={16} weight="bold" />
+                  <PencilSimple size={15} weight="bold" />
+                  Edit Event
+                </button>
+              )}
+              {item.linkUrl && (
+                <button
+                  onClick={handleNavigate}
+                  className={cn(
+                    'w-full h-10 rounded-xl text-sm font-medium transition-all inline-flex items-center justify-center gap-2',
+                    item.source === 'calendar_event'
+                      ? 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      : 'bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900',
+                    'active:scale-[0.98]',
+                  )}
+                >
+                  <ArrowSquareOut size={15} weight="bold" />
                   View Full Details
-                </Button>
+                </button>
               )}
               {item.source === 'calendar_event' && onDelete && (
-                <Button
+                <button
                   onClick={onDelete}
                   disabled={isDeleting}
-                  variant="ghost"
-                  className="w-full h-10 gap-2 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 font-medium text-sm"
+                  className={cn(
+                    'w-full h-10 rounded-xl text-sm font-medium transition-all inline-flex items-center justify-center gap-2',
+                    'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20',
+                    'active:scale-[0.98]',
+                    'disabled:opacity-50 disabled:cursor-not-allowed',
+                  )}
                 >
-                  <Trash size={16} weight="bold" />
+                  <Trash size={15} weight="bold" />
                   {isDeleting ? 'Deleting...' : 'Delete Event'}
-                </Button>
+                </button>
               )}
             </div>
           )}
@@ -318,25 +366,25 @@ export const CalendarItemDetailSheet: React.FC<CalendarItemDetailSheetProps> = (
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Detail Row
+// Meta Row — icon + label + value, used inside info cards
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface DetailRowProps {
+interface MetaRowProps {
   icon: React.ElementType;
   label: string;
   value: string;
 }
 
-const DetailRow: React.FC<DetailRowProps> = ({ icon: Icon, label, value }) => (
+const MetaRow: React.FC<MetaRowProps> = ({ icon: Icon, label, value }) => (
   <div className="flex items-start gap-3">
-    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-0.5">
-      <Icon size={15} className="text-gray-500 dark:text-gray-400" />
+    <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-center flex-shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+      <Icon size={14} className="text-gray-500 dark:text-gray-400" />
     </div>
-    <div className="min-w-0 flex-1">
-      <span className="text-[11px] text-gray-400 dark:text-gray-500 font-medium block">
+    <div className="min-w-0 flex-1 pt-0.5">
+      <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider block leading-none mb-1">
         {label}
       </span>
-      <span className="text-sm text-gray-900 dark:text-white font-medium block break-words">
+      <span className="text-sm text-gray-900 dark:text-white font-medium block break-words leading-snug">
         {value}
       </span>
     </div>

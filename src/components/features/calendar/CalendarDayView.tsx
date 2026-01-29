@@ -7,8 +7,6 @@
 
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { format, parseISO, isToday, getHours, getMinutes } from 'date-fns';
-import { CaretLeft } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { QuickAddPopover } from './QuickAddPopover';
 import type { UnifiedCalendarItem } from '@/lib/types/calendarEvents';
@@ -17,7 +15,6 @@ import { CALENDAR_SOURCE_LABELS } from '@/lib/types/calendarEvents';
 interface CalendarDayViewProps {
   date: Date;
   items: UnifiedCalendarItem[];
-  onBack: () => void;
   onEditEvent: (item: UnifiedCalendarItem) => void;
   organizationId: string;
 }
@@ -93,7 +90,6 @@ function computeOverlapLayout<T extends { startHour: number; endHour: number }>(
 export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   date,
   items,
-  onBack,
   onEditEvent,
   organizationId,
 }) => {
@@ -171,33 +167,6 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="h-8 w-8 p-0 rounded-lg"
-          >
-            <CaretLeft size={18} />
-          </Button>
-          <div>
-            <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">
-              {format(date, 'EEEE, MMMM d')}
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {format(date, 'yyyy')}
-              {items.length > 0 && (
-                <span className="ml-2 text-gray-400 dark:text-gray-500">
-                  {items.length} event{items.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* ── All-day events ── */}
       {allDayItems.length > 0 && (
         <div className="mb-3 space-y-1">
@@ -280,7 +249,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                 key={item.id}
                 onClick={() => onEditEvent(item)}
                 className={cn(
-                  'absolute rounded-lg px-2.5 py-1.5 text-left transition-all overflow-hidden',
+                  'absolute rounded-lg px-2.5 py-1.5 text-left transition-all overflow-hidden z-[2]',
                   'hover:shadow-md hover:z-10',
                 )}
                 style={{
@@ -295,14 +264,14 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                   <span className="text-xs font-medium text-gray-900 dark:text-white truncate">
                     {item.title}
                   </span>
-                  {totalColumns === 1 && (
-                    <span
-                      className="text-[9px] font-medium px-1.5 py-0.5 rounded flex-shrink-0"
+                  <span
+                      className="text-[9px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 truncate"
                       style={{ backgroundColor: `${item.color}20`, color: item.color }}
                     >
-                      {CALENDAR_SOURCE_LABELS[item.source]}
+                      {item.source === 'calendar_event' && item.calendarEvent
+                        ? item.calendarEvent.event_type
+                        : CALENDAR_SOURCE_LABELS[item.source]}
                     </span>
-                  )}
                 </div>
                 {height >= 40 && (
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -322,7 +291,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
           {/* Current time indicator */}
           {currentTimePosition !== null && (
             <div
-              className="absolute left-12 right-0 flex items-center z-10 pointer-events-none"
+              className="absolute left-12 right-0 flex items-center z-20 pointer-events-none"
               style={{ top: currentTimePosition }}
             >
               <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1 shadow-sm" />

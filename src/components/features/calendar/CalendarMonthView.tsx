@@ -18,19 +18,16 @@ import {
   isToday,
   isSameDay,
 } from 'date-fns';
-import { CaretLeft, CaretRight, CalendarBlankIcon, Plus } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
+import { Plus } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { QuickAddPopover } from './QuickAddPopover';
 import type { UnifiedCalendarItem } from '@/lib/types/calendarEvents';
 
 interface CalendarMonthViewProps {
   currentMonth: Date;
-  onMonthChange: (month: Date) => void;
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   itemsByDate: Map<string, UnifiedCalendarItem[]>;
-  isLoading: boolean;
   onEventClick?: (item: UnifiedCalendarItem) => void;
   onDayZoom: (date: Date) => void;
   organizationId: string;
@@ -41,7 +38,6 @@ const MAX_VISIBLE_EVENTS = 3;
 
 export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   currentMonth,
-  onMonthChange,
   selectedDate,
   onSelectDate,
   itemsByDate,
@@ -50,22 +46,6 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   organizationId,
 }) => {
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
-  // ── Navigation ──
-  const goToPrevMonth = useCallback(() => {
-    const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-    onMonthChange(prev);
-  }, [currentMonth, onMonthChange]);
-
-  const goToNextMonth = useCallback(() => {
-    const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    onMonthChange(next);
-  }, [currentMonth, onMonthChange]);
-
-  const goToToday = useCallback(() => {
-    const today = new Date();
-    onMonthChange(today);
-    onSelectDate(today);
-  }, [onMonthChange, onSelectDate]);
 
   // ── Grid dates (Monday start, 6 fixed rows) ──
   const rows = useMemo(() => {
@@ -103,33 +83,6 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToToday}
-            className="text-xs h-8 gap-1.5 rounded-lg border-gray-200 dark:border-gray-700"
-          >
-            <CalendarBlankIcon size={14} />
-            Today
-          </Button>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={goToPrevMonth} className="h-8 w-8 p-0 rounded-lg">
-              <CaretLeft size={16} />
-            </Button>
-            <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white min-w-[150px] text-center select-none">
-              {format(currentMonth, 'MMMM yyyy')}
-            </h2>
-            <Button variant="ghost" size="sm" onClick={goToNextMonth} className="h-8 w-8 p-0 rounded-lg">
-              <CaretRight size={16} />
-            </Button>
-          </div>
-        </div>
-{/* view label removed — shown in page-level view switcher */}
-      </div>
-
       {/* ── Grid ── */}
       <div className="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
         {/* Weekday headers */}

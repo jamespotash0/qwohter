@@ -5,7 +5,7 @@
  * Events as positioned colored blocks.
  */
 
-import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
   format,
   parseISO,
@@ -16,8 +16,6 @@ import {
   startOfWeek,
   addDays,
 } from 'date-fns';
-import { CaretLeft, CaretRight, CalendarBlankIcon, Plus } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { QuickAddPopover } from './QuickAddPopover';
 import type { UnifiedCalendarItem } from '@/lib/types/calendarEvents';
@@ -25,7 +23,6 @@ import { CALENDAR_SOURCE_LABELS } from '@/lib/types/calendarEvents';
 
 interface CalendarWeekViewProps {
   selectedDate: Date;
-  onDateChange: (date: Date) => void;
   itemsByDate: Map<string, UnifiedCalendarItem[]>;
   onEventClick?: (item: UnifiedCalendarItem) => void;
   onDayZoom: (date: Date) => void;
@@ -104,7 +101,6 @@ function computeOverlapLayout<T extends { startHour: number; endHour: number }>(
 
 export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   selectedDate,
-  onDateChange,
   itemsByDate,
   onEventClick,
   onDayZoom,
@@ -118,19 +114,6 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
     const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [selectedDate]);
-
-  // Navigation
-  const goToPrevWeek = useCallback(() => {
-    onDateChange(addDays(selectedDate, -7));
-  }, [selectedDate, onDateChange]);
-
-  const goToNextWeek = useCallback(() => {
-    onDateChange(addDays(selectedDate, 7));
-  }, [selectedDate, onDateChange]);
-
-  const goToToday = useCallback(() => {
-    onDateChange(new Date());
-  }, [onDateChange]);
 
   // Scroll to current hour on mount
   useEffect(() => {
@@ -184,33 +167,6 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToToday}
-            className="text-xs h-8 gap-1.5 rounded-lg border-gray-200 dark:border-gray-700"
-          >
-            <CalendarBlankIcon size={14} />
-            Today
-          </Button>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={goToPrevWeek} className="h-8 w-8 p-0 rounded-lg">
-              <CaretLeft size={16} />
-            </Button>
-            <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white min-w-[200px] text-center select-none">
-              {format(weekDays[0], 'MMM d')} – {format(weekDays[6], 'MMM d, yyyy')}
-            </h2>
-            <Button variant="ghost" size="sm" onClick={goToNextWeek} className="h-8 w-8 p-0 rounded-lg">
-              <CaretRight size={16} />
-            </Button>
-          </div>
-        </div>
-{/* view label removed — shown in page-level view switcher */}
-      </div>
-
       {/* ── Grid ── */}
       <div className="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900 min-h-0">
         {/* Day column headers */}

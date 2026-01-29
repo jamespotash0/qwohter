@@ -580,7 +580,7 @@ serve(async (req) => {
 
     // Build signing URL (prefer client-provided URL for localhost support, fallback to env var)
     //@ts-ignore
-    const appUrl = clientAppUrl || Deno.env.get('APP_URL') || 'https://app.qwohter.com';
+    const appUrl = clientAppUrl || Deno.env.get('APP_URL') || 'https://www.qwohter.com';
     const signingUrl = `${appUrl}/sign/${signingToken.access_token}`;
 
     // Send email if Resend is configured
