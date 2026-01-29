@@ -113,6 +113,7 @@ serve(async (req) => {
     }
 
     // Update Stripe subscription quantity with proration
+    // Idempotency key prevents duplicate proration invoices from concurrent requests
     const updatedSubscription = await stripe.subscriptions.update(
       subscription.stripe_subscription_id,
       {
@@ -121,6 +122,9 @@ serve(async (req) => {
           quantity: newQuantity,
         }],
         proration_behavior: 'always_invoice', // Always create proration invoice
+      },
+      {
+        idempotencyKey: `seats-${subscription.stripe_subscription_id}-${action}-${newQuantity}-${Math.floor(Date.now() / 30000)}`,
       }
     );
 

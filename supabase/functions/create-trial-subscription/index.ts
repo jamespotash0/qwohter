@@ -168,6 +168,7 @@ serve(async (req) => {
     const quantity = Math.max(1, count || 1);
 
     // Create Stripe subscription with 14-day trial
+    // Idempotency key ensures only one trial subscription per org (prevents race conditions)
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{
@@ -179,6 +180,8 @@ serve(async (req) => {
       metadata: {
         organization_id: organizationId,
       },
+    }, {
+      idempotencyKey: `trial-${organizationId}`,
     });
 
     console.log('Created Stripe subscription with trial:', subscription.id);

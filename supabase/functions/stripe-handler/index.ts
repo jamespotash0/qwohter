@@ -116,6 +116,8 @@ serve(async (req) => {
     }
     
     // Create Checkout Session with per-user quantity
+    // Idempotency key prevents duplicate sessions from double-clicks (30s window)
+    const idempotencyKey = `checkout-${organizationId}-${planId}-${Math.floor(Date.now() / 30000)}`;
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [
@@ -141,6 +143,8 @@ serve(async (req) => {
         },
       },
       allow_promotion_codes: true,
+    }, {
+      idempotencyKey,
     });
 
     console.log('Created checkout session:', session.id);

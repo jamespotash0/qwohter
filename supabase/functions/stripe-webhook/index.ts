@@ -65,7 +65,27 @@ serve(async (req) => {
       );
     }
 
-    console.log('Webhook event type:', event.type);
+    console.log('Webhook event type:', event.type, 'event.id:', event.id);
+
+    // Idempotency: skip already-processed events (Stripe retries on timeout)
+    const { data: existingEvent } = await supabase
+      .from('stripe_webhook_events')
+      .select('id')
+      .eq('stripe_event_id', event.id)
+      .maybeSingle();
+
+    if (existingEvent) {
+      console.log('Skipping already-processed event:', event.id);
+      return new Response(
+        JSON.stringify({ received: true, duplicate: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Mark event as processing (insert before handling to prevent concurrent duplicates)
+    await supabase
+      .from('stripe_webhook_events')
+      .insert({ stripe_event_id: event.id, event_type: event.type });
 
     // Handle different event types
     switch (event.type) {
