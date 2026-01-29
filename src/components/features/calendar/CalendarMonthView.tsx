@@ -84,7 +84,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* ── Grid ── */}
-      <div className="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+      <div className="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded overflow-hidden bg-white dark:bg-gray-900">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
           {WEEKDAYS.map((day, i) => (

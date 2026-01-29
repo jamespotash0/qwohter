@@ -2,7 +2,7 @@
  * React Query Hooks for Calendar Events
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -58,6 +58,7 @@ export function useCalendarItems(
     enabled: !!organizationId && enabled,
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
 }
 

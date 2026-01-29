@@ -168,7 +168,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* ── Grid ── */}
-      <div className="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900 min-h-0">
+      <div className="flex-1 flex flex-col border border-gray-200 dark:border-gray-700 rounded overflow-hidden bg-white dark:bg-gray-900 min-h-0">
         {/* Day column headers */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/40">
           {/* Time gutter spacer */}

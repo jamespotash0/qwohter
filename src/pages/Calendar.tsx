@@ -193,7 +193,7 @@ const Calendar = () => {
     return (
       <PageContent title="Calendar" showPageHeader>
         <div className="flex-1">
-          <Skeleton className="h-full min-h-[500px] w-full rounded-xl" />
+          <Skeleton className="h-full min-h-[500px] w-full" />
         </div>
       </PageContent>
     );
@@ -204,6 +204,7 @@ const Calendar = () => {
       title="Calendar"
       subtitle="Track proposals, deadlines, and events"
       showPageHeader
+      className="!h-[calc(100dvh-3.5rem)]"
       headerActions={
         <Button
           onClick={() => setShowCreateDialog(true)}

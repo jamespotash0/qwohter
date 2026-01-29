@@ -52,7 +52,7 @@ export const CalendarYearView: React.FC<CalendarYearViewProps> = ({
             key={format(month, 'yyyy-MM')}
             month={month}
             itemsByDate={itemsByDate}
-            onDayClick={onDayZoom}
+            onDayClick={onMonthZoom}
             onMonthClick={() => onMonthZoom(month)}
           />
         ))}
@@ -88,7 +88,7 @@ const MiniMonth: React.FC<MiniMonthProps> = ({ month, itemsByDate, onDayClick, o
   }, [month]);
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 bg-white dark:bg-gray-900">
+    <div className="border border-gray-200 dark:border-gray-700 rounded p-2.5 bg-white dark:bg-gray-900">
       {/* Month title */}
       <button
         onClick={onMonthClick}

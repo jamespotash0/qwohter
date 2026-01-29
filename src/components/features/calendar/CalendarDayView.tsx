@@ -201,7 +201,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
       {/* ── Timeline ── */}
       <div
         ref={timelineRef}
-        className="flex-1 overflow-y-auto min-h-0 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900"
+        className="flex-1 overflow-y-auto min-h-0 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900"
       >
         <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
           {/* Hour rows */}
