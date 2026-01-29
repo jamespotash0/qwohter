@@ -27,6 +27,8 @@ export interface Organization {
   found_via?: string;
   logo_data?: LogoData;
   payment_settings?: PaymentSettings;
+  primary_storage_provider?: string | null;
+  sync_to_all_storage_providers?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +77,8 @@ export interface UpdateOrganizationData {
   industry?: string;
   logo_data?: LogoData;
   payment_settings?: PaymentSettings;
+  primary_storage_provider?: string | null;
+  sync_to_all_storage_providers?: boolean;
 }
 
 // ============================================================================

@@ -6,6 +6,9 @@
 
 import React, { useState } from 'react';
 import { Shield, Plug, Loader2, AlertTriangle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { IntegrationCard } from '@/components/features/integrations/IntegrationCard';
 import { QBOnlineConnectDialog } from '@/components/features/integrations/QBOnlineConnectDialog';
@@ -33,11 +36,13 @@ import type { IntegrationType } from '@/lib/types/integrations';
 interface IntegrationsTabProps {
   organization: any;
   userRole: string;
+  onOrganizationUpdate?: (userId?: string, forceRefresh?: boolean) => Promise<void>;
 }
 
 export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   organization,
   userRole,
+  onOrganizationUpdate,
 }) => {
   const [connectingType, setConnectingType] = useState<IntegrationType | null>(null);
   const [disconnectingType, setDisconnectingType] = useState<IntegrationType | null>(null);
@@ -48,7 +53,31 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [pendingDisconnect, setPendingDisconnect] = useState<IntegrationType | null>(null);
 
+  const [isUpdatingStorage, setIsUpdatingStorage] = useState(false);
+
   const hasEditPermission = hasAdminPermissions(userRole);
+
+  // Save a storage setting to the organizations table
+  const handleUpdateStorageSetting = async (field: string, value: string | boolean | null) => {
+    if (!organization?.id) return;
+    setIsUpdatingStorage(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ [field]: value } as never)
+        .eq('id', organization.id);
+      if (error) throw error;
+      toast.success('Storage settings updated');
+      if (onOrganizationUpdate) {
+        await onOrganizationUpdate(undefined, true);
+      }
+    } catch (error) {
+      console.error('Failed to update storage setting:', error);
+      toast.error('Failed to update storage settings');
+    } finally {
+      setIsUpdatingStorage(false);
+    }
+  };
 
   // Use React Query hook for integrations data (automatic caching)
   const { integrations, isLoading, error, connectedIntegrations } = useIntegrationsData(
@@ -234,6 +263,59 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               platformRequirement={integration.platformRequirement}
             />
           ))}
+        </div>
+
+        {/* Storage Settings */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Storage Settings
+          </h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
+
+          <div className="space-y-1">
+            {/* Primary Storage Provider */}
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Primary Storage Provider</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Additional cloud provider to sync documents to
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                <Select
+                  value={organization?.primary_storage_provider || 'none'}
+                  onValueChange={(value) => handleUpdateStorageSetting('primary_storage_provider', value === 'none' ? null : value)}
+                  disabled={isUpdatingStorage}
+                >
+                  <SelectTrigger className="w-56 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-900">
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="google_drive">Google Drive</SelectItem>
+                    <SelectItem value="dropbox">Dropbox</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Sync to All Providers */}
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Sync to All Providers</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Upload documents to all connected storage providers instead of just the primary
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                <Switch
+                  checked={organization?.sync_to_all_storage_providers || false}
+                  onCheckedChange={(checked) => handleUpdateStorageSetting('sync_to_all_storage_providers', checked)}
+                  disabled={isUpdatingStorage || connectedIntegrations.filter(i => i.integration_type === 'google_docs' || i.integration_type === 'dropbox').length < 2}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Empty state if no integrations available */}

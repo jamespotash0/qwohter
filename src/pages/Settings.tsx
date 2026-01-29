@@ -163,6 +163,7 @@ const Settings = () => {
         component: <IntegrationsTab
           organization={organization}
           userRole={userRole || 'Member'}
+          onOrganizationUpdate={refetchOrganization}
         />,
         requiresPermission: "organization",
         requiresSubscription: true

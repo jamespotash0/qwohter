@@ -143,6 +143,8 @@ export interface Database {
           logo_data: any;
           industry: string;
           payment_settings?: Record<string, any> | null;
+          primary_storage_provider?: string | null;
+          sync_to_all_storage_providers?: boolean | null;
           created_at: string;
           updated_at: string;
         };
@@ -158,6 +160,8 @@ export interface Database {
           logo_data?: any;
           industry: string;
           payment_settings?: Record<string, any> | null;
+          primary_storage_provider?: string | null;
+          sync_to_all_storage_providers?: boolean | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -173,6 +177,8 @@ export interface Database {
           logo_data?: any;
           industry?: string;
           payment_settings?: Record<string, any> | null;
+          primary_storage_provider?: string | null;
+          sync_to_all_storage_providers?: boolean | null;
           created_at?: string;
           updated_at?: string;
         };
