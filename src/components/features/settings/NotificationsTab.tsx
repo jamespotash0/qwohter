@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, PaperPlaneTilt, Eye, PenNib, CheckCircle, XCircle, At, UserPlus, Users, Phone } from '@phosphor-icons/react';
-import { BellRing, CalendarClock, CreditCard, AlertTriangle, Sparkles, Ban, RefreshCw, UserPlus2, Mail, MessageSquare } from 'lucide-react';
+import { BellRing, Mail, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -173,14 +173,6 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
     // Admin/Owner only notifications
     if (isAdminOrOwner) {
       updates.email_on_member_joined = enabled;
-      // Payment/Subscription
-      updates.email_on_payment_success = enabled;
-      updates.email_on_payment_failed = enabled;
-      updates.email_on_trial_ending = enabled;
-      updates.email_on_subscription_activated = enabled;
-      updates.email_on_subscription_canceled = enabled;
-      updates.email_on_subscription_renewed = enabled;
-      updates.email_on_seat_count_changed = enabled;
     }
 
     // Update local state immediately
@@ -244,14 +236,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
 
   // Admin/Owner events
   const adminEventsEnabled = isAdminOrOwner
-    ? (localPrefs.email_on_member_joined ?? true) &&
-      (localPrefs.email_on_payment_success ?? true) &&
-      (localPrefs.email_on_payment_failed ?? true) &&
-      (localPrefs.email_on_trial_ending ?? true) &&
-      (localPrefs.email_on_subscription_activated ?? true) &&
-      (localPrefs.email_on_subscription_canceled ?? true) &&
-      (localPrefs.email_on_subscription_renewed ?? true) &&
-      (localPrefs.email_on_seat_count_changed ?? false)
+    ? (localPrefs.email_on_member_joined ?? true)
     : true; // For members, admin events don't affect "all" status
 
   const allEventsEnabled = baseEventsEnabled && adminEventsEnabled;
@@ -515,77 +500,6 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           </div>
         )}
 
-        {/* Billing & Subscription Section - Only show to Owners and Admins */}
-        {(userRole === 'Owner' || userRole === 'Admin') && (
-          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              Billing & Subscription
-            </h4>
-            <NotificationToggle
-              id="email_on_payment_success"
-              label="Payment Successful"
-              description="When a payment is successfully processed"
-              icon={<CreditCard className="w-4 h-4" />}
-              checked={localPrefs.email_on_payment_success ?? true}
-              onCheckedChange={(checked) => savePreference('email_on_payment_success', checked)}
-              disabled={isPending}
-            />
-            <NotificationToggle
-              id="email_on_payment_failed"
-              label="Payment Failed"
-              description="When a payment fails to process"
-              icon={<AlertTriangle className="w-4 h-4" />}
-              checked={localPrefs.email_on_payment_failed ?? true}
-              onCheckedChange={(checked) => savePreference('email_on_payment_failed', checked)}
-              disabled={isPending}
-            />
-            <NotificationToggle
-              id="email_on_trial_ending"
-              label="Trial Ending"
-              description="3 days before your free trial ends"
-              icon={<CalendarClock className="w-4 h-4" />}
-              checked={localPrefs.email_on_trial_ending ?? true}
-              onCheckedChange={(checked) => savePreference('email_on_trial_ending', checked)}
-              disabled={isPending}
-            />
-            <NotificationToggle
-              id="email_on_subscription_activated"
-              label="Subscription Activated"
-              description="When your subscription is activated"
-              icon={<Sparkles className="w-4 h-4" />}
-              checked={localPrefs.email_on_subscription_activated ?? true}
-              onCheckedChange={(checked) => savePreference('email_on_subscription_activated', checked)}
-              disabled={isPending}
-            />
-            <NotificationToggle
-              id="email_on_subscription_canceled"
-              label="Subscription Canceled"
-              description="When your subscription is canceled"
-              icon={<Ban className="w-4 h-4" />}
-              checked={localPrefs.email_on_subscription_canceled ?? true}
-              onCheckedChange={(checked) => savePreference('email_on_subscription_canceled', checked)}
-              disabled={isPending}
-            />
-            <NotificationToggle
-              id="email_on_subscription_renewed"
-              label="Subscription Renewed"
-              description="When your subscription auto-renews"
-              icon={<RefreshCw className="w-4 h-4" />}
-              checked={localPrefs.email_on_subscription_renewed ?? true}
-              onCheckedChange={(checked) => savePreference('email_on_subscription_renewed', checked)}
-              disabled={isPending}
-            />
-            <NotificationToggle
-              id="email_on_seat_count_changed"
-              label="Seat Count Changed"
-              description="When team size changes affect your billing"
-              icon={<UserPlus2 className="w-4 h-4" />}
-              checked={localPrefs.email_on_seat_count_changed ?? false}
-              onCheckedChange={(checked) => savePreference('email_on_seat_count_changed', checked)}
-              disabled={isPending}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

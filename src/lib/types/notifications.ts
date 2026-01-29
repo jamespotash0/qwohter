@@ -27,15 +27,7 @@ export type NotificationType =
   // Reminder events
   | 'reminder_due'
   // Member events
-  | 'member_joined'
-  // Payment/Subscription events
-  | 'payment_success'
-  | 'payment_failed'
-  | 'trial_ending'
-  | 'subscription_activated'
-  | 'subscription_canceled'
-  | 'subscription_renewed'
-  | 'seat_count_changed';
+  | 'member_joined';
 
 export interface Notification {
   id: string;
@@ -72,13 +64,6 @@ export interface NotificationMetadata {
   member_name?: string;
   member_email?: string;
   member_role?: string;
-  // Payment/Subscription
-  amount?: number;
-  currency?: string;
-  plan_name?: string;
-  old_seat_count?: number;
-  new_seat_count?: number;
-  days_remaining?: number;
   [key: string]: unknown;
 }
 
@@ -111,14 +96,6 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   reminder_due: 'Reminder Due',
   // Member events
   member_joined: 'Member Joined',
-  // Payment/Subscription events
-  payment_success: 'Payment Successful',
-  payment_failed: 'Payment Failed',
-  trial_ending: 'Trial Ending Soon',
-  subscription_activated: 'Subscription Activated',
-  subscription_canceled: 'Subscription Canceled',
-  subscription_renewed: 'Subscription Renewed',
-  seat_count_changed: 'Seat Count Changed',
 };
 
 // =============================================================================
@@ -159,15 +136,6 @@ export interface NotificationPreferences {
   email_on_task_reminder: boolean;
   sms_on_task_reminder: boolean;
 
-  // Payment/Subscription events
-  email_on_payment_success: boolean;
-  email_on_payment_failed: boolean;
-  email_on_trial_ending: boolean;
-  email_on_subscription_activated: boolean;
-  email_on_subscription_canceled: boolean;
-  email_on_subscription_renewed: boolean;
-  email_on_seat_count_changed: boolean;
-
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -193,13 +161,6 @@ export interface UpdateNotificationPreferencesInput {
   email_on_task_due?: boolean;
   email_on_task_reminder?: boolean;
   sms_on_task_reminder?: boolean;
-  email_on_payment_success?: boolean;
-  email_on_payment_failed?: boolean;
-  email_on_trial_ending?: boolean;
-  email_on_subscription_activated?: boolean;
-  email_on_subscription_canceled?: boolean;
-  email_on_subscription_renewed?: boolean;
-  email_on_seat_count_changed?: boolean;
 }
 
 // Default preferences for new users - all notifications OFF by default
@@ -221,14 +182,6 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Omit<NotificationPreferences, 'id
   email_on_task_due: false,
   email_on_task_reminder: false,
   sms_on_task_reminder: false,
-  // Payment/Subscription defaults
-  email_on_payment_success: false,
-  email_on_payment_failed: false,
-  email_on_trial_ending: false,
-  email_on_subscription_activated: false,
-  email_on_subscription_canceled: false,
-  email_on_subscription_renewed: false,
-  email_on_seat_count_changed: false,
 };
 
 // =============================================================================
