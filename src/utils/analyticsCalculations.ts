@@ -323,11 +323,6 @@ export const calculateAverageGrossProfitPerProposal = (proposals: Proposal[]): n
     if (profitAmount !== undefined && profitAmount !== null) {
       totalProfit += profitAmount;
       proposalsWithProfit++;
-    } else if (p.margin_percentage && p.total_value) {
-      // Fallback: calculate from margin percentage and total_value
-      const profit = p.total_value * (p.margin_percentage / 100);
-      totalProfit += profit;
-      proposalsWithProfit++;
     }
   });
 
@@ -659,7 +654,7 @@ export const calculateAveragesOverTime = (
       for (let i = 0; i < 7; i++) {
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(dayStart, 1);
-        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'submitted_at');
+        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at');
 
         dataPoints.push({
           date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
@@ -677,7 +672,7 @@ export const calculateAveragesOverTime = (
       for (let i = 0; i < daysInMonth; i++) {
         const dayStart = addDays(monthStart, i);
         const dayEnd = addDays(dayStart, 1);
-        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'submitted_at');
+        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at');
 
         dataPoints.push({
           date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
@@ -696,7 +691,7 @@ export const calculateAveragesOverTime = (
         const monthStart = new Date(yearStart);
         monthStart.setMonth(i);
         const monthEnd = endOfMonth(monthStart);
-        const periodProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'submitted_at');
+        const periodProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'created_at');
 
         dataPoints.push({
           date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
@@ -810,9 +805,12 @@ export const calculateTotalsOverTime = (
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(dayStart, 1);
 
-        // Revenue: Won proposals in this period
-        const wonProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'won_at')
-          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
+        // All proposals created in this period (bucketed by created_at)
+        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at')
+          .filter((p) => p.is_main_version === true || p.is_main_version === undefined);
+
+        // Revenue: Won proposals' total_value
+        const wonProposals = periodProposals.filter((p) => p.status === 'Won');
         const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         // Gross Profit: Calculate from won proposals using form_data.pricing or margin fallback
@@ -822,17 +820,13 @@ export const calculateTotalsOverTime = (
           const profitAmount = pricingData?.summary?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
-          } else if (p.margin_percentage && p.total_value) {
-            grossProfit += p.total_value * (p.margin_percentage / 100);
           }
         });
 
         // Pipeline Value: All proposals in Won/Draft/Submitted/Rejected status
-        const pipelineProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at')
-          .filter((p) =>
-            (p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected') &&
-            (p.is_main_version === true || p.is_main_version === undefined)
-          );
+        const pipelineProposals = periodProposals.filter((p) =>
+          p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected'
+        );
         const pipelineValue = pipelineProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         dataPoints.push({
@@ -852,9 +846,12 @@ export const calculateTotalsOverTime = (
         const dayStart = addDays(monthStart, i);
         const dayEnd = addDays(dayStart, 1);
 
-        // Revenue: Won proposals in this period
-        const wonProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'won_at')
-          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
+        // All proposals created in this period (bucketed by created_at)
+        const periodProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at')
+          .filter((p) => p.is_main_version === true || p.is_main_version === undefined);
+
+        // Revenue: Won proposals' total_value
+        const wonProposals = periodProposals.filter((p) => p.status === 'Won');
         const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         // Gross Profit: Calculate from won proposals using form_data.pricing or margin fallback
@@ -864,17 +861,13 @@ export const calculateTotalsOverTime = (
           const profitAmount = pricingData?.summary?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
-          } else if (p.margin_percentage && p.total_value) {
-            grossProfit += p.total_value * (p.margin_percentage / 100);
           }
         });
 
         // Pipeline Value: All proposals in Won/Draft/Submitted/Rejected status
-        const pipelineProposals = filterProposalsByDateRange(proposals, dayStart, dayEnd, 'created_at')
-          .filter((p) =>
-            (p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected') &&
-            (p.is_main_version === true || p.is_main_version === undefined)
-          );
+        const pipelineProposals = periodProposals.filter((p) =>
+          p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected'
+        );
         const pipelineValue = pipelineProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         dataPoints.push({
@@ -895,9 +888,12 @@ export const calculateTotalsOverTime = (
         monthStart.setMonth(i);
         const monthEnd = endOfMonth(monthStart);
 
-        // Revenue: Won proposals in this period
-        const wonProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'won_at')
-          .filter((p) => p.status === 'Won' && (p.is_main_version === true || p.is_main_version === undefined));
+        // All proposals created in this period (bucketed by created_at)
+        const periodProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'created_at')
+          .filter((p) => p.is_main_version === true || p.is_main_version === undefined);
+
+        // Revenue: Won proposals' total_value
+        const wonProposals = periodProposals.filter((p) => p.status === 'Won');
         const revenue = wonProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         // Gross Profit: Calculate from won proposals using form_data.pricing or margin fallback
@@ -907,17 +903,13 @@ export const calculateTotalsOverTime = (
           const profitAmount = pricingData?.summary?.grossProfit;
           if (profitAmount !== undefined && profitAmount !== null) {
             grossProfit += profitAmount;
-          } else if (p.margin_percentage && p.total_value) {
-            grossProfit += p.total_value * (p.margin_percentage / 100);
           }
         });
 
         // Pipeline Value: All proposals in Won/Draft/Submitted/Rejected status
-        const pipelineProposals = filterProposalsByDateRange(proposals, monthStart, monthEnd, 'created_at')
-          .filter((p) =>
-            (p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected') &&
-            (p.is_main_version === true || p.is_main_version === undefined)
-          );
+        const pipelineProposals = periodProposals.filter((p) =>
+          p.status === 'Won' || p.status === 'Draft' || p.status === 'Submitted' || p.status === 'Rejected'
+        );
         const pipelineValue = pipelineProposals.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         dataPoints.push({

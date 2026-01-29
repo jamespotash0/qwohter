@@ -182,6 +182,9 @@ const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
 
+// Calendar page
+const Calendar = lazy(() => import("@/pages/Calendar"));
+
 // Admin pages - Product Catalog Management
 const AdminLayout = lazy(() => import("@/features/admin/components/AdminLayout").then(m => ({ default: m.AdminLayout })));
 const AdminDashboard = lazy(() => import("@/features/admin/pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
@@ -308,6 +311,9 @@ export const AppRouter = () => (
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />
+
+          {/* Calendar */}
+          <Route path="/calendar" element={<Calendar />} />
 
           {/* Products catalog - HIDDEN for now */}
           {/* <Route path="/products" element={<Products />} /> */}
