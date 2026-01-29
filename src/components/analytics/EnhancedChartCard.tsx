@@ -207,7 +207,6 @@ export const EnhancedChartCard = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="weekly">Weekly View</SelectItem>
                   <SelectItem value="monthly">Monthly View</SelectItem>
                   <SelectItem value="yearly">Yearly View</SelectItem>
                 </SelectContent>
