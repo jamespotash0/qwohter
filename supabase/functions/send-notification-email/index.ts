@@ -44,6 +44,8 @@ type NotificationType =
   | 'update_mention'
   // Member events
   | 'member_joined'
+  // Security events
+  | 'bank_details_changed'
   // Payment/Subscription events
   | 'payment_success'
   | 'payment_failed'
@@ -76,6 +78,10 @@ interface NotificationEmailRequest {
     memberName?: string;
     memberEmail?: string;
     memberRole?: string;
+    // Bank details changed
+    changedByName?: string;
+    changedByEmail?: string;
+    fieldChanged?: string;
     // Payment/Subscription
     amount?: number;
     currency?: string;
@@ -102,6 +108,8 @@ const preferenceFieldMap: Record<NotificationType, string> = {
   update_mention: 'email_on_mention',
   // Member events
   member_joined: 'email_on_member_joined',
+  // Security events
+  bank_details_changed: 'email_on_bank_details_changed',
   // Payment/Subscription events
   payment_success: 'email_on_payment_success',
   payment_failed: 'email_on_payment_failed',
@@ -260,6 +268,20 @@ function generateEmailContent(
         ctaButton: { text: 'View Team', url: `${appUrl}/settings?tab=team` },
       }),
       text: `${data.memberName || 'A new member'} has joined your team as ${data.memberRole || 'Member'}.`,
+    }),
+
+    // Security events
+    bank_details_changed: () => ({
+      subject: `[Security Alert] Bank Details Changed`,
+      html: createEmailHtml({
+        bodyContent: `
+          <p style="color: #ef4444;"><strong>Bank details have been changed.</strong></p>
+          <p><strong>${escapeHtml(data.changedByName)}</strong> (${escapeHtml(data.changedByEmail)}) changed the <strong>${escapeHtml(data.fieldChanged)}</strong>.</p>
+          <p>If you did not authorize this change, please contact your team immediately and review your payment settings.</p>
+        `,
+        ctaButton: { text: 'Review Payment Settings', url: `${appUrl}/settings?tab=payments` },
+      }),
+      text: `${data.changedByName || 'Someone'} changed the ${data.fieldChanged || 'bank details'}. If you did not authorize this, contact your team immediately.`,
     }),
 
     // Payment/Subscription events

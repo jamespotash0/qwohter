@@ -517,6 +517,114 @@ export async function notifyTaskCommentReply(
   }
 }
 
+// =============================================================================
+// Bank Details Changed Notifications
+// =============================================================================
+
+/**
+ * Notify Admins and Owners when bank details are changed
+ */
+export async function notifyBankDetailsChanged(params: {
+  organizationId: string;
+  changedByName: string;
+  changedByEmail: string;
+  fieldChanged: 'routing_number' | 'account_number';
+}): Promise<void> {
+  try {
+    const { data, error: fetchError } = await supabase
+      .from('memberships')
+      .select('user_id, profiles!inner(email, full_name)')
+      .eq('organization_id', params.organizationId)
+      .eq('status', 'Active')
+      .or('role.eq.Owner,role.eq.Admin');
+
+    if (fetchError) {
+      console.error('[notifyBankDetailsChanged] Failed to fetch admins:', fetchError);
+      return;
+    }
+
+    const admins = data as unknown as AdminWithProfile[] | null;
+
+    if (!admins || admins.length === 0) {
+      console.log('[notifyBankDetailsChanged] No admins/owners to notify');
+      return;
+    }
+
+    const fieldLabel = params.fieldChanged === 'routing_number' ? 'routing number' : 'account number';
+
+    for (const admin of admins) {
+      await createNotification({
+        user_id: admin.user_id,
+        organization_id: params.organizationId,
+        type: 'bank_details_changed',
+        title: 'Bank Details Changed',
+        message: `${params.changedByName} changed the ${fieldLabel}. If you did not authorize this, contact your team immediately.`,
+        link: '/settings?tab=payments',
+        metadata: {
+          changed_by_name: params.changedByName,
+          changed_by_email: params.changedByEmail,
+          field_changed: params.fieldChanged,
+        },
+      });
+
+      if (admin.profiles?.email) {
+        sendBankDetailsChangedEmail({
+          recipientId: admin.user_id,
+          recipientEmail: admin.profiles.email,
+          recipientName: admin.profiles.full_name || 'Admin',
+          organizationId: params.organizationId,
+          changedByName: params.changedByName,
+          changedByEmail: params.changedByEmail,
+          fieldChanged: params.fieldChanged,
+        }).catch((err) => {
+          console.error('[notifyBankDetailsChanged] Email failed:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[notifyBankDetailsChanged] Error:', err);
+  }
+}
+
+/**
+ * Send email notification for bank details changes
+ */
+async function sendBankDetailsChangedEmail(params: {
+  recipientId: string;
+  recipientEmail: string;
+  recipientName: string;
+  organizationId: string;
+  changedByName: string;
+  changedByEmail: string;
+  fieldChanged: 'routing_number' | 'account_number';
+}): Promise<void> {
+  try {
+    const fieldLabel = params.fieldChanged === 'routing_number' ? 'routing number' : 'account number';
+
+    const { error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        userId: params.recipientId,
+        organizationId: params.organizationId,
+        notificationType: 'bank_details_changed',
+        recipientEmail: params.recipientEmail,
+        recipientName: params.recipientName,
+        data: {
+          changedByName: params.changedByName,
+          changedByEmail: params.changedByEmail,
+          fieldChanged: fieldLabel,
+          link: '/settings?tab=payments',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('[sendBankDetailsChangedEmail] Edge function error:', error);
+    }
+  } catch (err) {
+    console.error('[sendBankDetailsChangedEmail] Failed to send email:', err);
+  }
+}
+
 /**
  * Send email notification for mentions
  */

@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { hasAdminPermissions } from "@/utils/permissions";
 import { supabase } from "@/integrations/supabase/client";
+import { useUser, useProfile } from "@/auth";
 import type { PaymentSettings } from '@/lib/types/paymentSettings';
 import { DEFAULT_PAYMENT_SETTINGS } from '@/lib/types/paymentSettings';
+import { PasswordConfirmDialog } from './PasswordConfirmDialog';
+import { notifyBankDetailsChanged } from '@/services/notificationService';
 
 /**
  * Validate routing number is exactly 9 digits
@@ -32,6 +35,22 @@ function maskAccountNumber(value: string): string {
   return '****' + value.slice(-4);
 }
 
+/**
+ * Format routing number as XXX-XXX-XXX
+ */
+function formatRoutingNumber(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits.replace(/(\d{3})(?=\d)/g, '$1-');
+}
+
+/**
+ * Format account number in groups of 4 for readability
+ */
+function formatAccountNumber(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits.replace(/(\d{4})(?=\d)/g, '$1-');
+}
+
 interface PaymentsTabProps {
   organization: any;
   userRole: string;
@@ -43,6 +62,8 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
   userRole,
   onOrganizationUpdate,
 }) => {
+  const user = useUser();
+  const { data: profile } = useProfile(user?.id);
   const hasEditPermission = hasAdminPermissions(userRole);
 
   // Parse current settings with defaults
@@ -72,6 +93,14 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
   // Loading state
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Password confirmation for sensitive fields
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [pendingSave, setPendingSave] = useState<{
+    fieldKey: keyof PaymentSettings;
+    value: string;
+    setIsEditing: (val: boolean) => void;
+  } | null>(null);
+
   // Sync field values when organization changes
   useEffect(() => {
     const s = getCurrentSettings();
@@ -87,14 +116,14 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
     fieldKey: keyof PaymentSettings,
     value: string,
     setIsEditing: (val: boolean) => void,
-  ) => {
+  ): Promise<boolean> => {
     if (!hasEditPermission) {
       toast({
         title: "Permission Denied",
         description: "You don't have permission to edit payment settings.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     if (!organization?.id) {
@@ -103,7 +132,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
         description: "Organization ID not found. Please refresh the page.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     setIsUpdating(true);
@@ -127,6 +156,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 
       setIsEditing(false);
       await onOrganizationUpdate(undefined, true);
+      return true;
     } catch (error) {
       console.error('Error updating payment settings:', error);
       toast({
@@ -134,9 +164,35 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
         description: error instanceof Error ? error.message : "Failed to update payment settings",
         variant: "destructive",
       });
+      return false;
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Handler for password-confirmed bank detail saves
+  const handleConfirmedSave = async () => {
+    if (!pendingSave) return;
+
+    setShowPasswordConfirm(false);
+    const { fieldKey, value, setIsEditing } = pendingSave;
+
+    const success = await handleUpdateField(fieldKey, value, setIsEditing);
+
+    if (success && organization?.id) {
+      const changedByName = profile?.full_name || user?.email || 'Unknown user';
+      const changedByEmail = user?.email || '';
+      notifyBankDetailsChanged({
+        organizationId: organization.id,
+        changedByName,
+        changedByEmail,
+        fieldChanged: fieldKey as 'routing_number' | 'account_number',
+      }).catch(err => {
+        console.error('[PaymentsTab] Failed to send bank details notification:', err);
+      });
+    }
+
+    setPendingSave(null);
   };
 
   // Permission guard
@@ -244,7 +300,10 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => handleUpdateField('routing_number', editedRoutingNumber, setIsEditingRoutingNumber)}
+                      onClick={() => {
+                        setPendingSave({ fieldKey: 'routing_number', value: editedRoutingNumber, setIsEditing: setIsEditingRoutingNumber });
+                        setShowPasswordConfirm(true);
+                      }}
                       disabled={isUpdating || (editedRoutingNumber !== '' && !isValidRoutingNumber(editedRoutingNumber))}
                       className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                     >
@@ -263,7 +322,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                   <>
                     <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
                       {getCurrentSettings().routing_number
-                        ? (showRoutingNumber ? getCurrentSettings().routing_number : maskAccountNumber(getCurrentSettings().routing_number!))
+                        ? (showRoutingNumber ? formatRoutingNumber(getCurrentSettings().routing_number!) : maskAccountNumber(getCurrentSettings().routing_number!))
                         : <span className="text-gray-400 dark:text-gray-500">Not set</span>}
                     </span>
                     {getCurrentSettings().routing_number && (
@@ -310,7 +369,10 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => handleUpdateField('account_number', editedAccountNumber, setIsEditingAccountNumber)}
+                      onClick={() => {
+                        setPendingSave({ fieldKey: 'account_number', value: editedAccountNumber, setIsEditing: setIsEditingAccountNumber });
+                        setShowPasswordConfirm(true);
+                      }}
                       disabled={isUpdating || (editedAccountNumber !== '' && !isValidAccountNumber(editedAccountNumber))}
                       className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                     >
@@ -329,7 +391,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                   <>
                     <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
                       {getCurrentSettings().account_number
-                        ? (showAccountNumber ? getCurrentSettings().account_number : maskAccountNumber(getCurrentSettings().account_number!))
+                        ? (showAccountNumber ? formatAccountNumber(getCurrentSettings().account_number!) : maskAccountNumber(getCurrentSettings().account_number!))
                         : <span className="text-gray-400 dark:text-gray-500">Not set</span>}
                     </span>
                     {getCurrentSettings().account_number && (
@@ -473,6 +535,18 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Password Confirmation Dialog for Bank Details */}
+      <PasswordConfirmDialog
+        open={showPasswordConfirm}
+        onOpenChange={(open) => {
+          setShowPasswordConfirm(open);
+          if (!open) setPendingSave(null);
+        }}
+        onConfirm={handleConfirmedSave}
+        title="Confirm Bank Detail Change"
+        description="For security, please enter your password to confirm changes to bank details."
+      />
     </div>
   );
 };
