@@ -368,11 +368,29 @@ serve(async (req) => {
         const trialStartISO = safeToISOString(subscription.trial_start);
         const trialEndISO = safeToISOString(subscription.trial_end);
 
+        // Determine is_active with grace period awareness
+        let isActive = ['active', 'trialing'].includes(status);
+
+        // Grace period: keep is_active=true for 3 days after trial expires
+        // Stripe transitions trialing → incomplete → incomplete_expired when trial ends without payment
+        // We preserve access so the client-side grace period logic can show warnings
+        if (!isActive && ['incomplete', 'incomplete_expired', 'past_due'].includes(status)) {
+          const trialEnd = subscription.trial_end;
+          if (trialEnd) {
+            const trialEndDate = new Date(trialEnd * 1000);
+            const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+            if (new Date() <= gracePeriodEnd) {
+              isActive = true;
+              console.log('Grace period active - keeping is_active=true until', gracePeriodEnd.toISOString());
+            }
+          }
+        }
+
         const updateData: Record<string, any> = {
           stripe_subscription_status: displayStatus,
           has_payment_method: hasPaymentMethod,
           cancel_at_period_end: subscription.cancel_at_period_end || false,
-          is_active: ['active', 'trialing'].includes(status),
+          is_active: isActive,
           updated_at: new Date().toISOString(),
         };
 
@@ -478,6 +496,23 @@ serve(async (req) => {
           .eq('organization_id', organizationId)
           .single();
 
+        // Safely convert Unix timestamps to ISO strings
+        const toISO = (ts: number | undefined | null): string | null => {
+          if (!ts) return null;
+          const d = new Date(ts * 1000);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        };
+
+        const createdDateFields: Record<string, string> = {};
+        const periodStart = toISO(subscription.current_period_start);
+        const periodEnd = toISO(subscription.current_period_end);
+        const trialStart = toISO(subscription.trial_start);
+        const trialEnd = toISO(subscription.trial_end);
+        if (periodStart) createdDateFields.current_period_start = periodStart;
+        if (periodEnd) createdDateFields.current_period_end = periodEnd;
+        if (trialStart) createdDateFields.trial_start = trialStart;
+        if (trialEnd) createdDateFields.trial_end = trialEnd;
+
         if (existing) {
           await supabase
             .from('subscriptions')
@@ -485,9 +520,9 @@ serve(async (req) => {
               stripe_subscription_id: stripeSubscriptionId,
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_status: subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
               is_active: ['active', 'trialing'].includes(subscription.status),
               updated_at: new Date().toISOString(),
+              ...createdDateFields,
             })
             .eq('id', existing.id);
         } else {
@@ -499,8 +534,8 @@ serve(async (req) => {
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
               stripe_subscription_status: subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
               is_active: ['active', 'trialing'].includes(subscription.status),
+              ...createdDateFields,
             });
         }
 

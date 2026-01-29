@@ -466,17 +466,18 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     try {
       setProcessingPlan(plan.id);
 
-      // If user already has a subscription, use portal instead
-      if (subscription?.stripe_customer_id) {
+      const subscriptionStatus = subscription?.stripe_subscription_status?.toLowerCase();
+      const isDead = ['incomplete_expired', 'canceled'].includes(subscriptionStatus || '');
+
+      // If subscription is recoverable (incomplete) or active/trialing → use portal
+      // Portal lets them add payment method, Stripe retries the open invoice
+      if (subscription?.stripe_customer_id && !isDead) {
         await handleOpenPortal();
         return;
       }
 
-      // UPDATED: Only monthly billing supported now
-      // const selectedInterval = planIntervals[plan.id] || 'Monthly';
-      // const priceId = selectedInterval === 'Monthly'
-      //   ? plan.stripe_price_id_monthly
-      //   : plan.stripe_price_id_yearly;
+      // Dead subscription (incomplete_expired/canceled) or no Stripe customer → new checkout
+      // No trial on recovery checkout - they already used their trial
       const priceId = plan.stripe_price_id_monthly;
 
       if (!priceId || priceId.includes('placeholder')) {
@@ -489,10 +490,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         return;
       }
 
-      // ONLY Team plan now - always use user count
       const quantity = userCount;
 
-      // Create checkout session and redirect to Stripe
       const { error } = await stripeService.createCheckoutSession({
         organizationId: organization.id,
         planId: plan.id,
@@ -500,6 +499,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         successUrl: `${window.location.origin}/settings?tab=billing&success=true`,
         cancelUrl: `${window.location.origin}/settings?tab=billing&canceled=true`,
         quantity,
+        skipTrial: true,
       });
 
       if (error) {
@@ -704,17 +704,32 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         {subscription && subscription.is_active && (
           <div className="flex items-center gap-4">
           {(() => {
-            // Check if on trial
-            const isOnTrial = subscription.stripe_subscription_status?.toLowerCase() === 'trialing';
+            const status = subscription.stripe_subscription_status?.toLowerCase();
+            const isOnTrial = status === 'trialing';
             const hasTrialDates = subscription.trial_start && subscription.trial_end;
             const hasBillingDates = subscription.current_period_start && subscription.current_period_end;
 
-            // Use trial dates if on trial, otherwise use billing period dates
-            const periodStart = isOnTrial && hasTrialDates
+            // Grace period: status is incomplete/past_due but within 3 days of trial end
+            const graceStatuses = ['incomplete', 'incomplete_expired', 'past_due'];
+            let isInGracePeriod = false;
+            let graceDaysRemaining = 0;
+            if (status && graceStatuses.includes(status) && hasTrialDates) {
+              const now = new Date();
+              const trialEndDate = new Date(subscription.trial_end);
+              const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+              isInGracePeriod = now <= gracePeriodEnd;
+              graceDaysRemaining = Math.max(0, Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+            }
+
+            // Use trial dates for trial/grace period, otherwise billing period dates
+            const useTrialDates = (isOnTrial || isInGracePeriod) && hasTrialDates;
+            const periodStart = useTrialDates
               ? new Date(subscription.trial_start)
               : hasBillingDates ? new Date(subscription.current_period_start) : null;
-            const periodEnd = isOnTrial && hasTrialDates
-              ? new Date(subscription.trial_end)
+            const periodEnd = useTrialDates
+              ? (isInGracePeriod
+                  ? new Date(new Date(subscription.trial_end).getTime() + (3 * 24 * 60 * 60 * 1000))
+                  : new Date(subscription.trial_end))
               : hasBillingDates ? new Date(subscription.current_period_end) : null;
 
             if (!periodStart || !periodEnd) return null;
@@ -723,10 +738,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             const totalDuration = periodEnd.getTime() - periodStart.getTime();
             const elapsed = now.getTime() - periodStart.getTime();
             const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
-            const daysRemaining = Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+            const daysRemaining = isInGracePeriod
+              ? graceDaysRemaining
+              : Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
-            const periodLabel = isOnTrial ? 'Free Trial' : 'Billing Period';
-            const progressBarColor = isOnTrial ? 'bg-blue-500' : 'bg-[#EE6C4D]';
+            const periodLabel = isInGracePeriod ? 'Grace Period' : isOnTrial ? 'Free Trial' : 'Billing Period';
+            const progressBarColor = isInGracePeriod ? 'bg-amber-500' : isOnTrial ? 'bg-blue-500' : 'bg-[#EE6C4D]';
 
             return (
               <>

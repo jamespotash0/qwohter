@@ -15,15 +15,22 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
   hasAccess: boolean;
   status: string | null;
   reason: string;
+  inGracePeriod?: boolean;
+  graceDaysRemaining?: number;
 }> {
   try {
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('stripe_subscription_status, current_period_end')
+      .select('stripe_subscription_status, current_period_end, trial_end, has_payment_method')
       .eq('organization_id', organizationId)
-      .single();
+      .single() as { data: {
+        stripe_subscription_status: string | null;
+        current_period_end: string | null;
+        trial_end: string | null;
+        has_payment_method: boolean;
+      } | null; error: unknown };
 
-    if (error) {
+    if (error || !data) {
       // No subscription found
       return {
         hasAccess: false,
@@ -32,14 +39,43 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
       };
     }
 
-    // Case-insensitive comparison to match database trigger
-    const hasAccess = data.stripe_subscription_status?.toLowerCase() === 'active' ||
-                      data.stripe_subscription_status?.toLowerCase() === 'trialing';
+    const status = data.stripe_subscription_status?.toLowerCase();
+
+    // Direct access for active/trialing
+    const hasAccess = status === 'active' || status === 'trialing';
+
+    if (hasAccess) {
+      return {
+        hasAccess: true,
+        status: data.stripe_subscription_status,
+        reason: '',
+      };
+    }
+
+    // Grace period check for post-trial statuses (incomplete, incomplete_expired, past_due)
+    const graceStatuses = ['incomplete', 'incomplete_expired', 'past_due'];
+    if (status && graceStatuses.includes(status) && data.trial_end) {
+      const now = new Date();
+      const trialEndDate = new Date(data.trial_end);
+      const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+      const inGracePeriod = now <= gracePeriodEnd;
+      const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (inGracePeriod) {
+        return {
+          hasAccess: true,
+          status: data.stripe_subscription_status,
+          reason: '',
+          inGracePeriod: true,
+          graceDaysRemaining: Math.max(0, graceDaysRemaining),
+        };
+      }
+    }
 
     return {
-      hasAccess,
+      hasAccess: false,
       status: data.stripe_subscription_status,
-      reason: hasAccess ? '' : 'Subscription is not active',
+      reason: 'Subscription is not active',
     };
   } catch (error) {
     return {

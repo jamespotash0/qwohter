@@ -1,5 +1,8 @@
+//@ts-ignore
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+//@ts-ignore
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -49,7 +52,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { organizationId, planId, priceId, quantity, successUrl, cancelUrl } = await req.json();
+    const { organizationId, planId, priceId, quantity, successUrl, cancelUrl, skipTrial } = await req.json();
 
     console.log('Creating checkout session:', { organizationId, planId, priceId, quantity, userId: user.id });
 
@@ -131,7 +134,7 @@ serve(async (req) => {
         plan_id: planId,
       },
       subscription_data: {
-        trial_period_days: 14, // Set trial at subscription level (recommended by Stripe)
+        ...(skipTrial ? {} : { trial_period_days: 14 }), // Skip trial on recovery checkout
         metadata: {
           organization_id: organizationId,
           plan_id: planId,

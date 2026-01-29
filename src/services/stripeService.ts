@@ -242,7 +242,42 @@ export const hasValidSubscription = async (organizationId: string) => {
     isIncluded: status ? validStatuses.includes(status) : false,
   });
 
+  // Statuses that allow direct access
   if (!status || !validStatuses.includes(status)) {
+    // Check grace period for post-trial statuses
+    // Stripe transitions: trialing → incomplete → incomplete_expired when trial ends without payment
+    const graceStatuses = ['incomplete', 'incomplete_expired', 'past_due'];
+    if (status && graceStatuses.includes(status) && subscription.trial_end) {
+      const now = new Date();
+      const trialEndDate = new Date(subscription.trial_end);
+      const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+      const inGracePeriod = now <= gracePeriodEnd;
+      const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      console.log('⏰ Post-trial grace period check:', {
+        status,
+        trialEnd: subscription.trial_end,
+        gracePeriodEnd: gracePeriodEnd.toISOString(),
+        inGracePeriod,
+        graceDaysRemaining: Math.max(0, graceDaysRemaining),
+      });
+
+      if (inGracePeriod) {
+        return {
+          isValid: true,
+          reason: '',
+          inGracePeriod: true,
+          graceDaysRemaining: Math.max(0, graceDaysRemaining),
+        };
+      } else {
+        return {
+          isValid: false,
+          reason: 'Your free trial and grace period have expired. Please add a payment method to continue.',
+          inGracePeriod: false,
+        };
+      }
+    }
+
     console.log('❌ Status check failed:', { status, validStatuses });
     return {
       isValid: false,
@@ -395,6 +430,7 @@ export const createCheckoutSession = async (params: {
   successUrl: string;
   cancelUrl: string;
   quantity?: number; // Optional - if not provided, will calculate from user count
+  skipTrial?: boolean; // Skip trial period (used for recovery checkout after grace period)
 }) => {
   try {
     // Calculate quantity if not provided
@@ -431,6 +467,7 @@ export const createCheckoutSession = async (params: {
         quantity, // Pass the calculated user count
         successUrl: params.successUrl,
         cancelUrl: params.cancelUrl,
+        skipTrial: params.skipTrial,
       }),
     });
 
@@ -714,114 +751,6 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
   return diffDays > 0 ? diffDays : 0;
 };
 
-/**
- * Create local-only trial subscription (no Stripe involvement)
- * Called automatically during signup to create a 14-day free trial
- *
- * Creates LOCAL subscription record with:
- * - stripe_subscription_status: 'Trialing'
- * - trial_start/trial_end dates (14 days)
- * - No Stripe customer or subscription IDs
- *
- * Stripe subscription is only created when user adds payment method via upgrade flow
- */
-export const createTrialSubscription = async (organizationId: string): Promise<{ success: boolean; error: string | null; data?: any }> => {
-  try {
-    console.log('📋 enrollInFreeTrial called for organization:', organizationId);
-
-    // Check if organization already has a subscription
-    const { data: existingSubscription } = await getSubscription(organizationId);
-
-    if (existingSubscription) {
-      console.log('⏭️ Organization already has subscription, skipping trial enrollment');
-      return { success: true, error: null };
-    }
-
-    console.log('📦 Fetching Team plan from database...');
-    // Get the Team plan as default trial plan
-    const planResult = await getPlanByName('Team');
-
-    if (planResult.error || !planResult.data) {
-      console.error('❌ Failed to get Team plan for trial:', planResult.error);
-      return { success: false, error: 'Team plan not found' };
-    }
-
-    const teamPlan = planResult.data as SubscriptionPlan;
-    console.log('✅ Team plan found:', { id: teamPlan.id, name: teamPlan.name });
-
-    // Calculate trial period (14 days from now)
-    const trialStartDate = new Date();
-    const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + 14);
-
-    console.log('💾 Inserting subscription record...', {
-      organization_id: organizationId,
-      plan_id: teamPlan.id,
-      trial_start: trialStartDate.toISOString(),
-      trial_end: trialEndDate.toISOString()
-    });
-
-    // Create subscription record with trialing status (LOCAL-ONLY - no Stripe until upgrade)
-    const { error: subscriptionError } = await supabase
-      .from('subscriptions')
-      .insert({
-        organization_id: organizationId,
-        plan_id: teamPlan.id,
-        stripe_subscription_status: 'Trialing',
-        // Trial dates - used for trial progress tracking
-        trial_start: trialStartDate.toISOString(),
-        trial_end: trialEndDate.toISOString(),
-        // Current period mirrors trial dates during trial
-        current_period_start: trialStartDate.toISOString(),
-        current_period_end: trialEndDate.toISOString(),
-        // No Stripe IDs until user upgrades/adds payment method
-        stripe_customer_id: null,
-        stripe_subscription_id: null,
-        has_payment_method: false,
-        is_active: true,
-        access_blocked: false,
-        number_of_active_users: 1,
-      } as any);
-
-    if (subscriptionError) {
-      console.error('❌ Subscription insert failed:', {
-        error: subscriptionError,
-        code: subscriptionError.code,
-        message: subscriptionError.message,
-        details: subscriptionError.details,
-        hint: subscriptionError.hint
-      });
-      return { success: false, error: subscriptionError.message };
-    }
-
-    console.log('✅ Subscription record created successfully');
-
-    // Mark organization as having used trial
-    console.log('🏢 Updating organization has_used_trial flag...');
-    const { error: orgError } = await supabase
-      .from('organizations')
-      .update({ has_used_trial: true })
-      .eq('id', organizationId);
-
-    if (orgError) {
-      console.warn('⚠️ Failed to mark organization trial as used:', orgError);
-      // Don't fail the enrollment if this update fails
-    } else {
-      console.log('✅ Organization marked as having used trial');
-    }
-
-    console.log('🎉 Successfully enrolled organization in 14-day free trial');
-    return { success: true, error: null };
-  } catch (error) {
-    console.error('Error creating trial subscription:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-};
-
-
 // ============================================================================
 // EXPORT SERVICE OBJECT
 // ============================================================================
@@ -855,7 +784,5 @@ export const stripeService = {
   getInvoices,
 
   // Trial Period Helpers
-  // Note: 14-day free trial auto-enrollment on signup (LOCAL-ONLY until upgrade)
   getDaysRemaining,
-  createTrialSubscription,
 };

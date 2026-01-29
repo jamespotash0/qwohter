@@ -118,16 +118,43 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 };
 
 interface HandleCompanyInfoSkipParams {
+  userId: string | null;
+  organizationId: string | null;
   toast: (props: { title: string; description: string }) => void;
   clearAuthState: () => void;
   navigate: NavigateFunction;
 }
 
-export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
-  const { clearAuthState, navigate } = params;
+export const handleCompanyInfoSkip = async (params: HandleCompanyInfoSkipParams) => {
+  const { userId, organizationId, clearAuthState, navigate } = params;
 
-  // Clear auth state and navigate to dashboard with welcome flag
-  // User was already auto-enrolled in free trial during org creation
+  // Auto-enroll organization in Stripe trial even when skipping company info
+  if (organizationId && userId) {
+    try {
+      const authUser = await authService.getCurrentUser();
+      const userEmail = authUser?.email;
+
+      const { data: trialData, error: trialError } = await supabase.functions.invoke(
+        'create-trial-subscription',
+        {
+          body: {
+            organizationId,
+            userEmail,
+            userName: userEmail,
+          },
+        }
+      );
+
+      if (trialError) {
+        console.error('Stripe trial enrollment failed on skip:', trialError);
+      } else if (trialData?.success) {
+        console.log('Stripe trial enrollment successful on skip:', trialData.subscriptionId);
+      }
+    } catch (error) {
+      console.error('Trial enrollment error on skip:', error);
+    }
+  }
+
   clearAuthState();
   navigate('/dashboard?welcome=true');
 };

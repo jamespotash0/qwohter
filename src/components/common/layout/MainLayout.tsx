@@ -8,7 +8,7 @@ import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { versionCheckService } from '@/services/versionCheckService';
 import { toast } from 'sonner';
-import { useTrialReminder } from '@/hooks/useTrialReminder';
+
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -36,9 +36,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Get current organization for paywall from React Query
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
-
-  // Trial reminder system - shows daily payment method reminder
-  useTrialReminder();
 
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);

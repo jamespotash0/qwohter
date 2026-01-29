@@ -465,7 +465,6 @@ export interface Database {
           trial_start: string | null;
           trial_end: string | null;
           has_payment_method: boolean;
-          last_payment_reminder_sent_at: string | null;
           is_active: boolean;
           access_blocked: boolean;
           access_blocked_reason: string | null;
@@ -484,7 +483,6 @@ export interface Database {
           trial_start?: string | null;
           trial_end?: string | null;
           has_payment_method?: boolean;
-          last_payment_reminder_sent_at?: string | null;
           is_active?: boolean;
           access_blocked?: boolean;
           access_blocked_reason?: string | null;
@@ -503,7 +501,6 @@ export interface Database {
           trial_start?: string | null;
           trial_end?: string | null;
           has_payment_method?: boolean;
-          last_payment_reminder_sent_at?: string | null;
           is_active?: boolean;
           access_blocked?: boolean;
           access_blocked_reason?: string | null;
