@@ -7,6 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { LogoData } from '@/lib/types/companySettings';
+import type { PaymentSettings } from '@/lib/types/paymentSettings';
 import * as Sentry from '@sentry/react';
 
 // ============================================================================
@@ -25,6 +26,7 @@ export interface Organization {
   industry?: string;
   found_via?: string;
   logo_data?: LogoData;
+  payment_settings?: PaymentSettings;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +74,7 @@ export interface UpdateOrganizationData {
   website?: string;
   industry?: string;
   logo_data?: LogoData;
+  payment_settings?: PaymentSettings;
 }
 
 // ============================================================================

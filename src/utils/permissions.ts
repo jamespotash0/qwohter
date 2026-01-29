@@ -103,6 +103,8 @@ export const canAccessSettingsTab = (tabName: string, userRole: string): boolean
       return canManageTeam(userRole); // Admin and Owner can access team management
     case 'security':
       return hasAdminPermissions(userRole); // Admin and Owner can access security
+    case 'payments':
+      return hasAdminPermissions(userRole); // Admin and Owner can access payment settings
     case 'permissions':
       return canManagePermissions(userRole);
     case 'appearance':

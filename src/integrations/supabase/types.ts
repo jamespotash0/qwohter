@@ -142,6 +142,7 @@ export interface Database {
           website: string;
           logo_data: any;
           industry: string;
+          payment_settings?: Record<string, any> | null;
           created_at: string;
           updated_at: string;
         };
@@ -156,6 +157,7 @@ export interface Database {
           website: string;
           logo_data?: any;
           industry: string;
+          payment_settings?: Record<string, any> | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -170,6 +172,7 @@ export interface Database {
           website?: string;
           logo_data?: any;
           industry?: string;
+          payment_settings?: Record<string, any> | null;
           created_at?: string;
           updated_at?: string;
         };

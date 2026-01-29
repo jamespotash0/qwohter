@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug, Bell } from "lucide-react";
+import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug, Bell, Banknote } from "lucide-react";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile } from "@/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
 import { TeamTab } from "@/components/features/settings/TeamTab";
 import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { NotificationsTab } from "@/components/features/settings/NotificationsTab";
+import { PaymentsTab } from "@/components/features/settings/PaymentsTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
@@ -164,6 +165,18 @@ const Settings = () => {
           userRole={userRole || 'Member'}
         />,
         requiresPermission: "organization",
+        requiresSubscription: true
+      },
+      {
+        id: "payments",
+        label: "Payments",
+        icon: <Banknote className="w-4 h-4" />,
+        component: <PaymentsTab
+          organization={organization}
+          userRole={userRole || 'Member'}
+          onOrganizationUpdate={refetchOrganization}
+        />,
+        requiresPermission: "payments",
         requiresSubscription: true
       },
       {
