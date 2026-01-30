@@ -16,7 +16,7 @@ import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { stripeService } from "@/services/stripeService";
 import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Fragment, useState, useEffect, useRef, useMemo, useCallback } from "react";
 // import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
 
 interface AppSidebarProps {
@@ -480,6 +480,9 @@ export function AppSidebar({
 
                 const isClicked = clickedItem === item.title;
 
+                // Section dividers: before Calendar (Tools) and Settings (Config)
+                const showDivider = !isCollapsed && (item.title === 'Calendar' || item.title === 'Settings');
+
                 // Render expandable menu for items with subItems
                 // Click toggles expand - parent item never shows active state
                 if (hasSubItems) {
@@ -617,18 +620,23 @@ export function AppSidebar({
 
                 // Regular menu item (no subItems)
                 return (
-                  <SidebarMenuItem
-                    key={item.title}
-                    className={`${
-                      isCollapsed
-                        ? 'animate-in fade-in zoom-in-95 duration-200'
-                        : 'animate-in fade-in slide-in-from-left-3 duration-300'
-                    }`}
-                    style={{
-                      animationDelay: `${index * 40}ms`,
-                      animationFillMode: 'backwards'
-                    }}
-                  >
+                  <Fragment key={item.title}>
+                    {showDivider && (
+                      <div className="flex justify-center my-1.5">
+                        <div className="w-[90%] h-px bg-gray-200 dark:bg-gray-700" />
+                      </div>
+                    )}
+                    <SidebarMenuItem
+                      className={`${
+                        isCollapsed
+                          ? 'animate-in fade-in zoom-in-95 duration-200'
+                          : 'animate-in fade-in slide-in-from-left-3 duration-300'
+                      }`}
+                      style={{
+                        animationDelay: `${index * 40}ms`,
+                        animationFillMode: 'backwards'
+                      }}
+                    >
                     <SidebarMenuButton
                       className={`h-10 flex items-center relative group/item overflow-hidden ${
                         isCollapsed ? 'justify-center w-full px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[13px]'
@@ -718,6 +726,7 @@ export function AppSidebar({
                       </div>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  </Fragment>
                 );
               })}
             </SidebarMenu>

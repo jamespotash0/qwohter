@@ -52,12 +52,12 @@ const Analytics = () => {
         </div>
       ) : (
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="sources">Sources</TabsTrigger>
+          <TabsList className="mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Overview</TabsTrigger>
+            <TabsTrigger value="pipeline" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Pipeline</TabsTrigger>
+            <TabsTrigger value="team" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Team</TabsTrigger>
+            <TabsTrigger value="products" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Products</TabsTrigger>
+            <TabsTrigger value="sources" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Sources</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
