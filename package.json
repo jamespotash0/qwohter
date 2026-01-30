@@ -18,7 +18,12 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:stripe": "vitest run --config tests/stripe/vitest.integration.config.ts",
+    "test:stripe:watch": "vitest --config tests/stripe/vitest.integration.config.ts",
+    "test:stripe:unit": "vitest run --testPathPattern=stripeService",
+    "test:stripe:integration": "vitest run --config tests/stripe/vitest.integration.config.ts --testPathPattern=integration",
+    "test:stripe:webhook": "vitest run --config tests/stripe/vitest.integration.config.ts --testPathPattern=webhook"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
@@ -108,7 +113,7 @@
     "immer": "^10.1.1",
     "input-otp": "^1.2.4",
     "js-levenshtein": "^1.1.6",
-    "jspdf": "^3.0.3",
+    "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.2",
     "libphonenumber-js": "^1.12.30",
     "liquidjs": "^10.24.0",
