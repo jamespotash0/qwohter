@@ -33,13 +33,6 @@ export function getTestEnvConfig(): TestEnvConfig {
 }
 
 /**
- * Check if running in test mode
- */
-export function isTestEnvironment(): boolean {
-  return import.meta.env.MODE === 'test' || typeof import.meta.env.VITEST !== 'undefined';
-}
-
-/**
  * Generate unique test ID prefix for data isolation
  */
 export function generateTestPrefix(): string {
