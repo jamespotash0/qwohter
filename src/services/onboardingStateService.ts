@@ -130,15 +130,20 @@ export const onboardingStateHelpers = {
         completedSteps.push(completedStep);
       }
 
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
       const { error } = await supabase
         .from('user_onboarding_progress')
-        .update({
+        .upsert({
+          user_id: userId,
           current_step: nextStep,
           completed_steps: completedSteps,
           session_data: sessionData || current?.session_data || {},
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
+          updated_at: new Date().toISOString(),
+          expires_at: expiresAt
+        } as any, {
+          onConflict: 'user_id'
+        });
 
       if (error) {
         console.error('Failed to complete step:', error);

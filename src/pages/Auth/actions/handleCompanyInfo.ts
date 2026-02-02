@@ -45,12 +45,25 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
   // All fields are optional - only userId is required
   if (!userId) return;
 
+  setLoading(true);
+
+  // Fallback: if organizationId wasn't passed (state restoration missed it),
+  // look it up from the user's membership
+  let resolvedOrgId = organizationId;
+  if (!resolvedOrgId) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('organization_id')
+      .eq('user_id', userId)
+      .single();
+    resolvedOrgId = (membership as any)?.organization_id || null;
+  }
+
   console.log('=== Company Info Submit ===');
   console.log('Industry:', industry);
   console.log('Found Via:', foundVia);
-  console.log('Organization ID:', organizationId);
+  console.log('Organization ID:', resolvedOrgId);
 
-  setLoading(true);
   try {
     // Small delay to ensure membership is committed
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -59,6 +72,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     await supabase.auth.refreshSession();
 
     // Use the organization settings service to update company info
+    // Pass organizationId directly to avoid membership lookup timing issue during onboarding
     await organizationSettingsService.updateCompanyInfo({
       phone_number: companyPhone,
       fax_number: companyFax,
@@ -66,13 +80,13 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       website: companyWebsite,
       industry: industry,
       found_via: foundVia,
-    });
+    }, resolvedOrgId || undefined);
 
     console.log('✅ Company info saved successfully');
 
     // ✨ Auto-enroll organization in 14-day free trial via Stripe
-    if (organizationId) {
-      console.log('🎁 Auto-enrolling organization in Stripe trial:', organizationId);
+    if (resolvedOrgId) {
+      console.log('🎁 Auto-enrolling organization in Stripe trial:', resolvedOrgId);
 
       const authUser = await authService.getCurrentUser();
       const userEmail = authUser?.email;
@@ -81,7 +95,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
         'create-trial-subscription',
         {
           body: {
-            organizationId,
+            organizationId: resolvedOrgId,
             userEmail,
             userName: userEmail,
           },
@@ -128,8 +142,19 @@ interface HandleCompanyInfoSkipParams {
 export const handleCompanyInfoSkip = async (params: HandleCompanyInfoSkipParams) => {
   const { userId, organizationId, clearAuthState, navigate } = params;
 
+  // Fallback: look up org from membership if not passed
+  let resolvedOrgId = organizationId;
+  if (!resolvedOrgId && userId) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('organization_id')
+      .eq('user_id', userId)
+      .single();
+    resolvedOrgId = (membership as any)?.organization_id || null;
+  }
+
   // Auto-enroll organization in Stripe trial even when skipping company info
-  if (organizationId && userId) {
+  if (resolvedOrgId && userId) {
     try {
       const authUser = await authService.getCurrentUser();
       const userEmail = authUser?.email;
@@ -138,7 +163,7 @@ export const handleCompanyInfoSkip = async (params: HandleCompanyInfoSkipParams)
         'create-trial-subscription',
         {
           body: {
-            organizationId,
+            organizationId: resolvedOrgId,
             userEmail,
             userName: userEmail,
           },

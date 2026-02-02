@@ -45,33 +45,29 @@ class OrganizationSettingsService {
     }
   }
 
-  async updateCompanyInfo(companyData: CompanyInfoFormData): Promise<OrganizationWithCompanyInfo> {
+  async updateCompanyInfo(companyData: CompanyInfoFormData, directOrgId?: string): Promise<OrganizationWithCompanyInfo> {
     try {
       // Get current user's organization and existing info through membership
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // First, get the user's membership to find their organization_id
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
+      let organizationId = directOrgId;
 
-      console.log('🔍 [DEBUG] Membership query result:', {
-        hasError: !!membershipError,
-        error: membershipError,
-        hasMembershipData: !!membershipData,
-        membershipData,
-        userId: user.id
-      });
+      if (!organizationId) {
+        // Fall back to membership lookup if org ID not provided
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('memberships')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .single();
 
-      if (membershipError) throw membershipError;
+        if (membershipError) throw membershipError;
 
-      const membership = membershipData as { organization_id: string } | null;
-      if (!membership?.organization_id) throw new Error('User not associated with an organization');
+        const membership = membershipData as { organization_id: string } | null;
+        if (!membership?.organization_id) throw new Error('User not associated with an organization');
 
-      const organizationId = membership.organization_id;
+        organizationId = membership.organization_id;
+      }
 
       // Now get the organization data
       const { data: orgData, error: orgError } = await supabase

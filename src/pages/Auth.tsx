@@ -316,6 +316,7 @@ const Auth = () => {
           if (savedState.userId) authFlow.setUserId(savedState.userId);
           if (savedState.fullName) formState.setFullName(savedState.fullName);
           if (savedState.orgName) formState.setOrgName(savedState.orgName);
+          if (savedState.organizationId) authFlow.setOrganizationId(savedState.organizationId);
 
           if (savedState.step && savedState.step !== 'auth') {
             authFlow.setStep(savedState.step as any);

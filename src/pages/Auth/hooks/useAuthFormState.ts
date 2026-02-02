@@ -59,14 +59,7 @@ export const useAuthFormState = (): AuthFormState => {
   const [showPassword, setShowPassword] = useState(false);
 
   const resetFormFields = () => {
-    // Don't clear email if it's saved in "Remember Me"
-    const savedEmail = localStorage.getItem('remembered_email');
-    const savedRememberMe = localStorage.getItem('remember_me') === 'true';
-
-    if (!savedRememberMe) {
-      setEmail('');
-    }
-
+    setEmail('');
     setPassword('');
     setConfirmPassword('');
     setFirstName('');

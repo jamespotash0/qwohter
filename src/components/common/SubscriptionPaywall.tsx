@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSignOut, useUser } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -41,7 +41,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
   useRealtimeSubscription(
     'subscriptions',
-    ['subscriptions', organizationId],
+    ['subscription', 'status', organizationId],
     { filter: `organization_id=eq.${organizationId}` },
     !!organizationId
   );
@@ -89,6 +89,42 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3]">
         <Loader2 className="w-10 h-10 animate-spin text-[#ee6c4d]" />
       </div>
+    );
+  }
+
+  // Grace period: allow access but show warning banner
+  if (subscription?.hasAccess && subscription?.inGracePeriod) {
+    const daysText = subscription.graceDaysRemaining === 1
+      ? '1 day'
+      : `${subscription.graceDaysRemaining} days`;
+
+    return (
+      <>
+        <div className="sticky top-0 z-40 bg-amber-50 border-b border-amber-200 px-4 py-3">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <p
+                className="text-sm text-amber-800 font-medium"
+                style={{ fontFamily: 'Urbanist, sans-serif' }}
+              >
+                Payment failed. Update your payment method within {daysText} to avoid losing access.
+              </p>
+            </div>
+            {isOwner && (
+              <Button
+                onClick={() => navigate('/settings?tab=billing')}
+                size="sm"
+                className="rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex-shrink-0"
+                style={{ fontFamily: 'Urbanist, sans-serif' }}
+              >
+                Update Payment
+              </Button>
+            )}
+          </div>
+        </div>
+        {children}
+      </>
     );
   }
 

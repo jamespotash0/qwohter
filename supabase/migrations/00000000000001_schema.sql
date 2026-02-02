@@ -1223,24 +1223,53 @@ $$;
 ALTER FUNCTION "public"."create_default_workflow_columns"("org_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text" DEFAULT NULL::"text", "industry" "text" DEFAULT NULL::"text", "owner_id" "uuid" DEFAULT "auth"."uid"()) RETURNS TABLE("org_id" "uuid")
+CREATE OR REPLACE FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text" DEFAULT NULL::"text", "industry" "text" DEFAULT NULL::"text", "owner_id" "uuid" DEFAULT "auth"."uid"(), "org_prefix" "text" DEFAULT NULL::"text") RETURNS TABLE("org_id" "uuid")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
   new_org_id uuid;
+  computed_prefix text;
+  cleaned_name text;
+  words text[];
 BEGIN
-  -- Insert organization with industry and found_via
+  -- Generate prefix from org_name if not provided
+  IF org_prefix IS NULL OR org_prefix = '' THEN
+    cleaned_name := regexp_replace(
+      regexp_replace(upper(trim(org_name)), '[-_]', ' ', 'g'),
+      '[^A-Z ]', '', 'g'
+    );
+    words := regexp_split_to_array(trim(cleaned_name), '\s+');
+
+    IF array_length(words, 1) = 1 THEN
+      computed_prefix := LEFT(regexp_replace(upper(trim(org_name)), '[^A-Z]', '', 'g'), 3);
+    ELSIF array_length(words, 1) > 1 THEN
+      computed_prefix :=
+        COALESCE(LEFT(words[1], 1), '') ||
+        COALESCE(LEFT(words[2], 1), '') ||
+        COALESCE(LEFT(words[3], 1), '');
+    END IF;
+
+    IF computed_prefix IS NULL OR computed_prefix = '' THEN
+      computed_prefix := 'TSK';
+    END IF;
+  ELSE
+    computed_prefix := UPPER(org_prefix);
+  END IF;
+
+  -- Insert organization with industry, found_via, and org_prefix
   INSERT INTO organizations (
     name,
     industry,
     found_via,
+    org_prefix,
     created_at,
     updated_at
   ) VALUES (
     org_name,
     industry,
     found_via,
+    computed_prefix,
     now(),
     now()
   )
@@ -1273,10 +1302,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid", "org_prefix" "text") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid") IS 'Original RPC function restored - creates organization with owner membership (trigger_link_contact_to_member removed to fix errors)';
+COMMENT ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid", "org_prefix" "text") IS 'Creates organization with owner membership. org_prefix is a Jira-style prefix for task references.';
 
 
 
@@ -2155,9 +2184,14 @@ BEGIN
     SELECT 1
     FROM public.subscriptions s
     WHERE s.organization_id = org_id
-    AND s.is_active = true
     AND s.access_blocked = false
-    AND s.stripe_subscription_status IN ('active', 'trialing')
+    AND (
+      -- Normal active access
+      (s.is_active = true AND LOWER(s.stripe_subscription_status) IN ('active', 'trialing'))
+      OR
+      -- Grace period access
+      (s.grace_period_end IS NOT NULL AND s.grace_period_end > now())
+    )
   );
 END;
 $$;
@@ -4118,6 +4152,11 @@ BEGIN
   -- This handles both 'active'/'Active' and 'trialing'/'Trialing'
   NEW.is_active := LOWER(NEW.stripe_subscription_status) IN ('active', 'trialing');
 
+  -- Grace period: keep is_active=true if grace_period_end is still in the future
+  IF NOT NEW.is_active AND NEW.grace_period_end IS NOT NULL AND NEW.grace_period_end > now() THEN
+    NEW.is_active := true;
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -5323,7 +5362,8 @@ CREATE TABLE IF NOT EXISTS "public"."organizations" (
     "primary_storage_provider" "text",
     "sync_to_all_storage_providers" boolean DEFAULT false,
     "require_proposal_approval" boolean DEFAULT false,
-    "payment_settings" "jsonb" DEFAULT '{}'::"jsonb"
+    "payment_settings" "jsonb" DEFAULT '{}'::"jsonb",
+    "org_prefix" "text" NOT NULL DEFAULT 'TSK'::"text"
 );
 
 ALTER TABLE ONLY "public"."organizations" REPLICA IDENTITY FULL;
@@ -6212,7 +6252,8 @@ CREATE TABLE IF NOT EXISTS "public"."subscriptions" (
     "trial_start" timestamp with time zone,
     "trial_end" timestamp with time zone,
     "has_payment_method" boolean DEFAULT false,
-    "stripe_quantity_pending_sync" boolean DEFAULT false
+    "stripe_quantity_pending_sync" boolean DEFAULT false,
+    "grace_period_end" timestamp with time zone
 );
 
 ALTER TABLE ONLY "public"."subscriptions" REPLICA IDENTITY FULL;
@@ -6230,6 +6271,10 @@ COMMENT ON COLUMN "public"."subscriptions"."current_period_start" IS 'Start date
 
 
 COMMENT ON COLUMN "public"."subscriptions"."pause_at_period_end" IS 'Whether the subscription is scheduled to pause at the end of the current period';
+
+
+
+COMMENT ON COLUMN "public"."subscriptions"."grace_period_end" IS 'End of grace period after payment failure. Access allowed until this date.';
 
 
 

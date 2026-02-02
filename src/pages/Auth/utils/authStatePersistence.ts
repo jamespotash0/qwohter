@@ -9,6 +9,7 @@ interface AuthFlowState {
   userId?: string;
   fullName?: string;
   orgName?: string;
+  organizationId?: string;
   timestamp?: number;
 }
 

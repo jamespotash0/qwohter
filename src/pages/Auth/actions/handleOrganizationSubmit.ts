@@ -76,6 +76,9 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
 
     if (result.success && result.data) {
+      // Store the organization ID for the company-info step (needed for trial enrollment)
+      setOrganizationId(result.data.organizationId);
+
       // Mark signup invite as used if this was a signup invite flow
       const pendingSignupInviteToken = sessionStorage.getItem('pendingSignupInviteToken');
       if (pendingSignupInviteToken) {
@@ -97,6 +100,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
       saveAuthState({
         step: 'company-info',
         userId,
+        organizationId: result.data.organizationId,
         orgName: result.data.organizationName
       });
     } else {

@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, PaperPlaneTilt, Eye, PenNib, CheckCircle, XCircle, At, UserPlus, Users, Phone } from '@phosphor-icons/react';
-import { BellRing, Mail, MessageSquare } from 'lucide-react';
+import { BellRing, CalendarClock, Mail, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

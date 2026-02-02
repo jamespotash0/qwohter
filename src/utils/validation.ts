@@ -92,18 +92,32 @@ export const validators = {
       return { isValid: false, error: 'Password is too long (max 128 characters)' };
     }
 
-    // Check for at least one number, one letter
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
     const hasNumber = /\d/.test(password);
-    const hasLetter = /[a-zA-Z]/.test(password);
 
-    if (!hasNumber || !hasLetter) {
-      return { isValid: false, error: 'Password must contain at least one letter and one number' };
+    if (!hasUppercase || !hasLowercase) {
+      return { isValid: false, error: 'Password must contain both uppercase and lowercase letters' };
+    }
+
+    if (!hasNumber) {
+      return { isValid: false, error: 'Password must contain at least one number' };
+    }
+
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password);
+    if (!hasSpecial) {
+      return { isValid: false, error: 'Password must contain at least one special character (!@#$%&*)' };
     }
 
     // Check for common weak passwords
-    const weakPasswords = ['12345678', 'password', 'qwerty123', 'abc12345'];
-    if (weakPasswords.includes(password.toLowerCase())) {
-      return { isValid: false, error: 'Please choose a stronger password' };
+    const weakPasswords = [
+      '12345678', 'password', 'qwerty123', 'abc12345',
+      'password1', 'iloveyou', 'letmein01', 'welcome1',
+      'admin123', 'monkey123', 'dragon12', 'master12',
+      'Qwerty123', 'Password1', 'Abcd1234',
+    ];
+    if (weakPasswords.some(w => w.toLowerCase() === password.toLowerCase())) {
+      return { isValid: false, error: 'This is a commonly used password — please choose something stronger' };
     }
 
     return { isValid: true };
@@ -249,6 +263,50 @@ export const validators = {
       return { isValid: false, error: 'Please enter a valid website URL' };
     }
   }
+};
+
+export interface PasswordRequirements {
+  length: boolean;
+  uppercase: boolean;
+  lowercase: boolean;
+  number: boolean;
+  special: boolean;
+}
+
+export type PasswordStrengthLevel = 'weak' | 'fair' | 'good' | 'strong';
+
+export interface PasswordStrength {
+  score: number;
+  level: PasswordStrengthLevel;
+  requirements: PasswordRequirements;
+}
+
+/**
+ * Evaluate password strength with granular requirement checks
+ */
+export const getPasswordStrength = (password: string): PasswordStrength => {
+  const requirements: PasswordRequirements = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password),
+  };
+
+  const score = Object.values(requirements).filter(Boolean).length;
+
+  let level: PasswordStrengthLevel;
+  if (score <= 1) {
+    level = 'weak';
+  } else if (score <= 2) {
+    level = 'fair';
+  } else if (score <= 4) {
+    level = 'good';
+  } else {
+    level = 'strong';
+  }
+
+  return { score, level, requirements };
 };
 
 /**

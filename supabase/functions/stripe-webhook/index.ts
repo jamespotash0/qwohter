@@ -226,17 +226,31 @@ serve(async (req) => {
         // Determine is_active with grace period awareness
         let isActive = ['active', 'trialing'].includes(status);
 
-        // Grace period: keep is_active=true for 3 days after trial expires
-        // Stripe transitions trialing → incomplete → incomplete_expired when trial ends without payment
-        // We preserve access so the client-side grace period logic can show warnings
+        // Grace period: keep is_active=true during trial or payment grace periods
         if (!isActive && ['incomplete', 'incomplete_expired', 'past_due'].includes(status)) {
+          // Trial grace period (3 days after trial expires)
+          // Stripe transitions trialing → incomplete → incomplete_expired when trial ends without payment
           const trialEnd = subscription.trial_end;
           if (trialEnd) {
             const trialEndDate = new Date(trialEnd * 1000);
-            const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
-            if (new Date() <= gracePeriodEnd) {
+            const trialGracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+            if (new Date() <= trialGracePeriodEnd) {
               isActive = true;
-              console.log('Grace period active - keeping is_active=true until', gracePeriodEnd.toISOString());
+              console.log('Trial grace period active until', trialGracePeriodEnd.toISOString());
+            }
+          }
+
+          // Payment failure grace period: check DB for grace_period_end
+          if (!isActive) {
+            const { data: graceSub } = await supabase
+              .from('subscriptions')
+              .select('grace_period_end')
+              .eq('stripe_subscription_id', stripeSubscriptionId)
+              .single();
+
+            if (graceSub?.grace_period_end && new Date(graceSub.grace_period_end) > new Date()) {
+              isActive = true;
+              console.log('Payment grace period active until', graceSub.grace_period_end);
             }
           }
         }
@@ -269,17 +283,78 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         const stripeSubscriptionId = subscription.id;
 
-        // Mark subscription as inactive
-        await supabase
-          .from('subscriptions')
-          .update({
-            stripe_subscription_status: 'Canceled',
-            is_active: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('stripe_subscription_id', stripeSubscriptionId);
+        // Sync period dates from Stripe (they advance even on failed payment)
+        const deletedSafeToISO = (ts: number | undefined | null): string | null => {
+          if (!ts) return null;
+          const d = new Date(ts * 1000);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        };
+        const deletedPeriodStartISO = deletedSafeToISO(subscription.current_period_start);
+        const deletedPeriodEndISO = deletedSafeToISO(subscription.current_period_end);
 
-        console.log('Canceled subscription:', stripeSubscriptionId);
+        // Check if there's an active grace period already set
+        const { data: deletedSub } = await supabase
+          .from('subscriptions')
+          .select('grace_period_end, current_period_end')
+          .eq('stripe_subscription_id', stripeSubscriptionId)
+          .single();
+
+        const deletedNow = new Date();
+        let deletedGracePeriodEnd = deletedSub?.grace_period_end ? new Date(deletedSub.grace_period_end) : null;
+
+        // Race condition: if payment_failed hasn't set grace_period_end yet,
+        // detect payment-failure cancellation from Stripe's cancellation reason
+        const isPaymentFailureCancellation =
+          (subscription as any).cancellation_details?.reason === 'payment_failed';
+
+        if (!deletedGracePeriodEnd && isPaymentFailureCancellation) {
+          // Use Stripe's period end (freshest), fall back to DB value
+          const anchorDate = deletedPeriodEndISO
+            ? new Date(deletedPeriodEndISO)
+            : deletedSub?.current_period_end
+              ? new Date(deletedSub.current_period_end)
+              : new Date();
+          deletedGracePeriodEnd = new Date(anchorDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+          console.log('Setting grace period from deleted handler (race):', deletedGracePeriodEnd.toISOString());
+        }
+
+        const deletedInGracePeriod = deletedGracePeriodEnd && deletedGracePeriodEnd > deletedNow;
+
+        // Base update: always sync period dates
+        const deletedBaseUpdate: Record<string, any> = {
+          stripe_subscription_status: 'Canceled',
+          updated_at: deletedNow.toISOString(),
+        };
+        if (deletedPeriodStartISO) deletedBaseUpdate.current_period_start = deletedPeriodStartISO;
+        if (deletedPeriodEndISO) deletedBaseUpdate.current_period_end = deletedPeriodEndISO;
+
+        if (deletedInGracePeriod) {
+          // Grace period active - update status but keep access
+          await supabase
+            .from('subscriptions')
+            .update({
+              ...deletedBaseUpdate,
+              grace_period_end: deletedGracePeriodEnd!.toISOString(),
+              access_blocked_reason: 'Payment failed',
+            })
+            .eq('stripe_subscription_id', stripeSubscriptionId);
+
+          console.log('Subscription canceled but grace period active until:', deletedGracePeriodEnd!.toISOString());
+        } else {
+          // Voluntary cancellation or grace expired - block immediately
+          await supabase
+            .from('subscriptions')
+            .update({
+              ...deletedBaseUpdate,
+              is_active: false,
+              access_blocked: true,
+              access_blocked_reason: 'Subscription canceled',
+              grace_period_end: null,
+            })
+            .eq('stripe_subscription_id', stripeSubscriptionId);
+
+          console.log('Canceled subscription:', stripeSubscriptionId);
+        }
         break;
       }
 
@@ -294,17 +369,50 @@ serve(async (req) => {
         const invoice = event.data.object as Stripe.Invoice;
         const stripeCustomerId = invoice.customer as string;
 
-        // Mark subscription for attention
+        // Fetch current subscription to get period end and check grace
+        const { data: failedSub } = await supabase
+          .from('subscriptions')
+          .select('current_period_end, grace_period_end, stripe_subscription_id')
+          .eq('stripe_customer_id', stripeCustomerId)
+          .single();
+
+        // Sync period dates from Stripe subscription (they advance even on failed payment)
+        const failedUpdateData: Record<string, any> = {
+          access_blocked_reason: 'Payment failed',
+          updated_at: new Date().toISOString(),
+        };
+
+        if (failedSub?.stripe_subscription_id) {
+          try {
+            const failedStripeSubscription = await stripe.subscriptions.retrieve(failedSub.stripe_subscription_id);
+            if (failedStripeSubscription.current_period_start) {
+              failedUpdateData.current_period_start = new Date(failedStripeSubscription.current_period_start * 1000).toISOString();
+            }
+            if (failedStripeSubscription.current_period_end) {
+              failedUpdateData.current_period_end = new Date(failedStripeSubscription.current_period_end * 1000).toISOString();
+            }
+          } catch (err) {
+            console.error('Failed to fetch subscription for period sync:', err);
+          }
+        }
+
+        // Calculate grace period: 7 days from current_period_end
+        // Use the freshly-synced period end if available, otherwise fall back to DB value
+        const failedPeriodEnd = failedUpdateData.current_period_end || failedSub?.current_period_end;
+        const failedAnchor = failedPeriodEnd ? new Date(failedPeriodEnd) : new Date();
+        const failedGracePeriodEnd = new Date(failedAnchor.getTime() + (7 * 24 * 60 * 60 * 1000));
+
+        // Only set grace_period_end if not already set (don't extend on retries)
+        if (!failedSub?.grace_period_end) {
+          failedUpdateData.grace_period_end = failedGracePeriodEnd.toISOString();
+        }
+
         await supabase
           .from('subscriptions')
-          .update({
-            access_blocked: true,
-            access_blocked_reason: 'Payment failed',
-            updated_at: new Date().toISOString(),
-          })
+          .update(failedUpdateData)
           .eq('stripe_customer_id', stripeCustomerId);
 
-        console.log('Payment failed for customer:', stripeCustomerId);
+        console.log('Payment failed for customer:', stripeCustomerId, 'grace period until:', failedGracePeriodEnd.toISOString());
         break;
       }
 
@@ -396,6 +504,7 @@ serve(async (req) => {
             .update({
               access_blocked: false,
               access_blocked_reason: null,
+              grace_period_end: null,
               updated_at: new Date().toISOString(),
             })
             .eq('stripe_customer_id', invoice.customer as string)

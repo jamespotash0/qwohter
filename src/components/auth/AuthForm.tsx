@@ -8,11 +8,11 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { sanitizeInput } from "@/utils/security";
 import { validators } from "@/utils/validation";
-import { useState, useEffect } from "react";
+import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface AuthFormProps {
@@ -48,38 +48,35 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onSubmit,
   onToggleMode
 }) => {
-  const [rememberMe, setRememberMe] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
-  const [touched, setTouched] = useState({ email: false, password: false });
+  const [touched, setTouched] = useState({ email: false, password: false, names: false });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const savedEmail = localStorage.getItem('remembered_email');
-    const savedRememberMe = localStorage.getItem('remember_me') === 'true';
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-    if (savedEmail && savedRememberMe) {
-      onEmailChange(savedEmail);
-      setRememberMe(true);
-    }
-  }, [onEmailChange]);
+    // Validate all fields on submit
+    const emailValidation = validators.email(email);
+    const emailErr = emailValidation.isValid ? undefined : emailValidation.error;
+    setEmailError(emailErr);
 
-  useEffect(() => {
-    if (rememberMe && email) {
-      localStorage.setItem('remembered_email', email);
-      localStorage.setItem('remember_me', 'true');
-    } else if (!rememberMe) {
-      localStorage.removeItem('remembered_email');
-      localStorage.removeItem('remember_me');
+    let passwordErr: string | undefined;
+    if (isSignUp) {
+      const passwordValidation = validators.password(password);
+      passwordErr = passwordValidation.isValid ? undefined : passwordValidation.error;
+    } else if (!password) {
+      passwordErr = 'Password is required';
     }
-  }, [rememberMe, email]);
+    setPasswordError(passwordErr);
 
-  const handleRememberMeChange = (checked: boolean) => {
-    setRememberMe(checked);
-    if (!checked) {
-      localStorage.removeItem('remembered_email');
-      localStorage.removeItem('remember_me');
+    setTouched({ email: true, password: true, names: true });
+
+    if (emailErr || passwordErr || (isSignUp && (!firstName || !lastName))) {
+      return;
     }
+
+    onSubmit(e);
   };
 
   // Shared input classes - matching landing page aesthetic
@@ -99,7 +96,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
   return (
     <div className="space-y-4">
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Name fields for signup */}
         {isSignUp && (
           <div className="grid grid-cols-2 gap-4">
@@ -114,7 +111,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 onChange={(e) => onFirstNameChange?.(sanitizeInput.string(e.target.value))}
                 placeholder="John"
                 required
-                className={inputClasses}
+                className={`${inputClasses} ${touched.names && !firstName ? inputErrorClasses : ''}`}
                 autoComplete="given-name"
               />
             </div>
@@ -129,7 +126,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 onChange={(e) => onLastNameChange?.(sanitizeInput.string(e.target.value))}
                 placeholder="Doe"
                 required
-                className={inputClasses}
+                className={`${inputClasses} ${touched.names && !lastName ? inputErrorClasses : ''}`}
                 autoComplete="family-name"
               />
             </div>
@@ -176,10 +173,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 const newPassword = sanitizeInput.string(e.target.value);
                 onPasswordChange(newPassword);
 
-                if (isSignUp) {
-                  const validation = validators.password(newPassword);
-                  setPasswordError(validation.isValid ? undefined : validation.error);
-                }
+                // Clear submit error as user types
+                if (passwordError) setPasswordError(undefined);
               }}
               onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
               placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
@@ -199,30 +194,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               )}
             </button>
           </div>
+          {isSignUp && <PasswordStrengthMeter password={password} />}
           {touched.password && passwordError && (
             <p className="text-sm text-red-500 mt-1.5">{passwordError}</p>
           )}
-          {isSignUp && !passwordError && (
-            <p className="text-xs text-[#171717]/40 mt-1.5">
-              At least 8 characters with uppercase, lowercase, and numbers
-            </p>
-          )}
         </div>
 
-        {/* Remember me and forgot password for sign in */}
+        {/* Forgot password link - only on sign-in */}
         {!isSignUp && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember-me"
-                checked={rememberMe}
-                onCheckedChange={handleRememberMeChange}
-                className="h-4 w-4 rounded border-slate-300 data-[state=checked]:bg-[#ee6c4d] data-[state=checked]:border-[#ee6c4d]"
-              />
-              <Label htmlFor="remember-me" className="text-sm text-[#171717]/60 cursor-pointer">
-                Remember me
-              </Label>
-            </div>
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={() => navigate("/forgot-password")}
@@ -238,15 +218,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           type="submit"
           className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200 group"
           style={{ fontFamily: 'Urbanist, sans-serif' }}
-          disabled={
-            loading ||
-            (isSignUp && (
-              !!emailError ||
-              !!passwordError ||
-              !firstName ||
-              !lastName
-            ))
-          }
+          disabled={loading}
         >
           {loading ? (
             <span className="flex items-center gap-2">
@@ -256,14 +228,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           ) : (
             <span className="flex items-center justify-center gap-2">
               {isSignUp ? "Create account" : "Sign in"}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-4 w-4" />
             </span>
           )}
         </Button>
 
         {/* Terms notice for signup */}
         {isSignUp && (
-          <p className="text-center text-sm text-[#171717]/50" style={{ fontFamily: 'Urbanist, sans-serif' }}>
+          <p className="text-center text-[11px] text-[#171717]/40" style={{ fontFamily: 'Urbanist, sans-serif' }}>
             By signing up to Qwohter, you accept our{" "}
             <a
               href="/terms-of-service"

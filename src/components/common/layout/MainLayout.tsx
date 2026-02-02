@@ -39,7 +39,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
-  const [checkingMembership, setCheckingMembership] = useState(false);
+  const [checkingMembership, setCheckingMembership] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Check if current route should show sidebar
@@ -74,6 +74,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       if (!shouldShowSidebar || !isInitialized || !user) {
         setMembershipStatus(null);
         setIsSuperAdmin(false);
+        setCheckingMembership(false);
         return;
       }
 
@@ -143,14 +144,18 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Redirect based on membership status
   useEffect(() => {
-    if (!shouldShowSidebar) return;
+    if (!shouldShowSidebar || checkingMembership) return;
     if (location.pathname === '/account-inactive') return; // Prevent redirect loop
 
-    if (membershipStatus === 'Inactive' && !checkingMembership) {
+    if (membershipStatus === 'Inactive') {
       // Pass fromApp: true so AccountInactive knows this is a valid redirect
       navigate('/account-inactive', { state: { fromApp: true } });
+    } else if (membershipStatus === null && user && isInitialized && !isSuperAdmin) {
+      // Orphaned user: authenticated but no membership — redirect to onboarding
+      console.log('🔄 No membership found, redirecting to onboarding');
+      navigate('/create-account', { replace: true });
     }
-  }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
+  }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate, user, isInitialized, isSuperAdmin]);
 
   // Redirect to sign-in if no user on protected routes (expired session handling)
   useEffect(() => {

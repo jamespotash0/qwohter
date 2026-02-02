@@ -21,13 +21,15 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('stripe_subscription_status, current_period_end, trial_end, has_payment_method')
+      .select('stripe_subscription_status, current_period_end, trial_end, has_payment_method, grace_period_end, access_blocked_reason')
       .eq('organization_id', organizationId)
       .single() as { data: {
         stripe_subscription_status: string | null;
         current_period_end: string | null;
         trial_end: string | null;
         has_payment_method: boolean;
+        grace_period_end: string | null;
+        access_blocked_reason: string | null;
       } | null; error: unknown };
 
     if (error || !data) {
@@ -52,7 +54,25 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
       };
     }
 
-    // Grace period check for post-trial statuses (incomplete, incomplete_expired, past_due)
+    // Payment failure grace period (7 days from period end)
+    if (data.grace_period_end) {
+      const now = new Date();
+      const gracePeriodEnd = new Date(data.grace_period_end);
+      const inGracePeriod = now <= gracePeriodEnd;
+      const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (inGracePeriod) {
+        return {
+          hasAccess: true,
+          status: data.stripe_subscription_status,
+          reason: data.access_blocked_reason || 'Payment failed',
+          inGracePeriod: true,
+          graceDaysRemaining: Math.max(0, graceDaysRemaining),
+        };
+      }
+    }
+
+    // Trial grace period check (3 days after trial expires)
     const graceStatuses = ['incomplete', 'incomplete_expired', 'past_due'];
     if (status && graceStatuses.includes(status) && data.trial_end) {
       const now = new Date();

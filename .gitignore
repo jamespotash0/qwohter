@@ -54,3 +54,4 @@ test-results/
 
 # Supabase local runtime data
 supabase/.temp/
+supabase/.branches/

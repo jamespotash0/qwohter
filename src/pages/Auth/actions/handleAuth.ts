@@ -123,6 +123,11 @@ export const handleAuth = async (params: HandleAuthParams) => {
           setUserId(result.data?.userId || '');
           setStep('organization');
           saveAuthState({ step: 'organization', email, userId: result.data?.userId });
+        } else if (result.nextStep === 'company-info') {
+          console.log('Signin successful - resuming onboarding at company info step');
+          setUserId(result.data?.userId || '');
+          setStep('company-info');
+          saveAuthState({ step: 'company-info', email, userId: result.data?.userId });
         }
       } else {
         // Record failed login attempt
