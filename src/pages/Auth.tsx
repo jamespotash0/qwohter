@@ -21,9 +21,11 @@ import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { SignupRecoveryPrompt } from "@/components/auth/SignupRecoveryPrompt";
 import { InviteRequiredScreen } from "@/components/auth/InviteRequiredScreen";
 import { validateInviteTokenDetailed, validateSignupInviteToken } from "@/utils/inviteTokens";
+import { checkInviteRateLimit, logInviteAttempt, getUserIpAddress } from "@/utils/rateLimiting";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
 import * as authService from "@/auth/services/authService";
+import { stripeService } from "@/services/stripeService";
 
 // Import extracted hooks
 import { useAuthFlow, useAuthFormState, useCompanyInfoState } from "./Auth/hooks";
@@ -106,7 +108,7 @@ const Auth = () => {
   }, [location.pathname]);
 
   // ============================================================================
-  // INVITE TOKEN HANDLING (Priority: Sign out existing user if invite exists)
+  // INVITE TOKEN HANDLING (Validate FIRST, only sign out if token is valid)
   // ============================================================================
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -124,9 +126,83 @@ const Auth = () => {
       try {
         processedInviteTokenRef.current = inviteToken.trim();
 
-        const session = await authService.getSession();
+        // 1. Validate the token FIRST — don't sign out until we know it's valid
+        const validationResult = await validateInviteTokenDetailed(inviteToken.trim());
 
-        if (session) {
+        // Clean the invite param from URL regardless of result
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('invite');
+        window.history.replaceState({}, '', newUrl.toString());
+
+        if (!validationResult.success || !validationResult.data) {
+          // Token is invalid — show error page, never sign out
+          const errorType = validationResult.error?.type || 'Invalid';
+          processedInviteTokenRef.current = null;
+          navigate(`/invalid-invitation?error=${errorType}`, {
+            replace: true,
+          });
+          return;
+        }
+
+        // 2. Token is valid — check if signed-in user can handle it directly
+        const session = await authService.getSession();
+        if (session?.user) {
+          const currentEmail = session.user.email?.toLowerCase();
+          const inviteEmail = validationResult.data.email?.toLowerCase();
+
+          if (currentEmail && inviteEmail && currentEmail !== inviteEmail) {
+            // Email mismatch — this invite is for a different person, don't sign them out
+            toast({
+              title: "Different account required",
+              description: `This invitation is for ${validationResult.data.email}. Sign out and use that email to accept it.`,
+            });
+            processedInviteTokenRef.current = null;
+            setValidatingInviteToken(false);
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+
+          // Email matches — auto-join directly without sign-out/OTP
+          if (currentEmail && currentEmail === inviteEmail) {
+            try {
+              const { data: inviteResult } = await (supabase.rpc as any)('auto_join_pending_invite', {
+                p_user_id: session.user.id,
+                p_user_email: session.user.email,
+              });
+
+              if (inviteResult?.joined) {
+                toast({
+                  title: "Joined!",
+                  description: `Welcome to ${inviteResult.organization_name}!`,
+                });
+
+                // Sync Stripe seat count (non-blocking)
+                stripeService.syncSeatCount(inviteResult.organization_id, 'add').catch((err: any) =>
+                  console.error('Seat sync error after invite auto-join:', err)
+                );
+
+                queryClient.invalidateQueries({ queryKey: queryKeys.organization.all });
+                queryClient.invalidateQueries({ queryKey: queryKeys.user.all });
+
+                setValidatingInviteToken(false);
+                navigate('/dashboard', { replace: true });
+                return;
+              } else if (inviteResult?.already_member) {
+                toast({
+                  title: "Already a member",
+                  description: `You're already a member of ${inviteResult.organization_name}.`,
+                });
+                setValidatingInviteToken(false);
+                navigate('/dashboard', { replace: true });
+                return;
+              }
+            } catch (err) {
+              console.error('Auto-join from invite link failed:', err);
+              // Fall through to normal sign-out + create-account flow
+            }
+          }
+
+          // Fallback: sign out and proceed with create-account flow
           await authService.signOut();
           clearAuthState();
 
@@ -136,43 +212,18 @@ const Auth = () => {
           });
         }
 
-        const validationResult = await validateInviteTokenDetailed(inviteToken.trim());
+        // 3. Set up the invite flow (user not signed in or signed out above)
+        formState.setOrganizationId(validationResult.data.organization_id);
+        sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
+        sessionStorage.setItem('pendingOrganizationId', validationResult.data.organization_id);
 
-        if (validationResult.success && validationResult.data) {
-          formState.setOrganizationId(validationResult.data.organization_id);
-          sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
-          sessionStorage.setItem('pendingOrganizationId', validationResult.data.organization_id);
+        toast({
+          title: "Invite link detected",
+          description: "You've been invited to join an organization",
+        });
 
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('invite');
-          window.history.replaceState({}, '', newUrl.toString());
-
-          toast({
-            title: "Invite link detected",
-            description: "You've been invited to join an organization",
-          });
-
-          // Token is valid - show the form
-          setValidatingInviteToken(false);
-        } else {
-          // Navigate to the invalid invitation page with error type
-          const errorType = validationResult.error?.type || 'Invalid';
-
-          processedInviteTokenRef.current = null;
-
-          // Remove the invite param from URL before navigating
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('invite');
-          window.history.replaceState({}, '', newUrl.toString());
-
-          navigate('/invalid-invitation', {
-            replace: true,
-            state: {
-              errorType,
-              fromInviteValidation: true,
-            },
-          });
-        }
+        // Token is valid - show the form
+        setValidatingInviteToken(false);
       } catch (error) {
         console.error('Error validating invite token:', error);
         processedInviteTokenRef.current = null;
@@ -182,12 +233,8 @@ const Auth = () => {
         newUrl.searchParams.delete('invite');
         window.history.replaceState({}, '', newUrl.toString());
 
-        navigate('/invalid-invitation', {
+        navigate('/invalid-invitation?error=Invalid', {
           replace: true,
-          state: {
-            errorType: 'Invalid',
-            fromInviteValidation: true,
-          },
         });
       }
     };
@@ -217,8 +264,35 @@ const Auth = () => {
 
     const handleAppInviteToken = async () => {
       setValidatingInviteToken(true);
+      const tokenValue = appInviteToken.trim();
       try {
-        processedAppInviteTokenRef.current = appInviteToken.trim();
+        processedAppInviteTokenRef.current = tokenValue;
+
+        // SECURITY: Check rate limit before processing (stricter for platform-level signup invites)
+        const userIp = await getUserIpAddress();
+        const rateLimitCheck = await checkInviteRateLimit({
+          ipAddress: userIp,
+          inviteToken: tokenValue,
+          windowMinutes: 10,
+          maxAttempts: 3,
+        });
+
+        if (!rateLimitCheck.allowed) {
+          console.warn('⚠️ Signup invite rate limit exceeded:', rateLimitCheck);
+          processedAppInviteTokenRef.current = null;
+
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('appinvite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          toast({
+            title: 'Too Many Attempts',
+            description: rateLimitCheck.reason,
+            variant: 'destructive',
+          });
+          setValidatingInviteToken(false);
+          return;
+        }
 
         // Sign out existing user if any
         const session = await authService.getSession();
@@ -228,11 +302,19 @@ const Auth = () => {
         }
 
         // Validate the signup invite token
-        const validationResult = await validateSignupInviteToken(appInviteToken.trim());
+        const validationResult = await validateSignupInviteToken(tokenValue);
 
         if (validationResult.success && validationResult.data) {
+          // Log successful validation attempt
+          logInviteAttempt({
+            ipAddress: userIp,
+            userId: null,
+            inviteToken: tokenValue,
+            success: true,
+          });
+
           // Store the validated signup invite for use after OTP verification
-          sessionStorage.setItem('pendingSignupInviteToken', appInviteToken.trim());
+          sessionStorage.setItem('pendingSignupInviteToken', tokenValue);
           sessionStorage.setItem('pendingSignupInviteEmail', validationResult.data.email);
 
           // Pre-fill the email if available
@@ -253,6 +335,15 @@ const Auth = () => {
           // Token is valid - show the form
           setValidatingInviteToken(false);
         } else {
+          // Log failed validation attempt
+          logInviteAttempt({
+            ipAddress: userIp,
+            userId: null,
+            inviteToken: tokenValue,
+            success: false,
+            errorMessage: validationResult.error?.message,
+          });
+
           // Navigate to the invalid invitation page with error type
           const errorType = validationResult.error?.type || 'Invalid';
 
@@ -263,17 +354,24 @@ const Auth = () => {
           newUrl.searchParams.delete('appinvite');
           window.history.replaceState({}, '', newUrl.toString());
 
-          navigate('/invalid-invitation', {
+          navigate(`/invalid-invitation?error=${errorType}&type=signup`, {
             replace: true,
-            state: {
-              errorType,
-              fromInviteValidation: true,
-              isSignupInvite: true,
-            },
           });
         }
       } catch (error) {
         console.error('Error validating app invite token:', error);
+
+        // Log the exception as a failed attempt
+        getUserIpAddress().then(ip => {
+          logInviteAttempt({
+            ipAddress: ip,
+            userId: null,
+            inviteToken: tokenValue,
+            success: false,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }).catch(() => {});
+
         processedAppInviteTokenRef.current = null;
 
         // Remove the appinvite param from URL before navigating
@@ -281,13 +379,8 @@ const Auth = () => {
         newUrl.searchParams.delete('appinvite');
         window.history.replaceState({}, '', newUrl.toString());
 
-        navigate('/invalid-invitation', {
+        navigate('/invalid-invitation?error=Invalid&type=signup', {
           replace: true,
-          state: {
-            errorType: 'Invalid',
-            fromInviteValidation: true,
-            isSignupInvite: true,
-          },
         });
       }
     };

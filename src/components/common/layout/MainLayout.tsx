@@ -7,6 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { versionCheckService } from '@/services/versionCheckService';
+import { stripeService } from '@/services/stripeService';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryClient';
 import { toast } from 'sonner';
 
 
@@ -33,6 +36,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
 
   // Note: isAuthChanging removed in v3.0 (handled by AuthEventMutex)
+  const queryClient = useQueryClient();
 
   // Get current organization for paywall from React Query
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
@@ -70,11 +74,22 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // Check membership status for protected routes
   useEffect(() => {
     const checkMembershipStatus = async () => {
-      // Skip if not on protected route, not initialized, or no user
-      if (!shouldShowSidebar || !isInitialized || !user) {
-        setMembershipStatus(null);
-        setIsSuperAdmin(false);
+      // Skip if not on protected route
+      if (!shouldShowSidebar) {
         setCheckingMembership(false);
+        return;
+      }
+
+      // Wait for auth to initialize before making decisions
+      // Don't set checkingMembership=false while auth is still loading —
+      // that would let the redirect effect fire prematurely on full page reloads
+      if (!isInitialized || !user) {
+        if (isInitialized) {
+          // Auth is done and there's genuinely no user
+          setMembershipStatus(null);
+          setIsSuperAdmin(false);
+          setCheckingMembership(false);
+        }
         return;
       }
 
@@ -112,7 +127,39 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
             setMembershipStatus(membership.status); //membership_status
           }
         } else {
-          // No membership found - user might not be in an org
+          // No membership found — check for pending invite before orphan redirect
+          const userEmail = user.email;
+          if (userEmail) {
+            try {
+              const { data: inviteResult } = await (supabase.rpc as any)('auto_join_pending_invite', {
+                p_user_id: user.id,
+                p_user_email: userEmail,
+              });
+
+              if (inviteResult?.joined) {
+                console.log('✅ Auto-joined org via pending invite:', inviteResult.organization_name);
+                toast.success(`Welcome to ${inviteResult.organization_name}!`);
+
+                // Sync Stripe seat count (non-blocking)
+                stripeService.syncSeatCount(inviteResult.organization_id, 'add').catch((err: any) =>
+                  console.error('Seat sync error after auto-join:', err)
+                );
+
+                // Invalidate queries to pick up new membership + org
+                queryClient.invalidateQueries({ queryKey: queryKeys.organization.all });
+                queryClient.invalidateQueries({ queryKey: queryKeys.user.all });
+
+                setMembershipStatus('Active');
+                setCheckingMembership(false);
+                return;
+              }
+            } catch (err) {
+              console.error('Auto invite join check failed:', err);
+              // Fall through to normal orphan redirect
+            }
+          }
+
+          // Genuinely no membership and no pending invite
           setMembershipStatus(null);
         }
       } catch (error) {
@@ -156,14 +203,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       navigate('/create-account', { replace: true });
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate, user, isInitialized, isSuperAdmin]);
-
-  // Redirect to sign-in if no user on protected routes (expired session handling)
-  useEffect(() => {
-    if (isInitialized && !user && shouldShowSidebar) {
-      console.log('🔒 No user on protected route, redirecting to sign-in');
-      navigate('/sign-in', { replace: true });
-    }
-  }, [isInitialized, user, shouldShowSidebar, navigate]);
 
   // ✅ v3.0.0: Session management fully handled by AuthProvider
   // AuthProvider's onAuthStateChange listener detects session expiry

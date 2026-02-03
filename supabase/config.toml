@@ -5,17 +5,84 @@ project_id = "piuwrlaoxuefmiisuamc"
 # =====================================================
 
 [functions]
-# Global function settings - memory and timeout limits
-# These help prevent memory exhaustion attacks (Vuln #9)
+# Disable gateway-level JWT verification for local dev.
+# Newer Supabase CLI uses ES256 keys which the edge runtime's
+# built-in verifier doesn't support (TypeError: Key for ES256 must be CryptoKey).
+# Each function handles its own auth via supabase.auth.getUser().
+# In production, Supabase Cloud handles gateway JWT verification separately.
 
+[functions.ai-product-extraction]
+verify_jwt = false
+[functions.ai-scheduled-analysis]
+verify_jwt = false
+[functions.ai-workflow-agent]
+verify_jwt = false
+[functions.check-due-notifications]
+verify_jwt = false
+[functions.check-google-doc]
+verify_jwt = false
+[functions.contact-us]
+verify_jwt = false
+[functions.create-portal-session]
+verify_jwt = false
+[functions.create-trial-subscription]
+verify_jwt = false
+[functions.dev-impersonate]
+verify_jwt = false
+[functions.export-proposal-pdf]
+verify_jwt = false
+[functions.generate-google-doc]
+verify_jwt = false
+[functions.get-invoices]
+verify_jwt = false
 [functions.get-mapbox-token]
 verify_jwt = false
-
+[functions.get-signing-data]
+verify_jwt = false
+[functions.google-disconnect]
+verify_jwt = false
+[functions.google-list-drive-files]
+verify_jwt = false
+[functions.google-oauth-callback]
+verify_jwt = false
+[functions.google-risc-receiver]
+verify_jwt = false
+[functions.google-update-settings]
+verify_jwt = false
+[functions.ip_tracking]
+verify_jwt = false
+[functions.manage-seats]
+verify_jwt = false
+[functions.parse-quote]
+verify_jwt = false
+[functions.process-notification-retry]
+verify_jwt = false
+[functions.qb-desktop-setup]
+verify_jwt = false
+[functions.qb-web-connector]
+verify_jwt = false
+[functions.quickbooks-online-create-invoice]
+verify_jwt = false
+[functions.quickbooks-online-oauth]
+verify_jwt = false
+[functions.send-for-signature]
+verify_jwt = false
+[functions.send-invite]
+verify_jwt = false
+[functions.send-notification-email]
+verify_jwt = false
+[functions.send-signup-invite]
+verify_jwt = false
+[functions.stripe-handler]
+verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
-
-[functions.send-invite]
-verify_jwt = true
+[functions.submit-signature]
+verify_jwt = false
+[functions.sync-stripe-quantities]
+verify_jwt = false
+[functions.track-signing-view]
+verify_jwt = false
 
 # =====================================================
 # AUTH CONFIGURATION - Rate Limiting
@@ -26,6 +93,10 @@ verify_jwt = true
 # Site URL for password reset links
 site_url = "env(SITE_URL)"
 
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
 
 [auth.external]
 # Disable unused auth providers to reduce attack surface

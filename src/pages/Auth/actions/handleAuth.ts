@@ -105,6 +105,11 @@ export const handleAuth = async (params: HandleAuthParams) => {
         // Clear rate limit on successful login
         await clearRateLimit(email, 'login');
 
+        // Clear stale invite sessionStorage from any previous abandoned invite flow
+        // (auto-join is now handled by MainLayout's membership check)
+        sessionStorage.removeItem('pendingInviteToken');
+        sessionStorage.removeItem('pendingOrganizationId');
+
         console.log('Auth form: signin success with nextStep:', result.nextStep);
 
         // Handle different nextStep outcomes

@@ -204,6 +204,71 @@ COMMENT ON FUNCTION "public"."auto_generate_task_reference"() IS 'Fallback refer
 
 
 
+CREATE OR REPLACE FUNCTION "public"."auto_join_pending_invite"("p_user_id" "uuid", "p_user_email" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_invite invite_tokens%ROWTYPE;
+  v_org_name text;
+  v_membership_id uuid;
+BEGIN
+  -- Find the most recent valid pending invite for this email
+  SELECT * INTO v_invite
+  FROM invite_tokens
+  WHERE LOWER(email) = LOWER(p_user_email)
+    AND is_used = false
+    AND revoked_at IS NULL
+    AND expires_at > now()
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF v_invite IS NULL THEN
+    RETURN jsonb_build_object('found', false);
+  END IF;
+
+  -- Get org name for the toast message
+  SELECT name INTO v_org_name
+  FROM organizations
+  WHERE id = v_invite.organization_id;
+
+  -- Check if membership already exists (edge case: duplicate processing)
+  IF EXISTS (
+    SELECT 1 FROM memberships
+    WHERE user_id = p_user_id
+      AND organization_id = v_invite.organization_id
+  ) THEN
+    UPDATE invite_tokens SET is_used = true, updated_at = now() WHERE id = v_invite.id;
+    RETURN jsonb_build_object('found', true, 'already_member', true, 'organization_name', v_org_name);
+  END IF;
+
+  -- Create membership (Active, Invited)
+  INSERT INTO memberships (user_id, organization_id, role, status, join_type, invited_by, joined_at)
+  VALUES (p_user_id, v_invite.organization_id, v_invite.role, 'Active', 'Invited', v_invite.created_by, now())
+  RETURNING id INTO v_membership_id;
+
+  -- Mark token as used
+  UPDATE invite_tokens SET is_used = true, updated_at = now() WHERE id = v_invite.id;
+
+  RETURN jsonb_build_object(
+    'found', true,
+    'joined', true,
+    'organization_id', v_invite.organization_id,
+    'organization_name', v_org_name,
+    'membership_id', v_membership_id,
+    'role', v_invite.role
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."auto_join_pending_invite"("p_user_id" "uuid", "p_user_email" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."auto_join_pending_invite"("p_user_id" "uuid", "p_user_email" "text") IS 'Auto-joins a user to an organization if they have a valid pending invite. Called from MainLayout when user has no membership.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."block_access"("org_id" "uuid", "reason" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -833,17 +898,27 @@ CREATE OR REPLACE FUNCTION "public"."cleanup_all_rate_limiting_logs"() RETURNS "
 DECLARE
   invite_attempts_deleted INTEGER;
   org_creation_deleted INTEGER;
+  signup_invites_deleted INTEGER;
+  invite_tokens_deleted INTEGER;
 BEGIN
-  -- Clean up invite token attempts
+  -- Clean up invite token attempts (rate limiting logs)
   SELECT cleanup_invite_token_attempts() INTO invite_attempts_deleted;
 
-  -- Clean up organization creation logs
+  -- Clean up organization creation logs (rate limiting logs)
   SELECT cleanup_organization_creation_log() INTO org_creation_deleted;
+
+  -- Clean up expired/revoked signup invites
+  SELECT cleanup_signup_invites() INTO signup_invites_deleted;
+
+  -- Clean up expired/revoked invite tokens
+  SELECT cleanup_invite_tokens() INTO invite_tokens_deleted;
 
   RETURN jsonb_build_object(
     'invite_token_attempts_deleted', invite_attempts_deleted,
     'organization_creation_log_deleted', org_creation_deleted,
-    'total_deleted', invite_attempts_deleted + org_creation_deleted,
+    'signup_invites_deleted', signup_invites_deleted,
+    'invite_tokens_deleted', invite_tokens_deleted,
+    'total_deleted', invite_attempts_deleted + org_creation_deleted + signup_invites_deleted + invite_tokens_deleted,
     'cleaned_at', NOW()
   );
 END;
@@ -1037,6 +1112,63 @@ $$;
 
 
 ALTER FUNCTION "public"."cleanup_invite_tokens"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."cleanup_signup_invites"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  expired_count INTEGER := 0;
+  revoked_count INTEGER := 0;
+  used_count INTEGER := 0;
+  total_deleted INTEGER := 0;
+BEGIN
+  -- 1. Delete expired & unused signup invites
+  WITH deleted_expired AS (
+    DELETE FROM signup_invites
+    WHERE expires_at < NOW()
+      AND is_used = false
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO expired_count FROM deleted_expired;
+
+  -- 2. Delete revoked signup invites older than 30 days
+  WITH deleted_revoked AS (
+    DELETE FROM signup_invites
+    WHERE revoked_at IS NOT NULL
+      AND revoked_at < NOW() - INTERVAL '30 days'
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO revoked_count FROM deleted_revoked;
+
+  -- 3. Delete used signup invites older than 90 days (keep for audit trail)
+  WITH deleted_used AS (
+    DELETE FROM signup_invites
+    WHERE is_used = true
+      AND used_at IS NOT NULL
+      AND used_at < NOW() - INTERVAL '90 days'
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO used_count FROM deleted_used;
+
+  total_deleted := expired_count + revoked_count + used_count;
+
+  IF total_deleted > 0 THEN
+    RAISE NOTICE 'Signup invite cleanup: % expired, % old revoked, % old used, % total deleted',
+      expired_count, revoked_count, used_count, total_deleted;
+  END IF;
+
+  RETURN total_deleted;
+EXCEPTION
+  WHEN undefined_table THEN
+    RAISE NOTICE 'Table signup_invites does not exist, skipping';
+    RETURN 0;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."cleanup_signup_invites"() OWNER TO "postgres";
 
 
 COMMENT ON FUNCTION "public"."cleanup_invite_tokens"() IS 'Cleans up expired invite tokens and revoked tokens older than 30 days. Scheduled to run daily at 3 AM UTC.';
@@ -9929,6 +10061,12 @@ GRANT ALL ON FUNCTION "public"."auto_generate_task_reference"() TO "service_role
 
 
 
+REVOKE ALL ON FUNCTION "public"."auto_join_pending_invite"("p_user_id" "uuid", "p_user_email" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."auto_join_pending_invite"("p_user_id" "uuid", "p_user_email" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."auto_join_pending_invite"("p_user_id" "uuid", "p_user_email" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."block_access"("org_id" "uuid", "reason" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."block_access"("org_id" "uuid", "reason" "text") TO "service_role";
 
@@ -11041,6 +11179,41 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
+
+-- =====================================================
+-- PG_CRON SCHEDULED JOBS
+-- Idempotent: unschedule by name first to avoid duplicates
+-- =====================================================
+
+-- Remove existing jobs if they exist (safe no-op on fresh DB)
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'cleanup-all-expired-data';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'cleanup-rate-limiting-logs';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'process-due-notifications';
+
+-- 1. Master cleanup: expired invites, onboarding, unverified profiles, rate limits
+--    Runs daily at 3:00 AM UTC
+SELECT cron.schedule(
+  'cleanup-all-expired-data',
+  '0 3 * * *',
+  $$SELECT public.cleanup_all_expired_data()$$
+);
+
+-- 2. Rate limiting log cleanup
+--    Runs daily at 3:30 AM UTC
+SELECT cron.schedule(
+  'cleanup-rate-limiting-logs',
+  '30 3 * * *',
+  $$SELECT public.cleanup_all_rate_limiting_logs()$$
+);
+
+-- 3. Process due notifications (triggers edge function for emails + in-app)
+--    Runs every 5 minutes
+SELECT cron.schedule(
+  'process-due-notifications',
+  '*/5 * * * *',
+  $$SELECT public.process_all_due_notifications()$$
+);
 
 
 

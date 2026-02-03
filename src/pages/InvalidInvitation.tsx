@@ -7,19 +7,16 @@
  * - Invalid/Not found
  */
 
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Mail } from 'lucide-react';
+import * as authService from '@/auth/services/authService';
 
 // Error type matches the capitalized types from inviteTokens.ts
 type InvitationErrorType = 'Used' | 'Expired' | 'Revoked' | 'NotFound' | 'Invalid';
 
-interface LocationState {
-  errorType?: InvitationErrorType;
-  fromInviteValidation?: boolean;
-  isSignupInvite?: boolean;
-}
+const VALID_ERROR_TYPES: InvitationErrorType[] = ['Used', 'Expired', 'Revoked', 'NotFound', 'Invalid'];
 
 /**
  * Broken Chain Illustration
@@ -125,29 +122,43 @@ const getErrorContent = (errorType: InvitationErrorType, isSignupInvite: boolean
 
 const InvalidInvitation: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // Get error type from navigation state
-  const locationState = location.state as LocationState | null;
-  const errorType = locationState?.errorType || 'Invalid';
-  const isValidRedirect = locationState?.fromInviteValidation === true;
-  const isSignupInvite = locationState?.isSignupInvite === true;
+  // Read error info from URL query params (reliable, survives state loss)
+  const rawError = searchParams.get('error');
+  const errorType: InvitationErrorType = VALID_ERROR_TYPES.includes(rawError as InvitationErrorType)
+    ? (rawError as InvitationErrorType)
+    : 'Invalid';
+  const isSignupInvite = searchParams.get('type') === 'signup';
 
-  // Protect against direct URL access - only allow if redirected from invite validation
+  // Direct access without ?error= param → redirect to landing
+  const isValidAccess = !!rawError;
+
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
+  // Check if user is signed in (for button display)
   useEffect(() => {
-    if (!isValidRedirect) {
-      // User tried to access this page directly - redirect to landing
+    authService.getSession().then((session) => {
+      setIsSignedIn(!!session);
+    });
+  }, []);
+
+  // Protect against direct URL access without error param
+  useEffect(() => {
+    if (!isValidAccess) {
       navigate('/', { replace: true });
     }
-  }, [isValidRedirect, navigate]);
+  }, [isValidAccess, navigate]);
 
   const handleGoToHome = () => {
-    // Navigate to landing page (qwohter.com in production)
     window.location.href = '/';
   };
 
+  const handleGoToDashboard = () => {
+    navigate('/dashboard', { replace: true });
+  };
+
   const handleContact = () => {
-    // Open email client with pre-filled subject
     if (isSignupInvite) {
       window.location.href = 'mailto:support@qwohter.com?subject=Request%20for%20New%20Signup%20Invitation';
     } else {
@@ -156,7 +167,7 @@ const InvalidInvitation: React.FC = () => {
   };
 
   // Show loading while redirecting unauthorized direct access
-  if (!isValidRedirect) {
+  if (!isValidAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3]">
         <div className="w-10 h-10 border-4 border-[#ee6c4d] border-t-transparent rounded-full animate-spin" />
@@ -210,12 +221,15 @@ const InvalidInvitation: React.FC = () => {
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
           <Button
-            onClick={handleGoToHome}
+            onClick={isSignedIn ? handleGoToDashboard : handleGoToHome}
             className="h-12 px-6 rounded-full bg-[#ee6c4d] hover:bg-[#d95b3e] text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[#ee6c4d]/20"
             style={{ fontFamily: 'Urbanist, sans-serif' }}
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Qwohter
+            {isSignedIn ? (
+              <><LayoutDashboard className="w-4 h-4" /> Go to Dashboard</>
+            ) : (
+              <><ArrowLeft className="w-4 h-4" /> Back to Qwohter</>
+            )}
           </Button>
           <Button
             onClick={handleContact}

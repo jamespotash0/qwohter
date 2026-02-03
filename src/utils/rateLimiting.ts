@@ -139,7 +139,9 @@ export const getUserIpAddress = async (): Promise<string> => {
 const getUserIpFromEdgeFunction = async (): Promise<string> => {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+    const functionsUrl = supabaseUrl?.includes('.supabase.co')
+      ? supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1')
+      : `${supabaseUrl}/functions/v1`;
 
     const response = await fetch(`${functionsUrl}/ip-tracking`, {
       signal: AbortSignal.timeout(3000), // 3 second timeout

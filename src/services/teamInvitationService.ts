@@ -156,13 +156,16 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
 
     // Send invitation email via Resend edge function
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+    const functionsUrl = supabaseUrl?.includes('.supabase.co')
+      ? supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1')
+      : `${supabaseUrl}/functions/v1`;
 
     const response = await fetch(`${functionsUrl}/send-invite`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
         email,
@@ -252,13 +255,16 @@ export const resendInvitation = async (
 
     // Resend invitation email
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+    const functionsUrl = supabaseUrl?.includes('.supabase.co')
+      ? supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1')
+      : `${supabaseUrl}/functions/v1`;
 
     const response = await fetch(`${functionsUrl}/send-invite`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
         email: invite.email,

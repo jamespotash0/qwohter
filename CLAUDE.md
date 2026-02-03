@@ -75,6 +75,7 @@ supabase functions serve       # Run edge functions locally
 | [EDGE_FUNCTIONS.md](docs/guides/EDGE_FUNCTIONS.md) | Edge function templates, all functions reference |
 | [GOOGLE_RISC_SETUP.md](docs/guides/GOOGLE_RISC_SETUP.md) | Google security events configuration |
 | [RESEND_SMTP_SETUP.md](docs/guides/RESEND_SMTP_SETUP.md) | Email SMTP configuration |
+| [LOCAL_DEV.md](docs/guides/LOCAL_DEV.md) | Local development setup, env files, running services |
 
 ### Reference
 
@@ -173,6 +174,19 @@ try {
 - Format: `v1.0.{buildNumber}`
 - Increments on every build
 - Stale client detection every 5 minutes
+
+---
+
+## Documentation Maintenance
+
+**Always update documentation when making changes.** When any code change affects behavior documented in the `docs/` directory, update the relevant `.md` file(s) as part of the same change. This includes:
+
+- New features → Add to the relevant feature doc or create a new one
+- New environment variables → Update [ENVIRONMENT.md](docs/reference/ENVIRONMENT.md) and [LOCAL_DEV.md](docs/guides/LOCAL_DEV.md)
+- New edge functions → Update [EDGE_FUNCTIONS.md](docs/guides/EDGE_FUNCTIONS.md) and the edge functions table in [LOCAL_DEV.md](docs/guides/LOCAL_DEV.md)
+- Schema changes → Update [DATABASE.md](docs/architecture/DATABASE.md)
+- Auth changes → Update [AUTH.md](docs/architecture/AUTH.md)
+- New guides or setup steps → Update this file's Documentation Index
 
 ---
 

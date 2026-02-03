@@ -9,7 +9,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+// import type { Database } from '@/integrations/supabase/types';
 // Type definitions
 interface SubscriptionPlan {
   id: string;
@@ -452,13 +452,16 @@ export const createCheckoutSession = async (params: {
     // Call Supabase Edge Function to create checkout session
     // This endpoint should use Stripe Secret Key (server-side only)
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+    const functionsUrl = supabaseUrl?.includes('.supabase.co')
+      ? supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1')
+      : `${supabaseUrl}/functions/v1`;
 
     const response = await fetch(`${functionsUrl}/stripe-handler`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
         organizationId: params.organizationId,
@@ -521,13 +524,16 @@ export const createPortalSession = async (params: {
     }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+    const functionsUrl = supabaseUrl?.includes('.supabase.co')
+      ? supabaseUrl.replace('.supabase.co', '.supabase.co/functions/v1')
+      : `${supabaseUrl}/functions/v1`;
 
     const response = await fetch(`${functionsUrl}/create-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
         organizationId: params.organizationId,
@@ -580,6 +586,7 @@ export const getInvoices = async (organizationId: string) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({
         organizationId,
@@ -693,6 +700,7 @@ export const syncSeatCount = async (
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionData?.session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           action,

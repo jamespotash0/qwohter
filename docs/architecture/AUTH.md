@@ -138,14 +138,127 @@ supabase.rpc('create_org_with_owner', {
 ## Invite Flows
 
 ### Team Invites (`invite_tokens` table)
-- Admin invites existing user by email
-- Token valid for 2 hours
-- On accept: Membership created, seat added to Stripe
+
+Org Admin/Owner invites a user by email to join their organization.
+
+| Property | Value |
+|----------|-------|
+| Token expiry | 24 hours |
+| Created by | Admin/Owner via Settings → Team |
+| Route | `/create-account?invite=TOKEN` |
+| Email sent via | Resend (edge function: `send-invite`) |
+
+#### Validation Flow (signed-in user clicks invite link)
+
+```
+1. Token validated FIRST (before any side effects)
+2. If invalid → navigate to /invalid-invitation?error={type}
+3. If valid + signed-in user's email matches invite email:
+   → Auto-join via RPC (auto_join_pending_invite)
+   → Stripe seat sync, toast, redirect to dashboard
+4. If valid + email mismatch:
+   → Toast "Different account required", redirect to dashboard
+   → User stays signed in (never signed out)
+5. If valid + no session:
+   → Store token in sessionStorage, begin signup/OTP flow
+```
+
+**Key principle:** Never sign out a user before validating the token. Invalid tokens should never trigger side effects.
+
+#### Rate Limiting
+
+- **5 failed attempts per 5 minutes** (IP-based)
+- **2 failed attempts per 5 minutes** (per-token, prevents scanning)
+- Logged in `invite_token_attempts` table
+- Checked via `check_invite_rate_limit()` RPC
 
 ### Signup Invites (`signup_invites` table)
-- Super admin invites new user
-- User must use invite link to create account
-- Route: `/create-account?appinvite=TOKEN`
+
+Super admin invites a new user to the platform (creates their own org).
+
+| Property | Value |
+|----------|-------|
+| Token expiry | 7 days |
+| Created by | Super admin via Admin panel |
+| Route | `/create-account?appinvite=TOKEN` |
+| Email sent via | Resend (edge function: `send-signup-invite`) |
+
+#### Validation Flow
+
+```
+1. Rate limit checked FIRST (stricter: 3 attempts / 10 min)
+2. Sign out existing user if any
+3. Token validated via validate_signup_invite() RPC
+4. If valid → store in sessionStorage, pre-fill email, show signup form
+5. If invalid → navigate to /invalid-invitation?error={type}&type=signup
+```
+
+#### Rate Limiting (stricter than team invites)
+
+- **3 failed attempts per 10 minutes** (IP-based)
+- **1 failed attempt per 10 minutes** (per-token)
+- Uses same `invite_token_attempts` table and `check_invite_rate_limit()` RPC
+- Stricter because signup invites grant platform-level access (org creation)
+
+### Why Two Separate Tables?
+
+| Concern | `invite_tokens` | `signup_invites` |
+|---------|-----------------|------------------|
+| Purpose | Join existing org | Create new org on platform |
+| Created by | Org Admin/Owner | Super Admin |
+| Scoped to | Organization | Platform-wide |
+| RLS model | Org-scoped policies | Super admin only |
+| Expiry | 24 hours | 7 days |
+| Lifecycle | Tied to org membership | Tied to platform onboarding |
+
+Different business concerns, RLS models, and lifecycles — merging would add complexity for no benefit.
+
+### Auto-Join Orphaned Invited Users
+
+When a user is invited but abandons the signup flow (e.g., closes tab during OTP), their `invite_tokens` row remains with `is_used = false`. When they later sign in normally, MainLayout detects no membership and would redirect to org creation — which is wrong.
+
+**Fix:** Before the orphan redirect, MainLayout calls `auto_join_pending_invite()` RPC:
+
+```
+1. MainLayout detects: authenticated user, no membership
+2. RPC checks invite_tokens for valid pending invite matching user's email
+3. If found → atomically creates membership + marks token used
+4. Client syncs Stripe seat count, invalidates queries, shows toast
+5. If not found → normal orphan redirect to /create-account
+```
+
+**RPC:** `auto_join_pending_invite(p_user_id, p_user_email)` — `SECURITY DEFINER`, handles email case insensitivity, duplicate membership detection, and returns org name for the toast.
+
+**Location:** `src/components/common/layout/MainLayout.tsx` (in `checkMembershipStatus`)
+
+### Invalid Invitation Page
+
+**Route:** `/invalid-invitation` (standalone, no auth wrapper)
+**Location:** `src/pages/InvalidInvitation.tsx`
+
+Displayed when a user accesses an invite link that is used, expired, revoked, or not found.
+
+**Error info passed via URL query params** (not `location.state`, which is fragile across navigation chains):
+- `?error=Used|Expired|Revoked|NotFound|Invalid` — error type
+- `&type=signup` — if the invite was a signup invite (changes messaging)
+
+**Sign-in aware:** Checks for active session and shows:
+- Signed in → "Go to Dashboard" button
+- Not signed in → "Back to Qwohter" button
+
+Direct access without `?error=` param redirects to `/`.
+
+### Invite Cleanup (Daily Cron)
+
+Both invite tables are cleaned up by the daily cron at **3:30 AM UTC** (`cleanup-rate-limiting-logs`):
+
+| Table | Cleanup rule |
+|-------|-------------|
+| `invite_tokens` | Delete expired; delete revoked older than 30 days |
+| `signup_invites` | Delete expired & unused; delete revoked older than 30 days; delete used older than 90 days |
+| `invite_token_attempts` | Delete records older than 7 days |
+
+**Functions:** `cleanup_invite_tokens()`, `cleanup_signup_invites()`, `cleanup_invite_token_attempts()` — all called by `cleanup_all_rate_limiting_logs()`.
 
 ## Transfer Ownership
 
@@ -271,11 +384,22 @@ When a user deletes their account:
 
 ## Rate Limiting
 
+### Auth Rate Limits (Supabase-managed)
+
 | Action | Limit | Block Duration |
 |--------|-------|----------------|
 | Login | 5 attempts/15 min | 30-min block |
 | OTP | 3 attempts/10 min | 60-min block |
 | Password reset | 3 attempts/60 min | 120-min block |
+
+### Invite Rate Limits (application-managed)
+
+| Action | IP Limit | Per-Token Limit | Window |
+|--------|----------|-----------------|--------|
+| Team invite validation | 5 fails/5 min | 2 fails/5 min | 5 min |
+| Signup invite validation | 3 fails/10 min | 1 fail/10 min | 10 min |
+
+**Infrastructure:** `invite_token_attempts` table, `check_invite_rate_limit()` RPC, `logInviteAttempt()` frontend utility. Both invite types share the same table and RPC — thresholds are controlled by frontend params.
 
 ## Protected Routes
 
@@ -322,6 +446,15 @@ class AuthEventMutex {
 - `src/pages/Auth.tsx` - Auth page with step routing
 - `src/pages/Auth/actions/` - Step handlers (handleAuth, handleOrganizationSubmit, handleInviteJoin)
 - `src/utils/authFlowHelpers.ts` - Auth flow utilities
+
+### Invites & Rate Limiting
+- `src/utils/inviteTokens.ts` - Token validation (team + signup)
+- `src/utils/rateLimiting.ts` - Rate limit checks, attempt logging, IP detection
+- `src/pages/InvalidInvitation.tsx` - Invalid invite error page
+- `supabase/functions/send-invite/index.ts` - Team invite email (Resend)
+- `supabase/functions/send-signup-invite/index.ts` - Signup invite email (Resend)
+- `supabase/migrations/20260202000001_auto_join_pending_invite.sql` - Auto-join orphaned users RPC
+- `supabase/migrations/20260203000001_cleanup_signup_invites_and_rate_limiting.sql` - Cleanup cron additions
 
 ### Team Management
 - `src/components/features/settings/TeamTab.tsx` - Team management UI
