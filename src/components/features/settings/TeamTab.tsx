@@ -241,12 +241,6 @@ export function TeamTab() {
     setRemoveDialog({ open: false, memberId: "", memberName: "" });
 
     try {
-      // Show immediate feedback
-      toast({
-        title: "Deactivating member...",
-        description: `Deactivating ${removeDialog.memberName}`,
-      });
-
       await removeMemberMutation(removeDialog.memberId);
 
       // Success confirmation
@@ -333,7 +327,7 @@ export function TeamTab() {
       // Use atomic RPC function for secure ownership transfer
       // This ensures both role changes succeed or both fail
       const { error } = await (supabase.rpc as any)('transfer_ownership', {
-        p_new_owner_id: transferDialog.memberId, // This is actually user_id from line 747
+        p_new_owner_id: transferDialog.memberId, // This is user_id — RPC expects a user UUID, not membership ID
         p_organization_id: currentOrganization.id,
       });
 
@@ -684,7 +678,7 @@ export function TeamTab() {
                           ) : (
                             <Select
                               value={member.role}
-                              onValueChange={(value) => handleRoleChange(member.user_id, value as Role)}
+                              onValueChange={(value) => handleRoleChange(member.id, value as Role)}
                             >
                               <SelectTrigger className="w-full h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 gap-2 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
                                 <SelectValue />
@@ -715,7 +709,7 @@ export function TeamTab() {
                       {member.status === 'Inactive' ? ( //membership_status
                         <Button
                           size="sm"
-                          onClick={() => handleReactivateMember(member.user_id, member.full_name || member.email || 'Unknown User')}
+                          onClick={() => handleReactivateMember(member.id, member.full_name || member.email || 'Unknown User')}
                           className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <RotateCcw className="w-3 h-3 mr-1" />
@@ -737,7 +731,7 @@ export function TeamTab() {
                               Transfer Ownership
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => setRemoveDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email || 'Unknown User' })}
+                              onClick={() => setRemoveDialog({ open: true, memberId: member.id, memberName: member.full_name || member.email || 'Unknown User' })}
                               className="text-red-600 hover:text-red-700"
                             >
                               <UserMinus className="w-4 h-4 mr-2" />
@@ -754,7 +748,7 @@ export function TeamTab() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setRemoveDialog({ open: true, memberId: member.user_id, memberName: member.full_name || member.email || 'Unknown User' })}
+                              onClick={() => setRemoveDialog({ open: true, memberId: member.id, memberName: member.full_name || member.email || 'Unknown User' })}
                               className="text-red-600 hover:text-red-700"
                             >
                               <UserMinus className="w-4 h-4 mr-2" />

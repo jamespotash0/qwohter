@@ -150,11 +150,12 @@ serve(async (req) => {
       // Continue without proration amount - this is non-critical
     }
 
-    // Update local database
+    // Update local database and clear pending sync flag
     await supabase
       .from('subscriptions')
       .update({
         number_of_active_users: newQuantity,
+        stripe_quantity_pending_sync: false,
         updated_at: new Date().toISOString(),
       })
       .eq('id', subscription.id);

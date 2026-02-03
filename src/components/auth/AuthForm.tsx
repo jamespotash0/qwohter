@@ -8,7 +8,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Loader2, Lock } from "lucide-react";
 import { sanitizeInput } from "@/utils/security";
 import { validators } from "@/utils/validation";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
@@ -30,6 +30,7 @@ interface AuthFormProps {
   onTogglePasswordVisibility: () => void;
   onSubmit: (e: React.FormEvent) => void;
   onToggleMode: () => void;
+  isEmailLocked?: boolean;
 }
 
 export const AuthForm: React.FC<AuthFormProps> = ({
@@ -46,7 +47,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onLastNameChange,
   onTogglePasswordVisibility,
   onSubmit,
-  onToggleMode
+  onToggleMode,
+  isEmailLocked = false,
 }) => {
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
@@ -138,22 +140,31 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <Label htmlFor="email" className="text-sm font-medium text-[#171717]">
             Email address
           </Label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              const newEmail = sanitizeInput.email(e.target.value);
-              onEmailChange(newEmail);
-              const validation = validators.email(newEmail);
-              setEmailError(validation.isValid ? undefined : validation.error);
-            }}
-            onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
-            placeholder="john@company.com"
-            required
-            className={`${inputClasses} ${touched.email && emailError ? inputErrorClasses : ''}`}
-            autoComplete="email"
-          />
+          <div className="relative">
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                if (isEmailLocked) return;
+                const newEmail = sanitizeInput.email(e.target.value);
+                onEmailChange(newEmail);
+                const validation = validators.email(newEmail);
+                setEmailError(validation.isValid ? undefined : validation.error);
+              }}
+              onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
+              placeholder="john@company.com"
+              required
+              disabled={isEmailLocked}
+              className={`${inputClasses} ${touched.email && emailError ? inputErrorClasses : ''} ${isEmailLocked ? 'opacity-70 cursor-not-allowed !bg-[#f7f2e9]/70 pr-10' : ''}`}
+              autoComplete="email"
+            />
+            {isEmailLocked && (
+              <div className="absolute right-0 top-0 h-full px-4 flex items-center">
+                <Lock className="h-3.5 w-3.5 text-[#171717]/30" />
+              </div>
+            )}
+          </div>
           {touched.email && emailError && (
             <p className="text-sm text-red-500 mt-1.5">{emailError}</p>
           )}

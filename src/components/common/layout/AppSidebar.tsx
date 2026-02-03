@@ -741,10 +741,10 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Trial Banner - positioned above profile, below navigation */}
-      {trialDaysRemaining !== null && !isCollapsed && (
+      {/* Trial Banner - positioned above profile, below navigation (Owner/Admin only) */}
+      {trialDaysRemaining !== null && !isCollapsed && (currentUserRole === 'Owner' || currentUserRole === 'Admin') && (
         <div className="px-4 pb-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="bg-gradient-to-r from-[#EE6C4D] to-orange-600 rounded-lg p-3 text-white shadow-md">
+          <div className="bg-gradient-to-r from-[var(--brand-orange-600)] to-[var(--brand-orange-800)] rounded-lg p-3 text-white shadow-md">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="w-4 h-4" />
               <span className="text-sm font-semibold">Free Trial</span>
@@ -764,8 +764,8 @@ export function AppSidebar({
         </div>
       )}
 
-      {/* Grace Period Warning - more urgent styling */}
-      {inGracePeriod && !isCollapsed && (
+      {/* Grace Period Warning - more urgent styling (Owner/Admin only) */}
+      {inGracePeriod && !isCollapsed && (currentUserRole === 'Owner' || currentUserRole === 'Admin') && (
         <div className="px-4 pb-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-3 text-white shadow-md border border-red-400">
             <div className="flex items-center gap-2 mb-1">

@@ -410,7 +410,6 @@ export function useRemoveMember(organizationId: string) {
       if (error) throw error;
     },
     onSuccess: async () => {
-      toast.success('Member deactivated successfully');
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
@@ -423,7 +422,7 @@ export function useRemoveMember(organizationId: string) {
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to deactivate member: ${error.message}`);
+      console.error('Failed to deactivate member:', error.message);
     },
   });
 }
@@ -452,13 +451,12 @@ export function useUpdateMemberRole(organizationId: string) {
       return data;
     },
     onSuccess: (_, { role }) => {
-      toast.success(`Role updated to ${role}`);
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update role: ${error.message}`);
+      console.error('Failed to update role:', error.message);
     },
   });
 }
@@ -495,7 +493,6 @@ export function useUpdateMemberStatus(organizationId: string) {
       return data;
     },
     onSuccess: async (_, { status }) => { //membership_status
-      toast.success(`Status updated to ${status}`); //membership_status
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
@@ -510,7 +507,7 @@ export function useUpdateMemberStatus(organizationId: string) {
       }
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update status: ${error.message}`);
+      console.error('Failed to update status:', error.message);
     },
   });
 }
@@ -562,13 +559,12 @@ export function useRevokeInvitation(organizationId: string) {
       return result;
     },
     onSuccess: () => {
-      toast.success('Invitation revoked successfully');
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.invites(organizationId),
       });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to revoke invitation: ${error.message}`);
+      console.error('Failed to revoke invitation:', error.message);
     },
   });
 }

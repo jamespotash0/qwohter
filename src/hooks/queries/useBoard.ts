@@ -82,7 +82,6 @@ export function useCreateProject(organizationId: string) {
       return createBoardItem(organizationId, projectData);
     },
     onSuccess: () => {
-      toast.success('Project created successfully');
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
     onError: (error) => {

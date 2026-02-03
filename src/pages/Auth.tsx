@@ -76,6 +76,11 @@ const Auth = () => {
   // Track when user tries to access create-account without an invite
   const [showInviteRequired, setShowInviteRequired] = useState(false);
 
+  // Lock email field when user arrived via invite link
+  const [isEmailLocked, setIsEmailLocked] = useState(() => {
+    return !!(sessionStorage.getItem('pendingInviteToken') || sessionStorage.getItem('pendingSignupInviteToken'));
+  });
+
   // Determine if user is an invitee (has pending invite token or organizationId set)
   const isInvitee = !!(formState.organizationId || sessionStorage.getItem('pendingInviteToken'));
 
@@ -218,10 +223,11 @@ const Auth = () => {
         sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
         sessionStorage.setItem('pendingOrganizationId', validationResult.data.organization_id);
 
-        toast({
-          title: "Invite link detected",
-          description: "You've been invited to join an organization",
-        });
+        // Pre-fill and lock the email from the invite
+        if (validationResult.data.email) {
+          formState.setEmail(validationResult.data.email);
+          setIsEmailLocked(true);
+        }
 
         // Token is valid - show the form
         setValidatingInviteToken(false);
@@ -318,20 +324,16 @@ const Auth = () => {
           sessionStorage.setItem('pendingSignupInviteToken', tokenValue);
           sessionStorage.setItem('pendingSignupInviteEmail', validationResult.data.email);
 
-          // Pre-fill the email if available
+          // Pre-fill and lock the email from the invite
           if (validationResult.data.email) {
             formState.setEmail(validationResult.data.email);
+            setIsEmailLocked(true);
           }
 
           // Remove the appinvite param from URL
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete('appinvite');
           window.history.replaceState({}, '', newUrl.toString());
-
-          toast({
-            title: "Signup invitation validated",
-            description: "Create your account to get started",
-          });
 
           // Token is valid - show the form
           setValidatingInviteToken(false);
@@ -714,6 +716,7 @@ const Auth = () => {
     formState.setFullName('');
     formState.setPassword('');
     formState.setOtpCode('');
+    setIsEmailLocked(false);
     authFlow.setStep('auth');
     navigate('/create-account');
   };
@@ -745,6 +748,7 @@ const Auth = () => {
     companyInfo.setCompanyWebsite('');
     formState.setIndustry('');
     formState.setFoundVia('');
+    setIsEmailLocked(false);
 
     // Navigate to sign-in
     authFlow.setStep('auth');
@@ -985,6 +989,7 @@ const Auth = () => {
                   lastName={formState.lastName}
                   showPassword={formState.showPassword}
                   loading={authFlow.loading}
+                  isEmailLocked={isEmailLocked}
                   onEmailChange={formState.setEmail}
                   onPasswordChange={formState.setPassword}
                   onFirstNameChange={formState.setFirstName}

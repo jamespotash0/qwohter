@@ -9497,11 +9497,7 @@ ALTER TABLE "public"."manufacturer_product_domains" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."memberships" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "memberships_delete_policy" ON "public"."memberships" FOR DELETE USING ("public"."has_org_role"(( SELECT "auth"."uid"() AS "uid"), "organization_id", ARRAY['Owner'::"text", 'Admin'::"text"]));
-
-
-
-COMMENT ON POLICY "memberships_delete_policy" ON "public"."memberships" IS 'Only Owner/Admin can delete memberships. Uses SECURITY DEFINER.';
+-- No DELETE policy on memberships — only soft deletes (status = 'Inactive') are allowed via UPDATE policy
 
 
 

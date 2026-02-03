@@ -47,10 +47,6 @@ export function useCreateTaskBoardColumn(organizationId: string) {
       createTaskBoardColumn(organizationId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, organizationId] });
-      toast({
-        title: 'Column created',
-        description: 'New column has been added to the board.',
-      });
     },
     onError: (error) => {
       toast({

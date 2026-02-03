@@ -754,7 +754,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               : Math.max(0, Math.round((endMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)));
 
             const periodLabel = isInGracePeriod ? 'Grace Period' : isOnTrial ? 'Free Trial' : 'Billing Period';
-            const progressBarColor = isInGracePeriod ? 'bg-amber-500' : isOnTrial ? 'bg-blue-500' : 'bg-[#EE6C4D]';
+            const progressBarColor = isInGracePeriod ? 'bg-amber-500' : 'bg-[var(--sidebar-icon-active)]';
 
             return (
               <>

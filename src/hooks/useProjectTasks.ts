@@ -89,10 +89,6 @@ export function useCreateProjectTask(organizationId: string, projectId: string) 
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       }
       queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
-      toast({
-        title: 'Task created',
-        description: 'The task has been added.',
-      });
     },
     onError: (error: Error) => {
       toast({
