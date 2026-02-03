@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
@@ -11,6 +11,7 @@ import { stripeService } from '@/services/stripeService';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { toast } from 'sonner';
+import { getPageSkeleton } from '@/components/common/PageSkeleton';
 
 
 interface MainLayoutProps {
@@ -338,7 +339,9 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
             {/* Standard layout with padding and max-width */}
             <div className={`h-full pt-6 pb-8 space-y-4 overflow-auto ${sidebarOpen ? 'px-8 lg:px-12' : 'px-6 lg:px-10'}`}>
               <div className="max-w-[1350px] mx-auto w-full">
-                {content}
+                <Suspense fallback={getPageSkeleton(location.pathname)}>
+                  {content}
+                </Suspense>
               </div>
             </div>
           </main>
