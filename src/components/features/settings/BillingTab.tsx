@@ -695,7 +695,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                 Your subscription is scheduled to cancel
               </p>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
-                Access ends on {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ({Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days remaining). Click Manage Plan to reactivate.
+                Access ends on {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ({(() => { const t = new Date(); t.setHours(0,0,0,0); const e = new Date(subscription.current_period_end); e.setHours(0,0,0,0); return Math.max(0, Math.round((e.getTime() - t.getTime()) / (1000 * 60 * 60 * 24))); })()} days remaining). Click Manage Plan to reactivate.
               </p>
             </div>
           </div>
@@ -719,7 +719,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               const trialEndDate = new Date(subscription.trial_end);
               const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
               isInGracePeriod = now <= gracePeriodEnd;
-              graceDaysRemaining = Math.max(0, Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+              // Use calendar day comparison for consistent day count
+              const todayMidnight = new Date(now);
+              todayMidnight.setHours(0, 0, 0, 0);
+              const graceEndMidnight = new Date(gracePeriodEnd);
+              graceEndMidnight.setHours(0, 0, 0, 0);
+              graceDaysRemaining = Math.max(0, Math.round((graceEndMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)));
             }
 
             // Use trial dates for trial/grace period, otherwise billing period dates
@@ -739,9 +744,14 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             const totalDuration = periodEnd.getTime() - periodStart.getTime();
             const elapsed = now.getTime() - periodStart.getTime();
             const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
+            // Use calendar day comparison for consistent day count regardless of time
+            const todayMidnight = new Date(now);
+            todayMidnight.setHours(0, 0, 0, 0);
+            const endMidnight = new Date(periodEnd);
+            endMidnight.setHours(0, 0, 0, 0);
             const daysRemaining = isInGracePeriod
               ? graceDaysRemaining
-              : Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+              : Math.max(0, Math.round((endMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)));
 
             const periodLabel = isInGracePeriod ? 'Grace Period' : isOnTrial ? 'Free Trial' : 'Billing Period';
             const progressBarColor = isInGracePeriod ? 'bg-amber-500' : isOnTrial ? 'bg-blue-500' : 'bg-[#EE6C4D]';

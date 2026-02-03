@@ -157,8 +157,10 @@ Org Admin/Owner invites a user by email to join their organization.
    → Auto-join via RPC (auto_join_pending_invite)
    → Stripe seat sync, toast, redirect to dashboard
 4. If valid + email mismatch:
-   → Toast "Different account required", redirect to dashboard
-   → User stays signed in (never signed out)
+   → Redirect to /invalid-invitation?error=EmailMismatch&inviteEmail=...&currentEmail=...
+   → Invite token stored in sessionStorage (`mismatchInviteToken`)
+   → User can "Sign Out & Accept Invite" (signs out, redirects to /create-account?invite=TOKEN)
+   → Uses window.location.replace() to bypass AuthRoute's dashboard redirect
 5. If valid + no session:
    → Store token in sessionStorage, begin signup/OTP flow
 ```
@@ -236,11 +238,17 @@ When a user is invited but abandons the signup flow (e.g., closes tab during OTP
 **Route:** `/invalid-invitation` (standalone, no auth wrapper)
 **Location:** `src/pages/InvalidInvitation.tsx`
 
-Displayed when a user accesses an invite link that is used, expired, revoked, or not found.
+Displayed when a user accesses an invite link that is used, expired, revoked, not found, or for a different email.
 
 **Error info passed via URL query params** (not `location.state`, which is fragile across navigation chains):
-- `?error=Used|Expired|Revoked|NotFound|Invalid` — error type
+- `?error=Used|Expired|Revoked|NotFound|Invalid|EmailMismatch` — error type
 - `&type=signup` — if the invite was a signup invite (changes messaging)
+- `&inviteEmail=...&currentEmail=...` — for EmailMismatch (shows both emails in message)
+
+**EmailMismatch flow:**
+- Invite token stored in `sessionStorage` (`mismatchInviteToken` key) before redirect
+- "Sign Out & Accept Invite" button: signs out, clears sessionStorage, redirects to `/create-account?invite=TOKEN`
+- "Go to Dashboard" button: returns to current account's dashboard
 
 **Sign-in aware:** Checks for active session and shows:
 - Signed in → "Go to Dashboard" button

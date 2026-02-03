@@ -178,10 +178,17 @@ const Dashboard = () => {
 
         const now = new Date();
         const trialEndDate = new Date(trialEnd);
-        const daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        // Use calendar day comparison for consistent day count
+        const todayMidnight = new Date(now);
+        todayMidnight.setHours(0, 0, 0, 0);
+        const trialEndMidnight = new Date(trialEndDate);
+        trialEndMidnight.setHours(0, 0, 0, 0);
+        const daysRemaining = Math.round((trialEndMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
         const inGracePeriod = daysRemaining < 0;
         const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
-        const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const graceEndMidnight = new Date(gracePeriodEnd);
+        graceEndMidnight.setHours(0, 0, 0, 0);
+        const graceDaysRemaining = Math.round((graceEndMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
 
         setTrialStatus({
           daysRemaining: Math.max(0, daysRemaining),

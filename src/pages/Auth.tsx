@@ -151,14 +151,15 @@ const Auth = () => {
           const inviteEmail = validationResult.data.email?.toLowerCase();
 
           if (currentEmail && inviteEmail && currentEmail !== inviteEmail) {
-            // Email mismatch — this invite is for a different person, don't sign them out
-            toast({
-              title: "Different account required",
-              description: `This invitation is for ${validationResult.data.email}. Sign out and use that email to accept it.`,
-            });
-            processedInviteTokenRef.current = null;
-            setValidatingInviteToken(false);
-            navigate('/dashboard', { replace: true });
+            // Email mismatch — show blocking page with sign-out option
+            // Store token so the mismatch page can redirect back with it after sign-out
+            sessionStorage.setItem('mismatchInviteToken', inviteToken.trim());
+            // Use window.location.replace instead of navigate() to bypass AuthRoute's
+            // redirect to /dashboard (AuthRoute detects completed onboarding and would
+            // override React Router's navigate with <Navigate to="/dashboard" />)
+            window.location.replace(
+              `/invalid-invitation?error=EmailMismatch&inviteEmail=${encodeURIComponent(validationResult.data.email)}&currentEmail=${encodeURIComponent(session.user.email || '')}`,
+            );
             return;
           }
 

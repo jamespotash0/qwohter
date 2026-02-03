@@ -265,7 +265,12 @@ export function AppSidebar({
       if (status === 'trialing' && subscription?.trial_end) {
         const trialEndDate = new Date(subscription.trial_end);
         const now = new Date();
-        const daysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        // Use calendar day comparison for consistent day count
+        const todayMidnight = new Date(now);
+        todayMidnight.setHours(0, 0, 0, 0);
+        const trialEndMidnight = new Date(trialEndDate);
+        trialEndMidnight.setHours(0, 0, 0, 0);
+        const daysLeft = Math.round((trialEndMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
 
         if (daysLeft >= 0) {
           // Active trial
@@ -275,7 +280,9 @@ export function AppSidebar({
         } else if (!subscription.has_payment_method) {
           // Trial expired, check grace period (3 days)
           const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
-          const graceDays = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const graceEndMidnight = new Date(gracePeriodEnd);
+          graceEndMidnight.setHours(0, 0, 0, 0);
+          const graceDays = Math.round((graceEndMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
 
           if (graceDays > 0) {
             // In grace period

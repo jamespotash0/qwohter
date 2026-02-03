@@ -5,18 +5,19 @@
  * - Expired
  * - Revoked
  * - Invalid/Not found
+ * - For a different email (EmailMismatch)
  */
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, LayoutDashboard, Mail } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, LogOut, Mail } from 'lucide-react';
 import * as authService from '@/auth/services/authService';
 
 // Error type matches the capitalized types from inviteTokens.ts
-type InvitationErrorType = 'Used' | 'Expired' | 'Revoked' | 'NotFound' | 'Invalid';
+type InvitationErrorType = 'Used' | 'Expired' | 'Revoked' | 'NotFound' | 'Invalid' | 'EmailMismatch';
 
-const VALID_ERROR_TYPES: InvitationErrorType[] = ['Used', 'Expired', 'Revoked', 'NotFound', 'Invalid'];
+const VALID_ERROR_TYPES: InvitationErrorType[] = ['Used', 'Expired', 'Revoked', 'NotFound', 'Invalid', 'EmailMismatch'];
 
 /**
  * Broken Chain Illustration
@@ -82,11 +83,22 @@ const BrokenChainIllustration = () => (
 /**
  * Get error-specific messaging based on the error type
  */
-const getErrorContent = (errorType: InvitationErrorType, isSignupInvite: boolean) => {
+const getErrorContent = (
+  errorType: InvitationErrorType,
+  isSignupInvite: boolean,
+  inviteEmail?: string | null,
+  currentEmail?: string | null,
+) => {
   // Different messaging for signup invites (new org) vs team invites (join existing org)
   const contactEntity = isSignupInvite ? 'support' : "your organization's administrator";
 
   switch (errorType) {
+    case 'EmailMismatch':
+      return {
+        title: "Wrong account",
+        description: `This invitation is for ${inviteEmail || 'a different email'}. You're currently signed in as ${currentEmail || 'a different account'}.`,
+        helpText: 'Sign out and accept the invitation with the correct account, or go back to your dashboard.',
+      };
     case 'Used':
       return {
         title: "This invitation has been used",
@@ -130,11 +142,17 @@ const InvalidInvitation: React.FC = () => {
     ? (rawError as InvitationErrorType)
     : 'Invalid';
   const isSignupInvite = searchParams.get('type') === 'signup';
+  const isEmailMismatch = errorType === 'EmailMismatch';
+
+  // EmailMismatch-specific params
+  const inviteEmail = searchParams.get('inviteEmail');
+  const currentEmail = searchParams.get('currentEmail');
 
   // Direct access without ?error= param → redirect to landing
   const isValidAccess = !!rawError;
 
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Check if user is signed in (for button display)
   useEffect(() => {
@@ -166,6 +184,30 @@ const InvalidInvitation: React.FC = () => {
     }
   };
 
+  /**
+   * Sign out and redirect to accept the invite with the correct account.
+   * The invite token was stored in sessionStorage by Auth.tsx before navigating here.
+   */
+  const handleSignOutAndAccept = async () => {
+    setIsSigningOut(true);
+    try {
+      const storedToken = sessionStorage.getItem('mismatchInviteToken');
+      await authService.signOut();
+
+      if (storedToken) {
+        // Redirect to create-account with the invite token so the flow restarts
+        sessionStorage.removeItem('mismatchInviteToken');
+        window.location.href = `/create-account?invite=${encodeURIComponent(storedToken)}`;
+      } else {
+        // Fallback: no token stored, just go to home
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error('Sign out failed:', err);
+      setIsSigningOut(false);
+    }
+  };
+
   // Show loading while redirecting unauthorized direct access
   if (!isValidAccess) {
     return (
@@ -175,7 +217,7 @@ const InvalidInvitation: React.FC = () => {
     );
   }
 
-  const content = getErrorContent(errorType, isSignupInvite);
+  const content = getErrorContent(errorType, isSignupInvite, inviteEmail, currentEmail);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3] p-4 overflow-hidden">
@@ -220,26 +262,55 @@ const InvalidInvitation: React.FC = () => {
 
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-          <Button
-            onClick={isSignedIn ? handleGoToDashboard : handleGoToHome}
-            className="h-12 px-6 rounded-full bg-[#ee6c4d] hover:bg-[#d95b3e] text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[#ee6c4d]/20"
-            style={{ fontFamily: 'Urbanist, sans-serif' }}
-          >
-            {isSignedIn ? (
-              <><LayoutDashboard className="w-4 h-4" /> Go to Dashboard</>
-            ) : (
-              <><ArrowLeft className="w-4 h-4" /> Back to Qwohter</>
-            )}
-          </Button>
-          <Button
-            onClick={handleContact}
-            variant="outline"
-            className="h-12 px-6 rounded-full border-[#171717]/15 text-[#171717]/70 hover:text-[#171717] hover:bg-white/50 font-medium flex items-center justify-center gap-2"
-            style={{ fontFamily: 'Urbanist, sans-serif' }}
-          >
-            <Mail className="w-4 h-4" />
-            {isSignupInvite ? 'Contact Support' : 'Contact Administrator'}
-          </Button>
+          {isEmailMismatch ? (
+            <>
+              <Button
+                onClick={handleSignOutAndAccept}
+                disabled={isSigningOut}
+                className="h-12 px-6 rounded-full bg-[#ee6c4d] hover:bg-[#d95b3e] text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[#ee6c4d]/20"
+                style={{ fontFamily: 'Urbanist, sans-serif' }}
+              >
+                {isSigningOut ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <LogOut className="w-4 h-4" />
+                )}
+                {isSigningOut ? 'Signing out...' : 'Sign Out & Accept Invite'}
+              </Button>
+              <Button
+                onClick={handleGoToDashboard}
+                variant="outline"
+                className="h-12 px-6 rounded-full border-[#171717]/15 text-[#171717]/70 hover:text-[#171717] hover:bg-white/50 font-medium flex items-center justify-center gap-2"
+                style={{ fontFamily: 'Urbanist, sans-serif' }}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Go to Dashboard
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                onClick={isSignedIn ? handleGoToDashboard : handleGoToHome}
+                className="h-12 px-6 rounded-full bg-[#ee6c4d] hover:bg-[#d95b3e] text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[#ee6c4d]/20"
+                style={{ fontFamily: 'Urbanist, sans-serif' }}
+              >
+                {isSignedIn ? (
+                  <><LayoutDashboard className="w-4 h-4" /> Go to Dashboard</>
+                ) : (
+                  <><ArrowLeft className="w-4 h-4" /> Back to Qwohter</>
+                )}
+              </Button>
+              <Button
+                onClick={handleContact}
+                variant="outline"
+                className="h-12 px-6 rounded-full border-[#171717]/15 text-[#171717]/70 hover:text-[#171717] hover:bg-white/50 font-medium flex items-center justify-center gap-2"
+                style={{ fontFamily: 'Urbanist, sans-serif' }}
+              >
+                <Mail className="w-4 h-4" />
+                {isSignupInvite ? 'Contact Support' : 'Contact Administrator'}
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Footer text */}
