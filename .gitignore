@@ -7,12 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
-*.local
+*.tsbuildinfo
+
+# Lockfiles for package managers not in use
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
 
 # Environment variables
+*.local
 .env
 .env.development
 .env.production
@@ -28,34 +37,37 @@ dist-ssr
 docs/.vitepress/cache
 docs/.vitepress/dist
 
-# Playwright testing (keep local only)
+# Test output
 tests/
 test-results/
 playwright-report/
 playwright.config.ts
 .playwright/
+tests/.auth/
+coverage/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Worktree-specific files (don't commit these)
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment
+.vercel
+
+# Worktree-specific files
 TASK.md
 HOTFIX_WORKFLOW.md
 MULTI_AGENT_GUIDE.md
 .claude/context.md
-
-# E2E test auth state
-tests/.auth/
-playwright-report/
-test-results/
 
 # Supabase local runtime data
 supabase/.temp/
