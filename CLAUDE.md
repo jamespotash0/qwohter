@@ -10,7 +10,8 @@ Essential guidance for Claude Code when working with **Qwohter** - A proposal an
 
 ```bash
 # Development
-npm run dev                    # Start dev server (localhost:5173)
+npm run dev                    # Dev server → remote Supabase (production DB)
+npm run dev:local              # Dev server → local Supabase (127.0.0.1:54321)
 npm run build                  # Production build (auto-increments version)
 npm run lint && npm run build  # Validate before commits
 
@@ -22,6 +23,11 @@ npm run test:coverage          # Coverage report
 supabase start                 # Start local Supabase
 supabase db reset              # Reset with migrations
 supabase functions serve       # Run edge functions locally
+
+# Documentation (VitePress)
+npm run docs:dev               # Dev docs site (localhost:5174)
+npm run docs:build             # Build static docs site
+npm run docs:preview           # Preview built docs
 ```
 
 ---

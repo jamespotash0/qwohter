@@ -90,13 +90,21 @@ Sender name: Qwohter
 
 ## Local Development
 
-### .env.local
+### Dev Scripts
+
+| Command | Database | Env File |
+|---------|----------|----------|
+| `npm run dev` | Remote Supabase (production) | `.env.development` |
+| `npm run dev:local` | Local Supabase (`127.0.0.1:54321`) | `.env.localdb` |
+
+`dev:local` uses Vite's `--mode localdb` to load `.env.localdb` instead of `.env.development`. Both modes get identical dev settings (sourcemaps, no minification, `__DEV__` = true).
+
+### .env.localdb
 
 ```bash
-# Override for local development
-VITE_SUPABASE_URL=http://localhost:54321
-VITE_SUPABASE_ANON_KEY=eyJ...local...
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+# Local Supabase (used by npm run dev:local)
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_ANON_KEY=<local anon key from supabase start>
 ```
 
 ### Edge Functions Local

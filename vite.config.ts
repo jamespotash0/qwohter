@@ -5,7 +5,7 @@ import removeConsole from "vite-plugin-remove-console";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development';
+  const isDev = mode === 'development' || mode === 'localdb';
   const isStaging = mode === 'staging';
   const isProd = mode === 'production';
 
