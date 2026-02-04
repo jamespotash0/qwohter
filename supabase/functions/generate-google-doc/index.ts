@@ -25,12 +25,23 @@ interface TableRowData {
   rows: Array<Record<string, string | number>>;
 }
 
+/** Data for dynamic block/paragraph duplication per product type */
+interface BlockProductData {
+  /** Product domain for TYPE matching (e.g., "Operable Wall") */
+  productDomain: string;
+  /** Product alias or name for identification */
+  label: string;
+  /** All resolved variables for this product (wall.Series, wall.Height, etc.) */
+  variables: Record<string, string>;
+}
+
 interface RequestBody {
   templateDocId: string;
   proposalId: string;
   organizationId: string;
   variables: Record<string, string>;
   tableData?: TableRowData[]; // Optional table data for row duplication
+  blockData?: BlockProductData[]; // Optional block data for paragraph duplication per product type
   outputTitle?: string;
   mode?: 'create' | 'overwrite'; // create = new version, overwrite = replace existing
   existingDocId?: string; // doc to overwrite (delete and recreate)
@@ -1584,6 +1595,252 @@ function lookupVariable(varName: string, variables: Record<string, string>): str
   return undefined;
 }
 
+// ============================================================================
+// BLOCK MARKERS - {{#BLOCK:walls}} / {{#TYPE:name}} / {{/TYPE:name}} / {{/BLOCK}}
+// Paragraph-loop system that duplicates prose blocks per product type.
+// ============================================================================
+
+/**
+ * Check if a product's domain matches a TYPE block name.
+ * Uses bidirectional contains-match after normalization.
+ * e.g., "accordion" matches "Accordion Partition", "operable wall" matches "Operable Wall"
+ */
+function matchesBlockType(productDomain: string, typeName: string): boolean {
+  const normalizedDomain = productDomain.toLowerCase().replace(/[\s_-]+/g, '');
+  const normalizedType = typeName.toLowerCase().replace(/[\s_-]+/g, '');
+  return normalizedDomain.includes(normalizedType) || normalizedType.includes(normalizedDomain);
+}
+
+/**
+ * Resolve {{wall.*}} variables in a template string using a product's variable map.
+ * Resolution is per-product (not global replaceAllText) to avoid cross-contamination.
+ */
+function resolveBlockVariables(template: string, variables: Record<string, string>): string {
+  return template.replace(/\{\{wall\.([^}]+)\}\}/gi, (_match, key: string) => {
+    const trimmedKey = key.trim();
+    // Try exact match first, then case-insensitive
+    if (variables[trimmedKey] !== undefined) return variables[trimmedKey];
+    const lowerKey = trimmedKey.toLowerCase();
+    const matchingKey = Object.keys(variables).find(k => k.toLowerCase() === lowerKey);
+    return matchingKey ? variables[matchingKey] : '';
+  });
+}
+
+/**
+ * Process {{#BLOCK:walls}} markers in a Google Doc.
+ *
+ * Template syntax:
+ *   {{#BLOCK:walls}}
+ *   {{#TYPE:operable wall}}
+ *   This wall uses {{wall.Series}} {{wall.Model}}...
+ *   {{/TYPE:operable wall}}
+ *   {{#TYPE:accordion}}
+ *   This accordion system uses {{wall.Manufacturer}}...
+ *   {{/TYPE:accordion}}
+ *   {{/BLOCK}}
+ *
+ * For each product in blockData, the matching TYPE template is resolved
+ * and inserted. Unmatched TYPE blocks are removed.
+ */
+async function processBlockMarkers(
+  accessToken: string,
+  docId: string,
+  blockData: BlockProductData[]
+): Promise<void> {
+  console.log(`[processBlockMarkers] Starting with ${blockData.length} products`);
+
+  // Read the document structure
+  const docResponse = await fetch(
+    `https://docs.googleapis.com/v1/documents/${docId}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!docResponse.ok) {
+    console.error('[processBlockMarkers] Failed to read document');
+    return;
+  }
+
+  const docData = await docResponse.json();
+  const content = docData.body?.content || [];
+
+  // Collect all text content with position tracking
+  // We need to find {{#BLOCK:*}} and {{/BLOCK}} in the document's paragraph text
+  const textSegments: Array<{ text: string; startIndex: number; endIndex: number }> = [];
+
+  for (const element of content) {
+    if (element.paragraph?.elements) {
+      for (const textElement of element.paragraph.elements) {
+        if (textElement.textRun?.content) {
+          textSegments.push({
+            text: textElement.textRun.content,
+            startIndex: textElement.startIndex,
+            endIndex: textElement.endIndex,
+          });
+        }
+      }
+    }
+  }
+
+  // Build full document text with index mapping
+  let fullText = '';
+  const indexMap: Array<{ textOffset: number; docIndex: number }> = [];
+
+  for (const seg of textSegments) {
+    indexMap.push({ textOffset: fullText.length, docIndex: seg.startIndex });
+    fullText += seg.text;
+  }
+
+  // Helper: convert text offset to document index
+  function textOffsetToDocIndex(offset: number): number {
+    let lastMapping = indexMap[0];
+    for (const mapping of indexMap) {
+      if (mapping.textOffset > offset) break;
+      lastMapping = mapping;
+    }
+    return lastMapping.docIndex + (offset - lastMapping.textOffset);
+  }
+
+  // Find all {{#BLOCK:*}} ... {{/BLOCK}} ranges
+  const blockPattern = /\{\{#BLOCK:([^}]+)\}\}([\s\S]*?)\{\{\/BLOCK\}\}/gi;
+  const blocks: Array<{
+    blockId: string;
+    fullMatchStart: number; // text offset
+    fullMatchEnd: number; // text offset
+    innerContent: string;
+  }> = [];
+
+  let blockMatch;
+  while ((blockMatch = blockPattern.exec(fullText)) !== null) {
+    blocks.push({
+      blockId: blockMatch[1].trim(),
+      fullMatchStart: blockMatch.index,
+      fullMatchEnd: blockMatch.index + blockMatch[0].length,
+      innerContent: blockMatch[2],
+    });
+  }
+
+  if (blocks.length === 0) {
+    console.log('[processBlockMarkers] No {{#BLOCK}} markers found');
+    return;
+  }
+
+  // Process blocks in reverse order to preserve document indices
+  blocks.reverse();
+
+  for (const block of blocks) {
+    console.log(`[processBlockMarkers] Processing {{#BLOCK:${block.blockId}}}`);
+
+    // Parse {{#TYPE:name}}...{{/TYPE:name}} sub-blocks from inner content
+    const typePattern = /\{\{#TYPE:([^}]+)\}\}([\s\S]*?)\{\{\/TYPE:\1\}\}/gi;
+    const typeTemplates = new Map<string, string>();
+
+    let typeMatch;
+    while ((typeMatch = typePattern.exec(block.innerContent)) !== null) {
+      const typeName = typeMatch[1].trim();
+      const templateText = typeMatch[2].trim();
+      typeTemplates.set(typeName, templateText);
+      console.log(`[processBlockMarkers]   Found TYPE: "${typeName}" (${templateText.length} chars)`);
+    }
+
+    if (typeTemplates.size === 0) {
+      console.log(`[processBlockMarkers]   No TYPE sub-blocks found in BLOCK:${block.blockId}`);
+    }
+
+    // Build resolved output: for each product, find matching TYPE and resolve variables
+    const resolvedParagraphs: string[] = [];
+
+    for (const product of blockData) {
+      if (!product.productDomain) continue;
+
+      // Find matching TYPE template
+      let matchedTemplate: string | undefined;
+      for (const [typeName, template] of typeTemplates) {
+        if (matchesBlockType(product.productDomain, typeName)) {
+          matchedTemplate = template;
+          console.log(`[processBlockMarkers]   Product "${product.label}" (${product.productDomain}) → matched TYPE "${typeName}"`);
+          break;
+        }
+      }
+
+      if (!matchedTemplate) {
+        console.log(`[processBlockMarkers]   Product "${product.label}" (${product.productDomain}) → no matching TYPE, skipping`);
+        continue;
+      }
+
+      // Resolve {{wall.*}} variables for this specific product
+      const resolved = resolveBlockVariables(matchedTemplate, product.variables);
+      resolvedParagraphs.push(resolved);
+    }
+
+    // Convert text offsets to document indices
+    const docStartIndex = textOffsetToDocIndex(block.fullMatchStart);
+    const docEndIndex = textOffsetToDocIndex(block.fullMatchEnd);
+
+    console.log(`[processBlockMarkers]   Block range: doc index ${docStartIndex}-${docEndIndex}`);
+    console.log(`[processBlockMarkers]   Resolved ${resolvedParagraphs.length} paragraphs`);
+
+    // Step 1: Delete the entire BLOCK content from the document
+    const deleteResponse = await fetch(
+      `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            deleteContentRange: {
+              range: { startIndex: docStartIndex, endIndex: docEndIndex },
+            },
+          }],
+        }),
+      }
+    );
+
+    if (!deleteResponse.ok) {
+      const error = await deleteResponse.text();
+      console.error(`[processBlockMarkers]   Failed to delete block range: ${error}`);
+      continue;
+    }
+
+    // Step 2: Insert the resolved paragraphs at the deletion point
+    if (resolvedParagraphs.length > 0) {
+      const outputText = resolvedParagraphs.join('\n\n');
+
+      const insertResponse = await fetch(
+        `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requests: [{
+              insertText: {
+                location: { index: docStartIndex },
+                text: outputText,
+              },
+            }],
+          }),
+        }
+      );
+
+      if (!insertResponse.ok) {
+        const error = await insertResponse.text();
+        console.error(`[processBlockMarkers]   Failed to insert resolved text: ${error}`);
+      } else {
+        console.log(`[processBlockMarkers]   Inserted ${outputText.length} chars at index ${docStartIndex}`);
+      }
+    } else {
+      console.log(`[processBlockMarkers]   No matching products — block removed`);
+    }
+  }
+
+  console.log('[processBlockMarkers] Done');
+}
+
 /**
  * Replace variables in a Google Doc using Docs API
  * Supports:
@@ -2084,6 +2341,7 @@ serve(async (req) => {
       organizationId,
       variables,
       tableData,
+      blockData,
       outputTitle,
       mode: modeInput = 'create',
       existingDocId,
@@ -2214,6 +2472,18 @@ serve(async (req) => {
         console.log('Table marker processing completed successfully');
       } catch (tableError) {
         console.error('Table marker processing failed (continuing with variable replacement):', tableError);
+        // Don't throw - continue with variable replacement
+      }
+    }
+
+    // Process block markers - {{#BLOCK:walls}} syntax (paragraph loops per product type)
+    if (blockData && blockData.length > 0) {
+      try {
+        console.log(`Processing block markers with ${blockData.length} products...`);
+        await processBlockMarkers(accessToken, newDocId, blockData);
+        console.log('Block marker processing completed successfully');
+      } catch (blockError) {
+        console.error('Block marker processing failed (continuing with variable replacement):', blockError);
         // Don't throw - continue with variable replacement
       }
     }

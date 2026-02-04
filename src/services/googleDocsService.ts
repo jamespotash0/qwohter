@@ -16,6 +16,16 @@ export interface TableRowData {
   rows: Array<Record<string, string | number>>;
 }
 
+/** Data for dynamic block/paragraph duplication per product type */
+export interface BlockProductData {
+  /** Product domain for TYPE matching (e.g., "Operable Wall") */
+  productDomain: string;
+  /** Product alias or name for identification */
+  label: string;
+  /** All resolved variables for this product (wall.Series, wall.Height, etc.) */
+  variables: Record<string, string>;
+}
+
 export interface GenerateDocRequest {
   templateDocId: string;
   proposalId?: string;
@@ -23,6 +33,8 @@ export interface GenerateDocRequest {
   variables: Record<string, string>;
   /** Optional table data for row duplication */
   tableData?: TableRowData[];
+  /** Optional block data for paragraph duplication per product type */
+  blockData?: BlockProductData[];
   outputTitle?: string;
   mode?: 'create' | 'overwrite' | 'update';
   existingDocId?: string;
@@ -258,8 +270,8 @@ export function buildProposalVariables(
 
       // Basic product info
       variables[`${prefix}.Manufacturer`] = rawData.manufacturer || '';
-      variables[`${prefix}.Product_Type`] = rawData.productType || '';
-      variables[`${prefix}.Product_Category`] = rawData.productCategory || '';
+      variables[`${prefix}.ProductDomain`] = rawData.productDomain || '';
+      variables[`${prefix}.ProductLine`] = rawData.productLine || '';
       variables[`${prefix}.Series`] = rawData.series || '';
       variables[`${prefix}.Model`] = rawData.model || '';
 
@@ -545,8 +557,8 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           alias: product.alias || '',
           // Product info - Upper Case
           Manufacturer: rawData.manufacturer || '',
-          Product_Type: rawData.productType || '',
-          Product_Category: rawData.productCategory || '',
+          Product_Domain: rawData.productDomain || '',
+          Product_Line: rawData.productLine || '',
           Series: rawData.series || '',
           Model: rawData.model || '',
           // Dimensions
@@ -620,8 +632,8 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           manufacturer: rawData.manufacturer || '',
           model: rawData.model || '',
           series: rawData.series || '',
-          productType: rawData.productType || '',
-          productCategory: rawData.productCategory || '',
+          productDomain: rawData.productDomain || '',
+          productLine: rawData.productLine || '',
         };
       }),
     });
@@ -677,6 +689,87 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
 }
 
 /**
+ * Build block data for paragraph duplication per product type in Google Docs.
+ * Each product with a productDomain gets a variables map for {{wall.*}} resolution.
+ * Also surfaces all specifications JSONB keys so custom fields work automatically.
+ */
+export function buildBlockData(formData: FormBuilderData): BlockProductData[] {
+  const blocks: BlockProductData[] = [];
+
+  if (!formData?.products?.items) return blocks;
+
+  for (const product of formData.products.items) {
+    const rawData = product.rawData || {};
+    const productDomain = rawData.productDomain;
+
+    // Skip products without a domain — can't match to any TYPE block
+    if (!productDomain) continue;
+
+    const dims = rawData.dimensions || {};
+    const perf = rawData.performanceRatings || {};
+    const appearance = rawData.appearance || {};
+    const mats = rawData.materials || {};
+    const specs = (rawData.specifications || {}) as Record<string, unknown>;
+
+    const finishColor = appearance.color || '';
+    const finishStyle = appearance.finish || '';
+
+    const variables: Record<string, string> = {
+      // Basic info
+      name: product.name || '',
+      quantity: product.quantity?.toString() || '',
+      unit: product.unit || '',
+      description: product.description || '',
+      alias: product.alias || '',
+      // Product identity
+      Manufacturer: rawData.manufacturer || '',
+      Product_Domain: productDomain,
+      Product_Line: rawData.productLine || '',
+      Series: rawData.series || '',
+      Model: rawData.model || '',
+      // Dimensions
+      Height: dims.height || '',
+      Width: dims.width || '',
+      Length: dims.length || '',
+      Thickness: dims.thickness || '',
+      // Performance
+      STC: perf.stc?.toString() || '',
+      Fire_Rating: perf.fireRating || '',
+      Acoustic_Rating: perf.acousticRating || '',
+      // Appearance
+      Finish_Color: finishColor || finishStyle,
+      Finish_Style: finishStyle,
+      Color: finishColor,
+      Finish: finishStyle,
+      Trim: appearance.trim || '',
+      // Materials
+      Core: mats.core || '',
+      Face: mats.face || '',
+      Frame: mats.frame || '',
+      // Certifications
+      Certifications: (rawData.certifications || []).join(', '),
+    };
+
+    // Surface ALL specifications JSONB keys as variables so custom fields
+    // (like trackLayout, panelType, insulation, etc.) work automatically
+    for (const [key, value] of Object.entries(specs)) {
+      if (key.startsWith('_')) continue; // Skip internal keys like _specificationLabels
+      if (value !== null && value !== undefined) {
+        variables[key] = String(value);
+      }
+    }
+
+    blocks.push({
+      productDomain,
+      label: product.alias || product.name || '',
+      variables,
+    });
+  }
+
+  return blocks;
+}
+
+/**
  * Generate a Google Doc from proposal data
  */
 export async function generateProposalDoc(
@@ -690,6 +783,7 @@ export async function generateProposalDoc(
 ): Promise<GenerateDocResponse> {
   const variables = buildProposalVariables(proposalData, formData);
   const tableData = buildTableData(formData);
+  const blockData = buildBlockData(formData);
 
   // Debug logging
   console.log('[generateProposalDoc] Pricing sections:', formData?.pricing?.sections?.length || 0);
@@ -710,6 +804,7 @@ export async function generateProposalDoc(
     organizationId,
     variables,
     tableData,
+    blockData,
     outputTitle,
     mode: options?.mode,
     existingDocId: options?.existingDocId,

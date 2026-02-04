@@ -95,6 +95,7 @@ npm run docs:preview           # Preview built docs
 | Doc | Description |
 |-----|-------------|
 | [CLIENT_PORTAL_PLAN.md](docs/plans/CLIENT_PORTAL_PLAN.md) | Client portal feature plan |
+| [PERMISSIONS_BITMASK_PLAN.md](docs/plans/PERMISSIONS_BITMASK_PLAN.md) | JWT + bitmask permissions (replace per-request DB role checks) |
 
 ---
 
