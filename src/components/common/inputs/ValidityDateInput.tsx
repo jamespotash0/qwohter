@@ -179,7 +179,7 @@ export function ValidityDateInput({
           variant="outline"
           disabled={disabled}
           className={cn(
-            'h-7 w-full justify-start text-left font-normal text-xs px-2',
+            'h-8 w-full justify-start text-left font-normal text-xs px-2',
             'rounded border-gray-200 dark:border-gray-600',
             'focus:ring-1 focus:ring-coral/20 focus:border-coral',
             !value && 'text-muted-foreground',
@@ -204,11 +204,11 @@ export function ValidityDateInput({
                 value={daysInput}
                 onChange={(e) => handleDaysInputChange(e.target.value)}
                 placeholder="30"
-                className="h-7 w-16 text-xs"
+                className="h-8 w-16 text-xs"
               />
               <span className="text-xs text-gray-500">days from</span>
               <Select value={referenceDate} onValueChange={(v) => handleReferenceDateChange(v as ReferenceDate)}>
-                <SelectTrigger className="h-7 flex-1 text-xs">
+                <SelectTrigger className="h-8 flex-1 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

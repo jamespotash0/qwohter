@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { TAB_INPUT_CLASS, TAB_DISABLED_MODIFIER } from './shared/tabStyles';
 import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder } from '../../context/FormBuilderContext';
 
@@ -113,11 +114,10 @@ export function MiscellaneousTab({ mode }: MiscellaneousTabProps) {
     });
   }, [references, internalNotes, setMiscellaneousData]);
 
-  // Input styling matching other tabs
+  // Input styling - shared sizing from tabStyles
   const inputClassName = cn(
-    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral',
-    isBuilderMode && 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
+    TAB_INPUT_CLASS,
+    isBuilderMode && TAB_DISABLED_MODIFIER
   );
 
   // Reference number handlers
@@ -241,7 +241,7 @@ export function MiscellaneousTab({ mode }: MiscellaneousTabProps) {
               'min-h-[100px] text-xs rounded border-gray-200 dark:border-gray-600 px-3 py-2',
               'focus:ring-1 focus:ring-coral/20 focus:border-coral',
               'resize-none',
-              isBuilderMode && 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
+              isBuilderMode && TAB_DISABLED_MODIFIER
             )}
           />
         </div>

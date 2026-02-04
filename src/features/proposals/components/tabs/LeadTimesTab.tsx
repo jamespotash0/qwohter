@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { TAB_INPUT_CLASS, TAB_DISABLED_MODIFIER } from './shared/tabStyles';
 import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder } from '../../context/FormBuilderContext';
 
@@ -272,14 +273,10 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
     })
   );
 
-  // Input styling - compact design matching PricingTab
-  const inputClassName = cn(
-    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-  );
-
+  // Input styling - shared sizing from tabStyles
+  const inputClassName = TAB_INPUT_CLASS;
   const disabledInputClassName = isBuilderMode
-    ? cn(inputClassName, 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60')
+    ? cn(inputClassName, TAB_DISABLED_MODIFIER)
     : inputClassName;
 
   // Calculate total phases
@@ -396,7 +393,7 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
         {/* Unified Table */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-1"></div>
             <div className="col-span-4">Phase Name</div>
             <div className="col-span-4">Duration</div>

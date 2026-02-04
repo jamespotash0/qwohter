@@ -50,6 +50,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { TAB_INPUT_CLASS, TAB_NUMBER_INPUT_CLASS, TAB_SELECT_TRIGGER_CLASS, TAB_DISABLED_MODIFIER } from './shared/tabStyles';
 import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder } from '../../context/FormBuilderContext';
 import { getStateOptions, getStateTaxRate, formatTaxRate } from '../../utils/salesTaxRates';
@@ -860,21 +861,10 @@ export function PricingTab({ mode }: PricingTabProps) {
     setSections(arrayMove(sections, oldIndex, newIndex));
   };
 
-  const inputClassName = cn(
-    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-  );
-
-  // Hide number input spinners
-  const numberInputClassName = cn(
-    inputClassName,
-    '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-  );
-
-  const selectTriggerClassName = cn(
-    'h-7 rounded border-gray-200 dark:border-gray-600 text-xs',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-  );
+  // Input styling - shared sizing from tabStyles
+  const inputClassName = TAB_INPUT_CLASS;
+  const numberInputClassName = TAB_NUMBER_INPUT_CLASS;
+  const selectTriggerClassName = TAB_SELECT_TRIGGER_CLASS;
 
   // Calculate subtotal (before tax)
   const subtotal = useMemo(() => {
@@ -1050,15 +1040,8 @@ export function PricingTab({ mode }: PricingTabProps) {
   };
 
   // Disabled input styles for builder mode
-  const disabledInputClassName = cn(
-    inputClassName,
-    'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
-  );
-
-  const disabledSelectClassName = cn(
-    selectTriggerClassName,
-    'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
-  );
+  const disabledInputClassName = cn(inputClassName, TAB_DISABLED_MODIFIER);
+  const disabledSelectClassName = cn(selectTriggerClassName, TAB_DISABLED_MODIFIER);
 
   // ========== BUILDER MODE: Unified table with section dividers ==========
   if (isBuilderMode) {
@@ -1075,7 +1058,7 @@ export function PricingTab({ mode }: PricingTabProps) {
         {/* Unified Table */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
           {/* Table Header */}
-          <div className="grid grid-cols-12 gap-3 px-4 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-1"></div>
             <div className="col-span-3">Name</div>
             <div className="col-span-1 text-center">Qty</div>

@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { TAB_INPUT_CLASS, TAB_SELECT_TRIGGER_CLASS, TAB_DISABLED_MODIFIER } from './shared/tabStyles';
 import type { EditorMode } from '../ProposalEditor';
 import MapboxInput from '@/components/common/inputs/MapboxInput';
 import { DatePickerInput } from '@/components/common/inputs/DatePickerInput';
@@ -280,33 +281,26 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   });
   const [initialValuesCaptured, setInitialValuesCaptured] = useState(false);
 
-  // Input styling - compact design matching PricingTab
-  const inputClassName = cn(
-    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-  );
-
-  const selectTriggerClassName = cn(
-    'h-7 text-xs rounded border-gray-200 dark:border-gray-600',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-  );
+  // Input styling - shared sizing from tabStyles
+  const inputClassName = TAB_INPUT_CLASS;
+  const selectTriggerClassName = TAB_SELECT_TRIGGER_CLASS;
 
   // Disabled style for builder mode
   const disabledInputClassName = isBuilderMode
-    ? cn(inputClassName, 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60')
+    ? cn(inputClassName, TAB_DISABLED_MODIFIER)
     : inputClassName;
 
   const disabledSelectClassName = isBuilderMode
-    ? cn(selectTriggerClassName, 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60')
+    ? cn(selectTriggerClassName, TAB_DISABLED_MODIFIER)
     : selectTriggerClassName;
 
   // Client fields are disabled when a contact is selected (read-only mode)
   const isClientFieldsDisabled = isBuilderMode || !isCustomClientName;
   const clientFieldInputClassName = isClientFieldsDisabled
-    ? cn(inputClassName, 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60')
+    ? cn(inputClassName, TAB_DISABLED_MODIFIER)
     : inputClassName;
   const clientFieldSelectClassName = isClientFieldsDisabled
-    ? cn(selectTriggerClassName, 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60')
+    ? cn(selectTriggerClassName, TAB_DISABLED_MODIFIER)
     : selectTriggerClassName;
 
   // Track if initial date defaults have been set
@@ -1128,10 +1122,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                     value={clientAddress}
                     onChange={setClientAddress}
                     placeholder="Enter address"
-                    className={cn(
-                      'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-                      'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-                    )}
+                    className={inputClassName}
                   />
                 </Field>
               )}
@@ -1206,10 +1197,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                   value={jobLocation}
                   onChange={setJobLocation}
                   placeholder="Enter job site address"
-                  className={cn(
-                    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-                    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-                  )}
+                  className={inputClassName}
                 />
               </Field>
             )}
@@ -1254,10 +1242,10 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
               placeholder="Additional notes about the job..."
               disabled={isBuilderMode}
               className={cn(
-                'min-h-[60px] text-xs rounded border-gray-200 dark:border-gray-600 px-2 py-1.5',
+                'min-h-[80px] text-xs rounded border-gray-200 dark:border-gray-600 px-2 py-1.5',
                 'focus:ring-1 focus:ring-coral/20 focus:border-coral',
                 'resize-none',
-                isBuilderMode && 'bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-60'
+                isBuilderMode && TAB_DISABLED_MODIFIER
               )}
             />
           </Field>

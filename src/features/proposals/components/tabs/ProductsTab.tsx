@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { TAB_INPUT_CLASS } from './shared/tabStyles';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsWithSummary, type ExtractedProduct, type ExtractionResult } from '@/services/productExtraction';
@@ -618,11 +619,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       .trim();
   }, []);
 
-  // Input styling - compact design matching PricingTab
-  const inputClassName = cn(
-    'h-7 text-xs rounded border-gray-200 dark:border-gray-600 px-2',
-    'focus:ring-1 focus:ring-coral/20 focus:border-coral'
-  );
+  // Input styling - shared sizing from tabStyles
+  const inputClassName = TAB_INPUT_CLASS;
 
   // Builder mode: Show disabled state
   if (isBuilderMode) {
