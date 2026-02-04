@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, FileText, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import type { Proposal } from '@/services/proposalsService';
 import type { IntegrationType } from '@/lib/types/integrations';
 import { checkQBOnlineConnection, createInvoiceInQBOnline } from '@/services/quickbooksOnlineService';

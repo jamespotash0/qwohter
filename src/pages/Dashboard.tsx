@@ -20,7 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useNotifications, useMarkNotificationAsRead } from "@/hooks/useNotifications";
 import type { Notification } from "@/lib/types/notifications";
 import { useUpcomingReminders, type TaskReminder } from "@/hooks/useUpcomingReminders";
-import { toast } from "sonner";
+import { toast } from '@/components/ui/sonner';
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
 import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";

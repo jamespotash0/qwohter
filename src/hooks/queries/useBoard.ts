@@ -7,7 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import type { Project, WorkflowColumn } from '@/services/boardService';
 import {
   fetchBoardItems,

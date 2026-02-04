@@ -20,7 +20,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { checkForNewVersion, forceReload } from '@/services/versionCheckService';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface UseVersionCheckOptions {
   /** How often to check for updates (in milliseconds). Default: 5 minutes */

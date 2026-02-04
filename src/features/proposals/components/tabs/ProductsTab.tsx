@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { TAB_INPUT_CLASS } from './shared/tabStyles';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsWithSummary, type ExtractedProduct, type ExtractionResult } from '@/services/productExtraction';
 import { useFormBuilder, type Product, type PricingSection, type PricingLineItem } from '../../context/FormBuilderContext';

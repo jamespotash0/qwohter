@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle, Plus, Minus, Mail, HelpCircle, X } from 'lucide-react';
 import { useMagneticHover } from '@/hooks/useAnimations';
 import { sendContactUsEmail } from '@/services/emailService';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { ContactNavigation } from '@/components/features/landing/ContactNavigation';
 import { Footer } from '@/components/features/landing/Footer';
 import { DebugGrid } from '@/components/common/DebugGrid';

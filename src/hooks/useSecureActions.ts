@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, validateSecurity, authRateLimiter } from '@/utils/security';
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 /**
  * Custom hook for secure actions with built-in validation and rate limiting

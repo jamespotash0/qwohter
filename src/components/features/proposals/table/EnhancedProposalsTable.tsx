@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { Proposal } from "@/services/proposalsService";
 import { sendProposalToProjectBoard, removeProposalFromProjectBoard } from "@/services/proposalsService";
-import { toast } from "sonner";
+import { toast } from '@/components/ui/sonner';
 import { invalidateQueries } from "@/lib/queryClient";
 import { ProposalsTableToolbar } from './components/ProposalsTableToolbar';
 import { groupProposalsByVersion, getBaseProposalNumber, type ProposalVersionGroup } from '@/utils/proposalVersionGrouping';

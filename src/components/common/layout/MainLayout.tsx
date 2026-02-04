@@ -10,7 +10,7 @@ import { versionCheckService } from '@/services/versionCheckService';
 import { stripeService } from '@/services/stripeService';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { getPageSkeleton } from '@/components/common/PageSkeleton';
 
 
@@ -231,9 +231,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
         toast('New version available!', {
           description: 'A new update was made to the app.',
           duration: Infinity, // Persist until manually dismissed
-          classNames: {
-            actionButton: '!bg-green-600 hover:!bg-green-700 !text-white',
-          },
           action: {
             label: 'Refresh',
             onClick: () => {

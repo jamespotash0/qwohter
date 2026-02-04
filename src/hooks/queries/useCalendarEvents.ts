@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   fetchAllCalendarItems,
   createCalendarEvent,

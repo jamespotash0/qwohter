@@ -48,7 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { CreateFormDialog } from '@/components/features/forms/CreateFormDialog';
 
 export default function Forms() {

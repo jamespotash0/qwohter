@@ -4,7 +4,7 @@ import { Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSignOut, useUser } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import { useSubscriptionStatus } from '@/hooks/queries/useSubscription';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';

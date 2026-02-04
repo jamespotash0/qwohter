@@ -50,7 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
 import { getAllFormVariables } from './VariableExtension';
 import { VersionDialog, type VersionMode } from './VersionDialog';

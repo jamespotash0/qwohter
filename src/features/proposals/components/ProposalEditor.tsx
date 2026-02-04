@@ -9,7 +9,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Info, CloudCheck, CloudArrowUp, Warning } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Input } from '@/components/ui/input';
 import {
   Tooltip,

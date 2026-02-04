@@ -10,7 +10,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner, Signature, CheckCircle } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import type { EditorMode } from '../ProposalEditor';
 import {
   uploadProposalDocument,

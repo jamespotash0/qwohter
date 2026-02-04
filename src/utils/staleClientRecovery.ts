@@ -23,7 +23,7 @@
 import * as Sentry from '@sentry/react';
 import { QueryClient } from '@tanstack/react-query';
 import { checkForNewVersion, forceReload } from '@/services/versionCheckService';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 /**
  * Common error patterns that indicate stale client

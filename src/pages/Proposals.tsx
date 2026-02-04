@@ -19,7 +19,7 @@ import {
   type Proposal,
 } from '@/hooks/queries/useProposals';
 import { FileText, Clock, CheckCircle, DollarSign } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageContent } from '@/components/common/layout';
 import { EnhancedProposalsTable } from '@/components/features/proposals/table/EnhancedProposalsTable';

@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { useFormBuilder, type DocumentTemplate } from '../../context/FormBuilderContext';
 import { useConnectedIntegrations } from '@/hooks/useIntegrations';

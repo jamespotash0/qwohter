@@ -10,7 +10,7 @@ import { BellRing, CalendarClock, Mail, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   useNotificationPreferencesWithDefaults,
   useUpdateNotificationPreferences,
