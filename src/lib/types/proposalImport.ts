@@ -70,7 +70,7 @@ export interface ExtractedSpecifications {
 
   // Material/product info
   materials: string | null;       // e.g., "Oak hardwood", "Vinyl wallpaper"
-  productType: string | null;     // e.g., "Demountable wall", "Office furniture"
+  productDomain: string | null;   // e.g., "Demountable wall", "Office furniture"
 
   // Additional specs (flexible key-value pairs for any industry)
   additionalSpecs: Record<string, string>;
@@ -90,7 +90,7 @@ export interface ExtractedProductDimensions {
 export interface ExtractedProductSpec {
   // Core identifiers
   name: string;                           // Product name/identifier (e.g., "Wall A", "Conference Table 1")
-  productType: string | null;             // Type of product (e.g., "Operable Wall", "Office Chair")
+  productDomain: string | null;           // Type of product (e.g., "Operable Wall", "Office Chair")
   manufacturer: string | null;            // Manufacturer/brand name
   model: string | null;                   // Model number
   series: string | null;                  // Series/line
@@ -157,7 +157,7 @@ export const EMPTY_EXTRACTED_DATA: ExtractedProposalData = {
     dimensions: null,
     quantity: null,
     materials: null,
-    productType: null,
+    productDomain: null,
     additionalSpecs: {},
   },
   products: {

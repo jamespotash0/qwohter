@@ -103,7 +103,7 @@ Return ONLY valid JSON with this structure:
     "dimensions": string | null,
     "quantity": string | null,
     "materials": string | null,
-    "productType": string | null,
+    "productDomain": string | null,
     "additionalSpecs": {}
   },
   "notes": string | null,
@@ -150,7 +150,7 @@ export function fallbackParse(text: string): Partial<ExtractedProposalData> {
       dimensions: null,
       quantity: null,
       materials: null,
-      productType: null,
+      productDomain: null,
       additionalSpecs: {},
     },
     notes: null,

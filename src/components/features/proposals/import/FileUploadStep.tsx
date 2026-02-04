@@ -8,7 +8,6 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, File, X, FileText, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { validateFile, detectFileType } from '@/services/proposalImport';
-import { ACCEPTED_FILE_EXTENSIONS } from '@/lib/types/proposalImport';
 import type { ImportFileType } from '@/lib/types/proposalImport';
 
 interface FileUploadStepProps {
@@ -23,7 +22,6 @@ const FILE_TYPE_ICONS: Record<ImportFileType, React.ReactNode> = {
   pdf: <FileText className="w-8 h-8 text-red-500" />,
   docx: <FileText className="w-8 h-8 text-blue-500" />,
   csv: <FileSpreadsheet className="w-8 h-8 text-green-500" />,
-  xlsx: <FileSpreadsheet className="w-8 h-8 text-green-600" />,
   txt: <File className="w-8 h-8 text-gray-500" />,
 };
 
@@ -39,21 +37,21 @@ export function FileUploadStep({
       if (acceptedFiles.length === 0) return;
 
       const selectedFile = acceptedFiles[0];
-      const validation = validateFile(selectedFile);
+      const validation = validateFile(selectedFile as any);
 
       if (!validation.valid) {
         onError(validation.error || 'Invalid file');
         return;
       }
 
-      const fileType = detectFileType(selectedFile);
+      const fileType = detectFileType(selectedFile as any);
       if (!fileType) {
         onError('Unsupported file type');
         return;
       }
 
       onError(null);
-      onFileSelect(selectedFile, fileType);
+      onFileSelect(selectedFile as any, fileType);
     },
     [onFileSelect, onError]
   );
@@ -65,7 +63,6 @@ export function FileUploadStep({
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'text/csv': ['.csv'],
       'application/csv': ['.csv'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'text/plain': ['.txt'],
     },
     maxFiles: 1,
@@ -136,7 +133,7 @@ export function FileUploadStep({
         <ul className="list-disc list-inside space-y-0.5 pl-2">
           <li><span className="font-medium">PDF</span> - Quote documents, proposals</li>
           <li><span className="font-medium">DOCX</span> - Word documents</li>
-          <li><span className="font-medium">CSV/XLSX</span> - Spreadsheets with quote data</li>
+          <li><span className="font-medium">CSV</span> - Spreadsheets with proposal data</li>
           <li><span className="font-medium">TXT</span> - Plain text quotes</li>
         </ul>
       </div>

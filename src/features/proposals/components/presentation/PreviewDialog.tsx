@@ -387,8 +387,8 @@ function resolveProductFieldVariable(
 
   // Map common field names to rawData property names
   const fieldMappings: Record<string, string> = {
-    category: 'productCategory',
-    type: 'productType',
+    category: 'productLine',
+    type: 'productDomain',
   };
 
   const mappedKey = fieldMappings[fieldKey] || fieldKey;

@@ -47,7 +47,7 @@ interface ExtractedSpecifications {
   dimensions: string | null;
   quantity: string | null;
   materials: string | null;
-  productType: string | null;
+  productDomain: string | null;
   additionalSpecs: Record<string, string>;
 }
 
@@ -55,7 +55,7 @@ interface ExtractedSpecifications {
 interface ExtractedProductSpec {
   // Core identifiers
   name: string;                           // Product name/identifier (e.g., "Wall A", "Conference Table 1", "HVAC Unit 1")
-  productType: string | null;             // Type of product (e.g., "Operable Wall", "Office Chair", "Air Handler")
+  productDomain: string | null;           // Type of product (e.g., "Operable Wall", "Office Chair", "Air Handler")
   manufacturer: string | null;            // Manufacturer/brand name
   model: string | null;                   // Model number
   series: string | null;                  // Series/line
@@ -143,14 +143,14 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
     "dimensions": "string or null - overall project dimensions/area",
     "quantity": "string or null - total quantity summary",
     "materials": "string or null - primary materials summary",
-    "productType": "string or null - main product/service type",
+    "productDomain": "string or null - main product/service type",
     "additionalSpecs": "object - other high-level specs as key-value pairs"
   },
   "products": {
     "items": [
       {
         "name": "string - product identifier (e.g., 'Wall A', 'Conference Table 1', 'HVAC Unit 1', 'Workstation Set 1')",
-        "productType": "string or null - type (e.g., 'Operable Wall', 'Office Chair', 'Air Handler', 'Demountable Partition')",
+        "productDomain": "string or null - domain (e.g., 'Operable Wall', 'Office Chair', 'Air Handler', 'Demountable Partition')",
         "manufacturer": "string or null - brand/manufacturer name",
         "model": "string or null - model number",
         "series": "string or null - product series/line",
@@ -391,7 +391,7 @@ serve(async (req) => {
         dimensions: extractedData.specifications?.dimensions || null,
         quantity: extractedData.specifications?.quantity || null,
         materials: extractedData.specifications?.materials || null,
-        productType: extractedData.specifications?.productType || null,
+        productDomain: extractedData.specifications?.productDomain || null,
         additionalSpecs: typeof extractedData.specifications?.additionalSpecs === 'object'
           && extractedData.specifications?.additionalSpecs !== null
           ? extractedData.specifications.additionalSpecs
@@ -401,7 +401,7 @@ serve(async (req) => {
         items: Array.isArray(extractedData.products?.items)
           ? extractedData.products.items.map((item: any) => ({
               name: item.name || 'Unnamed Product',
-              productType: item.productType || null,
+              productDomain: item.productDomain || null,
               manufacturer: item.manufacturer || null,
               model: item.model || null,
               series: item.series || null,

@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Quote } from '@/_deprecated/services/quotesService';
+import type { Proposal } from '@/services/proposalsService';
 import type {
   QBOnlineConnection,
   QBOnlineInvoice,
@@ -124,7 +124,7 @@ export async function disconnectQBOnline(organizationId: string): Promise<void> 
  * Delegates to Edge Function for API calls with stored tokens
  */
 export async function createInvoiceInQBOnline(
-  quote: Quote,
+  proposal: Proposal,
   organizationId: string,
   options?: {
     customerId?: string;
@@ -141,7 +141,7 @@ export async function createInvoiceInQBOnline(
   }
 
   // Check if invoice already exists
-  const existingSync = await getInvoiceSyncStatus(quote.id);
+  const existingSync = await getInvoiceSyncStatus(proposal.id);
   if (existingSync && existingSync.sync_status === 'Synced') {
     throw new Error('Invoice already synced to QuickBooks');
   }
@@ -150,7 +150,7 @@ export async function createInvoiceInQBOnline(
     // Call Edge Function to create invoice using stored tokens
     const { data, error } = await supabase.functions.invoke('quickbooks-online-create-invoice', {
       body: {
-        quote_id: quote.id,
+        proposal_id: proposal.id,
         organization_id: organizationId,
         options,
       },
@@ -162,7 +162,7 @@ export async function createInvoiceInQBOnline(
     await supabase
       .from('quickbooks_online_invoice_sync')
       .upsert({
-        quote_id: quote.id,
+        quote_id: proposal.id,
         organization_id: organizationId,
         qb_invoice_id: data.invoice.Id,
         qb_invoice_number: data.invoice.DocNumber,
@@ -184,7 +184,7 @@ export async function createInvoiceInQBOnline(
     await supabase
       .from('quickbooks_online_invoice_sync')
       .upsert({
-        quote_id: quote.id,
+        quote_id: proposal.id,
         organization_id: organizationId,
         sync_status: 'Error',
         sync_error: error instanceof Error ? error.message : 'Unknown error',
@@ -225,19 +225,15 @@ export async function getInvoiceSyncStatus(
 /**
  * Build QuickBooks Online invoice data from quote
  */
-export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
-  const quoteDetails = quote.quote_details;
-  const jobDetails = quote.job_details;
-  const wallDetails = quote.wall_details;
-  const priceDetails = quote.price_details;
-  const deliveryDetails = quote.delivery_details;
+export function buildQBOnlineInvoice(proposal: Proposal): Partial<QBOnlineInvoice> {
+  const formData = (proposal.form_data ?? {}) as Record<string, any>;
 
   const lineItems: QBOnlineInvoice['Line'] = [];
 
   // Materials line item
-  if (priceDetails.materials_cost && priceDetails.materials_cost > 0) {
+  if (formData.materials_cost && formData.materials_cost > 0) {
     lineItems.push({
-      Amount: priceDetails.materials_cost,
+      Amount: formData.materials_cost,
       DetailType: 'SalesItemLineDetail',
       SalesItemLineDetail: {
         ItemRef: {
@@ -245,16 +241,16 @@ export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
           name: 'Materials',
         },
         Qty: 1,
-        UnitPrice: priceDetails.materials_cost,
+        UnitPrice: formData.materials_cost,
       },
-      Description: `Materials for ${jobDetails.jobType}`,
+      Description: `Materials for ${formData.jobType || ''}`,
     });
   }
 
   // Labor line item
-  if (priceDetails.labor_cost && priceDetails.labor_cost > 0) {
+  if (formData.labor_cost && formData.labor_cost > 0) {
     lineItems.push({
-      Amount: priceDetails.labor_cost,
+      Amount: formData.labor_cost,
       DetailType: 'SalesItemLineDetail',
       SalesItemLineDetail: {
         ItemRef: {
@@ -262,15 +258,15 @@ export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
           name: 'Labor',
         },
         Qty: 1,
-        UnitPrice: priceDetails.labor_cost,
+        UnitPrice: formData.labor_cost,
       },
-      Description: `Labor for ${wallDetails.squareFootage || 0} sq ft`,
+      Description: `Labor for ${formData.squareFootage || 0} sq ft`,
     });
   }
 
   // Additional costs
-  if (priceDetails.additional_costs && Array.isArray(priceDetails.additional_costs)) {
-    priceDetails.additional_costs.forEach((cost: any) => {
+  if (formData.additional_costs && Array.isArray(formData.additional_costs)) {
+    formData.additional_costs.forEach((cost: any) => {
       if (cost.amount > 0) {
         lineItems.push({
           Amount: cost.amount,
@@ -290,9 +286,9 @@ export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
   }
 
   // Discount (if applicable)
-  if (priceDetails.discount_amount && priceDetails.discount_amount > 0) {
+  if (formData.discount_amount && formData.discount_amount > 0) {
     lineItems.push({
-      Amount: -priceDetails.discount_amount,
+      Amount: -formData.discount_amount,
       DetailType: 'SalesItemLineDetail',
       SalesItemLineDetail: {
         ItemRef: {
@@ -300,9 +296,9 @@ export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
           name: 'Discount',
         },
         Qty: 1,
-        UnitPrice: -priceDetails.discount_amount,
+        UnitPrice: -formData.discount_amount,
       },
-      Description: `Discount: ${priceDetails.discount_percentage || 0}%`,
+      Description: `Discount: ${formData.discount_percentage || 0}%`,
     });
   }
 
@@ -310,23 +306,23 @@ export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
     Line: lineItems,
     CustomerRef: {
       value: '1', // Will be replaced with actual QB customer ID
-      name: quoteDetails.contactName || 'Unknown Customer',
+      name: proposal.client_name || 'Unknown Customer',
     },
-    DocNumber: quote.proposal_number,
+    DocNumber: proposal.proposal_number,
     TxnDate: new Date().toISOString().split('T')[0],
-    DueDate: deliveryDetails?.estimated_completion
-      ? new Date(deliveryDetails.estimated_completion).toISOString().split('T')[0]
+    DueDate: formData.estimated_completion
+      ? new Date(formData.estimated_completion).toISOString().split('T')[0]
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    PrivateNote: `Created from quote ${quote.proposal_number}`,
+    PrivateNote: `Created from proposal ${proposal.proposal_number}`,
   };
 
   // Add billing address if available
-  if (quoteDetails.address) {
+  if (formData.address) {
     invoiceData.BillAddr = {
-      Line1: quoteDetails.address,
-      City: quoteDetails.city,
-      CountrySubDivisionCode: quoteDetails.state,
-      PostalCode: quoteDetails.zipCode,
+      Line1: formData.address,
+      City: formData.city,
+      CountrySubDivisionCode: formData.state,
+      PostalCode: formData.zipCode,
       Country: 'USA',
     };
   }
@@ -335,38 +331,37 @@ export function buildQBOnlineInvoice(quote: Quote): Partial<QBOnlineInvoice> {
 }
 
 /**
- * Build QuickBooks Online customer data from quote
+ * Build QuickBooks Online customer data from proposal
  */
-export function buildQBOnlineCustomer(quote: Quote): Partial<QBOnlineCustomer> {
-  const quoteDetails = quote.quote_details;
-  const jobDetails = quote.job_details;
+export function buildQBOnlineCustomer(proposal: Proposal): Partial<QBOnlineCustomer> {
+  const formData = (proposal.form_data ?? {}) as Record<string, any>;
 
   const customerData: Partial<QBOnlineCustomer> = {
-    DisplayName: quoteDetails.contactName || 'Unknown Customer',
-    CompanyName: jobDetails.client_company || quoteDetails.contactName,
+    DisplayName: proposal.client_name || 'Unknown Customer',
+    CompanyName: proposal.client_company || proposal.client_name,
   };
 
   // Add email if available
-  if (quoteDetails.email) {
+  if (formData.email) {
     customerData.PrimaryEmailAddr = {
-      Address: quoteDetails.email,
+      Address: formData.email,
     };
   }
 
   // Add phone if available
-  if (quoteDetails.phone) {
+  if (formData.phone) {
     customerData.PrimaryPhone = {
-      FreeFormNumber: quoteDetails.phone,
+      FreeFormNumber: formData.phone,
     };
   }
 
   // Add address if available
-  if (quoteDetails.address) {
+  if (formData.address) {
     customerData.BillAddr = {
-      Line1: quoteDetails.address,
-      City: quoteDetails.city,
-      CountrySubDivisionCode: quoteDetails.state,
-      PostalCode: quoteDetails.zipCode,
+      Line1: formData.address,
+      City: formData.city,
+      CountrySubDivisionCode: formData.state,
+      PostalCode: formData.zipCode,
       Country: 'USA',
     };
   }

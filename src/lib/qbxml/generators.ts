@@ -4,7 +4,7 @@
  * Converts app data into QuickBooks XML format
  */
 
-import type { Quote } from '@/_deprecated/services/quotesService';
+import type { Proposal } from '@/services/proposalsService';
 
 /**
  * Escape XML special characters
@@ -30,28 +30,18 @@ function formatQBDate(date: Date | string): string {
 }
 
 /**
- * Generate InvoiceAdd QBXML from Quote
+ * Generate InvoiceAdd QBXML from Proposal
  */
-export function generateInvoiceQBXML(quote: Quote): string {
-  const quoteDetails = quote.quote_details;
-  const jobDetails = quote.job_details;
-  const wallDetails = quote.wall_details;
-  const priceDetails = quote.price_details;
-  const deliveryDetails = quote.delivery_details;
+export function generateInvoiceQBXML(proposal: Proposal): string {
+  const formData = (proposal.form_data ?? {}) as Record<string, any>;
 
-  // Customer name (simplified - you may want to lookup existing QB customer)
-  const customerName = escapeXml(quoteDetails.contactName || 'Unknown Customer');
-
-  // Invoice date
+  const customerName = escapeXml(proposal.client_name || 'Unknown Customer');
   const invoiceDate = formatQBDate(new Date());
+  const dueDate = formData.estimated_completion
+    ? formatQBDate(formData.estimated_completion)
+    : formatQBDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 
-  // Due date (add payment terms if specified)
-  const dueDate = deliveryDetails?.estimated_completion
-    ? formatQBDate(deliveryDetails.estimated_completion)
-    : formatQBDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)); // 30 days from now
-
-  // Build line items
-  const lineItems = buildInvoiceLineItems(quote);
+  const lineItems = buildInvoiceLineItems(proposal);
 
   const qbxml = `
     <InvoiceAddRq>
@@ -63,16 +53,16 @@ export function generateInvoiceQBXML(quote: Quote): string {
         <TxnDate>${invoiceDate}</TxnDate>
         <DueDate>${dueDate}</DueDate>
 
-        <RefNumber>${escapeXml(quote.proposal_number || '')}</RefNumber>
+        <RefNumber>${escapeXml(proposal.proposal_number || '')}</RefNumber>
 
         <BillAddress>
-          <Addr1>${escapeXml(quoteDetails.address || '')}</Addr1>
-          <City>${escapeXml(quoteDetails.city || '')}</City>
-          <State>${escapeXml(quoteDetails.state || '')}</State>
-          <PostalCode>${escapeXml(quoteDetails.zipCode || '')}</PostalCode>
+          <Addr1>${escapeXml(formData.address || '')}</Addr1>
+          <City>${escapeXml(formData.city || '')}</City>
+          <State>${escapeXml(formData.state || '')}</State>
+          <PostalCode>${escapeXml(formData.zipCode || '')}</PostalCode>
         </BillAddress>
 
-        <Memo>${escapeXml(`${jobDetails.jobType} - ${quoteDetails.projectName || ''}`)}</Memo>
+        <Memo>${escapeXml(`${formData.jobType || ''} - ${proposal.project_name || ''}`)}</Memo>
 
         ${lineItems}
 
@@ -87,46 +77,44 @@ export function generateInvoiceQBXML(quote: Quote): string {
 }
 
 /**
- * Build invoice line items from quote
+ * Build invoice line items from proposal
  */
-function buildInvoiceLineItems(quote: Quote): string {
-  const priceDetails = quote.price_details;
-  const jobDetails = quote.job_details;
-  const wallDetails = quote.wall_details;
+function buildInvoiceLineItems(proposal: Proposal): string {
+  const formData = (proposal.form_data ?? {}) as Record<string, any>;
 
   let lineItems = '';
 
   // Materials line item
-  if (priceDetails.materials_cost && priceDetails.materials_cost > 0) {
+  if (formData.materials_cost && formData.materials_cost > 0) {
     lineItems += `
       <InvoiceLineAdd>
         <ItemRef>
           <FullName>Materials</FullName>
         </ItemRef>
-        <Desc>${escapeXml(`Materials for ${jobDetails.jobType}`)}</Desc>
+        <Desc>${escapeXml(`Materials for ${formData.jobType || ''}`)}</Desc>
         <Quantity>1</Quantity>
-        <Rate>${priceDetails.materials_cost.toFixed(2)}</Rate>
+        <Rate>${formData.materials_cost.toFixed(2)}</Rate>
       </InvoiceLineAdd>
     `;
   }
 
   // Labor line item
-  if (priceDetails.labor_cost && priceDetails.labor_cost > 0) {
+  if (formData.labor_cost && formData.labor_cost > 0) {
     lineItems += `
       <InvoiceLineAdd>
         <ItemRef>
           <FullName>Labor</FullName>
         </ItemRef>
-        <Desc>${escapeXml(`Labor for ${wallDetails.squareFootage || 0} sq ft`)}</Desc>
+        <Desc>${escapeXml(`Labor for ${formData.squareFootage || 0} sq ft`)}</Desc>
         <Quantity>1</Quantity>
-        <Rate>${priceDetails.labor_cost.toFixed(2)}</Rate>
+        <Rate>${formData.labor_cost.toFixed(2)}</Rate>
       </InvoiceLineAdd>
     `;
   }
 
   // Additional services/costs
-  if (priceDetails.additional_costs && Array.isArray(priceDetails.additional_costs)) {
-    priceDetails.additional_costs.forEach((cost: any) => {
+  if (formData.additional_costs && Array.isArray(formData.additional_costs)) {
+    formData.additional_costs.forEach((cost: any) => {
       if (cost.amount > 0) {
         lineItems += `
           <InvoiceLineAdd>
@@ -143,15 +131,15 @@ function buildInvoiceLineItems(quote: Quote): string {
   }
 
   // Discount line (if applicable)
-  if (priceDetails.discount_amount && priceDetails.discount_amount > 0) {
+  if (formData.discount_amount && formData.discount_amount > 0) {
     lineItems += `
       <InvoiceLineAdd>
         <ItemRef>
           <FullName>Discount</FullName>
         </ItemRef>
-        <Desc>${escapeXml(`Discount: ${priceDetails.discount_percentage || 0}%`)}</Desc>
+        <Desc>${escapeXml(`Discount: ${formData.discount_percentage || 0}%`)}</Desc>
         <Quantity>1</Quantity>
-        <Rate>-${priceDetails.discount_amount.toFixed(2)}</Rate>
+        <Rate>-${formData.discount_amount.toFixed(2)}</Rate>
       </InvoiceLineAdd>
     `;
   }

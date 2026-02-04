@@ -407,8 +407,8 @@ export function ExtractedProductEditor({
             <EditableField label="manufacturer" value={product.manufacturer} path={['manufacturer']} onChange={handleFieldChange} />
             <EditableField label="series" value={product.series} path={['series']} onChange={handleFieldChange} />
             <EditableField label="model" value={product.model} path={['model']} onChange={handleFieldChange} />
-            <EditableField label="productType" value={product.productType} path={['productType']} onChange={handleFieldChange} />
-            <EditableField label="productCategory" value={product.productCategory} path={['productCategory']} onChange={handleFieldChange} />
+            <EditableField label="productDomain" value={product.productDomain} path={['productDomain']} onChange={handleFieldChange} />
+            <EditableField label="productLine" value={product.productLine} path={['productLine']} onChange={handleFieldChange} />
           </FieldSection>
 
           {/* Selected Configuration - Frame, Closures, Seals, Track, Stacking */}
@@ -542,7 +542,7 @@ export function ExtractedProductEditor({
             // Filter out keys already displayed in other sections
             const displayedKeys = new Set([
               'id', 'name', 'quantity', 'unit', 'description', 'isConfigurable',
-              'manufacturer', 'productType', 'productCategory', 'series', 'model',
+              'manufacturer', 'productDomain', 'productLine', 'series', 'model',
               'dimensions', 'performanceRatings', 'appearance', 'certifications',
               'pricing', 'options', 'selectedConfiguration', 'rawData',
               'frame', 'closures', 'seals', 'track', 'stacking', 'materials'

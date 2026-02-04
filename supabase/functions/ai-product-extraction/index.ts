@@ -50,8 +50,8 @@ interface PricingBreakdown {
 interface ConfigurableProduct {
   id: string;
   manufacturer: string | null;
-  productType: string | null;
-  productCategory: string | null;
+  productDomain: string | null;
+  productLine: string | null;
   series: string | null;
   model: string | null;
   name: string;
@@ -111,8 +111,8 @@ interface ConfigurableProduct {
 interface SimpleProduct {
   id: string;
   manufacturer: string | null;
-  productType: string | null;
-  productCategory: string | null;
+  productDomain: string | null;
+  productLine: string | null;
   series: string | null;
   model: string | null;
   name: string;
@@ -281,8 +281,8 @@ Return JSON:
       "manufacturer": "string | null",
       "model": "string | null",
       "series": "string | null",
-      "productType": "e.g., Partitions, Furniture, Doors",
-      "productCategory": "e.g., Operable Walls, Glass Partitions",
+      "productDomain": "e.g., Partitions, Furniture, Doors",
+      "productLine": "e.g., Operable Walls, Glass Partitions",
       "briefDescription": "One-line description",
       "reasoning": "Why this is configurable or simple"
     }
@@ -303,8 +303,8 @@ interface InventoryProduct {
   manufacturer: string | null;
   model: string | null;
   series: string | null;
-  productType: string | null;
-  productCategory: string | null;
+  productDomain: string | null;
+  productLine: string | null;
   briefDescription: string | null;
   reasoning: string;
 }
@@ -515,8 +515,8 @@ PRODUCT TO EXTRACT:
 - Manufacturer: ${product.manufacturer || 'Unknown'}
 - Model: ${product.model || 'Unknown'}
 - Series: ${product.series || 'Unknown'}
-- Type: ${product.productType || 'Unknown'}
-- Category: ${product.productCategory || 'Unknown'}
+- Domain: ${product.productDomain || 'Unknown'}
+- Product Line: ${product.productLine || 'Unknown'}
 - Description: ${product.briefDescription || 'N/A'}
 
 Focus ONLY on options and specifications for this product. Ignore other products.
@@ -554,8 +554,8 @@ Return JSON:
     {
       "tempId": "matching_temp_id",
       "manufacturer": "string | null",
-      "productType": "string | null",
-      "productCategory": "string | null",
+      "productDomain": "string | null",
+      "productLine": "string | null",
       "series": "string | null",
       "model": "string | null",
       "name": "Product name",
@@ -810,8 +810,8 @@ serve(async (req: { method: string; json: () => ExtractProductsRequest | Promise
       configurableProducts.push({
         id: generateId(),
         manufacturer: product.manufacturer,
-        productType: product.productType,
-        productCategory: product.productCategory,
+        productDomain: product.productDomain,
+        productLine: product.productLine,
         series: product.series,
         model: product.model,
         name: product.name,
@@ -842,8 +842,8 @@ serve(async (req: { method: string; json: () => ExtractProductsRequest | Promise
         simpleProducts.push({
           id: generateId(),
           manufacturer: product.manufacturer,
-          productType: product.productType,
-          productCategory: product.productCategory,
+          productDomain: product.productDomain,
+          productLine: product.productLine,
           series: product.series,
           model: product.model,
           name: product.name,

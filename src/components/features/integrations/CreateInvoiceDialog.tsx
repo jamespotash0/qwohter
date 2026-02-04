@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, FileText, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import type { Quote } from '@/_deprecated/services/quotesService';
+import type { Proposal } from '@/services/proposalsService';
 import type { IntegrationType } from '@/lib/types/integrations';
 import { checkQBOnlineConnection, createInvoiceInQBOnline } from '@/services/quickbooksOnlineService';
 import { checkQBDesktopConnection, createInvoiceInQBDesktop } from '@/services/quickbooksDesktopService';
@@ -30,7 +30,7 @@ import { getIntegrations } from '@/services/integrationsService';
 interface CreateInvoiceDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  quote: Quote | null;
+  quote: Proposal | null;
   organizationId: string;
 }
 
@@ -191,14 +191,14 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                 </Alert>
               )}
 
-              {/* Quote Summary */}
+              {/* Proposal Summary */}
               {availableIntegrations.length > 0 && (
                 <>
                   <Card className="bg-gray-50 dark:bg-gray-800">
                     <CardContent className="pt-6">
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Quote Number:</span>
+                          <span className="text-gray-600 dark:text-gray-400">Proposal Number:</span>
                           <span className="font-mono font-medium">
                             {quote.proposal_number}
                           </span>
@@ -206,7 +206,7 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                         <div className="flex justify-between">
                           <span className="text-gray-600 dark:text-gray-400">Customer:</span>
                           <span className="font-medium">
-                            {quote.quote_details?.contactName || 'Unknown'}
+                            {quote.client_name || 'Unknown'}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -219,7 +219,7 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                         <div className="flex justify-between text-base font-semibold">
                           <span className="text-gray-900 dark:text-white">Total Amount:</span>
                           <span className="text-blue-600 dark:text-blue-400">
-                            {formatCurrency(quote.price_details?.final_selling_price || 0)}
+                            {formatCurrency(quote.total_value || 0)}
                           </span>
                         </div>
                       </div>

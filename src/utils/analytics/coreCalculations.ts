@@ -52,13 +52,13 @@ export interface UserProposalMetrics {
 }
 
 export interface ProductMetrics {
-  productType: string;
+  productDomain: string;
   proposalCount: number;
   revenue: number;
 }
 
 export interface ProductModelMetrics {
-  productType: string;
+  productDomain: string;
   model: string;
   proposalCount: number;
   revenue: number;

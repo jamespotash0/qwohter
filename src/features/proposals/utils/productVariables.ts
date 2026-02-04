@@ -28,8 +28,8 @@ export const PRODUCT_VARIABLE_FIELDS: ProductVariableField[] = [
 
   // Product Identity
   { key: 'manufacturer', label: 'Manufacturer', path: ['manufacturer'], category: 'Identity' },
-  { key: 'type', label: 'Product Type', path: ['productType'], category: 'Identity' },
-  { key: 'category', label: 'Category', path: ['productCategory'], category: 'Identity' },
+  { key: 'type', label: 'Product Domain', path: ['productDomain'], category: 'Identity' },
+  { key: 'category', label: 'Product Line', path: ['productLine'], category: 'Identity' },
   { key: 'series', label: 'Series', path: ['series'], category: 'Identity' },
   { key: 'model', label: 'Model', path: ['model'], category: 'Identity' },
 
@@ -69,10 +69,10 @@ export function generateProductAlias(
   const rawData = product.rawData;
   let baseAlias = '';
 
-  if (rawData?.productType) {
-    baseAlias = formatAliasBase(rawData.productType);
-  } else if (rawData?.productCategory) {
-    baseAlias = formatAliasBase(rawData.productCategory);
+  if (rawData?.productDomain) {
+    baseAlias = formatAliasBase(rawData.productDomain);
+  } else if (rawData?.productLine) {
+    baseAlias = formatAliasBase(rawData.productLine);
   } else if (product.name) {
     // Extract first meaningful word from name
     const firstWord = product.name.split(/[\s-_]/)[0];

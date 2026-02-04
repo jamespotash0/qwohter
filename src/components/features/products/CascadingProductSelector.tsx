@@ -97,7 +97,7 @@ export function CascadingProductSelector({
   useEffect(() => {
     if (!initialValues || initialized || domains.length === 0) return;
 
-    const domainName = initialValues.productDomain as string || initialValues.productType as string;
+    const domainName = initialValues.productDomain as string;
     if (domainName) {
       const domain = domains.find(d => d.name === domainName);
       if (domain) {
@@ -125,7 +125,7 @@ export function CascadingProductSelector({
   useEffect(() => {
     if (!initialValues || !selectedManufacturer) return;
 
-    const productLineName = initialValues.productLine as string || initialValues.productCategory as string;
+    const productLineName = initialValues.productLine as string;
     if (productLineName) {
       const plList = productLines.get(selectedManufacturer.id) || [];
       const pl = plList.find(p => p.name === productLineName);

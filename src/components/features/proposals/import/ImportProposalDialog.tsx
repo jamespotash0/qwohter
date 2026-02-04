@@ -25,8 +25,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, FileUp, Loader2 } from 'lucide-react';
-import { FileUploadStep } from '@/_deprecated/components/features/quotes/import/FileUploadStep';
-import { ProcessingStep } from '@/_deprecated/components/features/quotes/import/ProcessingStep';
+import { FileUploadStep } from './FileUploadStep';
+import { ProcessingStep } from './ProcessingStep';
 import { extractTextFromFile, parseProposalWithAI } from '@/services/proposalImport';
 import { createProposal, type CreateProposalData } from '@/services/proposalsService';
 import { useForms } from '@/hooks/queries';

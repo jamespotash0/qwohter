@@ -81,17 +81,14 @@ export const calculateProductMetrics = (proposals: Proposal[]): ProductMetrics[]
   proposals.forEach((proposal) => {
     const products = proposal.form_data?.products?.items || [];
     products.forEach((product: any) => {
-      const productType =
+      const productDomain =
         product.rawData?.productDomain ||
-        product.rawData?.productType ||
-        product.productType ||
-        product.type ||
         'Other';
 
-      if (!productMap.has(productType)) {
-        productMap.set(productType, { productType, proposalCount: 0, revenue: 0 });
+      if (!productMap.has(productDomain)) {
+        productMap.set(productDomain, { productDomain, proposalCount: 0, revenue: 0 });
       }
-      const metrics = productMap.get(productType)!;
+      const metrics = productMap.get(productDomain)!;
       metrics.proposalCount++;
       if (proposal.status === 'Won') metrics.revenue += proposal.total_value || 0;
     });
@@ -108,17 +105,14 @@ export const calculateProductModelMetrics = (proposals: Proposal[]): ProductMode
   proposals.forEach((proposal) => {
     const products = proposal.form_data?.products?.items || [];
     products.forEach((product: any) => {
-      const productType =
+      const productDomain =
         product.rawData?.productDomain ||
-        product.rawData?.productType ||
-        product.productType ||
-        product.type ||
         'Other';
-      const model = product.rawData?.model || product.model || 'Other';
-      const key = `${productType}|${model}`;
+      const model = product.rawData?.model || 'Other';
+      const key = `${productDomain}|${model}`;
 
       if (!modelMap.has(key)) {
-        modelMap.set(key, { productType, model, proposalCount: 0, revenue: 0 });
+        modelMap.set(key, { productDomain, model, proposalCount: 0, revenue: 0 });
       }
       const metrics = modelMap.get(key)!;
       metrics.proposalCount++;
@@ -127,7 +121,7 @@ export const calculateProductModelMetrics = (proposals: Proposal[]): ProductMode
   });
 
   return Array.from(modelMap.values()).sort((a, b) => {
-    if (a.productType !== b.productType) return a.productType.localeCompare(b.productType);
+    if (a.productDomain !== b.productDomain) return a.productDomain.localeCompare(b.productDomain);
     return b.proposalCount - a.proposalCount;
   });
 };

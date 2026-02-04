@@ -69,7 +69,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
             <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis
-                dataKey="productType"
+                dataKey="productDomain"
                 stroke="#6B7280"
                 fontSize={10}
                 tickLine={false}
@@ -88,7 +88,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
               />
               <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
                 {analytics.productMetrics.map((entry, index) => {
-                  const color = PRODUCT_TYPE_COLORS[entry.productType] || CHART_COLORS.orange;
+                  const color = PRODUCT_TYPE_COLORS[entry.productDomain] || CHART_COLORS.orange;
                   return <Cell key={`cell-${index}`} fill={color} />;
                 })}
               </Bar>
@@ -124,7 +124,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
                 labelFormatter={(label, payload) => {
                   if (payload && payload.length > 0) {
                     const item = payload[0]!.payload;
-                    return `${item.productType} - ${label}`;
+                    return `${item.productDomain} - ${label}`;
                   }
                   return label;
                 }}
@@ -157,7 +157,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
                   <BarChart data={analytics.productMetrics} margin={{ left: 10, right: 30, top: 20, bottom: 80 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis
-                      dataKey="productType"
+                      dataKey="productDomain"
                       stroke="#6B7280"
                       fontSize={14}
                       tickLine={false}
@@ -177,7 +177,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
                     <Legend />
                     <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
                       {analytics.productMetrics.map((entry, index) => {
-                        const color = PRODUCT_TYPE_COLORS[entry.productType] || CHART_COLORS.orange;
+                        const color = PRODUCT_TYPE_COLORS[entry.productDomain] || CHART_COLORS.orange;
                         return <Cell key={`cell-${index}`} fill={color} />;
                       })}
                     </Bar>
@@ -216,7 +216,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
                       labelFormatter={(label, payload) => {
                         if (payload && payload.length > 0) {
                           const item = payload[0]!.payload;
-                          return `${item.productType} - ${label}`;
+                          return `${item.productDomain} - ${label}`;
                         }
                         return label;
                       }}

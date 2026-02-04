@@ -195,10 +195,3 @@ try {
 - Auth changes → Update [AUTH.md](docs/architecture/AUTH.md)
 - New guides or setup steps → Update this file's Documentation Index
 
----
-
-## Legacy Code
-
-Deprecated code in `src/_deprecated/`. Do NOT use:
-- `quotesService` → Use `proposalsService`
-- `Quote` type → Use `Proposal` type

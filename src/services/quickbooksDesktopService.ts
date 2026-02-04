@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Quote } from '@/_deprecated/services/quotesService';
+import type { Proposal } from '@/services/proposalsService';
 import { generateInvoiceQBXML, generateCustomerQBXML } from '@/lib/qbxml/generators';
 
 export interface QBDesktopConnection {
@@ -138,7 +138,7 @@ export async function generateQWCFile(organizationId: string): Promise<Blob> {
  * Create invoice in QuickBooks Desktop (adds to request queue)
  */
 export async function createInvoiceInQBDesktop(
-  quote: Quote,
+  proposal: Proposal,
   organizationId: string
 ): Promise<void> {
   const connection = await checkQBDesktopConnection(organizationId);
@@ -151,7 +151,7 @@ export async function createInvoiceInQBDesktop(
   const { data: existingSync } = await supabase
     .from('quickbooks_desktop_invoice_sync')
     .select('*')
-    .eq('quote_id', quote.id)
+    .eq('quote_id', proposal.id)
     .single();
 
   if (existingSync && existingSync.sync_status === 'Synced') {
@@ -159,7 +159,7 @@ export async function createInvoiceInQBDesktop(
   }
 
   // Generate QBXML for invoice
-  const invoiceQBXML = generateInvoiceQBXML(quote);
+  const invoiceQBXML = generateInvoiceQBXML(proposal);
 
   // Add to request queue
   const { error: queueError } = await supabase
@@ -169,8 +169,8 @@ export async function createInvoiceInQBDesktop(
       request_type: 'InvoiceAdd',
       qbxml_request: invoiceQBXML,
       priority: 5,
-      source_record_type: 'Quote',
-      source_record_id: quote.id,
+      source_record_type: 'Proposal',
+      source_record_id: proposal.id,
     } as any);
 
   if (queueError) throw queueError;
@@ -183,12 +183,12 @@ export async function createInvoiceInQBDesktop(
         sync_status: 'Pending',
         sync_error: null,
       })
-      .eq('quote_id', quote.id);
+      .eq('quote_id', proposal.id);
   } else {
     await supabase
       .from('quickbooks_desktop_invoice_sync')
       .insert({
-        quote_id: quote.id,
+        quote_id: proposal.id,
         organization_id: organizationId,
         sync_status: 'Pending',
       } as any);
