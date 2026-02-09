@@ -217,9 +217,9 @@ export function useConfigSchema({
           continue;
         }
 
-        // Auto-select if there's only one option available after filtering
-        if (field.values_ref && field.allowed_codes?.length === 1 && !field.depends_on) {
-          console.log(`[useConfigSchema] Auto-selecting field "${key}" with single allowed option: ${field.allowed_codes[0]}`);
+        // Auto-select if there's only one option available after filtering (only for required fields)
+        if (field.values_ref && field.allowed_codes?.length === 1 && !field.depends_on && field.required) {
+          console.log(`[useConfigSchema] Auto-selecting required field "${key}" with single allowed option: ${field.allowed_codes[0]}`);
           updated[key] = field.allowed_codes[0];
           hasChanges = true;
         }
@@ -346,16 +346,22 @@ export function useConfigSchema({
       }
 
       // Apply filter_by rules (conditional filtering)
-      if (field.filter_by) {
-        const filterFieldValue = values[field.filter_by.field];
-        if (filterFieldValue !== null && filterFieldValue !== undefined) {
-          const matchingRule = field.filter_by.rules.find((rule) =>
-            evaluateCondition(filterFieldValue, rule.when)
-          );
-          if (matchingRule) {
-            const allowedSet = new Set(matchingRule.show);
-            options = options.filter((o) => allowedSet.has(o.code));
-          }
+      // Check filters array first (priority-based), then fallback to filter_by
+      const filtersToCheck = originalField?.filters || (field.filter_by ? [field.filter_by] : []);
+
+      for (const filterConfig of filtersToCheck) {
+        const filterFieldValue = values[filterConfig.field];
+
+        // Find the first matching rule in this filter
+        const matchingRule = filterConfig.rules.find((rule) =>
+          evaluateCondition(filterFieldValue, rule.when)
+        );
+
+        if (matchingRule) {
+          // Found a match - apply this filter and stop checking others
+          const allowedSet = new Set(matchingRule.show);
+          options = options.filter((o) => allowedSet.has(o.code));
+          break; // First matching filter wins
         }
       }
 
@@ -643,6 +649,12 @@ function evaluateCondition(
   value: ConfigFormValues[string],
   condition: ConditionExpression
 ): boolean {
+  // Handle is_set check first (before null check)
+  if (condition.is_set !== undefined) {
+    const hasValue = value !== null && value !== undefined && value !== '';
+    return condition.is_set ? hasValue : !hasValue;
+  }
+
   if (value === null || value === undefined) return false;
 
   if (condition['=='] !== undefined) {

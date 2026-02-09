@@ -640,8 +640,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   // Filler mode: Full functionality
   return (
     <div className="space-y-4">
-      {/* Header with Mode Toggle - PRODUCT SELECTOR DISABLED FOR PRODUCTION TESTING */}
-      {/*
+      {/* Header with Mode Toggle */}
       <div className="flex items-center justify-end">
         <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <button
@@ -668,7 +667,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           </button>
         </div>
       </div>
-      */}
 
       {/* Product Selector Mode */}
       {entryMode === 'selector' && (
@@ -768,7 +766,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
                       {/* Product Details */}
                       <div className="space-y-1 text-[11px]">
-                        {/* Key Info Row: Model, Size, Panel Count */}
+                        {/* Key Info Row: Model + Dimensions (H × W × Panels) + Qty */}
                         {(() => {
                           const rawData = product.rawData as unknown as Record<string, unknown> | undefined;
                           const heightVal = findFieldValue(rawData, KEY_INFO_FIELDS.height);
@@ -780,14 +778,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
                           if (!hasKeyInfo) return null;
 
-                          // Build size string
-                          const sizeStr = [
-                            heightVal ? `${String(heightVal)}' H` : null,
-                            widthVal ? `${String(widthVal)}' W` : null,
-                          ].filter(Boolean).join(' × ');
-
                           return (
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 py-1 border-b border-gray-200 dark:border-gray-600">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1 border-b border-gray-200 dark:border-gray-600">
                               {modelVal != null && (
                                 <div>
                                   <span className="text-gray-500 dark:text-gray-400">Model: </span>
@@ -796,26 +788,33 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                                   </span>
                                 </div>
                               )}
-                              {sizeStr && (
-                                <div>
-                                  <span className="text-gray-500 dark:text-gray-400">Size: </span>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    {sizeStr}
-                                  </span>
+                              {/* Dimensions: H × W × Panels in compact format */}
+                              {(heightVal || widthVal || panelCountVal) && (
+                                <div className="flex items-center gap-1.5">
+                                  {heightVal != null && (
+                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                      {String(heightVal)}'<span className="text-gray-400 text-[10px] ml-0.5">H</span>
+                                    </span>
+                                  )}
+                                  {heightVal && widthVal && <span className="text-gray-400">×</span>}
+                                  {widthVal != null && (
+                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                      {String(widthVal)}'<span className="text-gray-400 text-[10px] ml-0.5">W</span>
+                                    </span>
+                                  )}
+                                  {(heightVal || widthVal) && panelCountVal && <span className="text-gray-400">×</span>}
+                                  {panelCountVal != null && (
+                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                      {String(panelCountVal)}<span className="text-gray-400 text-[10px] ml-0.5">panels</span>
+                                    </span>
+                                  )}
                                 </div>
                               )}
-                              {panelCountVal != null && (
-                                <div>
-                                  <span className="text-gray-500 dark:text-gray-400">Panels: </span>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    {String(panelCountVal)}
-                                  </span>
-                                </div>
-                              )}
+                              {/* Quantity - visually separated */}
                               {quantityVal != null && (
-                                <div>
-                                  <span className="text-gray-500 dark:text-gray-400">Qty: </span>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                                <div className="flex items-center gap-1 pl-2 border-l border-gray-300 dark:border-gray-600">
+                                  <span className="text-gray-500 dark:text-gray-400">Qty:</span>
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
                                     {String(quantityVal)}
                                   </span>
                                 </div>

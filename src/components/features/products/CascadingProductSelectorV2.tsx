@@ -1,19 +1,20 @@
 /**
  * Cascading Product Selector V2
- * Simplified product selection with dynamic configuration fields from config_schema
+ * Compact product selection with dynamic configuration fields from config_schema
  *
+ * Flow: Product Hierarchy → Configuration (dimensions included in config_schema)
  * Uses the new config_schema system instead of pc_* tables.
- * Hierarchy: Domain → Manufacturer → Product Line → Series → Model
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useProductStore, type ProductSelection } from '@/stores/products/productStore';
 import { ProductHierarchySelector } from './ProductHierarchySelector';
 import { ConfigSchemaFields } from './ConfigSchemaFields';
 import { Button } from '@/components/ui/button';
-import { Check } from 'lucide-react';
+import { Check, Package } from 'lucide-react';
 import type { ConfigSchema, ConfigFormValues } from '@/lib/types/configSchema';
 import { useConfigSchema } from '@/hooks/useConfigSchema';
+import { cn } from '@/lib/utils';
 
 interface CascadingProductSelectorV2Props {
   onProductSelect: (product: ProductSelection) => void;
@@ -40,7 +41,10 @@ export function CascadingProductSelectorV2({
     error,
   } = useProductStore();
 
-  // Configuration values for the selected model
+  // Track previous model ID to detect changes
+  const previousModelIdRef = useRef<string | null>(null);
+
+  // Configuration values for the selected model (includes dimensions)
   const [configValues, setConfigValues] = useState<ConfigFormValues>({});
   const [initialized, setInitialized] = useState(false);
 
@@ -56,6 +60,25 @@ export function CascadingProductSelectorV2({
     initialValues: configValues,
   });
 
+  // Reset config values when model changes (except during initial load/edit)
+  useEffect(() => {
+    if (!selectedModel) {
+      previousModelIdRef.current = null;
+      return;
+    }
+
+    const previousModelId = previousModelIdRef.current;
+    const currentModelId = selectedModel.id;
+
+    // If model changed and we had a previous model, reset config values
+    if (previousModelId && previousModelId !== currentModelId && !isEditMode) {
+      setConfigValues({});
+    }
+
+    // Update the ref for next comparison
+    previousModelIdRef.current = currentModelId;
+  }, [selectedModel?.id, isEditMode]);
+
   // Initialize config values when model is selected or when editing
   useEffect(() => {
     if (selectedModel) {
@@ -69,6 +92,7 @@ export function CascadingProductSelectorV2({
           } else if (field.default_value !== undefined) {
             defaults[key] = field.default_value;
           } else {
+            // No default - leave as null for truly optional fields
             defaults[key] = null;
           }
         }
@@ -89,8 +113,7 @@ export function CascadingProductSelectorV2({
       setConfigValues({ ...initialValues } as ConfigFormValues);
       setInitialized(true);
     }
-    // Don't reset to empty object when selectedModel becomes null - keep existing values
-  }, [selectedModel?.id, initialValues, initialized]);
+  }, [selectedModel?.id, initialValues, initialized, configSchema?.options]);
 
   const handleConfigChange = useCallback((values: ConfigFormValues) => {
     setConfigValues(values);
@@ -132,6 +155,9 @@ export function CascadingProductSelectorV2({
     // Resolve codes to labels for display purposes
     const specificationLabels = resolveSpecificationLabels(configValues);
 
+    // Get quantity from config values (default to 1)
+    const quantity = typeof configValues.quantity === 'number' ? configValues.quantity : 1;
+
     return {
       product_model_id: selectedModel.id,
       product_hierarchy: {
@@ -149,7 +175,7 @@ export function CascadingProductSelectorV2({
       specification_labels: specificationLabels,
       pricing: {
         unit_price: 0,
-        quantity: 1,
+        quantity,
         subtotal: 0,
       },
     };
@@ -174,7 +200,7 @@ export function CascadingProductSelectorV2({
     const selection = buildSelection();
     if (selection && onProductSelectAndContinue) {
       onProductSelectAndContinue(selection);
-      // Reset config values for next product
+      // Reset for next product
       setConfigValues({});
     }
   };
@@ -185,67 +211,71 @@ export function CascadingProductSelectorV2({
     (selectedModel?.default_configurations &&
       Object.keys(selectedModel.default_configurations).length > 0);
 
+  // Computed validation state
+  const isValid = useMemo(() => {
+    const quantity = typeof configValues.quantity === 'number' ? configValues.quantity : 1;
+    return !!selectedModel && quantity >= 1;
+  }, [selectedModel, configValues.quantity]);
+
   return (
-    <div className={className}>
+    <div className={cn('space-y-4', className)}>
       {/* Error Display */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm">
+        <div className="px-3 py-2 rounded-md border border-red-200 bg-red-50 text-red-600 text-sm">
           {error}
         </div>
       )}
 
-      {/* Product Hierarchy Selection */}
-      <ProductHierarchySelector isEditMode={isEditMode} />
+      {/* Product Selection Section */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+          <Package className="w-4 h-4" />
+          <span>Product Selection</span>
+        </div>
+        <div className="bg-gray-50/50 dark:bg-gray-900/30 rounded-lg border border-gray-200/60 dark:border-gray-700/50 p-4">
+          <ProductHierarchySelector isEditMode={isEditMode} />
+        </div>
+      </section>
 
-      {/* Configuration Options */}
-      {selectedModel && hasConfigOptions && (
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-            Configuration Options
-          </h4>
-
-          {configSchema ? (
-            // New config_schema system
-            <ConfigSchemaFields
-              schema={configSchema}
-              values={configValues}
-              onChange={handleConfigChange}
-              isEditMode={isEditMode}
-            />
-          ) : (
-            // Legacy: No config_schema, show loading or empty state
-            <div className="text-gray-500 text-sm">
-              No configuration schema found for this model.
-            </div>
-          )}
+      {/* Configuration Fields (includes dimensions from config_schema) */}
+      {selectedModel && hasConfigOptions && configSchema && (
+        <div className="bg-gray-50/50 dark:bg-gray-900/30 rounded-lg border border-gray-200/60 dark:border-gray-700/50 p-4">
+          <ConfigSchemaFields
+            schema={configSchema}
+            values={configValues}
+            onChange={handleConfigChange}
+            isEditMode={isEditMode}
+          />
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex justify-end gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
         {onCancel && (
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} size="sm">
             Cancel
           </Button>
         )}
         {onProductSelectAndContinue && !initialValues && (
           <Button
             onClick={handleAddAndContinue}
-            disabled={!selectedModel}
+            disabled={!isValid}
             variant="outline"
+            size="sm"
             className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-600 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
           >
-            <Check className="w-4 h-4 mr-2" />
+            <Check className="w-4 h-4 mr-1.5" />
             Add & Continue
           </Button>
         )}
         <Button
           onClick={handleAddProduct}
-          disabled={!selectedModel}
+          disabled={!isValid}
+          size="sm"
           className="bg-emerald-600 hover:bg-emerald-700"
         >
-          <Check className="w-4 h-4 mr-2" />
-          {initialValues ? 'Update Product' : 'Add & Close'}
+          <Check className="w-4 h-4 mr-1.5" />
+          {initialValues ? 'Update Product' : 'Add Product'}
         </Button>
       </div>
     </div>

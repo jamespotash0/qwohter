@@ -25,10 +25,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfigSchema } from '@/hooks/useConfigSchema';
-import type { ConfigSchema, ConfigFormValues, ResolvedOptionField, ResolvedValueOption } from '@/lib/types/configSchema';
+import type { ConfigSchema, ConfigFormValues, ResolvedOptionField, ResolvedValueOption, MaxValidationRule, ConditionExpression } from '@/lib/types/configSchema';
 
 interface ConfigSchemaFieldsProps {
   /** The config schema to render */
@@ -62,60 +62,27 @@ export function ConfigSchemaFields({
     onChange,
   });
 
-  // Group fields by their group property and sort by order
-  const groupedFields = useMemo(() => {
-    if (!resolvedSchema) return { ungrouped: [], groups: [] };
+  // Get all visible fields sorted by order (flat list, no grouping)
+  const sortedFields = useMemo(() => {
+    if (!resolvedSchema) return [];
 
     const fields = Object.entries(resolvedSchema.options);
-    const groups = resolvedSchema.groups || [];
 
     // Build a map of field key to schema position (for fallback ordering)
     const schemaPositionMap = new Map<string, number>();
     fields.forEach(([key], idx) => schemaPositionMap.set(key, idx));
 
-    // Create field groups
-    const fieldsByGroup = new Map<string, Array<[string, ResolvedOptionField]>>();
-    const ungrouped: Array<[string, ResolvedOptionField]> = [];
+    // Filter visible fields
+    const visibleFields = fields.filter(([key]) => isFieldVisible(key));
 
-    for (const [key, field] of fields) {
-      // Check visibility
-      if (!isFieldVisible(key)) continue;
-
-      if (field.group) {
-        const existing = fieldsByGroup.get(field.group) || [];
-        existing.push([key, field]);
-        fieldsByGroup.set(field.group, existing);
-      } else {
-        ungrouped.push([key, field]);
-      }
-    }
-
-    // Sort fields within each group by order (use schema position as fallback)
-    const sortFields = (
-      a: [string, ResolvedOptionField],
-      b: [string, ResolvedOptionField]
-    ) => {
-      // Use explicit order if set, otherwise use schema position + 100 as fallback
+    // Sort fields by order (use schema position as fallback)
+    visibleFields.sort((a, b) => {
       const orderA = a[1].order ?? ((schemaPositionMap.get(a[0]) ?? 0) + 100);
       const orderB = b[1].order ?? ((schemaPositionMap.get(b[0]) ?? 0) + 100);
       return orderA - orderB;
-    };
+    });
 
-    ungrouped.sort(sortFields);
-    for (const fields of fieldsByGroup.values()) {
-      fields.sort(sortFields);
-    }
-
-    // Sort groups by order
-    const sortedGroups = [...groups].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-    return {
-      ungrouped,
-      groups: sortedGroups.map((group) => ({
-        ...group,
-        fields: fieldsByGroup.get(group.id) || [],
-      })),
-    };
+    return visibleFields;
   }, [resolvedSchema, isFieldVisible]);
 
   if (isLoading) {
@@ -127,16 +94,19 @@ export function ConfigSchemaFields({
     );
   }
 
-  if (!resolvedSchema || Object.keys(resolvedSchema.options).length === 0) {
+  if (!resolvedSchema || sortedFields.length === 0) {
     return null;
   }
 
   return (
     <div className={className}>
-      {/* Ungrouped fields - responsive 6 column grid */}
-      {groupedFields.ungrouped.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-3 mb-4">
-          {groupedFields.ungrouped.map(([key, field]) => (
+      {/* All fields in a flat 4-column grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {sortedFields.map(([key, field]) => {
+          // Check for max validation error
+          const maxError = getMaxValidationError(field, values[key], values);
+
+          return (
             <div key={key} className={cn('space-y-1', getGridColClass(field.grid_span))}>
               <FieldLabel field={field} fieldKey={key} />
               <FieldInput
@@ -146,45 +116,24 @@ export function ConfigSchemaFields({
                 options={getFieldOptions(key)}
                 onChange={(value) => setValue(key, value)}
                 isEditMode={isEditMode}
+                hasError={!!maxError}
               />
-              {field.help_text && (
+              {/* Max validation error - only show when value exceeds max */}
+              {maxError && (
+                <div className="px-2 py-1.5 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                  <p className="text-[11px] text-red-600 dark:text-red-400 leading-tight">
+                    {maxError}
+                  </p>
+                </div>
+              )}
+              {/* Help text - only show if no error */}
+              {!maxError && field.help_text && (
                 <p className="text-[10px] text-gray-400 leading-tight">{field.help_text}</p>
               )}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Grouped fields */}
-      {groupedFields.groups.map((group) => {
-        if (group.fields.length === 0) return null;
-
-        return (
-          <div key={group.id} className="mb-4">
-            <h5 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">
-              {group.label}
-            </h5>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-3">
-              {group.fields.map(([key, field]) => (
-                <div key={key} className={cn('space-y-1', getGridColClass(field.grid_span))}>
-                  <FieldLabel field={field} fieldKey={key} />
-                  <FieldInput
-                    fieldKey={key}
-                    field={field}
-                    value={values[key]}
-                    options={getFieldOptions(key)}
-                    onChange={(value) => setValue(key, value)}
-                    isEditMode={isEditMode}
-                  />
-                  {field.help_text && (
-                    <p className="text-[10px] text-gray-400 leading-tight">{field.help_text}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -209,6 +158,7 @@ interface FieldInputProps {
   options: ResolvedValueOption[];
   onChange: (value: ConfigFormValues[string]) => void;
   isEditMode: boolean;
+  hasError?: boolean;
 }
 
 function FieldInput({
@@ -218,52 +168,105 @@ function FieldInput({
   options,
   onChange,
   isEditMode,
+  hasError = false,
 }: FieldInputProps) {
-  const readonlyStyles = isEditMode
+  // Auto-readonly: required fields with exactly 1 allowed_code in schema, no dependencies or filters
+  // This means the field value is fixed by schema definition, not by runtime filtering
+  const isAutoReadonly =
+    field.required &&
+    field.allowed_codes?.length === 1 &&
+    !field.depends_on &&
+    !field.filter_by &&
+    !field.filters;
+  const isEffectivelyReadonly = field.readonly || isAutoReadonly;
+
+  const readonlyStyles = (isEditMode || isEffectivelyReadonly)
     ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70'
     : '';
 
+  const errorStyles = hasError
+    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+    : '';
+
   switch (field.type) {
-    case 'select':
+    case 'select': {
+      const placeholderText = field.placeholder || `Select ${field.label}...`;
+      const hasValue = value !== null && value !== undefined && value !== '';
+      const selectedOption = hasValue ? options.find((o) => o.code === String(value)) : null;
+
       return (
-        <Select
-          value={value?.toString() || ''}
-          onValueChange={onChange}
-          disabled={isEditMode || field.readonly}
-        >
-          <SelectTrigger className={cn('w-full', readonlyStyles)}>
-            <SelectValue placeholder={field.placeholder || `Select ${field.label}...`} />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((opt) => (
-              <SelectItem key={opt.code} value={opt.code}>
-                <span className="flex items-center gap-2">
-                  {opt.hex && (
-                    <span
-                      className="w-4 h-4 rounded-full border border-gray-200"
-                      style={{ backgroundColor: opt.hex }}
-                    />
-                  )}
-                  {opt.label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative">
+          <Select
+            value={value?.toString() || ''}
+            onValueChange={onChange}
+            disabled={isEditMode || isEffectivelyReadonly}
+          >
+            <SelectTrigger className={cn('w-full', hasValue && !isEditMode && !isEffectivelyReadonly && 'pr-16', readonlyStyles)}>
+              <SelectValue placeholder={placeholderText}>
+                {selectedOption && (
+                  <span className="flex items-center gap-2">
+                    {selectedOption.hex && (
+                      <span
+                        className="w-4 h-4 rounded-full border border-gray-200"
+                        style={{ backgroundColor: selectedOption.hex }}
+                      />
+                    )}
+                    {selectedOption.label}
+                  </span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt.code} value={opt.code}>
+                  <span className="flex items-center gap-2">
+                    {opt.hex && (
+                      <span
+                        className="w-4 h-4 rounded-full border border-gray-200"
+                        style={{ backgroundColor: opt.hex }}
+                      />
+                    )}
+                    {opt.label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Clear button - only for optional fields with value */}
+          {hasValue && !isEditMode && !isEffectivelyReadonly && !field.required && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(null);
+              }}
+              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 z-10"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       );
+    }
 
     case 'multi-select': {
       const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
+      const placeholderText = field.placeholder || 'Select...';
 
       const toggleOption = (code: string) => {
-        if (isEditMode || field.readonly) return;
+        if (isEditMode || isEffectivelyReadonly) return;
         const newValues = selectedValues.includes(code)
           ? selectedValues.filter((v) => v !== code)
           : [...selectedValues, code];
-        onChange(newValues as string[]);
+        onChange(newValues.length > 0 ? (newValues as string[]) : null);
       };
 
-      if (isEditMode || field.readonly) {
+      const clearAll = () => {
+        if (isEditMode || isEffectivelyReadonly) return;
+        onChange(null);
+      };
+
+      if (isEditMode || isEffectivelyReadonly) {
         return (
           <div className={cn(
             'flex h-10 w-full items-center rounded-md border border-input px-3 py-2 text-sm',
@@ -274,7 +277,7 @@ function FieldInput({
                 ? selectedValues.map((code) =>
                     options.find((o) => o.code === code)?.label || code
                   ).join(', ')
-                : field.placeholder || 'Select...'}
+                : placeholderText}
             </span>
           </div>
         );
@@ -290,18 +293,30 @@ function FieldInput({
                 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
               )}
             >
-              <span className="truncate text-left">
+              <span className={cn('truncate text-left', selectedValues.length === 0 && 'text-muted-foreground')}>
                 {selectedValues.length > 0
                   ? selectedValues.map((code) =>
                       options.find((o) => o.code === code)?.label || code
                     ).join(', ')
-                  : field.placeholder || 'Select...'}
+                  : placeholderText}
               </span>
               <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
             <div className="max-h-60 overflow-y-auto p-1">
+              {/* Clear all option */}
+              {selectedValues.length > 0 && (
+                <>
+                  <div
+                    onClick={clearAll}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm text-gray-500 italic hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    Clear all
+                  </div>
+                  <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+                </>
+              )}
               {options.map((opt) => {
                 const isSelected = selectedValues.includes(opt.code);
                 return (
@@ -345,8 +360,8 @@ function FieldInput({
             min={field.min}
             max={field.max}
             step={field.step}
-            readOnly={isEditMode || field.readonly}
-            className={cn('flex-1', readonlyStyles)}
+            readOnly={isEditMode || isEffectivelyReadonly}
+            className={cn('flex-1', readonlyStyles, errorStyles)}
           />
           {field.unit && (
             <span className="text-sm text-gray-500 shrink-0">{field.unit}</span>
@@ -355,15 +370,32 @@ function FieldInput({
       );
 
     case 'text':
+      // Text fields can also have units (e.g., dimension fields like wall_height)
+      if (field.unit) {
+        return (
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              value={value?.toString() || ''}
+              onChange={(e) => onChange(e.target.value || null)}
+              placeholder={field.placeholder}
+              maxLength={field.max_length}
+              readOnly={isEditMode || isEffectivelyReadonly}
+              className={cn('flex-1', readonlyStyles, errorStyles)}
+            />
+            <span className="text-sm text-gray-500 shrink-0">{field.unit}</span>
+          </div>
+        );
+      }
       return (
         <Input
           type="text"
           value={value?.toString() || ''}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value || null)}
           placeholder={field.placeholder}
           maxLength={field.max_length}
-          readOnly={isEditMode || field.readonly}
-          className={readonlyStyles}
+          readOnly={isEditMode || isEffectivelyReadonly}
+          className={cn(readonlyStyles, errorStyles)}
         />
       );
 
@@ -374,18 +406,18 @@ function FieldInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
           maxLength={field.max_length}
-          readOnly={isEditMode || field.readonly}
+          readOnly={isEditMode || isEffectivelyReadonly}
           className={cn('min-h-[80px]', readonlyStyles)}
         />
       );
 
     case 'checkbox':
       return (
-        <div className={cn('flex items-center gap-2', isEditMode && 'opacity-70')}>
+        <div className={cn('flex items-center gap-2', (isEditMode || isEffectivelyReadonly) && 'opacity-70')}>
           <Checkbox
             checked={!!value}
             onCheckedChange={(checked) => onChange(!!checked)}
-            disabled={isEditMode || field.readonly}
+            disabled={isEditMode || isEffectivelyReadonly}
           />
           {field.placeholder && (
             <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -412,7 +444,7 @@ function FieldInput({
           value={value?.toString() || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
-          readOnly={isEditMode || field.readonly}
+          readOnly={isEditMode || isEffectivelyReadonly}
           className={readonlyStyles}
         />
       );
@@ -431,4 +463,178 @@ function getGridColClass(gridSpan?: 1 | 2 | 3 | 4): string {
     case 4: return 'col-span-4';
     default: return 'col-span-1'; // Default to single column for compact layout
   }
+}
+
+/**
+ * Parse a dimension value in feet-inches notation
+ *
+ * Supported formats:
+ * - Simple decimal: "15", "15.5"
+ * - Decimal feet with marker: "15.75'" → 15.75 feet
+ * - Feet-inches: "15'-2\"", "15' 2\"", "15-2\"", "15 2\"" → 15 feet 2 inches
+ * - Feet with fractional inches: "15-3/4\"", "15 3/4\"" → 15 feet 0.75 inches
+ * - Feet with mixed number inches: "15-1 3/4\"", "15 1 3/4\"" → 15 feet 1.75 inches
+ *
+ * Returns the value in decimal feet for validation against max_rules
+ */
+function parseDimensionValue(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+
+  // If already a number, return it
+  if (typeof value === 'number') return value;
+
+  let str = value.toString().trim();
+  if (!str) return null;
+
+  // Normalize: remove double quotes at end if present
+  str = str.replace(/"$/, '');
+
+  // Format 1: Decimal feet with ' marker (e.g., "15.75'" → 15.75)
+  const decimalFeetMatch = str.match(/^(\d+\.?\d*)'\s*$/);
+  if (decimalFeetMatch) {
+    return parseFloat(decimalFeetMatch[1]);
+  }
+
+  // Format 2: Feet with mixed number inches (e.g., "15-1 3/4", "15'-1 3/4", "15 1 3/4")
+  // Pattern: feet + separator + whole inches + space + fraction
+  const mixedNumberMatch = str.match(/^(\d+)(?:')?[\s-]+(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixedNumberMatch) {
+    const feet = parseInt(mixedNumberMatch[1], 10);
+    const wholeInches = parseInt(mixedNumberMatch[2], 10);
+    const fracNum = parseInt(mixedNumberMatch[3], 10);
+    const fracDen = parseInt(mixedNumberMatch[4], 10);
+
+    if (fracDen !== 0) {
+      const totalInches = wholeInches + (fracNum / fracDen);
+      return feet + (totalInches / 12);
+    }
+  }
+
+  // Format 3: Feet with whole inches only (e.g., "15'-2", "15' 2", "15-2", "15 2")
+  const feetWholeInchesMatch = str.match(/^(\d+)(?:')?[\s-]+(\d+)$/);
+  if (feetWholeInchesMatch) {
+    const feet = parseInt(feetWholeInchesMatch[1], 10);
+    const inches = parseInt(feetWholeInchesMatch[2], 10);
+    return feet + (inches / 12);
+  }
+
+  // Format 4: Feet with fractional inches only (e.g., "15-3/4", "15 3/4", "15'-3/4")
+  const feetFracInchesMatch = str.match(/^(\d+)(?:')?[\s-]+(\d+)\/(\d+)$/);
+  if (feetFracInchesMatch) {
+    const feet = parseInt(feetFracInchesMatch[1], 10);
+    const fracNum = parseInt(feetFracInchesMatch[2], 10);
+    const fracDen = parseInt(feetFracInchesMatch[3], 10);
+
+    if (fracDen !== 0) {
+      const fracInches = fracNum / fracDen;
+      return feet + (fracInches / 12);
+    }
+  }
+
+  // Format 5: Simple fraction (e.g., "3/4") - unlikely for wall height but supported
+  const simpleFractionMatch = str.match(/^(\d+)\/(\d+)$/);
+  if (simpleFractionMatch) {
+    const num = parseInt(simpleFractionMatch[1], 10);
+    const den = parseInt(simpleFractionMatch[2], 10);
+    if (den !== 0) {
+      return num / den;
+    }
+  }
+
+  // Format 6: Simple decimal number (e.g., "15", "15.5")
+  const simpleNum = parseFloat(str);
+  if (!isNaN(simpleNum)) {
+    return simpleNum;
+  }
+
+  return null;
+}
+
+/**
+ * Evaluate a condition expression against a value
+ */
+function evaluateConditionForMax(
+  value: ConfigFormValues[string],
+  condition: ConditionExpression
+): boolean {
+  // Handle is_set check first
+  if (condition.is_set !== undefined) {
+    const hasValue = value !== null && value !== undefined && value !== '';
+    return condition.is_set ? hasValue : !hasValue;
+  }
+
+  if (value === null || value === undefined) return false;
+
+  if (condition['=='] !== undefined) {
+    return value === condition['=='];
+  }
+  if (condition['!='] !== undefined) {
+    return value !== condition['!='];
+  }
+
+  // Numeric comparisons
+  const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(numValue)) return false;
+
+  if (condition['>'] !== undefined) {
+    return numValue > condition['>'];
+  }
+  if (condition['<'] !== undefined) {
+    return numValue < condition['<'];
+  }
+  if (condition['>='] !== undefined) {
+    return numValue >= condition['>='];
+  }
+  if (condition['<='] !== undefined) {
+    return numValue <= condition['<='];
+  }
+  if (condition.in !== undefined) {
+    return condition.in.includes(value as string | number);
+  }
+  if (condition.not_in !== undefined) {
+    return !condition.not_in.includes(value as string | number);
+  }
+
+  return false;
+}
+
+/**
+ * Get the max validation error message for a field, if any
+ * Returns null if no error, or the error message string
+ */
+function getMaxValidationError(
+  field: ResolvedOptionField,
+  fieldValue: ConfigFormValues[string],
+  allValues: ConfigFormValues
+): string | null {
+  // Only check if field has max_rules and has a value
+  if (!field.max_rules || field.max_rules.length === 0) return null;
+
+  // Parse the current field value
+  const numericValue = parseDimensionValue(fieldValue);
+  if (numericValue === null) return null; // No value entered yet
+
+  // Find the first matching rule
+  for (const rule of field.max_rules) {
+    const conditions = rule.when;
+
+    // Check if all conditions match (empty conditions = default rule)
+    const allConditionsMatch = Object.keys(conditions).length === 0 ||
+      Object.entries(conditions).every(([fieldName, condition]) =>
+        evaluateConditionForMax(allValues[fieldName], condition)
+      );
+
+    if (allConditionsMatch) {
+      // Found matching rule - check if value exceeds max
+      if (numericValue > rule.max) {
+        // Return error message
+        return rule.message || `Maximum allowed is ${rule.max}${field.unit ? ` ${field.unit}` : ''}`;
+      }
+      // Value is within max - no error
+      return null;
+    }
+  }
+
+  // No matching rule found - no validation error
+  return null;
 }

@@ -114,11 +114,22 @@ export interface OptionField {
   // ---------------------------------------------------------------------------
 
   /**
-   * Filter available options based on another field's numeric value
+   * Filter available options based on another field's value
    * Different from depends_on: this filters by conditions, not exact match
    * @example { field: "wall_height", rules: [{ when: { ">": 30 }, show: ["heavy_duty"] }] }
    */
   filter_by?: FilterConfig;
+
+  /**
+   * Multiple filters with priority - first matching filter wins
+   * Use when one field can override another's filtering (e.g., glass_type overrides panel_skin → stc_rating)
+   * Filters are evaluated in array order; first match stops evaluation
+   * @example [
+   *   { field: "glass_type", rules: [{ when: { "is_set": true }, show: ["38"] }] },
+   *   { field: "panel_skin", rules: [{ when: { "==": "STL_SKN" }, show: ["49", "51"] }] }
+   * ]
+   */
+  filters?: FilterConfig[];
 
   // ---------------------------------------------------------------------------
   // COMPUTED - Auto-calculated, readonly
@@ -139,6 +150,17 @@ export interface OptionField {
 
   /** Maximum value (for type: 'number') */
   max?: number;
+
+  /**
+   * Dynamic max validation rules based on other field values
+   * For text fields that represent dimensions (e.g., wall_height)
+   * @example [
+   *   { "when": { "panel_skin": { "==": "STL_SKN" }, "glass_type": { "is_set": true } }, "max": 24.17 },
+   *   { "when": { "panel_skin": { "==": "STL_SKN" } }, "max": 30.17 },
+   *   { "when": {}, "max": 14.17 }
+   * ]
+   */
+  max_rules?: MaxValidationRule[];
 
   /** Step increment (for type: 'number') */
   step?: number;
@@ -244,6 +266,21 @@ export interface ComputeRule {
 }
 
 /**
+ * Rule for dynamic max value validation based on other fields
+ * Used for dimension fields where max depends on configuration
+ */
+export interface MaxValidationRule {
+  /** Conditions to check - all must be true. Empty object = default rule */
+  when: Record<string, ConditionExpression>;
+
+  /** Maximum value when conditions match (in same unit as field) */
+  max: number;
+
+  /** Error message to show when exceeded */
+  message?: string;
+}
+
+/**
  * Condition for showing/hiding a field
  */
 export interface VisibilityCondition {
@@ -279,6 +316,7 @@ export type ConditionOperator =
  * @example { ">": 30 } - value > 30
  * @example { "==": "Vinyl" } - value equals "Vinyl"
  * @example { "in": ["Oak", "Walnut"] } - value is "Oak" or "Walnut"
+ * @example { "is_set": true } - field has a value (not null/undefined/empty)
  */
 export interface ConditionExpression {
   '=='?: string | number | boolean;
@@ -289,6 +327,8 @@ export interface ConditionExpression {
   '<='?: number;
   in?: (string | number)[];
   not_in?: (string | number)[];
+  /** Check if field has a value (true) or is empty (false) */
+  is_set?: boolean;
 }
 
 // =============================================================================
