@@ -136,6 +136,19 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
     });
   };
 
+  // Handle logo removal
+  const handleLogoRemove = () => {
+    toast({
+      title: "Logo Removed",
+      description: "Your company logo has been removed.",
+    });
+
+    // Refresh organization data
+    if (typeof onOrganizationUpdate === 'function') {
+      onOrganizationUpdate();
+    }
+  };
+
   // Generic update function
   const handleUpdateField = async (
     field: string,
@@ -231,6 +244,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                   <LogoUpload
                     onUploadSuccess={handleLogoUploadSuccess}
                     onUploadError={handleLogoUploadError}
+                    onRemove={handleLogoRemove}
                     currentLogoUrl={logoSignedUrl || ''}
                     userId={currentUser.id}
                     disabled={false}

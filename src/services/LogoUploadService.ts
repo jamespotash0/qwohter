@@ -19,8 +19,10 @@ export class LogoUploadService {
   private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   private static readonly ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/svg+xml'];
   private static readonly ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.svg'];
-  // Template-optimized dimensions: 440px x 120px (template max size)
-  private static readonly TEMPLATE_DIMENSIONS = { width: 440, height: 120 };
+  // Store at higher resolution, let display handle sizing
+  // Max 1024px on longest side - good balance of quality vs file size
+  private static readonly MAX_DIMENSION = 1024;
+  private static readonly JPEG_QUALITY = 0.92; // Higher quality for logos
   private static readonly BUCKET_NAME = 'organization-logos';
   // Signed URL duration: 7 days (logos are cached and refreshed periodically)
   private static readonly SIGNED_URL_EXPIRY = 60 * 60 * 24 * 7; // 7 days in seconds
@@ -110,9 +112,10 @@ export class LogoUploadService {
 
   /**
    * Processes and optimizes an image file
+   * Stores at higher resolution (max 1024px) for quality, let display handle sizing
    */
   static async processImage(file: File): Promise<File> {
-    // For SVG files, return as-is since they're already optimized
+    // For SVG files, return as-is since they're vector graphics
     if (file.type === 'image/svg+xml') {
       return file;
     }
@@ -129,28 +132,23 @@ export class LogoUploadService {
       // Load the image
       const img = await this.loadImageFromFile(file);
 
-      // Calculate new dimensions optimized for template display (440x120 max)
-      // Use template dimensions as target while maintaining aspect ratio
-      const targetWidth = this.TEMPLATE_DIMENSIONS.width;
-      const targetHeight = this.TEMPLATE_DIMENSIONS.height;
       let { width, height } = img;
 
-      // Calculate scaling to fit within template dimensions while maintaining aspect ratio
-      const scaleX = targetWidth / width;
-      const scaleY = targetHeight / height;
-      const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
-
-      width = Math.floor(width * scale);
-      height = Math.floor(height * scale);
+      // Only resize if larger than max dimension (preserve quality for smaller images)
+      if (width > this.MAX_DIMENSION || height > this.MAX_DIMENSION) {
+        const scale = this.MAX_DIMENSION / Math.max(width, height);
+        width = Math.floor(width * scale);
+        height = Math.floor(height * scale);
+      }
 
       // Set canvas dimensions
       canvas.width = width;
       canvas.height = height;
 
-      // Draw and compress the image
+      // Draw the image
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Convert to blob with compression
+      // Convert to blob with high quality
       return new Promise((resolve, reject) => {
         canvas.toBlob(
           (blob) => {
@@ -168,7 +166,7 @@ export class LogoUploadService {
             resolve(processedFile);
           },
           'image/jpeg',
-          0.9 // Quality setting
+          this.JPEG_QUALITY
         );
       });
     } catch (error) {

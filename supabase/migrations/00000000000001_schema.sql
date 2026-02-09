@@ -11178,6 +11178,51 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 -- =====================================================
+-- STORAGE BUCKETS
+-- =====================================================
+
+-- Organization logos bucket (private - uses signed URLs)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('organization-logos', 'organization-logos', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage RLS policies for organization-logos bucket
+-- Folder structure: {org_id}/filename
+
+-- Owner/Admin can upload logos
+CREATE POLICY "Admins can upload organization logos"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'organization-logos'
+  AND is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
+);
+
+-- Owner/Admin can update logos
+CREATE POLICY "Admins can update organization logos"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'organization-logos'
+  AND is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
+);
+
+-- Owner/Admin can delete logos
+CREATE POLICY "Admins can delete organization logos"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'organization-logos'
+  AND is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
+);
+
+-- Any org member can view logos
+CREATE POLICY "Members can view organization logos"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+  bucket_id = 'organization-logos'
+  AND is_active_member((select auth.uid()), ((storage.foldername(name))[1])::uuid)
+);
+
+
+-- =====================================================
 -- PG_CRON SCHEDULED JOBS
 -- Idempotent: unschedule by name first to avoid duplicates
 -- =====================================================

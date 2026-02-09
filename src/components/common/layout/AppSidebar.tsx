@@ -652,7 +652,7 @@ export function AppSidebar({
                           ? 'text-[var(--sidebar-nav-text)] opacity-50 cursor-not-allowed'
                           : isActive
                           ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)] scale-[1.01]'
-                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:scale-[1.02] active:scale-[0.98]'
+                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:translate-x-0.5 hover:scale-[1.02] active:scale-[0.98]'
                       } transition-all duration-300 ease-out`}
                       style={{
                         borderRadius: isCollapsed ? '10px' : 'var(--sidebar-nav-border-radius)',
@@ -668,20 +668,6 @@ export function AppSidebar({
                           handleNavigate(item.path, item.title, e);
                         } else {
                           e.preventDefault();
-                        }
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive && !isDisabled) {
-                          const target = e.currentTarget;
-                          target.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                          target.style.transform = 'translateX(2px)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive && !isDisabled) {
-                          const target = e.currentTarget;
-                          target.style.backgroundColor = 'transparent';
-                          target.style.transform = 'translateX(0)';
                         }
                       }}
                     >
@@ -832,14 +818,8 @@ export function AppSidebar({
                     variant="ghost"
                     size="sm"
                     onClick={onLogout}
-                    className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
+                    className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout hover:bg-[var(--sidebar-nav-bg-hover)]"
                     style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
                     title="Logout"
                   >
                     <SignOutIcon className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
@@ -862,14 +842,8 @@ export function AppSidebar({
                     variant="ghost"
                     size="sm"
                     onClick={onLogout}
-                    className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
+                    className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout hover:bg-[var(--sidebar-nav-bg-hover)]"
                     style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
                     title="Logout"
                   >
                     <SignOutIcon className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
