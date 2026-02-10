@@ -21,14 +21,11 @@ import {
 } from '@/components/ui/select';
 
 interface ProductHierarchySelectorProps {
-  /** Whether the form is in edit mode (fields become readonly) */
-  isEditMode?: boolean;
   /** Optional class name */
   className?: string;
 }
 
 export function ProductHierarchySelector({
-  isEditMode = false,
   className,
 }: ProductHierarchySelectorProps) {
   // Use shallow comparison for stable subscriptions
@@ -212,10 +209,6 @@ export function ProductHierarchySelector({
     fetchModelsByManufacturer,
   ]);
 
-  const readonlyStyles = isEditMode
-    ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70'
-    : '';
-
   // Determine if series can be selected (either has product line or skipping product lines)
   const canSelectSeries = selectedProductLine || (hierarchyState.skipProductLines && selectedManufacturer);
 
@@ -237,9 +230,9 @@ export function ProductHierarchySelector({
               const domain = domains.find((d) => d.id === id);
               selectDomain(domain || null);
             }}
-            disabled={loading.domains || isEditMode}
+            disabled={loading.domains}
           >
-            <SelectTrigger className={`w-full ${readonlyStyles}`}>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder={loading.domains ? 'Loading...' : 'Select domain...'} />
             </SelectTrigger>
             <SelectContent>
@@ -263,9 +256,9 @@ export function ProductHierarchySelector({
               const mfr = manufacturersList.find((m) => m.id === id);
               selectManufacturer(mfr || null);
             }}
-            disabled={!selectedDomain || loading.manufacturers || isEditMode}
+            disabled={!selectedDomain || loading.manufacturers}
           >
-            <SelectTrigger className={`w-full ${readonlyStyles}`}>
+            <SelectTrigger className="w-full">
               <SelectValue
                 placeholder={
                   loading.manufacturers
@@ -300,9 +293,9 @@ export function ProductHierarchySelector({
               const pl = productLinesList.find((p) => p.id === id);
               selectProductLine(pl || null);
             }}
-            disabled={!selectedManufacturer || loading.productLines || isEditMode || (productLinesList.length === 0 && !hierarchyState.skipProductLines)}
+            disabled={!selectedManufacturer || loading.productLines || (productLinesList.length === 0 && !hierarchyState.skipProductLines)}
           >
-            <SelectTrigger className={`w-full ${readonlyStyles}`}>
+            <SelectTrigger className="w-full">
               <SelectValue
                 placeholder={
                   loading.productLines
@@ -341,9 +334,9 @@ export function ProductHierarchySelector({
               const ser = seriesList.find((s) => s.id === id);
               selectSeries(ser || null);
             }}
-            disabled={!canSelectSeries || loading.series || isEditMode || (seriesList.length === 0 && !hierarchyState.skipSeries)}
+            disabled={!canSelectSeries || loading.series || (seriesList.length === 0 && !hierarchyState.skipSeries)}
           >
-            <SelectTrigger className={`w-full ${readonlyStyles}`}>
+            <SelectTrigger className="w-full">
               <SelectValue
                 placeholder={
                   loading.series
@@ -381,9 +374,9 @@ export function ProductHierarchySelector({
               const model = modelsList.find((m) => m.id === id);
               selectModel(model || null);
             }}
-            disabled={!canSelectModel || loading.models || isEditMode || modelsList.length === 0}
+            disabled={!canSelectModel || loading.models || modelsList.length === 0}
           >
-            <SelectTrigger className={`w-full ${readonlyStyles}`}>
+            <SelectTrigger className="w-full">
               <SelectValue
                 placeholder={
                   loading.models

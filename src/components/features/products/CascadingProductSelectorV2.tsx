@@ -38,15 +38,17 @@ export function CascadingProductSelectorV2({
     selectedProductLine,
     selectedSeries,
     selectedModel,
+    loading,
     error,
   } = useProductStore();
 
   // Track previous model ID to detect changes
   const previousModelIdRef = useRef<string | null>(null);
+  // Track which initialValues we've initialized from (stringified for comparison)
+  const initializedFromValuesRef = useRef<string | null>(null);
 
   // Configuration values for the selected model (includes dimensions)
   const [configValues, setConfigValues] = useState<ConfigFormValues>({});
-  const [initialized, setInitialized] = useState(false);
 
   // Determine if we're in edit mode
   const isEditMode = !!initialValues;
@@ -60,7 +62,19 @@ export function CascadingProductSelectorV2({
     initialValues: configValues,
   });
 
-  // Reset config values when model changes (except during initial load/edit)
+  // Create a stable key from initialValues for tracking initialization
+  const initialValuesKey = useMemo(() => {
+    if (!initialValues) return null;
+    // Create a key from the model_id and a few key values to detect when initialValues actually changed
+    const keyParts = [
+      initialValues.model_id,
+      initialValues.wall_height,
+      initialValues.quantity,
+    ].filter(Boolean);
+    return keyParts.length > 0 ? keyParts.join('|') : JSON.stringify(initialValues);
+  }, [initialValues]);
+
+  // Reset config values when model changes (always reset when switching models)
   useEffect(() => {
     if (!selectedModel) {
       previousModelIdRef.current = null;
@@ -71,49 +85,64 @@ export function CascadingProductSelectorV2({
     const currentModelId = selectedModel.id;
 
     // If model changed and we had a previous model, reset config values
-    if (previousModelId && previousModelId !== currentModelId && !isEditMode) {
+    // This applies even in edit mode - if user changes to a different model, reset the config
+    if (previousModelId && previousModelId !== currentModelId) {
       setConfigValues({});
+      // Reset the initialization tracking so new model gets its defaults
+      initializedFromValuesRef.current = null;
     }
 
     // Update the ref for next comparison
     previousModelIdRef.current = currentModelId;
-  }, [selectedModel?.id, isEditMode]);
+  }, [selectedModel?.id]);
 
-  // Initialize config values when model is selected or when editing
+  // Initialize config values when model is selected
   useEffect(() => {
-    if (selectedModel) {
-      const defaults: ConfigFormValues = {};
+    if (!selectedModel) return;
 
-      // If we have a config_schema, use its defaults
-      if (configSchema?.options) {
-        for (const [key, field] of Object.entries(configSchema.options)) {
-          if (initialValues && key in initialValues) {
-            defaults[key] = initialValues[key] as ConfigFormValues[string];
-          } else if (field.default_value !== undefined) {
-            defaults[key] = field.default_value;
-          } else {
-            // No default - leave as null for truly optional fields
-            defaults[key] = null;
-          }
-        }
-      }
-      // Fallback: if model has default_configurations (legacy)
-      else if (selectedModel.default_configurations) {
-        for (const [key, field] of Object.entries(selectedModel.default_configurations)) {
-          if (initialValues && key in initialValues) {
-            defaults[key] = initialValues[key] as ConfigFormValues[string];
-          } else if (field.default_value !== undefined) {
-            defaults[key] = field.default_value;
-          }
-        }
-      }
-
-      setConfigValues(defaults);
-    } else if (initialValues && !initialized) {
-      setConfigValues({ ...initialValues } as ConfigFormValues);
-      setInitialized(true);
+    // In edit mode, skip if we've already initialized from these specific initialValues
+    if (isEditMode && initialValuesKey && initializedFromValuesRef.current === initialValuesKey) {
+      return;
     }
-  }, [selectedModel?.id, initialValues, initialized, configSchema?.options]);
+
+    const defaults: ConfigFormValues = {};
+
+    // If we have a config_schema, use its options
+    if (configSchema?.options) {
+      for (const [key, field] of Object.entries(configSchema.options)) {
+        // Check multiple possible key variations in initialValues
+        const valueFromInitial = initialValues?.[key] ?? initialValues?.[key.toLowerCase()] ?? initialValues?.[key.replace(/_/g, '')];
+
+        if (valueFromInitial !== undefined && valueFromInitial !== null) {
+          defaults[key] = valueFromInitial as ConfigFormValues[string];
+        } else if (field.default_value !== undefined) {
+          defaults[key] = field.default_value;
+        } else {
+          // No default - leave as null for truly optional fields
+          defaults[key] = null;
+        }
+      }
+    }
+    // Fallback: if model has default_configurations (legacy)
+    else if (selectedModel.default_configurations) {
+      for (const [key, field] of Object.entries(selectedModel.default_configurations)) {
+        const valueFromInitial = initialValues?.[key] ?? initialValues?.[key.toLowerCase()];
+
+        if (valueFromInitial !== undefined && valueFromInitial !== null) {
+          defaults[key] = valueFromInitial as ConfigFormValues[string];
+        } else if (field.default_value !== undefined) {
+          defaults[key] = field.default_value;
+        }
+      }
+    }
+
+    setConfigValues(defaults);
+
+    // Track that we've initialized from these initialValues
+    if (isEditMode && initialValuesKey) {
+      initializedFromValuesRef.current = initialValuesKey;
+    }
+  }, [selectedModel?.id, configSchema?.options, initialValues, isEditMode, initialValuesKey]);
 
   const handleConfigChange = useCallback((values: ConfigFormValues) => {
     setConfigValues(values);
@@ -155,8 +184,8 @@ export function CascadingProductSelectorV2({
     // Resolve codes to labels for display purposes
     const specificationLabels = resolveSpecificationLabels(configValues);
 
-    // Get quantity from config values (default to 1)
-    const quantity = typeof configValues.quantity === 'number' ? configValues.quantity : 1;
+    // Get quantity from config values (no default - user must enter)
+    const quantity = typeof configValues.quantity === 'number' ? configValues.quantity : null;
 
     return {
       product_model_id: selectedModel.id,
@@ -211,10 +240,10 @@ export function CascadingProductSelectorV2({
     (selectedModel?.default_configurations &&
       Object.keys(selectedModel.default_configurations).length > 0);
 
-  // Computed validation state
+  // Computed validation state - quantity must be explicitly entered (>= 1)
   const isValid = useMemo(() => {
-    const quantity = typeof configValues.quantity === 'number' ? configValues.quantity : 1;
-    return !!selectedModel && quantity >= 1;
+    const quantity = typeof configValues.quantity === 'number' ? configValues.quantity : null;
+    return !!selectedModel && quantity !== null && quantity >= 1;
   }, [selectedModel, configValues.quantity]);
 
   return (
@@ -233,19 +262,29 @@ export function CascadingProductSelectorV2({
           <span>Product Selection</span>
         </div>
         <div className="bg-gray-50/50 dark:bg-gray-900/30 rounded-lg border border-gray-200/60 dark:border-gray-700/50 p-4">
-          <ProductHierarchySelector isEditMode={isEditMode} />
+          <ProductHierarchySelector />
         </div>
       </section>
 
       {/* Configuration Fields (includes dimensions from config_schema) */}
-      {selectedModel && hasConfigOptions && configSchema && (
+      {selectedModel && hasConfigOptions && configSchema && !loading.modelDetails && (
         <div className="bg-gray-50/50 dark:bg-gray-900/30 rounded-lg border border-gray-200/60 dark:border-gray-700/50 p-4">
           <ConfigSchemaFields
+            key={selectedModel.id}
             schema={configSchema}
             values={configValues}
             onChange={handleConfigChange}
-            isEditMode={isEditMode}
           />
+        </div>
+      )}
+
+      {/* Loading indicator while fetching model details */}
+      {selectedModel && loading.modelDetails && (
+        <div className="bg-gray-50/50 dark:bg-gray-900/30 rounded-lg border border-gray-200/60 dark:border-gray-700/50 p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-emerald-500 rounded-full animate-spin" />
+            <span>Loading configuration...</span>
+          </div>
         </div>
       )}
 

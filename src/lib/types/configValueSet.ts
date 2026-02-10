@@ -57,6 +57,14 @@ export interface ConfigValueSet {
 }
 
 /**
+ * Tier classification for value options
+ * - standard: Included in base price, default option
+ * - upgrade: Available at additional cost
+ * - optional: Not required, may have additional cost
+ */
+export type ValueOptionTier = 'standard' | 'upgrade' | 'optional';
+
+/**
  * Single value option within a value set
  */
 export interface ValueOption {
@@ -72,6 +80,15 @@ export interface ValueOption {
    * @example "Arctic White", "Pure White (RAL 9010)", "Pre-Drilled Steel Beam"
    */
   label: string;
+
+  /**
+   * Tier classification for pricing/display purposes
+   * - standard: Included in base price (default option)
+   * - upgrade: Available at additional cost
+   * - optional: Not required, may have additional cost
+   * @default "standard"
+   */
+  tier?: ValueOptionTier;
 
   /**
    * Color hex code for color swatches
@@ -203,6 +220,7 @@ export interface ValueSetUsage {
 export interface ValueImportRow {
   code: string;
   label: string;
+  tier?: ValueOptionTier;
   hex?: string;
   image_url?: string;
   description?: string;
@@ -341,6 +359,42 @@ export function codeExists(options: ValueOption[], code: string): boolean {
 }
 
 /**
+ * Filter value options by tier
+ * @param options - Array of value options
+ * @param tier - Tier to filter by (or array of tiers)
+ * @returns Filtered options matching the tier(s)
+ */
+export function filterByTier(
+  options: ValueOption[],
+  tier: ValueOptionTier | ValueOptionTier[]
+): ValueOption[] {
+  const tiers = Array.isArray(tier) ? tier : [tier];
+  return options.filter((opt) => {
+    // Options without tier are treated as 'standard'
+    const optTier = opt.tier || 'standard';
+    return tiers.includes(optTier);
+  });
+}
+
+/**
+ * Group value options by tier
+ * @param options - Array of value options
+ * @returns Object with tier keys and arrays of options
+ */
+export function groupByTier(
+  options: ValueOption[]
+): Record<ValueOptionTier, ValueOption[]> {
+  return options.reduce(
+    (acc, opt) => {
+      const tier = opt.tier || 'standard';
+      acc[tier].push(opt);
+      return acc;
+    },
+    { standard: [], upgrade: [], optional: [] } as Record<ValueOptionTier, ValueOption[]>
+  );
+}
+
+/**
  * Create an empty value set
  */
 export function createEmptyValueSet(
@@ -358,7 +412,7 @@ export function createEmptyValueSet(
 
 /**
  * Parse CSV string to ValueOption array
- * Expected format: code,label,hex,image_url,description
+ * Expected format: code,label,tier,hex,image_url,description
  */
 export function parseValuesCsv(csv: string): {
   values: ValueOption[];
@@ -382,16 +436,23 @@ export function parseValuesCsv(csv: string): {
       continue;
     }
 
-    const [code, label, hex, image_url, description] = parts;
+    const [code, label, tier, hex, image_url, description] = parts;
 
     if (!code || !label) {
       errors.push(`Row ${i + 1}: Code and label are required`);
       continue;
     }
 
+    // Validate tier if provided
+    const validTiers: ValueOptionTier[] = ['standard', 'upgrade', 'optional'];
+    const parsedTier = tier && validTiers.includes(tier as ValueOptionTier)
+      ? (tier as ValueOptionTier)
+      : undefined;
+
     values.push({
       code,
       label,
+      tier: parsedTier,
       hex: hex || undefined,
       image_url: image_url || undefined,
       description: description || undefined,
@@ -406,10 +467,10 @@ export function parseValuesCsv(csv: string): {
  * Convert ValueOption array to CSV string
  */
 export function valuesToCsv(options: ValueOption[]): string {
-  const header = 'code,label,hex,image_url,description';
+  const header = 'code,label,tier,hex,image_url,description';
   const rows = options.map(
     (opt) =>
-      `${opt.code},${opt.label},${opt.hex || ''},${opt.image_url || ''},${opt.description || ''}`
+      `${opt.code},${opt.label},${opt.tier || ''},${opt.hex || ''},${opt.image_url || ''},${opt.description || ''}`
   );
 
   return [header, ...rows].join('\n');

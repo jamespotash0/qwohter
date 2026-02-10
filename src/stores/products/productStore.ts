@@ -137,6 +137,8 @@ interface ProductState {
     productLines: boolean;
     series: boolean;
     models: boolean;
+    /** True while fetching fresh model details after selection */
+    modelDetails: boolean;
   };
 
   error: string | null;
@@ -157,7 +159,7 @@ interface ProductState {
   selectManufacturer: (manufacturer: ProductManufacturer | null) => void;
   selectProductLine: (productLine: ProductLine | null) => void;
   selectSeries: (series: ProductSeries | null) => void;
-  selectModel: (model: ProductModel | null) => void;
+  selectModel: (model: ProductModel | null) => Promise<void>;
 
   // Utilities
   reset: () => void;
@@ -198,6 +200,7 @@ export const useProductStore = create<ProductState>()(
       productLines: false,
       series: false,
       models: false,
+      modelDetails: false,
     },
 
     error: null,
@@ -568,8 +571,41 @@ export const useProductStore = create<ProductState>()(
       }
     },
 
-    selectModel: (model) => {
-      set({ selectedModel: model });
+    selectModel: async (model) => {
+      if (!model) {
+        set({
+          selectedModel: null,
+          loading: { ...get().loading, modelDetails: false },
+        });
+        return;
+      }
+
+      // Set loading state and the model ID (for dropdown to show selection)
+      // But don't render config fields until fresh data is loaded
+      set((state) => ({
+        selectedModel: model,
+        loading: { ...state.loading, modelDetails: true },
+      }));
+
+      try {
+        // Fetch fresh model details to ensure we have latest config_schema
+        const freshModel = await get().getModelDetails(model.id);
+
+        // Only update if still the same model (user hasn't switched again)
+        const currentModel = get().selectedModel;
+        if (currentModel?.id === model.id) {
+          set((state) => ({
+            selectedModel: freshModel || model,
+            loading: { ...state.loading, modelDetails: false },
+          }));
+        }
+      } catch (error) {
+        console.error('[productStore] Error fetching model details:', error);
+        // Still clear loading state on error
+        set((state) => ({
+          loading: { ...state.loading, modelDetails: false },
+        }));
+      }
     },
 
     // Clear from a specific level
@@ -690,24 +726,20 @@ export const useProductStore = create<ProductState>()(
           }
         }
 
-        // 5. Fetch and select model
+        // 5. Fetch and select model - always get fresh details for latest config_schema
         if (modelId) {
+          // Fetch models list for the dropdown
           const currentSeries = get().selectedSeries;
           if (currentSeries) {
             await get().fetchModels(currentSeries.id);
-            const modelsList = get().models.get(currentSeries.id) || [];
-            const model = modelsList.find(m => m.id === modelId);
-            if (model) {
-              set({ selectedModel: model });
-            }
           } else {
-            // Try fetching models by manufacturer (no series)
             await get().fetchModelsByManufacturer(manufacturerId);
-            const modelsList = get().models.get(`mfr_${manufacturerId}`) || [];
-            const model = modelsList.find(m => m.id === modelId);
-            if (model) {
-              set({ selectedModel: model });
-            }
+          }
+
+          // Fetch fresh model details to ensure we have latest config_schema
+          const freshModel = await get().getModelDetails(modelId);
+          if (freshModel) {
+            set({ selectedModel: freshModel });
           }
         }
       } catch (error) {

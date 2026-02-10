@@ -51,6 +51,22 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+// Format dimension value to feet-inches notation
+// Input: "16" -> "16'", "12-3" -> "12'-3""
+const formatDimension = (value: string): string => {
+  if (!value) return '';
+  const trimmed = value.trim();
+
+  // Check if it contains a dash (feet-inches format like "12-3")
+  if (trimmed.includes('-')) {
+    const [feet, inches] = trimmed.split('-');
+    return `${feet}'-${inches}"`;
+  }
+
+  // Just feet (like "16")
+  return `${trimmed}'`;
+};
+
 type EntryMode = 'manual' | 'selector';
 
 export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
@@ -573,6 +589,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
   // Key info field definitions - order matters, first match wins
   // These cover common variations from database field names
+  // Note: Vertical Seals removed from here - appears in alphabetically sorted spec list instead
   const KEY_INFO_FIELDS = {
     height: [
       'Wall Height', 'Partition Height', 'Height', 'height',
@@ -590,6 +607,10 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       'NumPanels', 'num_panels', 'Total Panels'
     ],
     quantity: ['Quantity', 'quantity', 'Qty', 'qty', 'QTY', 'Count', 'count'],
+    glassType: [
+      'Glass Type', 'glass_type', 'glassType', 'GlassType',
+      'Glass', 'glass'
+    ],
   };
 
   // Helper to get specification fields from rawData (exclude metadata and key info fields)
@@ -597,17 +618,20 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     if (!rawData) return [];
     const metaFields = ['source', 'productDomain', 'productLine', 'manufacturer', 'series', 'model', '_specificationLabels',
       'domain_id', 'manufacturer_id', 'product_line_id', 'series_id', 'model_id'];
-    // Also exclude key info fields that are shown separately
+    // Also exclude key info fields that are shown inline (dimensions, panels, qty, glass)
+    // Note: Vertical Seals NOT excluded - appears in this alphabetically sorted spec list
     const keyInfoFields = [
       ...KEY_INFO_FIELDS.height,
       ...KEY_INFO_FIELDS.width,
       ...KEY_INFO_FIELDS.panelCount,
       ...KEY_INFO_FIELDS.quantity,
+      ...KEY_INFO_FIELDS.glassType,
     ];
     const excludeFields = [...metaFields, ...keyInfoFields];
     return Object.entries(rawData)
       .filter(([key]) => !excludeFields.includes(key))
-      .filter(([_, value]) => value !== null && value !== undefined && value !== '');
+      .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB)); // Sort alphabetically by field name
   }, []);
 
   // Format field keys to human-readable labels (snake_case/camelCase → Title Case)
@@ -716,26 +740,20 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                           : 'hover:border-purple-300 dark:hover:border-purple-600'
                       )}
                     >
-                      {/* Header: Name + Alias + Actions */}
+                      {/* Header: Alias (prominent) + Actions */}
                       <div className="flex items-center gap-2 mb-2">
                         {isCatalogProduct ? (
                           <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         ) : (
                           <Package className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                         )}
-                        <div className="flex-1 min-w-0">
-                          <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                            {product.name}
-                          </h5>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-gray-500">alias:</span>
-                            <Input
-                              value={product.alias || ''}
-                              onChange={(e) => updateProduct(product.id, { alias: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
-                              placeholder="wallA"
-                              className="h-5 text-[10px] font-mono px-1 py-0 border-0 bg-transparent focus:ring-0 w-20"
-                            />
-                          </div>
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <Input
+                            value={product.alias || ''}
+                            onChange={(e) => updateProduct(product.id, { alias: e.target.value.replace(/[^a-zA-Z0-9]/g, '') })}
+                            placeholder="Wall A"
+                            className="h-7 text-sm font-semibold font-mono px-2 py-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 w-24"
+                          />
                         </div>
                         <div className="flex items-center gap-0.5 shrink-0">
                           {isCatalogProduct ? (
@@ -764,58 +782,80 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
                         </div>
                       </div>
 
+                      {/* Manufacturer | Series | Model line */}
+                      {(() => {
+                        const rawData = product.rawData as unknown as Record<string, unknown> | undefined;
+                        const manufacturer = rawData?.manufacturer as string | undefined;
+                        const series = rawData?.series as string | undefined;
+                        const model = rawData?.model as string | undefined;
+                        if (!manufacturer && !series && !model) return null;
+                        return (
+                          <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400 mb-1 pb-1 border-b border-gray-100 dark:border-gray-700">
+                            {manufacturer && <span className="font-medium">{manufacturer}</span>}
+                            {manufacturer && series && <span className="text-gray-400">|</span>}
+                            {series && <span>{series}</span>}
+                            {(manufacturer || series) && model && <span className="text-gray-400">|</span>}
+                            {model && <span className="font-mono">{model}</span>}
+                          </div>
+                        );
+                      })()}
+
                       {/* Product Details */}
                       <div className="space-y-1 text-[11px]">
-                        {/* Key Info Row: Model + Dimensions (H × W × Panels) + Qty */}
+                        {/* Key Info Row: Dimensions | Panels | Qty | Glass */}
                         {(() => {
                           const rawData = product.rawData as unknown as Record<string, unknown> | undefined;
                           const heightVal = findFieldValue(rawData, KEY_INFO_FIELDS.height);
                           const widthVal = findFieldValue(rawData, KEY_INFO_FIELDS.width);
                           const panelCountVal = findFieldValue(rawData, KEY_INFO_FIELDS.panelCount);
                           const quantityVal = findFieldValue(rawData, KEY_INFO_FIELDS.quantity);
-                          const modelVal = rawData?.model;
-                          const hasKeyInfo = modelVal || heightVal || widthVal || panelCountVal || quantityVal;
+                          const glassTypeVal = findFieldValue(rawData, KEY_INFO_FIELDS.glassType);
+                          const specLabels = rawData?._specificationLabels as Record<string, string> | undefined;
+                          const hasKeyInfo = heightVal || widthVal || panelCountVal || quantityVal || glassTypeVal;
 
                           if (!hasKeyInfo) return null;
 
                           return (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1 border-b border-gray-200 dark:border-gray-600">
-                              {modelVal != null && (
-                                <div>
-                                  <span className="text-gray-500 dark:text-gray-400">Model: </span>
-                                  <span className="font-mono font-medium text-gray-900 dark:text-gray-100">
-                                    {String(modelVal)}
+                              {/* Dimensions: H x W | Panels | Qty format */}
+                              {(heightVal || widthVal) && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-500 dark:text-gray-400">Dimensions:</span>
+                                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    {heightVal != null && (
+                                      <>{formatDimension(String(heightVal))} H</>
+                                    )}
+                                    {heightVal && widthVal && ' x '}
+                                    {widthVal != null && (
+                                      <>{formatDimension(String(widthVal))} W</>
+                                    )}
                                   </span>
                                 </div>
                               )}
-                              {/* Dimensions: H × W × Panels in compact format */}
-                              {(heightVal || widthVal || panelCountVal) && (
-                                <div className="flex items-center gap-1.5">
-                                  {heightVal != null && (
-                                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                                      {String(heightVal)}'<span className="text-gray-400 text-[10px] ml-0.5">H</span>
-                                    </span>
-                                  )}
-                                  {heightVal && widthVal && <span className="text-gray-400">×</span>}
-                                  {widthVal != null && (
-                                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                                      {String(widthVal)}'<span className="text-gray-400 text-[10px] ml-0.5">W</span>
-                                    </span>
-                                  )}
-                                  {(heightVal || widthVal) && panelCountVal && <span className="text-gray-400">×</span>}
-                                  {panelCountVal != null && (
-                                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                                      {String(panelCountVal)}<span className="text-gray-400 text-[10px] ml-0.5">panels</span>
-                                    </span>
-                                  )}
+                              {/* Panels - pipe separated */}
+                              {panelCountVal != null && (
+                                <div className="flex items-center gap-1 pl-2 border-l border-gray-300 dark:border-gray-600">
+                                  <span className="text-gray-500 dark:text-gray-400">Panels:</span>
+                                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    {String(panelCountVal)}
+                                  </span>
                                 </div>
                               )}
-                              {/* Quantity - visually separated */}
+                              {/* Quantity - pipe separated */}
                               {quantityVal != null && (
                                 <div className="flex items-center gap-1 pl-2 border-l border-gray-300 dark:border-gray-600">
                                   <span className="text-gray-500 dark:text-gray-400">Qty:</span>
                                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                                     {String(quantityVal)}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Glass Type - pipe separated */}
+                              {glassTypeVal != null && (
+                                <div className="flex items-center gap-1 pl-2 border-l border-gray-300 dark:border-gray-600">
+                                  <span className="text-gray-500 dark:text-gray-400">Glass:</span>
+                                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                                    {specLabels?.glass_type || specLabels?.glassType || String(glassTypeVal)}
                                   </span>
                                 </div>
                               )}

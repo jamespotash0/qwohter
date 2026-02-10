@@ -37,8 +37,6 @@ interface ConfigSchemaFieldsProps {
   values: ConfigFormValues;
   /** Callback when values change */
   onChange: (values: ConfigFormValues) => void;
-  /** Whether form is in edit mode (readonly) */
-  isEditMode?: boolean;
   /** Optional class name */
   className?: string;
 }
@@ -47,7 +45,6 @@ export function ConfigSchemaFields({
   schema,
   values,
   onChange,
-  isEditMode = false,
   className,
 }: ConfigSchemaFieldsProps) {
   const {
@@ -115,7 +112,6 @@ export function ConfigSchemaFields({
                 value={values[key]}
                 options={getFieldOptions(key)}
                 onChange={(value) => setValue(key, value)}
-                isEditMode={isEditMode}
                 hasError={!!maxError}
               />
               {/* Max validation error - only show when value exceeds max */}
@@ -125,10 +121,6 @@ export function ConfigSchemaFields({
                     {maxError}
                   </p>
                 </div>
-              )}
-              {/* Help text - only show if no error */}
-              {!maxError && field.help_text && (
-                <p className="text-[10px] text-gray-400 leading-tight">{field.help_text}</p>
               )}
             </div>
           );
@@ -157,7 +149,6 @@ interface FieldInputProps {
   value: ConfigFormValues[string];
   options: ResolvedValueOption[];
   onChange: (value: ConfigFormValues[string]) => void;
-  isEditMode: boolean;
   hasError?: boolean;
 }
 
@@ -167,7 +158,6 @@ function FieldInput({
   value,
   options,
   onChange,
-  isEditMode,
   hasError = false,
 }: FieldInputProps) {
   // Auto-readonly: required fields with exactly 1 allowed_code in schema, no dependencies or filters
@@ -179,8 +169,7 @@ function FieldInput({
     !field.filter_by &&
     !field.filters;
   const isEffectivelyReadonly = field.readonly || isAutoReadonly;
-
-  const readonlyStyles = (isEditMode || isEffectivelyReadonly)
+  const readonlyStyles = isEffectivelyReadonly
     ? 'bg-gray-100 dark:bg-gray-800 cursor-default opacity-70'
     : '';
 
@@ -199,9 +188,9 @@ function FieldInput({
           <Select
             value={value?.toString() || ''}
             onValueChange={onChange}
-            disabled={isEditMode || isEffectivelyReadonly}
+            disabled={isEffectivelyReadonly}
           >
-            <SelectTrigger className={cn('w-full', hasValue && !isEditMode && !isEffectivelyReadonly && 'pr-16', readonlyStyles)}>
+            <SelectTrigger className={cn('w-full', hasValue && !isEffectivelyReadonly && !field.required && 'pr-16', readonlyStyles)}>
               <SelectValue placeholder={placeholderText}>
                 {selectedOption && (
                   <span className="flex items-center gap-2">
@@ -233,7 +222,7 @@ function FieldInput({
             </SelectContent>
           </Select>
           {/* Clear button - only for optional fields with value */}
-          {hasValue && !isEditMode && !isEffectivelyReadonly && !field.required && (
+          {hasValue && !isEffectivelyReadonly && !field.required && (
             <button
               type="button"
               onClick={(e) => {
@@ -251,10 +240,10 @@ function FieldInput({
 
     case 'multi-select': {
       const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
-      const placeholderText = field.placeholder || 'Select...';
+      const placeholderText = field.placeholder || `Select ${field.label.toLowerCase()}...`;
 
       const toggleOption = (code: string) => {
-        if (isEditMode || isEffectivelyReadonly) return;
+        if (isEffectivelyReadonly) return;
         const newValues = selectedValues.includes(code)
           ? selectedValues.filter((v) => v !== code)
           : [...selectedValues, code];
@@ -262,11 +251,11 @@ function FieldInput({
       };
 
       const clearAll = () => {
-        if (isEditMode || isEffectivelyReadonly) return;
+        if (isEffectivelyReadonly) return;
         onChange(null);
       };
 
-      if (isEditMode || isEffectivelyReadonly) {
+      if (isEffectivelyReadonly) {
         return (
           <div className={cn(
             'flex h-10 w-full items-center rounded-md border border-input px-3 py-2 text-sm',
@@ -346,7 +335,8 @@ function FieldInput({
       );
     }
 
-    case 'number':
+    case 'number': {
+      const numberPlaceholder = field.placeholder || `Enter ${field.label.toLowerCase()}`;
       return (
         <div className="flex items-center gap-2">
           <Input
@@ -356,11 +346,11 @@ function FieldInput({
               const num = parseFloat(e.target.value);
               onChange(isNaN(num) ? null : num);
             }}
-            placeholder={field.placeholder}
+            placeholder={numberPlaceholder}
             min={field.min}
             max={field.max}
             step={field.step}
-            readOnly={isEditMode || isEffectivelyReadonly}
+            readOnly={isEffectivelyReadonly}
             className={cn('flex-1', readonlyStyles, errorStyles)}
           />
           {field.unit && (
@@ -368,9 +358,11 @@ function FieldInput({
           )}
         </div>
       );
+    }
 
-    case 'text':
+    case 'text': {
       // Text fields can also have units (e.g., dimension fields like wall_height)
+      const textPlaceholder = field.placeholder || `Enter ${field.label.toLowerCase()}`;
       if (field.unit) {
         return (
           <div className="flex items-center gap-2">
@@ -378,9 +370,9 @@ function FieldInput({
               type="text"
               value={value?.toString() || ''}
               onChange={(e) => onChange(e.target.value || null)}
-              placeholder={field.placeholder}
+              placeholder={textPlaceholder}
               maxLength={field.max_length}
-              readOnly={isEditMode || isEffectivelyReadonly}
+              readOnly={isEffectivelyReadonly}
               className={cn('flex-1', readonlyStyles, errorStyles)}
             />
             <span className="text-sm text-gray-500 shrink-0">{field.unit}</span>
@@ -392,32 +384,35 @@ function FieldInput({
           type="text"
           value={value?.toString() || ''}
           onChange={(e) => onChange(e.target.value || null)}
-          placeholder={field.placeholder}
+          placeholder={textPlaceholder}
           maxLength={field.max_length}
-          readOnly={isEditMode || isEffectivelyReadonly}
+          readOnly={isEffectivelyReadonly}
           className={cn(readonlyStyles, errorStyles)}
         />
       );
+    }
 
-    case 'textarea':
+    case 'textarea': {
+      const textareaPlaceholder = field.placeholder || `Enter ${field.label.toLowerCase()}`;
       return (
         <Textarea
           value={value?.toString() || ''}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
+          placeholder={textareaPlaceholder}
           maxLength={field.max_length}
-          readOnly={isEditMode || isEffectivelyReadonly}
+          readOnly={isEffectivelyReadonly}
           className={cn('min-h-[80px]', readonlyStyles)}
         />
       );
+    }
 
     case 'checkbox':
       return (
-        <div className={cn('flex items-center gap-2', (isEditMode || isEffectivelyReadonly) && 'opacity-70')}>
+        <div className={cn('flex items-center gap-2', (isEffectivelyReadonly) && 'opacity-70')}>
           <Checkbox
             checked={!!value}
             onCheckedChange={(checked) => onChange(!!checked)}
-            disabled={isEditMode || isEffectivelyReadonly}
+            disabled={isEffectivelyReadonly}
           />
           {field.placeholder && (
             <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -444,7 +439,7 @@ function FieldInput({
           value={value?.toString() || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder}
-          readOnly={isEditMode || isEffectivelyReadonly}
+          readOnly={isEffectivelyReadonly}
           className={readonlyStyles}
         />
       );
