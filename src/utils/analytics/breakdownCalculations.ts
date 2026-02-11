@@ -143,7 +143,7 @@ export const calculateCategoryOfWorkMetrics = (proposals: Proposal[]): CategoryO
   );
 
   relevantProposals.forEach((proposal) => {
-    const category = proposal.form_data?.info?.categoryOfWork || 'Other';
+    const category = proposal.form_data?.info?.scope || 'Other';
     if (!categoryMap.has(category)) {
       categoryMap.set(category, { category, proposalCount: 0, revenue: 0, wonCount: 0, totalDecided: 0 });
     }

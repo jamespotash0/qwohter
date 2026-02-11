@@ -102,7 +102,7 @@ const TEMPLATE_VARIABLES: VariableCategory[] = [
       { key: 'project.locationName', label: 'Location Name', example: 'Downtown Office' },
       { key: 'project.floor', label: 'Floor', example: '3rd Floor' },
       { key: 'project.dueDate', label: 'Due Date', example: 'March 15, 2026' },
-      { key: 'project.workType', label: 'Type of Work', example: 'New Construction' },
+      { key: 'project.workType', label: 'Scope', example: 'New Construction' },
       { key: 'project.laborType', label: 'Labor Type', example: 'Union' },
     ],
   },

@@ -76,7 +76,7 @@ function checkInfoComplete(info: Partial<InfoTabData> | undefined): { complete: 
     { key: 'contactName', label: 'Contact Name' },
     { key: 'contactEmail', label: 'Contact Email' },
     { key: 'proposalSource', label: 'Proposal Source' },
-    { key: 'categoryOfWork', label: 'Type of Work' },
+    { key: 'scope', label: 'Scope' },
     { key: 'projectType', label: 'Project Type' },
     { key: 'clientName', label: 'Client Name' },
     { key: 'clientCompany', label: 'Client Company' },

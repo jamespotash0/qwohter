@@ -91,7 +91,7 @@ export function buildProposalVariables(
         isUnion?: boolean;
         isPrevailingWage?: boolean;
         projectType?: string;
-        categoryOfWork?: string;
+        scope?: string;
       };
     };
     organization?: {
@@ -146,7 +146,7 @@ export function buildProposalVariables(
     'project.floor': info.jobFloor || '',
     'project.locationType': info.locationType || '',
     'project.type': info.projectType || '',
-    'project.workType': info.categoryOfWork || '',
+    'project.workType': info.scope || '',
 
     // Labor & Wage info
     'project.laborType': info.isUnion ? 'Union' : 'Non-Union',

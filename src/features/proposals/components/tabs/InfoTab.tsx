@@ -171,7 +171,7 @@ export interface InfoTabData {
   contactNameId?: string;     // Reference ID for maintaining relationship
   contactEmail: string;
   proposalSource: string;
-  categoryOfWork: string;
+  scope: string;
   isUnion: boolean;           // true = Union, false = Non-Union (default)
   isPrevailingWage: boolean;  // true = Prevailing Wage, false = Standard (default)
   projectType: string;
@@ -229,7 +229,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
 
   // Work Details
   const [proposalSource, setProposalSource] = useState('');
-  const [categoryOfWork, setCategoryOfWork] = useState('');
+  const [scope, setScope] = useState('');
   const [isUnion, setIsUnion] = useState(false);              // false = Non-Union (default)
   const [isPrevailingWage, setIsPrevailingWage] = useState(false); // false = Standard (default)
   const [projectType, setProjectType] = useState('');
@@ -262,7 +262,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactName: '',
     contactEmail: '',
     proposalSource: '',
-    categoryOfWork: '',
+    scope: '',
     isUnion: false,
     isPrevailingWage: false,
     projectType: '',
@@ -357,7 +357,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
 
         setContactEmail(info.contactEmail || '');
         setProposalSource(info.proposalSource || '');
-        setCategoryOfWork(info.categoryOfWork || '');
+        setScope(info.scope || '');
         setIsUnion(info.isUnion ?? false);
         setIsPrevailingWage(info.isPrevailingWage ?? false);
         setProjectType(info.projectType || '');
@@ -462,7 +462,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           contactName,
           contactEmail,
           proposalSource,
-          categoryOfWork,
+          scope,
           isUnion,
           isPrevailingWage,
           projectType,
@@ -492,7 +492,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactName,
     contactEmail,
     proposalSource,
-    categoryOfWork,
+    scope,
     isUnion,
     isPrevailingWage,
     projectType,
@@ -521,7 +521,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       contactName !== initialValues.contactName ||
       contactEmail !== initialValues.contactEmail ||
       proposalSource !== initialValues.proposalSource ||
-      categoryOfWork !== initialValues.categoryOfWork ||
+      scope !== initialValues.scope ||
       isUnion !== initialValues.isUnion ||
       isPrevailingWage !== initialValues.isPrevailingWage ||
       projectType !== initialValues.projectType ||
@@ -548,7 +548,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactName,
     contactEmail,
     proposalSource,
-    categoryOfWork,
+    scope,
     isUnion,
     isPrevailingWage,
     projectType,
@@ -577,7 +577,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       contactNameId: contactNameId || undefined,
       contactEmail,
       proposalSource,
-      categoryOfWork,
+      scope,
       isUnion,
       isPrevailingWage,
       projectType,
@@ -604,7 +604,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         contactName,
         contactEmail,
         proposalSource,
-        categoryOfWork,
+        scope,
         isUnion,
         isPrevailingWage,
         projectType,
@@ -630,7 +630,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     contactNameId,
     contactEmail,
     proposalSource,
-    categoryOfWork,
+    scope,
     isUnion,
     isPrevailingWage,
     projectType,
@@ -895,7 +895,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           title="Work Details"
           icon={<Tag className="w-4 h-4" />}
         >
-          {/* Row 1: Proposal Source + Type of Work */}
+          {/* Row 1: Proposal Source + Scope */}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Proposal Source" tooltip="Where did this lead come from?">
               <Input
@@ -906,10 +906,10 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                 disabled={isBuilderMode}
               />
             </Field>
-            <Field label="Type of Work" tooltip="What type of work is this project?">
+            <Field label="Scope" tooltip="What type of work is this project?">
               <Input
-                value={categoryOfWork}
-                onChange={(e) => setCategoryOfWork(e.target.value)}
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
                 placeholder="Walls, Furniture, HVAC..."
                 className={disabledInputClassName}
                 disabled={isBuilderMode}

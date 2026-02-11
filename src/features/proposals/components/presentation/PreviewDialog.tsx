@@ -37,7 +37,7 @@ interface InfoData {
   contactEmail?: string;
   // Work Details
   proposalSource?: string;
-  categoryOfWork?: string;
+  scope?: string;
   laborType?: string;
   projectType?: string;
   // Client Info
@@ -166,7 +166,7 @@ function resolveProjectVariable(parts: string[], infoData?: InfoData): string {
     case 'source':
       return infoData.proposalSource || `{project.source}`;
     case 'workType':
-      return infoData.categoryOfWork || `{project.workType}`;
+      return infoData.scope || `{project.workType}`;
     case 'laborType':
       return infoData.laborType || `{project.laborType}`;
     case 'projectType':
