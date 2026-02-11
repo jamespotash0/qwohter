@@ -392,7 +392,10 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     existingProducts: Product[]
   ): Product => {
     const { product_hierarchy, specifications, specification_labels } = selection;
-    const qty = typeof specifications.Quantity === 'number' ? specifications.Quantity : null;
+    // Check both lowercase (from config_schema) and capitalized (legacy) versions
+    const qty = typeof specifications.quantity === 'number' ? specifications.quantity
+      : typeof specifications.Quantity === 'number' ? specifications.Quantity
+      : null;
 
     // Get existing aliases to avoid duplicates
     const existingAliases = existingProducts
@@ -436,8 +439,10 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const handleCatalogProductSelect = useCallback((selection: ProductSelection) => {
     const { product_hierarchy, specifications, specification_labels } = selection;
 
-    // Extract quantity safely - ensure it's a number
-    const qty = typeof specifications.Quantity === 'number' ? specifications.Quantity : null;
+    // Extract quantity safely - check both lowercase (from config_schema) and capitalized (legacy)
+    const qty = typeof specifications.quantity === 'number' ? specifications.quantity
+      : typeof specifications.Quantity === 'number' ? specifications.Quantity
+      : null;
 
     if (editingProduct) {
       // Update existing product

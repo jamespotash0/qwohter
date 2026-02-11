@@ -168,6 +168,7 @@ export function useConfigSchema({
   const isFirstMount = useRef(true);
   const prevSchemaRef = useRef(schema);
   const prevValueSetsLoadedRef = useRef(false);
+  const prevInitialValuesRef = useRef<ConfigFormValues>(initialValues);
 
   // Initialize values when schema changes (not on initialValues changes to prevent loops)
   useEffect(() => {
@@ -180,6 +181,36 @@ export function useConfigSchema({
       isFirstMount.current = false;
     }
   }, [schema]); // Only depend on schema, not initialValues
+
+  // Sync internal values with external values when they change (for controlled/edit mode)
+  // This handles the case where CascadingProductSelectorV2 initializes configValues
+  // after ConfigSchemaFields mounts
+  useEffect(() => {
+    // Skip on first mount (already handled above)
+    if (isFirstMount.current) return;
+
+    // Check if initialValues actually changed (compare keys and values)
+    const prevKeys = Object.keys(prevInitialValuesRef.current);
+    const currKeys = Object.keys(initialValues);
+
+    // Quick check: if prev was empty and current has values, sync
+    const wasEmpty = prevKeys.length === 0 || prevKeys.every(k =>
+      prevInitialValuesRef.current[k] === null ||
+      prevInitialValuesRef.current[k] === undefined
+    );
+    const hasNewValues = currKeys.some(k =>
+      initialValues[k] !== null &&
+      initialValues[k] !== undefined &&
+      initialValues[k] !== prevInitialValuesRef.current[k]
+    );
+
+    if (wasEmpty && hasNewValues && schema) {
+      console.log('[useConfigSchema] Syncing internal values with external initialValues');
+      setValuesState(initializeValues(schema, initialValues));
+    }
+
+    prevInitialValuesRef.current = initialValues;
+  }, [initialValues, schema]);
 
   // Auto-apply default values for readonly fields when value sets finish loading
   // This handles fields with single allowed_code that should auto-select
