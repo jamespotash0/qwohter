@@ -114,10 +114,22 @@ serve(async (req) => {
 
     if (needsRefresh) {
       console.log(`[google-list-drive-files] Token needs refresh - is_valid: ${tokenData.is_valid}, isExpired: ${isExpired}`);
-      // Token expired or expiring soon - refresh it
+
+      if (!tokenData.refresh_token) {
+        console.error('[google-list-drive-files] No refresh token available');
+        await supabaseAdmin
+          .from('google_oauth_tokens')
+          .update({ is_valid: false })
+          .eq('organization_id', organizationId);
+        return new Response(JSON.stringify({ error: 'Google connection expired. An admin needs to reconnect in Settings → Integrations.' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const refreshedToken = await refreshGoogleToken(tokenData.refresh_token, supabaseAdmin, organizationId);
       if (!refreshedToken) {
-        return new Response(JSON.stringify({ error: 'Failed to refresh Google token' }), {
+        return new Response(JSON.stringify({ error: 'Google connection expired. An admin needs to reconnect in Settings → Integrations.' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -163,10 +175,35 @@ serve(async (req) => {
 
     if (!driveResponse.ok) {
       const errorText = await driveResponse.text();
-      console.error('Drive API error:', errorText);
+      console.error('[google-list-drive-files] Drive API error:', driveResponse.status, errorText);
 
-      // If 401, mark token as invalid
-      if (driveResponse.status === 401) {
+      // If 401, try refreshing the token and retry once
+      if (driveResponse.status === 401 && tokenData.refresh_token) {
+        console.log('[google-list-drive-files] Drive API returned 401, attempting token refresh and retry');
+        const retryToken = await refreshGoogleToken(tokenData.refresh_token, supabaseAdmin, organizationId);
+        if (retryToken) {
+          // Retry the Drive API call with the fresh token
+          const retryResponse = await fetch(
+            `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+            { headers: { Authorization: `Bearer ${retryToken}` } }
+          );
+          if (retryResponse.ok) {
+            const retryData: DriveListResponse = await retryResponse.json();
+            await supabaseAdmin
+              .from('google_oauth_tokens')
+              .update({ last_used_at: new Date().toISOString() })
+              .eq('organization_id', organizationId);
+            return new Response(
+              JSON.stringify({
+                files: retryData.files || [],
+                nextPageToken: retryData.nextPageToken,
+                folderId: tokenData.drive_folder_id,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        // Retry also failed — mark invalid
         await supabaseAdmin
           .from('google_oauth_tokens')
           .update({ is_valid: false })
@@ -213,22 +250,25 @@ serve(async (req) => {
 });
 
 /**
- * Refresh the Google OAuth token
+ * Refresh the Google OAuth token.
+ * Only marks is_valid=false on permanent failures (revoked/invalid_grant).
  */
 async function refreshGoogleToken(
   refreshToken: string,
   supabaseAdmin: ReturnType<typeof createClient>,
   organizationId: string
 ): Promise<string | null> {
+  //@ts-ignore
+  const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
+  //@ts-ignore
+  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
+
+  if (!clientId || !clientSecret) {
+    console.error('[google-list-drive-files] Google OAuth credentials not configured');
+    return null;
+  }
+
   try {
-    const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
-    const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
-
-    if (!clientId || !clientSecret) {
-      console.error('Google OAuth credentials not configured');
-      return null;
-    }
-
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -240,37 +280,43 @@ async function refreshGoogleToken(
       }),
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Token refresh failed:', error);
+    if (response.ok) {
+      const tokens = await response.json();
+      const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-      // Mark token as invalid
+      await supabaseAdmin
+        .from('google_oauth_tokens')
+        .update({
+          access_token: tokens.access_token,
+          token_expires_at: newExpiresAt,
+          updated_at: new Date().toISOString(),
+          is_valid: true,
+        })
+        .eq('organization_id', organizationId);
+
+      console.log('[google-list-drive-files] Token refreshed successfully');
+      return tokens.access_token;
+    }
+
+    const errorText = await response.text();
+    console.error('[google-list-drive-files] Token refresh failed:', errorText);
+
+    // Only mark invalid on permanent failures — transient errors should not poison the token
+    const isPermanent = errorText.includes('invalid_grant') ||
+                        errorText.includes('Token has been revoked') ||
+                        errorText.includes('unauthorized_client');
+
+    if (isPermanent) {
       await supabaseAdmin
         .from('google_oauth_tokens')
         .update({ is_valid: false })
         .eq('organization_id', organizationId);
-
-      return null;
     }
 
-    const tokens = await response.json();
-    const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-
-    // Update token in database - also set is_valid: true since refresh succeeded
-    await supabaseAdmin
-      .from('google_oauth_tokens')
-      .update({
-        access_token: tokens.access_token,
-        token_expires_at: newExpiresAt,
-        updated_at: new Date().toISOString(),
-        is_valid: true, // Mark as valid after successful refresh
-      })
-      .eq('organization_id', organizationId);
-
-    console.log('[google-list-drive-files] Token refreshed successfully');
-    return tokens.access_token;
+    return null;
   } catch (error) {
-    console.error('Token refresh error:', error);
+    console.error('[google-list-drive-files] Token refresh error:', error);
+    // Network error — don't mark token as invalid
     return null;
   }
 }

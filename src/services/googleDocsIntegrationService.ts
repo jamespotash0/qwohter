@@ -129,6 +129,7 @@ export async function handleGoogleOAuthCallback(
 /**
  * Get the organization's Google OAuth token
  * Now org-level: one token per organization, connected by an admin
+ * Does NOT filter by is_valid — returns token regardless so we can attempt refresh
  */
 export async function getGoogleToken(
   organizationId: string
@@ -137,7 +138,6 @@ export async function getGoogleToken(
     .from('google_oauth_tokens')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('is_valid', true)
     .single();
 
   if (error) {
@@ -159,21 +159,21 @@ export async function isGoogleConnected(organizationId: string): Promise<boolean
 
 /**
  * Get a valid access token (refreshes if expired)
- * This calls an edge function that handles token refresh securely
+ * Calls edge function that handles token refresh securely server-side
  */
 export async function getValidAccessToken(
   organizationId: string
-): Promise<string | null> {
+): Promise<{ valid: boolean; accessToken?: string; email?: string; reason?: string; error?: string }> {
   const { data, error } = await supabase.functions.invoke('google-get-token', {
     body: { organizationId },
   });
 
   if (error) {
     console.error('Failed to get valid access token:', error);
-    return null;
+    return { valid: false, reason: 'invoke_error', error: error.message };
   }
 
-  return data?.accessToken || null;
+  return data;
 }
 
 /**
@@ -203,7 +203,9 @@ export async function disconnectGoogle(organizationId: string): Promise<void> {
 // ============================================================================
 
 /**
- * Get Google connection details for display
+ * Get Google connection details for display.
+ * Proactively validates/refreshes the token via edge function so
+ * the UI always reflects the true connection state.
  */
 export async function getGoogleConnectionStatus(
   organizationId: string
@@ -212,13 +214,47 @@ export async function getGoogleConnectionStatus(
   email?: string;
   name?: string;
   expiresAt?: string;
+  needsReconnection?: boolean;
+  reason?: string;
 }> {
+  // First check if a token row exists at all
   const token = await getGoogleToken(organizationId);
 
   if (!token) {
     return { isConnected: false };
   }
 
+  // Check if token is expired or marked invalid — if so, attempt refresh
+  const expiresAt = new Date(token.token_expires_at);
+  const now = new Date();
+  const bufferMs = 5 * 60 * 1000; // 5 minutes
+  const isExpired = expiresAt.getTime() - bufferMs <= now.getTime();
+
+  if (!token.is_valid || isExpired) {
+    // Proactively refresh via edge function
+    const refreshResult = await getValidAccessToken(organizationId);
+
+    if (refreshResult.valid) {
+      // Refresh succeeded — token is now valid
+      return {
+        isConnected: true,
+        email: refreshResult.email || token.google_email || undefined,
+        name: token.google_name || undefined,
+        expiresAt: token.token_expires_at,
+      };
+    }
+
+    // Refresh failed — indicate reconnection needed
+    return {
+      isConnected: false,
+      needsReconnection: true,
+      reason: refreshResult.reason,
+      email: token.google_email || undefined,
+      name: token.google_name || undefined,
+    };
+  }
+
+  // Token is valid and not expired
   return {
     isConnected: true,
     email: token.google_email || undefined,

@@ -92,6 +92,12 @@ export function useGenerateGoogleDoc() {
         queryKey: proposalQueryKeys.lists(),
       });
     },
+    onError: (_, variables) => {
+      // Invalidate google connection status so UI reflects any token issues
+      queryClient.invalidateQueries({
+        queryKey: ['google-connection', variables.organizationId],
+      });
+    },
   });
 }
 

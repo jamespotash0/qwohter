@@ -207,7 +207,7 @@ export interface GoogleOAuthToken {
   organization_id: string;
   connected_by_user_id: string | null;  // Admin who connected
   access_token: string;
-  refresh_token: string;
+  refresh_token: string | null;
   token_expires_at: string;
   scopes: string[];
   google_email: string | null;
