@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'Qwohter Docs',
-  description: 'Developer documentation for Qwohter — proposal and quote management platform',
+  description: 'Developer documentation for Qwohter — proposal management platform',
 
   themeConfig: {
     nav: [

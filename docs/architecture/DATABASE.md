@@ -150,7 +150,7 @@ notification_retry_queue
 | Trigger | Table | Purpose |
 |---------|-------|---------|
 | `handle_user_deletion` | profiles | Cleanup on user delete |
-| `update_quote_creator_name_on_profile_change` | profiles | Sync name changes to proposals |
+| `update_proposal_creator_name_on_profile_change` | profiles | Sync name changes to proposals |
 | `handle_updated_at` | multiple | Auto-update `updated_at` timestamp |
 | `create_project_on_won` | proposals | Auto-create project when proposal wins |
 

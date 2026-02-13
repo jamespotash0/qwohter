@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Qwohter
   text: Developer Documentation
-  tagline: Proposal and quote management platform
+  tagline: Proposal management platform
   actions:
     - theme: brand
       text: Architecture

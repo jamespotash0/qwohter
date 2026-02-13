@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Tab components
 import { AnalyticsOverviewTab } from "@/components/features/analytics/AnalyticsOverviewTab";
 import { AnalyticsPipelineTab } from "@/components/features/analytics/AnalyticsPipelineTab";
-import { AnalyticsTeamTab } from "@/components/features/analytics/AnalyticsTeamTab";
 import { AnalyticsProductsTab } from "@/components/features/analytics/AnalyticsProductsTab";
 import { AnalyticsSourcesTab } from "@/components/features/analytics/AnalyticsSourcesTab";
 
@@ -20,7 +19,6 @@ import { AnalyticsSourcesTab } from "@/components/features/analytics/AnalyticsSo
  * Tabs:
  * - Overview: KPI cards, time-series charts, status breakdown
  * - Pipeline: Velocity metrics, time-to-win distribution, stale proposals
- * - Team: Proposals by team member
  * - Products: Product type and model breakdown
  * - Sources: Source performance, category, project type, location, work classification
  */
@@ -55,7 +53,6 @@ const Analytics = () => {
           <TabsList className="mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Overview</TabsTrigger>
             <TabsTrigger value="pipeline" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Pipeline</TabsTrigger>
-            <TabsTrigger value="team" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Team</TabsTrigger>
             <TabsTrigger value="products" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Products</TabsTrigger>
             <TabsTrigger value="sources" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Sources</TabsTrigger>
           </TabsList>
@@ -66,10 +63,6 @@ const Analytics = () => {
 
           <TabsContent value="pipeline">
             <AnalyticsPipelineTab proposals={mainVersionProposals} />
-          </TabsContent>
-
-          <TabsContent value="team">
-            <AnalyticsTeamTab proposals={mainVersionProposals} />
           </TabsContent>
 
           <TabsContent value="products">

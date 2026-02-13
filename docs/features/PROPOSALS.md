@@ -117,7 +117,7 @@ When `require_proposal_approval` is enabled in organization settings:
 ### Examples
 
 - `P-1001` - First proposal
-- `Q-2050.2` - Second version of quote 2050
+- `Q-2050.2` - Second version of proposal 2050
 - `SR-1005` - Service request
 
 ### Number Generation

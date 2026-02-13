@@ -258,7 +258,7 @@ useEffect(() => {
 | Asset | Size | Purpose |
 |-------|------|---------|
 | `hero-dashboard.svg` | 1920×1080 | Main hero illustration |
-| `feature-quote-generation.svg` | 1600×900 | Quote builder feature |
+| `feature-proposal-generation.svg` | 1600×900 | Proposal builder feature |
 | `feature-template-editor.svg` | 1600×900 | Template editor feature |
 | `feature-analytics.svg` | 1600×900 | Analytics feature |
 | `icons/lightning-3d.svg` | 64×64 | 3D icon with glow |

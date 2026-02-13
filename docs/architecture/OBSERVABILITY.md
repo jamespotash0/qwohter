@@ -25,7 +25,7 @@
 ## 🎯 Core Principles
 
 ### ✅ **DO Instrument:**
-- Critical user flows (quote creation, editing, PDF generation)
+- Critical user flows (proposal creation, editing, PDF generation)
 - Data operations (database queries, API calls)
 - Authentication flows (login, signup, password reset)
 - Payment operations (Stripe checkout, subscription management)
@@ -33,7 +33,7 @@
 
 ### ❌ **DON'T Instrument:**
 - Simple UI interactions (button clicks, hover states)
-- Read-only pages (viewing quotes, dashboard)
+- Read-only pages (viewing proposals, dashboard)
 - Development/debug code
 - Internal admin functions
 - Over-instrumentation (adds noise, costs money)
@@ -108,7 +108,7 @@ npm install @sentry/react @vercel/analytics
 ### **Phase 2: Critical Operations (20 min)**
 Add targeted tracking for high-value operations.
 
-#### 2.1 Quote Creation (`src/services/quotesService.ts`)
+#### 2.1 Proposal Creation (`src/services/proposalsService.ts`)
 
 **Why instrument:**
 - Core business function
@@ -119,10 +119,10 @@ Add targeted tracking for high-value operations.
 **What we track:**
 ```typescript
 /**
- * Quote Creation Tracking
+ * Proposal Creation Tracking
  *
  * Success metrics:
- * - How long does quote creation take?
+ * - How long does proposal creation take?
  * - Are there slow queries?
  * - What's the success rate?
  *
@@ -134,36 +134,36 @@ Add targeted tracking for high-value operations.
  *
  * Context captured:
  * - User ID (who created it)
- * - Quote type (operable wall, glass wall, etc)
+ * - Proposal type (operable wall, glass wall, etc)
  * - Organization ID
- * - Quote size/complexity
+ * - Proposal size/complexity
  *
  * What we DON'T track:
- * - Quote content (too much data)
+ * - Proposal content (too much data)
  * - Customer information (privacy)
  * - Pricing details (sensitive)
  */
 
 // Example implementation:
-async createQuote(data: QuoteData) {
+async createProposal(data: ProposalData) {
   const transaction = Sentry.startTransaction({
-    name: 'Create Quote',
-    op: 'quote.create'
+    name: 'Create Proposal',
+    op: 'proposal.create'
   });
 
   try {
     // Track database insert
     const span = transaction.startChild({
       op: 'db.insert',
-      description: 'Insert quote into Supabase'
+      description: 'Insert proposal into Supabase'
     });
 
-    const result = await supabase.from('quotes').insert(data);
+    const result = await supabase.from('proposals').insert(data);
 
     span.finish();
 
     // Add context for success case
-    transaction.setTag('quote_type', data.product_type);
+    transaction.setTag('proposal_type', data.product_type);
     transaction.setTag('organization_id', data.organization_id);
 
     return result;
@@ -171,12 +171,12 @@ async createQuote(data: QuoteData) {
     // Capture error with full context
     Sentry.captureException(error, {
       tags: {
-        operation: 'quote_creation',
-        quote_type: data.product_type
+        operation: 'proposal_creation',
+        proposal_type: data.product_type
       },
       extra: {
         organization_id: data.organization_id,
-        quote_id: data.id
+        proposal_id: data.id
       }
     });
 
@@ -189,9 +189,9 @@ async createQuote(data: QuoteData) {
 ```
 
 **Why NOT instrument:**
-- ❌ Quote viewing (read-only, low risk)
-- ❌ Quote listing (simple query, not critical)
-- ❌ Quote filtering (UI-only operation)
+- ❌ Proposal viewing (read-only, low risk)
+- ❌ Proposal listing (simple query, not critical)
+- ❌ Proposal filtering (UI-only operation)
 
 #### 2.2 PDF Generation (`src/services/pdfService.ts`)
 
@@ -224,13 +224,13 @@ async createQuote(data: QuoteData) {
  * - Missing data errors
  *
  * Context:
- * - Quote ID
+ * - Proposal ID
  * - Template type
  * - Number of walls
  * - Has images (affects generation time)
  */
 
-async generatePDF(quoteId: string) {
+async generatePDF(proposalId: string) {
   const transaction = Sentry.startTransaction({
     name: 'Generate PDF',
     op: 'pdf.generate'
@@ -245,7 +245,7 @@ async generatePDF(quoteId: string) {
 
     return pdf;
   } catch (error) {
-    // These errors are critical - customer can't get their quote
+    // These errors are critical - customer can't get their proposal
     Sentry.captureException(error, {
       level: 'error',
       tags: { operation: 'pdf_generation' }
@@ -404,7 +404,7 @@ Catch React errors gracefully.
  *
  * Where to use:
  * - Wrap entire app (main.tsx)
- * - Wrap complex features (quote editor, PDF viewer)
+ * - Wrap complex features (proposal editor, PDF viewer)
  *
  * What we show users:
  * - Friendly error message
@@ -428,15 +428,15 @@ Catch React errors gracefully.
 
 #### 3.2 Feature-Level Boundaries
 
-**Quote Editor** - YES ✅
+**Proposal Editor** - YES ✅
 ```typescript
 /**
  * Why: Complex component, many moving parts
  * Risk: User could lose work if it crashes
  * Solution: Catch error, auto-save, let user retry
  */
-<ErrorBoundary fallback={<QuoteEditorError />}>
-  <QuoteEditor />
+<ErrorBoundary fallback={<ProposalEditorError />}>
+  <ProposalEditor />
 </ErrorBoundary>
 ```
 
@@ -514,7 +514,7 @@ useEffect(() => {
  *
  * Add these when you have 100+ users:
  * - Feature usage tracking
- * - Funnel analysis (quote creation flow)
+ * - Funnel analysis (proposal creation flow)
  * - A/B test results
  * - Custom business metrics
  */
@@ -542,8 +542,8 @@ Today's Errors (Last 24h):
 └──────────────────────────────────────┴───────┴──────────┘
 
 Performance:
-- Average quote creation: 850ms
-- P95 quote creation: 2.3s
+- Average proposal creation: 850ms
+- P95 proposal creation: 2.3s
 - Average PDF generation: 4.1s
 ```
 
@@ -553,9 +553,9 @@ This Week:
 - 234 page views
 - 42 unique visitors
 - Top pages:
-  1. /quotes/new (78 views)
+  1. /proposals/new (78 views)
   2. /dashboard (56 views)
-  3. /quotes/[id] (45 views)
+  3. /proposals/[id] (45 views)
 
 Core Web Vitals:
 - LCP: 1.2s ✅ (Good)
@@ -572,23 +572,23 @@ Core Web Vitals:
 #### Test 1: Error Capture
 ```bash
 # Create intentional error
-1. Add this to quote editor:
+1. Add this to proposal editor:
    throw new Error('Test error capture');
-2. Open quote editor
+2. Open proposal editor
 3. Check Sentry dashboard (should see error within 1 min)
 4. Verify error shows:
    ✅ User email
-   ✅ Quote editor component
+   ✅ Proposal editor component
    ✅ Session replay (if enabled)
 5. Remove test error
 ```
 
 #### Test 2: Performance Tracking
 ```bash
-# Test quote creation timing
-1. Create new quote
+# Test proposal creation timing
+1. Create new proposal
 2. Check Sentry performance
-3. Should see transaction: "Create Quote"
+3. Should see transaction: "Create Proposal"
 4. Verify it shows:
    ✅ Total time
    ✅ Database query time
@@ -629,8 +629,8 @@ Core Web Vitals:
 - [ ] Test: See errors in Sentry dashboard
 
 ### Phase 2: Critical Operations ✅
-- [ ] Instrument `quotesService.createQuote()`
-- [ ] Instrument `quotesService.updateQuote()`
+- [ ] Instrument `proposalsService.createProposal()`
+- [ ] Instrument `proposalsService.updateProposal()`
 - [ ] Instrument `pdfService.generatePDF()`
 - [ ] Instrument `authService.signIn()`
 - [ ] Instrument `authService.signUp()`
@@ -640,7 +640,7 @@ Core Web Vitals:
 ### Phase 3: Error Boundaries ✅
 - [ ] Create `ErrorBoundary` component
 - [ ] Wrap app in global boundary
-- [ ] Add boundary to Quote Editor
+- [ ] Add boundary to Proposal Editor
 - [ ] Add boundary to PDF Viewer
 - [ ] Test: Errors show fallback UI
 
@@ -710,7 +710,7 @@ Core Web Vitals:
 - ❌ Credit card numbers
 - ❌ OAuth tokens
 - ❌ API keys
-- ❌ Quote pricing details
+- ❌ Proposal pricing details
 - ❌ Customer personal information
 
 ### Data Retention
@@ -743,10 +743,10 @@ Core Web Vitals:
 - ✅ Added environment variables to `.env`
 
 #### Phase 2: Critical Operations ✅
-**Quote Operations:**
-- ✅ Instrumented `createQuote()` in `src/services/quotesService.ts`
-- ✅ Instrumented `updateQuote()` in `src/services/quotesService.ts`
-- ✅ Instrumented `deleteQuote()` in `src/services/quotesService.ts`
+**Proposal Operations:**
+- ✅ Instrumented `createProposal()` in `src/services/proposalsService.ts`
+- ✅ Instrumented `updateProposal()` in `src/services/proposalsService.ts`
+- ✅ Instrumented `deleteProposal()` in `src/services/proposalsService.ts`
 
 **Auth Operations:**
 - ✅ Instrumented `signIn()` in `src/auth/services/authService.ts`
@@ -771,7 +771,7 @@ Core Web Vitals:
 - **Privacy:** Passwords, payment info, and sensitive data automatically filtered
 
 ### What's NOT Tracked
-- ❌ Quote pricing details
+- ❌ Proposal pricing details
 - ❌ Customer personal information
 - ❌ Passwords or tokens
 - ❌ Simple UI interactions

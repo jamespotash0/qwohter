@@ -343,9 +343,9 @@ If a user is re-invited to the same organization:
 
 ### Data Preservation
 
-**Trigger:** `update_quote_creator_name_on_membership_change()`
+**Trigger:** `update_proposal_creator_name_on_membership_change()`
 
-| Action | Quote Creator Name |
+| Action | Proposal Creator Name |
 |--------|-------------------|
 | Member removed (Inactive) | "Deactivated User" |
 | Member reactivated (Active) | Actual user name |
@@ -359,7 +359,7 @@ When a user deletes their account:
 1. User requests deletion in Settings → Account
 2. Password confirmation required
 3. Trigger: handle_user_deletion() runs
-4. created_by set to NULL on quotes (FK constraint: SET NULL)
+4. created_by set to NULL on proposals (FK constraint: SET NULL)
 5. created_by_name set to "Deleted User"
 6. Profile record deleted from profiles table
 7. Auth user deleted from auth.users
