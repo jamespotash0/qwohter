@@ -50,5 +50,8 @@ export { VariableSuggestion, setVariablesGetter } from './VariableSuggestion';
 export { GoogleDocsEmbed } from './GoogleDocsEmbed';
 export { GoogleDocsMode } from './GoogleDocsMode';
 
+// Variables Reference
+export { VariablesReferencePanel } from './VariablesReferencePanel';
+
 // Builder Configuration
 export { PresentationBuilderConfig } from './PresentationBuilderConfig';

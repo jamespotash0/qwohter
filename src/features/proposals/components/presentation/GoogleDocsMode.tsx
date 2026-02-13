@@ -4,7 +4,7 @@
  * Handles the Google Docs integration for the Presentation tab.
  * Shows either:
  * - Empty state with template selection and "Generate Document" button
- * - Embedded Google Doc with variable panel
+ * - Embedded Google Doc with toolbar
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -12,18 +12,14 @@ import {
   GoogleLogo,
   FilePlus,
   Spinner,
-  Copy,
   Check,
   ArrowClockwise,
   ArrowsClockwise,
   LinkSimple,
   Warning,
   ArrowSquareOut,
-  BracketsCurly,
   Trash,
   Info,
-  CaretRight,
-  CaretDown,
   PaperPlaneTilt,
   DownloadSimple,
 } from '@phosphor-icons/react';
@@ -52,7 +48,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/sonner';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
-import { getAllFormVariables } from './VariableExtension';
 import { VersionDialog, type VersionMode } from './VersionDialog';
 import { DriveFilePicker } from './DriveFilePicker';
 import type { DriveFile } from '@/hooks/queries/useDriveFiles';
@@ -63,7 +58,6 @@ import { useGoogleConnection } from '@/hooks/queries/useGoogleConnection';
 import { useCheckGoogleDoc } from '@/hooks/queries/useCheckGoogleDoc';
 import { useConnectedIntegrations } from '@/hooks/useIntegrations';
 import { cn } from '@/lib/utils';
-import { TemplateVariablesReference } from '@/components/features/settings/TemplateVariablesReference';
 import { SendForSignatureDialog } from '@/components/features/signing/SendForSignatureDialog';
 
 interface GoogleDocsModeProps {
@@ -135,16 +129,12 @@ export function GoogleDocsMode({
   canEdit = false,
   onBeforeGenerate,
 }: GoogleDocsModeProps) {
-  const [showVariables, setShowVariables] = useState(false);
-  const [copiedVariable, setCopiedVariable] = useState<string | null>(null);
   const [selectedTemplateFile, setSelectedTemplateFile] = useState<DriveFile | null>(null);
   const [showVersionDialog, setShowVersionDialog] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [activeAction, setActiveAction] = useState<'update' | 'regenerate' | null>(null);
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [showLinkExisting, setShowLinkExisting] = useState(false);
   const [selectedExistingDoc, setSelectedExistingDoc] = useState<DriveFile | null>(null);
-  const [showVariablesRef, setShowVariablesRef] = useState(false);
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
 
   // Check if user has connected Google - check BOTH sources
@@ -188,9 +178,6 @@ export function GoogleDocsMode({
     }
   }, [googleDocId, docCheck, onUnlinkDocument]);
 
-  // Get all available variables
-  const variables = useMemo(() => getAllFormVariables(formData), [formData]);
-
   // Get version information from proposal data
   const generatedDocs = proposalData?.form_data?.generated_docs || [];
   const currentVersion = proposalData?.form_data?.current_doc_version || 1;
@@ -206,18 +193,6 @@ export function GoogleDocsMode({
       google_doc_id: selectedTemplateFile.id, // DriveFile.id IS the google doc ID
     };
   }, [selectedTemplateFile]);
-
-  // Handle variable selection - copy to clipboard for Google Docs
-  const handleVariableSelect = useCallback((variableKey: string, _variableLabel: string) => {
-    const placeholder = `{{${variableKey}}}`;
-    navigator.clipboard.writeText(placeholder);
-    setCopiedVariable(variableKey);
-    toast.success('Variable copied!', {
-      description: `Paste "${placeholder}" into your Google Doc`,
-    });
-    // Reset copied state after 2 seconds
-    setTimeout(() => setCopiedVariable(null), 2000);
-  }, []);
 
   // Handle document generation with optional version parameters
   const handleGenerate = useCallback(async (options?: {
@@ -625,17 +600,6 @@ export function GoogleDocsMode({
                   )}
                 </div>
 
-                {/* Template Variables Reference */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowVariablesRef(true)}
-                  className="w-full mb-4 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                >
-                  <BracketsCurly className="w-4 h-4 mr-2" />
-                  View Template Variables Reference
-                </Button>
-
                 <Button
                   size="lg"
                   onClick={() => handleGenerate()}
@@ -675,11 +639,6 @@ export function GoogleDocsMode({
           </div>
         </div>
 
-        {/* Template Variables Reference Dialog */}
-        <TemplateVariablesReference
-          open={showVariablesRef}
-          onOpenChange={setShowVariablesRef}
-        />
       </div>
     );
   }
@@ -726,20 +685,6 @@ export function GoogleDocsMode({
         {/* Right side - Icon buttons */}
         <TooltipProvider delayDuration={300}>
           <div className="flex items-center gap-3">
-            {/* Variables Panel Toggle */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setShowVariables(!showVariables)}
-                  className="transition-transform hover:scale-125"
-                >
-                  <BracketsCurly className={cn('w-4 h-4', showVariables ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400')} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Variables</TooltipContent>
-            </Tooltip>
-
             {/* Update Values (preserves comments) */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -876,76 +821,6 @@ export function GoogleDocsMode({
             }}
           />
         </div>
-
-        {/* Variables Panel for Google Docs */}
-        {showVariables && (
-          <div className="w-72 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Insert Variables
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Click to copy, then paste into your document
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-2">
-              {Object.entries(variables).map(([category, vars]) => (
-                <div key={category} className="mb-1">
-                  {/* Collapsible Category Header */}
-                  <button
-                    onClick={() => setExpandedCategories(prev => ({
-                      ...prev,
-                      [category]: !prev[category],
-                    }))}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-2 py-2',
-                      'text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide',
-                      'hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors'
-                    )}
-                  >
-                    {expandedCategories[category] ? (
-                      <CaretDown weight="bold" className="w-4 h-4 flex-shrink-0 text-gray-500" />
-                    ) : (
-                      <CaretRight weight="bold" className="w-4 h-4 flex-shrink-0 text-gray-500" />
-                    )}
-                    <span className="truncate">{category}</span>
-                    <span className="ml-auto text-gray-400 font-normal normal-case">
-                      {vars.length}
-                    </span>
-                  </button>
-
-                  {/* Variables (only shown when expanded) */}
-                  {expandedCategories[category] && (
-                    <div className="space-y-0.5 ml-2">
-                      {vars.map((variable) => (
-                        <button
-                          key={variable.key}
-                          onClick={() => handleVariableSelect(variable.key, variable.label)}
-                          className={cn(
-                            'w-full text-left px-2 py-1.5 rounded text-xs',
-                            'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                            'flex items-center justify-between group',
-                            copiedVariable === variable.key && 'bg-green-50 dark:bg-green-900/20'
-                          )}
-                        >
-                          <span className="text-gray-700 dark:text-gray-300">
-                            {variable.label}
-                          </span>
-                          {copiedVariable === variable.key ? (
-                            <Check className="w-3.5 h-3.5 text-green-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Version Dialog for regeneration */}
@@ -990,12 +865,6 @@ export function GoogleDocsMode({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Template Variables Reference Dialog */}
-      <TemplateVariablesReference
-        open={showVariablesRef}
-        onOpenChange={setShowVariablesRef}
-      />
 
       {/* Send for Signature Dialog */}
       {proposalId && organizationId && (

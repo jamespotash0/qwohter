@@ -16,6 +16,7 @@ import { QBDesktopConnectDialog } from '@/components/features/integrations/QBDes
 import { GoogleDocsConnectDialog } from '@/components/features/integrations/GoogleDocsConnectDialog';
 import { GoogleDocsSettingsDialog } from '@/components/features/integrations/GoogleDocsSettingsDialog';
 import { useIntegrationsData } from '@/hooks/useIntegrations';
+import { useGoogleConnection } from '@/hooks/queries/useGoogleConnection';
 import { disconnectQBOnline } from '@/services/quickbooksOnlineService';
 import { disconnectQBDesktop } from '@/services/quickbooksDesktopService';
 import { disconnectGoogle } from '@/services/googleDocsIntegrationService';
@@ -84,6 +85,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     organization?.id || '',
     // organization?.plan // Uncomment when plan filtering is needed
   );
+
+  // Check actual Google token status (proactively refreshes if expired)
+  const { data: googleTokenStatus } = useGoogleConnection(organization?.id);
 
   // Get Google Docs settings for the settings dialog
   const googleDocsIntegration = connectedIntegrations.find(i => i.integration_type === 'google_docs');
@@ -247,22 +251,32 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
         {/* Integrations Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {integrations.map((integration) => (
-            <IntegrationCard
-              key={integration.type}
-              name={integration.name}
-              description={integration.description}
-              logoUrl={integration.logoUrl}
-              isConnected={integration.isConnected}
-              onConnect={() => handleConnect(integration.type)}
-              onDisconnect={() => handleDisconnect(integration.type)}
-              onConfigure={integration.type === 'google_docs' ? () => handleConfigure(integration.type) : undefined}
-              isConnecting={connectingType === integration.type}
-              isDisconnecting={disconnectingType === integration.type}
-              comingSoon={integration.comingSoon}
-              platformRequirement={integration.platformRequirement}
-            />
-          ))}
+          {integrations.map((integration) => {
+            // For Google Docs, use actual token status to determine connection state
+            const isGoogleDocs = integration.type === 'google_docs';
+            const googleNeedsReconnection = isGoogleDocs && googleTokenStatus?.needsReconnection === true;
+            const effectiveConnected = isGoogleDocs
+              ? (googleTokenStatus?.isConnected ?? integration.isConnected)
+              : integration.isConnected;
+
+            return (
+              <IntegrationCard
+                key={integration.type}
+                name={integration.name}
+                description={integration.description}
+                logoUrl={integration.logoUrl}
+                isConnected={effectiveConnected}
+                needsReconnection={googleNeedsReconnection}
+                onConnect={() => handleConnect(integration.type)}
+                onDisconnect={() => handleDisconnect(integration.type)}
+                onConfigure={isGoogleDocs ? () => handleConfigure(integration.type) : undefined}
+                isConnecting={connectingType === integration.type}
+                isDisconnecting={disconnectingType === integration.type}
+                comingSoon={integration.comingSoon}
+                platformRequirement={integration.platformRequirement}
+              />
+            );
+          })}
         </div>
 
         {/* Storage Settings */}

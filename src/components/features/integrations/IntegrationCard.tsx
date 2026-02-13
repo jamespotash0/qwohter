@@ -7,7 +7,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2, Settings, AlertTriangle } from 'lucide-react';
 
 interface IntegrationCardProps {
   name: string;
@@ -21,6 +21,7 @@ interface IntegrationCardProps {
   isDisconnecting?: boolean;
   comingSoon?: boolean;
   platformRequirement?: string;
+  needsReconnection?: boolean;
 }
 
 export const IntegrationCard: React.FC<IntegrationCardProps> = ({
@@ -35,6 +36,7 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
   isDisconnecting = false,
   comingSoon = false,
   platformRequirement,
+  needsReconnection = false,
 }) => {
   const isLoading = isConnecting || isDisconnecting;
 
@@ -85,9 +87,11 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex items-center px-2.5 py-1 rounded-md border text-xs font-medium ${
-                    isConnected
-                      ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
-                      : 'bg-gray-50 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                    needsReconnection
+                      ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
+                      : isConnected
+                        ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+                        : 'bg-gray-50 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
                   }`}>
                     {isConnecting ? (
                       <>
@@ -98,6 +102,11 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
                       <>
                         <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
                         Disconnecting...
+                      </>
+                    ) : needsReconnection ? (
+                      <>
+                        <AlertTriangle className="w-3 h-3 mr-1.5" />
+                        Reconnect
                       </>
                     ) : isConnected ? (
                       'Connected'
@@ -117,18 +126,20 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
                   )}
                 </div>
                 <button
-                  onClick={isConnected ? onDisconnect : onConnect}
+                  onClick={isConnected && !needsReconnection ? onDisconnect : onConnect}
                   disabled={isLoading}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isConnected
+                    isConnected && !needsReconnection
                       ? 'bg-blue-600 hover:bg-blue-700'
-                      : 'bg-gray-300 hover:bg-gray-400'
+                      : needsReconnection
+                        ? 'bg-amber-400 hover:bg-amber-500'
+                        : 'bg-gray-300 hover:bg-gray-400'
                   }`}
                   role="switch"
-                  aria-checked={isConnected}
+                  aria-checked={isConnected && !needsReconnection}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isConnected ? 'translate-x-6' : 'translate-x-1'
+                    isConnected && !needsReconnection ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
               </div>
