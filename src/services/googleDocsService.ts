@@ -7,6 +7,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { FormBuilderData } from '@/features/proposals/context/FormBuilderContext';
 import { formatLocalDate } from '@/lib/utils';
+import {
+  getAvailableFieldsForProduct,
+  getProductFieldValue,
+  isCatalogProduct,
+  resolveRawDataValue,
+} from '@/features/proposals/utils/productVariables';
 
 /** Data for dynamic table row duplication */
 export interface TableRowData {
@@ -275,12 +281,12 @@ export function buildProposalVariables(
       variables[`${prefix}.Series`] = rawData.series || '';
       variables[`${prefix}.Model`] = rawData.model || '';
 
-      // Dimensions
+      // Dimensions (formatted with ' and " marks)
       const dims = rawData.dimensions || {};
-      variables[`${prefix}.Height`] = dims.height || '';
-      variables[`${prefix}.Width`] = dims.width || '';
-      variables[`${prefix}.Length`] = dims.length || '';
-      variables[`${prefix}.Thickness`] = dims.thickness || '';
+      variables[`${prefix}.Height`] = formatDimension(dims.height || '');
+      variables[`${prefix}.Width`] = formatDimension(dims.width || '');
+      variables[`${prefix}.Length`] = formatDimension(dims.length || '');
+      variables[`${prefix}.Thickness`] = formatDimension(dims.thickness || '');
 
       // Performance ratings
       const perf = rawData.performanceRatings || {};
@@ -308,17 +314,40 @@ export function buildProposalVariables(
       // Certifications as comma-separated list
       variables[`${prefix}.Certifications`] = (rawData.certifications || []).join(', ');
 
-      // Also add by alias if provided
+      // Add ALL available fields by alias (direct: "Wall A.field" and prefixed: "product.Wall A.field")
       if (product.alias) {
-        const aliasPrefix = `product.${product.alias}`;
-        variables[`${aliasPrefix}.name`] = product.name || '';
-        variables[`${aliasPrefix}.quantity`] = product.quantity?.toString() || '';
+        const alias = product.alias;
+        const aliasPrefix = `product.${alias}`;
+        const availableFields = getAvailableFieldsForProduct(product);
+
+        for (const field of availableFields) {
+          let value: string;
+
+          // For catalog spec fields, resolve codes to labels
+          // _specificationLabels is keyed by field name → resolved label (e.g., "track_system": "425 Multi-Directional")
+          if (isCatalogProduct(product) && field.category === 'Specifications') {
+            const raw = product.rawData as Record<string, unknown>;
+            const specLabels = raw._specificationLabels as Record<string, string> | undefined;
+            value = specLabels?.[field.key] || resolveRawDataValue(raw[field.key], specLabels) || '-';
+          } else {
+            const fieldValue = getProductFieldValue(product, field);
+            value = fieldValue !== null ? String(fieldValue) : '-';
+          }
+
+          // Format dimension fields with proper ' and " marks
+          if (DIMENSION_FIELD_KEYS.has(field.key) && value && value !== '-') {
+            value = formatDimension(value);
+          }
+
+          // Direct alias key (matches side panel: {{Wall A.track_system}})
+          variables[`${alias}.${field.key}`] = value;
+          // Prefixed key (legacy: {{product.Wall A.track_system}})
+          variables[`${aliasPrefix}.${field.key}`] = value;
+        }
+
+        // Also add the legacy Upper Case keys for backward compatibility
         variables[`${aliasPrefix}.Finish_Color`] = finishColor || finishStyle;
         variables[`${aliasPrefix}.Finish_Style`] = finishStyle;
-        variables[`${aliasPrefix}.Color`] = finishColor;
-        variables[`${aliasPrefix}.Finish`] = finishStyle;
-        variables[`${aliasPrefix}.Manufacturer`] = rawData.manufacturer || '';
-        variables[`${aliasPrefix}.Model`] = rawData.model || '';
       }
     });
   }
@@ -459,6 +488,33 @@ export interface GenerateProposalDocOptions {
   version?: number;
 }
 
+/** Field keys that represent dimensions and should be formatted with ' and " marks */
+const DIMENSION_FIELD_KEYS = new Set([
+  'height', 'width', 'length', 'thickness',
+  'wall_height', 'wall_width',
+]);
+
+/**
+ * Format a single dimension value to feet-inches notation.
+ * "32-4" → "32'-4\"", "16" → "16'", already formatted → pass through
+ */
+function formatDimension(value: string): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+
+  // Already formatted (contains ' or ")
+  if (trimmed.includes("'") || trimmed.includes('"')) return trimmed;
+
+  // Feet-inches format: "32-4" → "32'-4\""
+  if (trimmed.includes('-')) {
+    const [feet, inches] = trimmed.split('-');
+    return `${feet}'-${inches}"`;
+  }
+
+  // Just feet: "16" → "16'"
+  return `${trimmed}'`;
+}
+
 /**
  * Format dimensions into a readable string (e.g., "32'-4" L x 8'-6" H")
  */
@@ -472,19 +528,19 @@ function formatDimensions(dims: {
 
   // Check for length x height format (common for walls)
   if (dims.length && dims.height) {
-    return `${dims.length} L x ${dims.height} H`;
+    return `${formatDimension(dims.length)} L x ${formatDimension(dims.height)} H`;
   }
 
   // Check for width x height format
   if (dims.width && dims.height) {
-    return `${dims.width} W x ${dims.height} H`;
+    return `${formatDimension(dims.width)} W x ${formatDimension(dims.height)} H`;
   }
 
   // Fall back to listing available dimensions
-  if (dims.length) parts.push(`${dims.length} L`);
-  if (dims.width) parts.push(`${dims.width} W`);
-  if (dims.height) parts.push(`${dims.height} H`);
-  if (dims.thickness) parts.push(`${dims.thickness} T`);
+  if (dims.length) parts.push(`${formatDimension(dims.length)} L`);
+  if (dims.width) parts.push(`${formatDimension(dims.width)} W`);
+  if (dims.height) parts.push(`${formatDimension(dims.height)} H`);
+  if (dims.thickness) parts.push(`${formatDimension(dims.thickness)} T`);
 
   return parts.join(' x ') || '';
 }
@@ -561,11 +617,11 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           Product_Line: rawData.productLine || '',
           Series: rawData.series || '',
           Model: rawData.model || '',
-          // Dimensions
-          Height: dims.height || '',
-          Width: dims.width || '',
-          Length: dims.length || '',
-          Thickness: dims.thickness || '',
+          // Dimensions (formatted with ' and " marks)
+          Height: formatDimension(dims.height || ''),
+          Width: formatDimension(dims.width || ''),
+          Length: formatDimension(dims.length || ''),
+          Thickness: formatDimension(dims.thickness || ''),
           // Performance
           STC: perf.stc?.toString() || '',
           Fire_Rating: perf.fireRating || '',
@@ -581,6 +637,56 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           Face: mats.face || '',
           Frame: mats.frame || '',
           Certifications: (rawData.certifications || []).join(', '),
+        };
+      }),
+    });
+
+    // Wall specs table - resolves catalog config fields with label resolution
+    // Designed for {{#TABLE:wallspecs}} in templates
+    tables.push({
+      tableId: 'wallspecs',
+      rows: formData.products.items.map((product) => {
+        const rawData = product.rawData || {};
+        const raw = rawData as Record<string, unknown>;
+        const specLabels = raw._specificationLabels as Record<string, string> | undefined;
+        // _specificationLabels is keyed by field name (e.g., "initial_closure_system": "Pocket Door")
+        // so look up the field key directly, not the raw value code
+        const resolve = (key: string) => specLabels?.[key] || String(raw[key] ?? '') || '';
+
+        // For catalog products, resolve config fields; for AI products, fall back to nested data
+        const dims = rawData.dimensions || {};
+        const perf = rawData.performanceRatings || {};
+        const appearance = rawData.appearance || {};
+
+        const wallWidth = formatDimension(resolve('wall_width') || dims.width || '');
+        const wallHeight = formatDimension(resolve('wall_height') || dims.height || '');
+        const dimensionsStr = wallWidth && wallHeight
+          ? `${wallWidth} L x ${wallHeight} H`
+          : formatDimensions(dims);
+
+        // Extract wall type from productDomain (e.g., "Operable Wall" → "Operable")
+        const domain = rawData.productDomain || rawData.productLine || '';
+        const wallType = typeof domain === 'string'
+          ? domain.split(/\s+/)[0] || product.name || ''
+          : product.name || '';
+
+        return {
+          wall: wallType,
+          dimensions: dimensionsStr,
+          stc: resolve('stc_rating') || perf.stc?.toString() || '',
+          finish: resolve('finish_material') || appearance.finish || appearance.color || '',
+          // Pocket doors: check dedicated pocket door type field (not closure system)
+          pocketDoors: resolve('pocket_doors_type') || resolve('pocket_door_type') || resolve('Pocket Door Type') || '-',
+          // Pass doors: show "option | type" if both exist, type only if just type, else "-"
+          passDoors: (() => {
+            const type = resolve('pass_door_type') || resolve('Pass Door Type');
+            const option = resolve('pass_door_option') || resolve('Pass Door Option') || resolve('pass_door_qty');
+            if (type && option) return `${option} | ${type}`;
+            if (type) return type;
+            return '-';
+          })(),
+          panelCount: resolve('panel_count') || '',
+          qty: product.quantity?.toString() || '',
         };
       }),
     });
@@ -715,39 +821,39 @@ export function buildBlockData(formData: FormBuilderData): BlockProductData[] {
     const finishStyle = appearance.finish || '';
 
     const variables: Record<string, string> = {
-      // Basic info
+      // Basic info (keep empty for structural fields)
       name: product.name || '',
       quantity: product.quantity?.toString() || '',
       unit: product.unit || '',
       description: product.description || '',
       alias: product.alias || '',
       // Product identity
-      Manufacturer: rawData.manufacturer || '',
+      Manufacturer: rawData.manufacturer || '-',
       Product_Domain: productDomain,
-      Product_Line: rawData.productLine || '',
-      Series: rawData.series || '',
-      Model: rawData.model || '',
-      // Dimensions
-      Height: dims.height || '',
-      Width: dims.width || '',
-      Length: dims.length || '',
-      Thickness: dims.thickness || '',
+      Product_Line: rawData.productLine || '-',
+      Series: rawData.series || '-',
+      Model: rawData.model || '-',
+      // Dimensions (formatted with ' and " marks)
+      Height: formatDimension(dims.height || '') || '-',
+      Width: formatDimension(dims.width || '') || '-',
+      Length: formatDimension(dims.length || '') || '-',
+      Thickness: formatDimension(dims.thickness || '') || '-',
       // Performance
-      STC: perf.stc?.toString() || '',
-      Fire_Rating: perf.fireRating || '',
-      Acoustic_Rating: perf.acousticRating || '',
+      STC: perf.stc?.toString() || '-',
+      Fire_Rating: perf.fireRating || '-',
+      Acoustic_Rating: perf.acousticRating || '-',
       // Appearance
-      Finish_Color: finishColor || finishStyle,
-      Finish_Style: finishStyle,
-      Color: finishColor,
-      Finish: finishStyle,
-      Trim: appearance.trim || '',
+      Finish_Color: finishColor || finishStyle || '-',
+      Finish_Style: finishStyle || '-',
+      Color: finishColor || '-',
+      Finish: finishStyle || '-',
+      Trim: appearance.trim || '-',
       // Materials
-      Core: mats.core || '',
-      Face: mats.face || '',
-      Frame: mats.frame || '',
+      Core: mats.core || '-',
+      Face: mats.face || '-',
+      Frame: mats.frame || '-',
       // Certifications
-      Certifications: (rawData.certifications || []).join(', '),
+      Certifications: (rawData.certifications || []).join(', ') || '-',
     };
 
     // Surface ALL specifications JSONB keys as variables so custom fields
@@ -756,6 +862,24 @@ export function buildBlockData(formData: FormBuilderData): BlockProductData[] {
       if (key.startsWith('_')) continue; // Skip internal keys like _specificationLabels
       if (value !== null && value !== undefined) {
         variables[key] = String(value);
+      }
+    }
+
+    // For catalog products, also surface flat rawData spec keys with label resolution
+    // _specificationLabels is keyed by field name (e.g., "initial_closure_system": "Pocket Door")
+    if (isCatalogProduct(product)) {
+      const dynamicFields = getAvailableFieldsForProduct(product);
+      const specLabels = (rawData as Record<string, unknown>)._specificationLabels as Record<string, string> | undefined;
+      for (const field of dynamicFields) {
+        if (field.category === 'Specifications') {
+          // Use pre-resolved label directly, fall back to raw value
+          let resolved = specLabels?.[field.key] || String((rawData as Record<string, unknown>)[field.key] ?? '') || '-';
+          // Format dimension fields with proper ' and " marks
+          if (DIMENSION_FIELD_KEYS.has(field.key) && resolved && resolved !== '-') {
+            resolved = formatDimension(resolved);
+          }
+          variables[field.key] = resolved;
+        }
       }
     }
 
@@ -786,6 +910,14 @@ export async function generateProposalDoc(
   const blockData = buildBlockData(formData);
 
   // Debug logging
+  console.log('[generateProposalDoc] Block data:', blockData.length, 'products');
+  blockData.forEach((b, idx) => {
+    console.log(`[generateProposalDoc] Block product ${idx}: domain="${b.productDomain}", label="${b.label}", vars=${Object.keys(b.variables).length}`);
+  });
+  console.log('[generateProposalDoc] Products items:', formData?.products?.items?.length || 0);
+  formData?.products?.items?.forEach((p, idx) => {
+    console.log(`[generateProposalDoc] Product ${idx}: name="${p.name}", alias="${p.alias}", domain="${p.rawData?.productDomain}", source="${p.rawData?.source}"`);
+  });
   console.log('[generateProposalDoc] Pricing sections:', formData?.pricing?.sections?.length || 0);
   formData?.pricing?.sections?.forEach((section, idx) => {
     console.log(`[generateProposalDoc] Section ${idx} "${section.name}": ${section.lineItems?.length || 0} items`);

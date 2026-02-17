@@ -5,10 +5,13 @@
  * Templates are selected and documents are generated from proposal data.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { BracketsCurly } from '@phosphor-icons/react';
 import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder, type DocumentTemplate } from '../../context/FormBuilderContext';
 import { GoogleDocsMode, PresentationBuilderConfig } from '../presentation';
+import { VariablesReferencePanel } from '../presentation/VariablesReferencePanel';
+import { cn } from '@/lib/utils';
 
 interface ProposalData {
   id?: string;
@@ -71,6 +74,7 @@ export function PresentationTab({
 }: PresentationTabProps) {
   const isBuilderMode = mode === 'builder';
   const { data } = useFormBuilder();
+  const [showVariables, setShowVariables] = useState(false);
 
   // Handle Google Doc generation
   const handleGoogleDocGenerated = useCallback((docId: string) => {
@@ -94,24 +98,54 @@ export function PresentationTab({
 
   // Google Docs mode only - extend to fill available space
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)] min-h-[500px] -mx-6 -mt-6 -mb-6">
-      <GoogleDocsMode
-        googleDocId={proposalData?.google_doc_id}
-        formData={data}
-        proposalId={proposalId || proposalData?.id}
-        organizationId={organizationId}
-        proposalData={proposalData}
-        proposalInfo={{
-          projectName: infoData?.projectName,
-          clientName: infoData?.clientName,
-          proposalNumber: proposalData?.proposal_number,
-        }}
-        templates={formTemplates || data.presentation?.templates}
-        onDocGenerated={handleGoogleDocGenerated}
-        onUnlinkDocument={handleGoogleDocUnlinked}
-        canEdit={hasGoogleAuth}
-        onBeforeGenerate={onBeforeGenerate}
-      />
+    <div className="flex h-[calc(100vh-56px)] min-h-[500px] -mx-6 -mt-6 -mb-6">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <GoogleDocsMode
+          googleDocId={proposalData?.google_doc_id}
+          formData={data}
+          proposalId={proposalId || proposalData?.id}
+          organizationId={organizationId}
+          proposalData={proposalData}
+          proposalInfo={{
+            projectName: infoData?.projectName,
+            clientName: infoData?.clientName,
+            proposalNumber: proposalData?.proposal_number,
+          }}
+          templates={formTemplates || data.presentation?.templates}
+          onDocGenerated={handleGoogleDocGenerated}
+          onUnlinkDocument={handleGoogleDocUnlinked}
+          canEdit={hasGoogleAuth}
+          onBeforeGenerate={onBeforeGenerate}
+        />
+      </div>
+
+      {/* Variables toggle button (when panel is closed) */}
+      {!showVariables && (
+        <button
+          onClick={() => setShowVariables(true)}
+          className={cn(
+            'absolute right-0 top-1/2 -translate-y-1/2 z-10',
+            'flex items-center gap-1 px-1.5 py-3',
+            'bg-blue-600 hover:bg-blue-700 text-white',
+            'rounded-l-md shadow-md transition-colors',
+            'writing-mode-vertical'
+          )}
+          style={{ writingMode: 'vertical-rl' }}
+          title="Show template variables"
+        >
+          <BracketsCurly className="w-4 h-4 rotate-90" />
+          <span className="text-[10px] font-medium tracking-wider uppercase">Variables</span>
+        </button>
+      )}
+
+      {/* Variables Reference Panel */}
+      {showVariables && (
+        <VariablesReferencePanel
+          formData={data}
+          onClose={() => setShowVariables(false)}
+        />
+      )}
     </div>
   );
 }

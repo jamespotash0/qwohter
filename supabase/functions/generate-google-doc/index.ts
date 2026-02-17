@@ -1033,6 +1033,9 @@ async function processTableMarkers(
     } else if (tableDef.tableId === 'specifications') {
       headers = ['Wall', 'Dimensions', 'STC', 'Finish'];
       rowKeys = ['wall', 'dimensions', 'stc', 'finish'];
+    } else if (tableDef.tableId === 'wallspecs') {
+      headers = ['Wall', 'Dimensions', 'STC', 'Finish', 'Pocket Doors', 'Pass Doors', 'Panels', 'Qty'];
+      rowKeys = ['wall', 'dimensions', 'stc', 'finish', 'pocketDoors', 'passDoors', 'panelCount', 'qty'];
     } else {
       // Generic table - use first row's keys as headers
       if (tableDef.rows.length > 0) {
@@ -1490,6 +1493,74 @@ async function processTableMarkers(
           }
         }
       }
+
+      // Step 8: Center-align all cells for wallspecs table
+      if (tableDef.tableId === 'wallspecs') {
+        // Re-read document to get current table positions for alignment
+        const alignDocResponse = await fetch(
+          `https://docs.googleapis.com/v1/documents/${docId}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const alignDocData = await alignDocResponse.json();
+
+        let alignTable: any = null;
+        for (const element of alignDocData.body?.content || []) {
+          if (element.table && element.startIndex >= markerStart - 10) {
+            alignTable = element.table;
+            break;
+          }
+        }
+
+        if (alignTable) {
+          const alignRequests: any[] = [];
+
+          for (let rowIdx = 0; rowIdx < alignTable.tableRows.length; rowIdx++) {
+            const row = alignTable.tableRows[rowIdx];
+            for (let colIdx = 0; colIdx < (row.tableCells?.length || 0); colIdx++) {
+              const cell = row.tableCells[colIdx];
+              if (cell?.content) {
+                for (const paragraph of cell.content) {
+                  if (paragraph.startIndex !== undefined && paragraph.endIndex !== undefined) {
+                    alignRequests.push({
+                      updateParagraphStyle: {
+                        range: {
+                          startIndex: paragraph.startIndex,
+                          endIndex: paragraph.endIndex,
+                        },
+                        paragraphStyle: {
+                          alignment: 'CENTER',
+                        },
+                        fields: 'alignment',
+                      },
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          if (alignRequests.length > 0) {
+            const alignResponse = await fetch(
+              `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ requests: alignRequests }),
+              }
+            );
+
+            if (!alignResponse.ok) {
+              const error = await alignResponse.text();
+              console.error('[processTableMarkers] Failed to center-align cells:', error);
+            } else {
+              console.log(`[processTableMarkers] Center-aligned ${alignRequests.length} paragraphs`);
+            }
+          }
+        }
+      }
     }
 
     console.log(`[processTableMarkers] Completed table: ${tableDef.tableId}`);
@@ -1622,7 +1693,7 @@ function resolveBlockVariables(template: string, variables: Record<string, strin
     if (variables[trimmedKey] !== undefined) return variables[trimmedKey];
     const lowerKey = trimmedKey.toLowerCase();
     const matchingKey = Object.keys(variables).find(k => k.toLowerCase() === lowerKey);
-    return matchingKey ? variables[matchingKey] : '';
+    return matchingKey ? variables[matchingKey] : '-';
   });
 }
 

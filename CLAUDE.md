@@ -82,6 +82,7 @@ npm run docs:preview           # Preview built docs
 | [GOOGLE_RISC_SETUP.md](docs/guides/GOOGLE_RISC_SETUP.md) | Google security events configuration |
 | [RESEND_SMTP_SETUP.md](docs/guides/RESEND_SMTP_SETUP.md) | Email SMTP configuration |
 | [LOCAL_DEV.md](docs/guides/LOCAL_DEV.md) | Local development setup, env files, running services |
+| [VARIABLES.md](docs/guides/VARIABLES.md) | Template variable syntax, BLOCK system, product fields |
 
 ### Reference
 

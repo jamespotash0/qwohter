@@ -18,6 +18,8 @@ import type {
 import {
   getAvailableFieldsForProduct,
   buildVariableKey,
+  isCatalogProduct,
+  resolveRawDataValue,
 } from '../../utils/productVariables';
 import { VariableNodeView } from './VariableNodeView';
 
@@ -148,31 +150,49 @@ export function getVariablesByCategory(): Record<string, VariableDefinition[]> {
 }
 
 /**
- * Generate dynamic variable definitions from AI-extracted products
- * Creates variables like {wallA.stc}, {wallA.manufacturer} based on product aliases and available fields
+ * Generate dynamic variable definitions from products (AI-extracted and catalog).
+ * Creates variables like {Wall A.stc}, {Wall A.track_system} based on product aliases and available fields.
  */
 export function getProductVariables(products: Product[]): Record<string, VariableDefinition[]> {
   const productVars: Record<string, VariableDefinition[]> = {};
 
-  // Filter to only AI-extracted products with aliases
-  const aiProducts = products.filter(
+  // Filter to products with aliases and rawData
+  const productsWithData = products.filter(
     p => p.alias && p.rawData && Object.keys(p.rawData).length > 0
   );
 
-  if (aiProducts.length === 0) return productVars;
+  if (productsWithData.length === 0) return productVars;
 
-  // For each product with an alias, generate available field variables
-  aiProducts.forEach(product => {
+  productsWithData.forEach(product => {
     const alias = product.alias!;
     const categoryName = `Product: ${alias}`;
     const availableFields = getAvailableFieldsForProduct(product);
 
-    productVars[categoryName] = availableFields.map(field => ({
-      key: buildVariableKey(alias, field.key),
-      label: `${alias}.${field.key}`,
-      category: categoryName,
-      description: `${field.label} for ${product.name}`,
-    }));
+    // For catalog products, resolve spec codes to labels for the description
+    const isCatalog = isCatalogProduct(product);
+    const specLabels = isCatalog
+      ? (product.rawData as Record<string, unknown>)?._specificationLabels as Record<string, string> | undefined
+      : undefined;
+
+    productVars[categoryName] = availableFields.map(field => {
+      let description = `${field.label} for ${product.name}`;
+
+      // For catalog spec fields, show the resolved value in description
+      if (isCatalog && field.category === 'Specifications') {
+        const raw = product.rawData as Record<string, unknown>;
+        const resolved = resolveRawDataValue(raw[field.key], specLabels);
+        if (resolved) {
+          description = `${field.label}: ${resolved}`;
+        }
+      }
+
+      return {
+        key: buildVariableKey(alias, field.key),
+        label: `${alias}.${field.key}`,
+        category: categoryName,
+        description,
+      };
+    });
   });
 
   return productVars;

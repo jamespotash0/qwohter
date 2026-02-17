@@ -1,11 +1,11 @@
 /**
  * Product Variable Utilities
  *
- * Handles dynamic variable generation for AI-extracted products.
- * Enables referencing individual product fields via aliases (e.g., wallA.stc, wallA.manufacturer).
+ * Handles dynamic variable generation for products (AI-extracted and catalog).
+ * Enables referencing individual product fields via aliases (e.g., Wall A.stc, Wall A.track_system).
  */
 
-import type { Product, ProductRawData } from '../context/FormBuilderContext';
+import type { Product } from '../context/FormBuilderContext';
 
 /**
  * Field definitions that can be extracted from ProductRawData
@@ -53,7 +53,107 @@ export const PRODUCT_VARIABLE_FIELDS: ProductVariableField[] = [
   { key: 'coreMaterial', label: 'Core Material', path: ['materials', 'core'], category: 'Materials' },
   { key: 'faceMaterial', label: 'Face Material', path: ['materials', 'face'], category: 'Materials' },
   { key: 'frameMaterial', label: 'Frame Material', path: ['materials', 'frame'], category: 'Materials' },
+
+  // Hardware - Frame
+  { key: 'frameType', label: 'Frame Type', path: ['frame', 'type'], category: 'Hardware' },
+  { key: 'frameMat', label: 'Frame Material', path: ['frame', 'material'], category: 'Hardware' },
+
+  // Hardware - Closures
+  { key: 'closureLeft', label: 'Left Closure', path: ['closures', 'left'], category: 'Hardware' },
+  { key: 'closureRight', label: 'Right Closure', path: ['closures', 'right'], category: 'Hardware' },
+
+  // Hardware - Seals
+  { key: 'sealTop', label: 'Top Seal', path: ['seals', 'top'], category: 'Hardware' },
+  { key: 'sealBottom', label: 'Bottom Seal', path: ['seals', 'bottom'], category: 'Hardware' },
+  { key: 'sealPerimeter', label: 'Perimeter Seal', path: ['seals', 'perimeter'], category: 'Hardware' },
+
+  // Hardware - Track
+  { key: 'trackType', label: 'Track Type', path: ['track', 'type'], category: 'Hardware' },
+  { key: 'trackWeight', label: 'Track Hanging Weight', path: ['track', 'hangingWeight'], category: 'Hardware' },
+
+  // Hardware - Stacking
+  { key: 'stackConfig', label: 'Stacking Configuration', path: ['stacking', 'configuration'], category: 'Hardware' },
+  { key: 'stackDirection', label: 'Stacking Direction', path: ['stacking', 'direction'], category: 'Hardware' },
+
+  // Panel Specs
+  { key: 'panelCount', label: 'Panel Count', path: ['panelCount'], category: 'Dimensions' },
 ];
+
+/** Keys in rawData that are internal metadata, not user-facing spec fields */
+const INTERNAL_RAWDATA_KEYS = new Set([
+  '_specificationLabels', 'source',
+  'domain_id', 'manufacturer_id', 'product_line_id', 'series_id', 'model_id',
+  // Already handled by PRODUCT_VARIABLE_FIELDS (identity fields)
+  'productDomain', 'productLine', 'manufacturer', 'series', 'model',
+  // Quantity is handled as a base product field
+  'quantity', 'Quantity',
+]);
+
+/** Convert snake_case to Title Case label (e.g., "track_system" → "Track System") */
+function snakeCaseToLabel(key: string): string {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
+ * Check if a product is from the catalog (vs AI-extracted)
+ */
+export function isCatalogProduct(product: Product): boolean {
+  return product.rawData?.source === 'catalog';
+}
+
+/**
+ * Get dynamic variable fields from catalog product specs.
+ * Scans flat rawData keys and generates ProductVariableField entries.
+ */
+export function getDynamicFieldsForProduct(product: Product): ProductVariableField[] {
+  const rawData = product.rawData;
+  if (!rawData || rawData.source !== 'catalog') return [];
+
+  const fields: ProductVariableField[] = [];
+
+  for (const [key, value] of Object.entries(rawData)) {
+    // Skip internal/meta keys
+    if (INTERNAL_RAWDATA_KEYS.has(key)) continue;
+    // Skip null/undefined/empty values
+    if (value === null || value === undefined || value === '') continue;
+    // Skip objects (nested structures aren't flat spec values)
+    if (typeof value === 'object') continue;
+
+    fields.push({
+      key,
+      label: snakeCaseToLabel(key),
+      path: [key], // flat key — single-segment path
+      category: 'Specifications',
+    });
+  }
+
+  return fields;
+}
+
+/**
+ * Resolve a raw value using _specificationLabels for human-readable display.
+ * Codes like "425MD" get resolved to "425 Multi-Directional".
+ */
+export function resolveRawDataValue(
+  rawValue: unknown,
+  specLabels?: Record<string, string>
+): string | null {
+  if (rawValue === null || rawValue === undefined) return null;
+  if (typeof rawValue === 'object') return null;
+
+  const strValue = String(rawValue);
+  if (!strValue) return null;
+
+  // Look up code in specification labels
+  if (specLabels && strValue in specLabels) {
+    return specLabels[strValue] ?? strValue;
+  }
+
+  return strValue;
+}
 
 /**
  * Generate a human-readable alias from product name/type
@@ -75,7 +175,7 @@ export function generateProductAlias(
     baseAlias = formatAliasBase(rawData.productLine);
   } else if (product.name) {
     // Extract first meaningful word from name
-    const firstWord = product.name.split(/[\s-_]/)[0];
+    const firstWord = product.name.split(/[\s-_]/)[0] || '';
     baseAlias = formatAliasBase(firstWord);
   } else {
     baseAlias = 'Wall';
@@ -92,7 +192,7 @@ export function generateProductAlias(
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
   do {
-    suffix = counter < 26 ? letters[counter] : String(counter - 25);
+    suffix = counter < 26 ? (letters[counter] ?? String(counter)) : String(counter - 25);
     counter++;
   } while (existingAliases.includes(`${baseAlias} ${suffix}`) && counter < 100);
 
@@ -147,6 +247,8 @@ export function getProductFieldValue(product: Product, field: ProductVariableFie
 
   if (value === null || value === undefined) return null;
   if (typeof value === 'string' || typeof value === 'number') return value;
+  // Don't stringify objects — they need a deeper path
+  if (typeof value === 'object') return null;
   return String(value);
 }
 
@@ -159,10 +261,23 @@ export function productHasField(product: Product, field: ProductVariableField): 
 }
 
 /**
- * Get all available fields for a specific product
+ * Get all available fields for a specific product.
+ * For AI products: matches against PRODUCT_VARIABLE_FIELDS paths.
+ * For catalog products: also includes dynamic flat spec fields.
  */
 export function getAvailableFieldsForProduct(product: Product): ProductVariableField[] {
-  return PRODUCT_VARIABLE_FIELDS.filter(field => productHasField(product, field));
+  const staticFields = PRODUCT_VARIABLE_FIELDS.filter(field => productHasField(product, field));
+
+  // For catalog products, also scan dynamic flat spec keys
+  if (isCatalogProduct(product)) {
+    const dynamicFields = getDynamicFieldsForProduct(product);
+    // Deduplicate: skip dynamic fields whose key already exists in static matches
+    const staticKeys = new Set(staticFields.map(f => f.key));
+    const uniqueDynamic = dynamicFields.filter(f => !staticKeys.has(f.key));
+    return [...staticFields, ...uniqueDynamic];
+  }
+
+  return staticFields;
 }
 
 /**
@@ -176,13 +291,18 @@ export function buildVariableKey(alias: string, fieldKey: string): string {
  * Parse variable key to extract alias and field
  */
 export function parseVariableKey(variableKey: string): { alias: string; fieldKey: string } | null {
-  const parts = variableKey.split('.');
-  if (parts.length !== 2) return null;
-  return { alias: parts[0], fieldKey: parts[1] };
+  const dotIndex = variableKey.indexOf('.');
+  if (dotIndex === -1 || dotIndex === 0 || dotIndex === variableKey.length - 1) return null;
+  const alias = variableKey.substring(0, dotIndex);
+  const fieldKey = variableKey.substring(dotIndex + 1);
+  // Reject if there are additional dots (multi-level keys like pricing.section.item)
+  if (fieldKey.includes('.')) return null;
+  return { alias, fieldKey };
 }
 
 /**
- * Resolve a product variable to its actual value
+ * Resolve a product variable to its actual value.
+ * Checks static PRODUCT_VARIABLE_FIELDS first, then flat rawData keys for catalog products.
  */
 export function resolveProductVariable(
   variableKey: string,
@@ -197,21 +317,39 @@ export function resolveProductVariable(
   const product = products.find(p => p.alias === alias);
   if (!product) return null;
 
-  // Find field definition
+  // Try static field definition first
   const field = PRODUCT_VARIABLE_FIELDS.find(f => f.key === fieldKey);
-  if (!field) return null;
+  if (field) {
+    const value = getProductFieldValue(product, field);
+    if (value !== null) return String(value);
+  }
 
-  const value = getProductFieldValue(product, field);
-  if (value === null) return null;
+  // For catalog products, try flat rawData key with label resolution
+  if (isCatalogProduct(product) && product.rawData) {
+    const raw = product.rawData as Record<string, unknown>;
+    const rawValue = raw[fieldKey];
+    const specLabels = raw._specificationLabels as Record<string, string> | undefined;
+    return resolveRawDataValue(rawValue, specLabels);
+  }
 
-  return String(value);
+  return null;
 }
 
+/** Known static variable prefixes (not product aliases) */
+const STATIC_VARIABLE_PREFIXES = new Set([
+  'proposal', 'project', 'contact', 'client', 'org', 'products',
+  'pricing', 'leadtimes', 'misc', 'row',
+]);
+
 /**
- * Check if a variable key refers to a product variable
+ * Check if a variable key refers to a product variable.
+ * Excludes known static variable prefixes like client.name, project.date, etc.
  */
 export function isProductVariable(variableKey: string): boolean {
-  return parseVariableKey(variableKey) !== null;
+  const parsed = parseVariableKey(variableKey);
+  if (!parsed) return false;
+  // If the prefix is a known static category, it's not a product variable
+  return !STATIC_VARIABLE_PREFIXES.has(parsed.alias.toLowerCase());
 }
 
 /**
@@ -222,7 +360,7 @@ export function getFieldsByCategory(): Record<string, ProductVariableField[]> {
     if (!acc[field.category]) {
       acc[field.category] = [];
     }
-    acc[field.category].push(field);
+    acc[field.category]!.push(field);
     return acc;
   }, {} as Record<string, ProductVariableField[]>);
 }

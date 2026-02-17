@@ -102,6 +102,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string | null>(null);
   const hasAppliedTemplateDefaultsRef = useRef(false);
+  const hasLoadedGoogleDocIdRef = useRef(false);
 
   // Get current user and organization
   const user = useUser();
@@ -213,9 +214,10 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         loadData(parsedData);
       }
 
-      // Load google_doc_id from proposal
-      if (proposalData.google_doc_id) {
+      // Load google_doc_id from proposal (only on initial load, not after user unlink/link actions)
+      if (proposalData.google_doc_id && !hasLoadedGoogleDocIdRef.current) {
         setSelectedGoogleDocId(proposalData.google_doc_id);
+        hasLoadedGoogleDocIdRef.current = true;
       }
     }
   }, [proposalData, proposalFormData, isBuilderMode, loadData, loadMetadata]);

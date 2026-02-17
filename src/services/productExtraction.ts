@@ -469,6 +469,13 @@ function convertConfigurableProduct(product: ConfigurableProductResponse): Extra
       performanceRatings: product.performanceRatings,
       appearance: product.appearance,
       certifications: product.certifications,
+      // Hardware/Components
+      frame: product.frame,
+      closures: product.closures,
+      seals: product.seals,
+      track: product.track,
+      stacking: product.stacking,
+      panelCount: product.baseSpecifications?.panelCount,
     },
   };
 }

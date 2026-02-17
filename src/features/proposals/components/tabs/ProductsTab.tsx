@@ -353,13 +353,23 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       const generatedAliases: string[] = [];
       const productsWithAliases: Product[] = selectedProducts.map((product, index) => {
         // Convert ExtractedProduct to Product format
+        // Ensure hardware config fields are included in rawData for template variables
+        const rawData = {
+          ...product.rawData,
+          ...(product.frame && { frame: product.frame }),
+          ...(product.closures && { closures: product.closures }),
+          ...(product.seals && { seals: product.seals }),
+          ...(product.track && { track: product.track }),
+          ...(product.stacking && { stacking: product.stacking }),
+          ...(product.dimensions?.panelCount != null && { panelCount: product.dimensions.panelCount }),
+        };
         const convertedProduct: Product = {
           id: product.id,
           name: product.name,
           quantity: product.quantity,
           unit: product.unit,
           description: product.description,
-          rawData: product.rawData,
+          rawData,
           // Store additional extracted data
           isConfigurable: product.isConfigurable,
           options: product.options,

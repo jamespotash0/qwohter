@@ -144,6 +144,29 @@ export interface ProductRawData {
     face?: string | null;
     frame?: string | null;
   };
+  // Hardware/Components (from AI extraction)
+  frame?: {
+    type?: string | null;
+    material?: string | null;
+  };
+  closures?: {
+    left?: string | null;
+    right?: string | null;
+  };
+  seals?: {
+    top?: string | null;
+    bottom?: string | null;
+    perimeter?: string | null;
+  };
+  track?: {
+    type?: string | null;
+    hangingWeight?: number | null;
+  };
+  stacking?: {
+    configuration?: string | null;
+    direction?: string | null;
+  };
+  panelCount?: number | null;
   certifications?: string[];
   specifications?: Record<string, unknown>;
   /** Human-readable labels for specification codes (code -> label mapping) */
