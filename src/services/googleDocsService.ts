@@ -672,9 +672,9 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
 
         return {
           wall: wallType,
-          dimensions: dimensionsStr,
-          stc: resolve('stc_rating') || perf.stc?.toString() || '',
-          finish: resolve('finish_material') || appearance.finish || appearance.color || '',
+          dimensions: dimensionsStr || '-',
+          stc: resolve('stc_rating') || perf.stc?.toString() || '-',
+          finish: resolve('finish_material') || appearance.finish || appearance.color || '-',
           // Pocket doors: check dedicated pocket door type field (not closure system)
           pocketDoors: resolve('pocket_doors_type') || resolve('pocket_door_type') || resolve('Pocket Door Type') || '-',
           // Pass doors: show "option | type" if both exist, type only if just type, else "-"
@@ -685,8 +685,8 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
             if (type) return type;
             return '-';
           })(),
-          panelCount: resolve('panel_count') || '',
-          qty: product.quantity?.toString() || '',
+          panelCount: resolve('panel_count') || '-',
+          qty: product.quantity?.toString() || '-',
         };
       }),
     });
