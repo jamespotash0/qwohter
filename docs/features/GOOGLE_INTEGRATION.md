@@ -105,68 +105,6 @@ For repeating data (line items, products), use row markers:
 
 The edge function duplicates the row for each item.
 
-### Block Markers (Paragraph Loops per Product Type)
-
-For prose/paragraph content that varies by wall or product type, use block markers.
-Each product's `productDomain` (e.g., "Operable Wall", "Accordion Partition") determines
-which `#TYPE` template gets rendered.
-
-**Template syntax:**
-```
-{{#BLOCK:walls}}
-
-{{#TYPE:operable wall}}
-OPERABLE PANELS:
-This wall system utilizes {{wall.Manufacturer}} {{wall.Series}} {{wall.Model}}
-configured with panels designed for use with a {{wall.trackLayout}}. The wall
-stands {{wall.Height}} in height, each panel nominally {{wall.Thickness}} thick,
-finished in {{wall.Finish}}.
-{{/TYPE:operable wall}}
-
-{{#TYPE:accordion}}
-ACCORDION PANELS:
-This accordion wall system utilizes {{wall.Manufacturer}} {{wall.Series}} panels
-in a continuous folding configuration. The wall stands {{wall.Height}} in height
-with panels finished in {{wall.Finish}}.
-{{/TYPE:accordion}}
-
-{{/BLOCK:walls}}
-```
-
-**How it works:**
-- `{{#BLOCK:walls}}` / `{{/BLOCK}}` wraps the entire block section
-- `{{#TYPE:name}}` / `{{/TYPE:name}}` defines a paragraph template for a product type
-- `{{wall.*}}` variables resolve to the current product's data (per-product, not global)
-- Type matching uses case-insensitive contains: `accordion` matches `Accordion Partition`
-- If a product has no matching TYPE block, it is skipped
-- If no products match a TYPE block, that block is removed entirely
-- Multiple products of the same type each get their own resolved paragraph
-
-**Available `{{wall.*}}` variables:**
-
-| Variable | Source |
-|----------|--------|
-| `{{wall.name}}` | Product name |
-| `{{wall.alias}}` | Product alias |
-| `{{wall.Manufacturer}}` | rawData.manufacturer |
-| `{{wall.Series}}` | rawData.series |
-| `{{wall.Model}}` | rawData.model |
-| `{{wall.Height}}` | rawData.dimensions.height |
-| `{{wall.Width}}` | rawData.dimensions.width |
-| `{{wall.Length}}` | rawData.dimensions.length |
-| `{{wall.Thickness}}` | rawData.dimensions.thickness |
-| `{{wall.STC}}` | rawData.performanceRatings.stc |
-| `{{wall.Fire_Rating}}` | rawData.performanceRatings.fireRating |
-| `{{wall.Finish}}` | rawData.appearance.finish |
-| `{{wall.Color}}` | rawData.appearance.color |
-| `{{wall.Core}}` | rawData.materials.core |
-| `{{wall.Face}}` | rawData.materials.face |
-| `{{wall.Frame}}` | rawData.materials.frame |
-| `{{wall.Certifications}}` | rawData.certifications (comma-separated) |
-| `{{wall.<specKey>}}` | Any key from rawData.specifications JSONB |
-
-Custom fields stored in `rawData.specifications` (e.g., `trackLayout`, `panelType`, `insulation`) are automatically available as `{{wall.<keyName>}}`.
-
 ### Document Modes
 
 | Mode | Description |

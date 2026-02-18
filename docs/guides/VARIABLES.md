@@ -159,123 +159,6 @@ Common catalog field keys include:
 
 ---
 
-## BLOCK System — Dynamic Product Sections
-
-Use the BLOCK system when you need to support **any number of products** and want template sections to repeat automatically per product.
-
-### Syntax
-
-```
-{{#BLOCK:walls}}
-
-{{#TYPE:operable wall}}
-The operable wall system uses {{wall.Series}} {{wall.Model}} by {{wall.Manufacturer}}.
-Panel dimensions are {{wall.Height}} x {{wall.Width}} with a thickness of {{wall.Thickness}}.
-The track system is {{wall.track_system}} with {{wall.support_system}} support.
-STC rating: {{wall.STC}}.
-{{/TYPE:operable wall}}
-
-{{#TYPE:glass wall}}
-The glass wall system features {{wall.Manufacturer}} {{wall.Series}} panels.
-Glass type: {{wall.glass_type}}.
-{{/TYPE:glass wall}}
-
-{{#TYPE:accordion}}
-The accordion partition uses {{wall.Manufacturer}} {{wall.Model}}.
-{{/TYPE:accordion}}
-
-{{/BLOCK}}
-```
-
-### How It Works
-
-1. **`{{#BLOCK:walls}}`** — Marks the start of a product block section
-2. **`{{#TYPE:name}}`** — Defines a template for a specific product type (matched against the product's domain)
-3. **`{{wall.field}}`** — References a product field, resolved per-product
-4. **`{{/TYPE:name}}`** — Ends the type template
-5. **`{{/BLOCK}}`** — Ends the block section
-
-### Multiple Products of Same Type
-
-If your proposal has **2 operable walls**, the `{{#TYPE:operable wall}}` template is duplicated and resolved separately for each one. The output contains two complete paragraphs, one per product.
-
-**Example:** With products "Wall A" (operable wall) and "Wall B" (operable wall):
-
-```
-The operable wall system uses Modernfold Acousti-Seal by Modernfold.
-Panel dimensions are 20' x 4' with a thickness of 4".
-The track system is 425 Multi-Directional with Ceiling Pocket support.
-STC rating: 51.
-
-The operable wall system uses Hufcor 4400 by Hufcor.
-Panel dimensions are 16' x 3'6" with a thickness of 3.5".
-The track system is Standard with Beam Clamp support.
-STC rating: 48.
-```
-
-### Type Matching
-
-Type matching is **fuzzy** — it normalizes spaces, underscores, and hyphens, and checks if either string contains the other:
-
-| Product Domain | Matches TYPE |
-|----------------|-------------|
-| `Operable Wall` | `operable wall`, `operable`, `wall` |
-| `Glass Wall` | `glass wall`, `glass` |
-| `Accordion Partition` | `accordion`, `accordion partition` |
-
-> **Tip:** Use specific type names to avoid accidental matches. `operable wall` is better than just `wall` if you also have glass walls.
-
-### Variable Keys Inside BLOCK
-
-Inside a BLOCK, variables use the `{{wall.key}}` prefix regardless of the actual product type. The available keys are:
-
-**Identity:**
-`name`, `quantity`, `unit`, `description`, `alias`, `Manufacturer`, `Product_Domain`, `Product_Line`, `Series`, `Model`
-
-**Dimensions:**
-`Height`, `Width`, `Length`, `Thickness`
-
-**Performance:**
-`STC`, `Fire_Rating`, `Acoustic_Rating`
-
-**Appearance:**
-`Finish_Color`, `Finish_Style`, `Color`, `Finish`, `Trim`
-
-**Materials:**
-`Core`, `Face`, `Frame`
-
-**Certifications:**
-`Certifications`
-
-**Catalog Specs (snake_case):**
-Any configuration field from the product's config schema (e.g., `track_system`, `support_system`, `panel_skin`, `wall_height`, `glass_type`, `stc_rating`, `operation`). These are resolved with human-readable labels automatically.
-
----
-
-## Combining Approaches
-
-You can use **both** direct alias variables and BLOCK templates in the same document:
-
-```
-Dear {{client.name}},
-
-Thank you for your interest in our proposal for {{project.name}}.
-
-{{#BLOCK:walls}}
-{{#TYPE:operable wall}}
-OPERABLE WALL — {{wall.Manufacturer}} {{wall.Series}}
-Panels: {{wall.quantity}} panels, {{wall.Height}} x {{wall.Width}}
-Track: {{wall.track_system}}
-STC: {{wall.STC}}
-{{/TYPE:operable wall}}
-{{/BLOCK}}
-
-Total investment: {{pricing.total}}
-Estimated lead time: {{leadtimes.total}}
-```
-
----
-
 ## TABLE System — Auto-Generated Tables
 
 Use the TABLE system to insert a complete Google Docs table that auto-populates with product/pricing data.
@@ -288,14 +171,72 @@ Place the marker where you want the table to appear:
 {{#TABLE:wallspecs}}
 ```
 
+### Custom Columns
+
+You can specify which columns to include using the extended syntax:
+
+```
+{{#TABLE:wallspecs:Header Label=dataKey,Another Header=dataKey}}
+```
+
+This lets you control exactly which columns appear and what the headers say. If no columns are specified, the default columns are used.
+
+**Examples:**
+
+Glass wall project (4 columns):
+```
+{{#TABLE:wallspecs:Wall=wall,Dimensions=dimensions,Glass Type=glass_type,STC=stc}}
+```
+
+Operable wall project with track system (6 columns):
+```
+{{#TABLE:wallspecs:Wall=wall,Dims=dimensions,STC=stc,Track=track_system,Pass Doors=passDoors,Qty=qty}}
+```
+
+Full custom layout:
+```
+{{#TABLE:wallspecs:Wall=wall,Series=series,Dimensions=dimensions,STC=stc,Finish=finish,Track=track_system,Support=standard_support_systems,Pocket Doors=pocketDoors,Pass Doors=passDoors,Panels=panelCount,Qty=qty}}
+```
+
 ### Available Table Types
 
-| Table ID | Columns | Description |
+| Table ID | Default Columns | Description |
 |----------|---------|-------------|
 | `pricing` | Qty, Description, Unit Price, Disc (%), Extended | Pricing line items with totals row |
 | `products` | #, Product, Qty, Unit | Simple product listing |
 | `specifications` | Wall, Dimensions, STC, Finish | Basic wall specs (4 columns) |
-| `wallspecs` | Wall, Dimensions, STC, Finish, Pocket Doors, Pass Doors, Panels, Qty | Full wall specs with closures and panel count |
+| `wallspecs` | Wall, Dimensions, STC, Finish, Pocket Doors, Pass Doors, Panels, Qty | Full wall specs (supports custom columns) |
+
+### Available Data Keys for wallspecs
+
+These keys can be used in the custom column syntax above:
+
+| Key | Description |
+|-----|-------------|
+| `wall` | Wall type (from product domain) |
+| `dimensions` | Formatted dimensions string (e.g., `32' L x 10' H`) |
+| `stc` | STC rating |
+| `finish` | Finish material |
+| `pocketDoors` | Pocket door type |
+| `passDoors` | Pass door info (option + type) |
+| `panelCount` | Panel count |
+| `qty` | Quantity |
+| `name` | Product name |
+| `alias` | Product alias |
+| `manufacturer` | Manufacturer |
+| `series` | Series |
+| `model` | Model |
+| `height` | Height (formatted) |
+| `width` | Width (formatted) |
+| `wall_height` | Wall height (formatted) |
+| `wall_width` | Wall width (formatted) |
+| `fireRating` | Fire rating |
+| `color` | Color |
+| `core` | Core material |
+| `face` | Face material |
+| `frame` | Frame material |
+| `certifications` | Certifications (comma-separated) |
+| Any catalog spec key | e.g., `track_system`, `glass_type`, `standard_support_systems` |
 
 ### Example
 

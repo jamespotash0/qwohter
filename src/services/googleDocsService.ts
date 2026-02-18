@@ -22,16 +22,6 @@ export interface TableRowData {
   rows: Array<Record<string, string | number>>;
 }
 
-/** Data for dynamic block/paragraph duplication per product type */
-export interface BlockProductData {
-  /** Product domain for TYPE matching (e.g., "Operable Wall") */
-  productDomain: string;
-  /** Product alias or name for identification */
-  label: string;
-  /** All resolved variables for this product (wall.Series, wall.Height, etc.) */
-  variables: Record<string, string>;
-}
-
 export interface GenerateDocRequest {
   templateDocId: string;
   proposalId?: string;
@@ -39,8 +29,6 @@ export interface GenerateDocRequest {
   variables: Record<string, string>;
   /** Optional table data for row duplication */
   tableData?: TableRowData[];
-  /** Optional block data for paragraph duplication per product type */
-  blockData?: BlockProductData[];
   outputTitle?: string;
   mode?: 'create' | 'overwrite' | 'update';
   existingDocId?: string;
@@ -642,21 +630,20 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
     });
 
     // Wall specs table - resolves catalog config fields with label resolution
-    // Designed for {{#TABLE:wallspecs}} in templates
+    // Designed for {{#TABLE:wallspecs}} or {{#TABLE:wallspecs:Header=key,...}} in templates
+    // Sends ALL available fields so the edge function can pick which columns to display
     tables.push({
       tableId: 'wallspecs',
       rows: formData.products.items.map((product) => {
         const rawData = product.rawData || {};
         const raw = rawData as Record<string, unknown>;
         const specLabels = raw._specificationLabels as Record<string, string> | undefined;
-        // _specificationLabels is keyed by field name (e.g., "initial_closure_system": "Pocket Door")
-        // so look up the field key directly, not the raw value code
         const resolve = (key: string) => specLabels?.[key] || String(raw[key] ?? '') || '';
 
-        // For catalog products, resolve config fields; for AI products, fall back to nested data
         const dims = rawData.dimensions || {};
         const perf = rawData.performanceRatings || {};
         const appearance = rawData.appearance || {};
+        const mats = rawData.materials || {};
 
         const wallWidth = formatDimension(resolve('wall_width') || dims.width || '');
         const wallHeight = formatDimension(resolve('wall_height') || dims.height || '');
@@ -664,20 +651,19 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           ? `${wallWidth} L x ${wallHeight} H`
           : formatDimensions(dims);
 
-        // Extract wall type from productDomain (e.g., "Operable Wall" → "Operable")
         const domain = rawData.productDomain || rawData.productLine || '';
         const wallType = typeof domain === 'string'
           ? domain.split(/\s+/)[0] || product.name || ''
           : product.name || '';
 
-        return {
+        // Base row with all standard computed fields
+        const row: Record<string, string | number> = {
+          // Default 8 columns (backward compatible)
           wall: wallType,
           dimensions: dimensionsStr || '-',
           stc: resolve('stc_rating') || perf.stc?.toString() || '-',
           finish: resolve('finish_material') || appearance.finish || appearance.color || '-',
-          // Pocket doors: check dedicated pocket door type field (not closure system)
           pocketDoors: resolve('pocket_doors_type') || resolve('pocket_door_type') || resolve('Pocket Door Type') || '-',
-          // Pass doors: show "option | type" if both exist, type only if just type, else "-"
           passDoors: (() => {
             const type = resolve('pass_door_type') || resolve('Pass Door Type');
             const option = resolve('pass_door_option') || resolve('Pass Door Option') || resolve('pass_door_qty');
@@ -687,7 +673,63 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           })(),
           panelCount: resolve('panel_count') || '-',
           qty: product.quantity?.toString() || '-',
+
+          // Identity
+          name: product.name || '-',
+          alias: product.alias || '-',
+          manufacturer: rawData.manufacturer || '-',
+          productDomain: rawData.productDomain || '-',
+          productLine: rawData.productLine || '-',
+          series: rawData.series || '-',
+          model: rawData.model || '-',
+
+          // Individual dimensions (formatted)
+          height: formatDimension(dims.height || '') || '-',
+          width: formatDimension(dims.width || '') || '-',
+          length: formatDimension(dims.length || '') || '-',
+          thickness: formatDimension(dims.thickness || '') || '-',
+          wall_height: formatDimension(resolve('wall_height') || dims.height || '') || '-',
+          wall_width: formatDimension(resolve('wall_width') || dims.width || '') || '-',
+
+          // Performance
+          fireRating: perf.fireRating || '-',
+          acousticRating: perf.acousticRating || '-',
+
+          // Appearance
+          color: appearance.color || '-',
+          finishStyle: appearance.finish || '-',
+          trim: appearance.trim || '-',
+
+          // Materials
+          core: mats.core || '-',
+          face: mats.face || '-',
+          frame: mats.frame || '-',
+
+          // Certifications
+          certifications: (rawData.certifications || []).join(', ') || '-',
         };
+
+        // Surface ALL catalog spec fields dynamically (e.g., track_system, glass_type)
+        if (isCatalogProduct(product)) {
+          const dynamicFields = getAvailableFieldsForProduct(product);
+          for (const field of dynamicFields) {
+            if (field.category === 'Specifications' && !(field.key in row)) {
+              let resolved = specLabels?.[field.key] || String(raw[field.key] ?? '') || '-';
+              if (DIMENSION_FIELD_KEYS.has(field.key) && resolved && resolved !== '-') {
+                resolved = formatDimension(resolved);
+              }
+              row[field.key] = resolved;
+            }
+          }
+        }
+
+        // Also surface flat rawData spec keys not already in the row
+        for (const [key, value] of Object.entries(raw)) {
+          if (key.startsWith('_') || typeof value === 'object' || key in row) continue;
+          row[key] = specLabels?.[key] || String(value ?? '') || '-';
+        }
+
+        return row;
       }),
     });
 
@@ -795,105 +837,6 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
 }
 
 /**
- * Build block data for paragraph duplication per product type in Google Docs.
- * Each product with a productDomain gets a variables map for {{wall.*}} resolution.
- * Also surfaces all specifications JSONB keys so custom fields work automatically.
- */
-export function buildBlockData(formData: FormBuilderData): BlockProductData[] {
-  const blocks: BlockProductData[] = [];
-
-  if (!formData?.products?.items) return blocks;
-
-  for (const product of formData.products.items) {
-    const rawData = product.rawData || {};
-    const productDomain = rawData.productDomain;
-
-    // Skip products without a domain — can't match to any TYPE block
-    if (!productDomain) continue;
-
-    const dims = rawData.dimensions || {};
-    const perf = rawData.performanceRatings || {};
-    const appearance = rawData.appearance || {};
-    const mats = rawData.materials || {};
-    const specs = (rawData.specifications || {}) as Record<string, unknown>;
-
-    const finishColor = appearance.color || '';
-    const finishStyle = appearance.finish || '';
-
-    const variables: Record<string, string> = {
-      // Basic info (keep empty for structural fields)
-      name: product.name || '',
-      quantity: product.quantity?.toString() || '',
-      unit: product.unit || '',
-      description: product.description || '',
-      alias: product.alias || '',
-      // Product identity
-      Manufacturer: rawData.manufacturer || '-',
-      Product_Domain: productDomain,
-      Product_Line: rawData.productLine || '-',
-      Series: rawData.series || '-',
-      Model: rawData.model || '-',
-      // Dimensions (formatted with ' and " marks)
-      Height: formatDimension(dims.height || '') || '-',
-      Width: formatDimension(dims.width || '') || '-',
-      Length: formatDimension(dims.length || '') || '-',
-      Thickness: formatDimension(dims.thickness || '') || '-',
-      // Performance
-      STC: perf.stc?.toString() || '-',
-      Fire_Rating: perf.fireRating || '-',
-      Acoustic_Rating: perf.acousticRating || '-',
-      // Appearance
-      Finish_Color: finishColor || finishStyle || '-',
-      Finish_Style: finishStyle || '-',
-      Color: finishColor || '-',
-      Finish: finishStyle || '-',
-      Trim: appearance.trim || '-',
-      // Materials
-      Core: mats.core || '-',
-      Face: mats.face || '-',
-      Frame: mats.frame || '-',
-      // Certifications
-      Certifications: (rawData.certifications || []).join(', ') || '-',
-    };
-
-    // Surface ALL specifications JSONB keys as variables so custom fields
-    // (like trackLayout, panelType, insulation, etc.) work automatically
-    for (const [key, value] of Object.entries(specs)) {
-      if (key.startsWith('_')) continue; // Skip internal keys like _specificationLabels
-      if (value !== null && value !== undefined) {
-        variables[key] = String(value);
-      }
-    }
-
-    // For catalog products, also surface flat rawData spec keys with label resolution
-    // _specificationLabels is keyed by field name (e.g., "initial_closure_system": "Pocket Door")
-    if (isCatalogProduct(product)) {
-      const dynamicFields = getAvailableFieldsForProduct(product);
-      const specLabels = (rawData as Record<string, unknown>)._specificationLabels as Record<string, string> | undefined;
-      for (const field of dynamicFields) {
-        if (field.category === 'Specifications') {
-          // Use pre-resolved label directly, fall back to raw value
-          let resolved = specLabels?.[field.key] || String((rawData as Record<string, unknown>)[field.key] ?? '') || '-';
-          // Format dimension fields with proper ' and " marks
-          if (DIMENSION_FIELD_KEYS.has(field.key) && resolved && resolved !== '-') {
-            resolved = formatDimension(resolved);
-          }
-          variables[field.key] = resolved;
-        }
-      }
-    }
-
-    blocks.push({
-      productDomain,
-      label: product.alias || product.name || '',
-      variables,
-    });
-  }
-
-  return blocks;
-}
-
-/**
  * Generate a Google Doc from proposal data
  */
 export async function generateProposalDoc(
@@ -907,28 +850,6 @@ export async function generateProposalDoc(
 ): Promise<GenerateDocResponse> {
   const variables = buildProposalVariables(proposalData, formData);
   const tableData = buildTableData(formData);
-  const blockData = buildBlockData(formData);
-
-  // Debug logging
-  console.log('[generateProposalDoc] Block data:', blockData.length, 'products');
-  blockData.forEach((b, idx) => {
-    console.log(`[generateProposalDoc] Block product ${idx}: domain="${b.productDomain}", label="${b.label}", vars=${Object.keys(b.variables).length}`);
-  });
-  console.log('[generateProposalDoc] Products items:', formData?.products?.items?.length || 0);
-  formData?.products?.items?.forEach((p, idx) => {
-    console.log(`[generateProposalDoc] Product ${idx}: name="${p.name}", alias="${p.alias}", domain="${p.rawData?.productDomain}", source="${p.rawData?.source}"`);
-  });
-  console.log('[generateProposalDoc] Pricing sections:', formData?.pricing?.sections?.length || 0);
-  formData?.pricing?.sections?.forEach((section, idx) => {
-    console.log(`[generateProposalDoc] Section ${idx} "${section.name}": ${section.lineItems?.length || 0} items`);
-  });
-  const pricingTable = tableData.find(t => t.tableId === 'pricing');
-  console.log('[generateProposalDoc] Pricing table rows:', pricingTable?.rows?.length || 0);
-  if (pricingTable?.rows) {
-    pricingTable.rows.forEach((row, idx) => {
-      console.log(`[generateProposalDoc] Row ${idx}: ${row.name}`);
-    });
-  }
 
   return generateGoogleDoc({
     templateDocId,
@@ -936,7 +857,6 @@ export async function generateProposalDoc(
     organizationId,
     variables,
     tableData,
-    blockData,
     outputTitle,
     mode: options?.mode,
     existingDocId: options?.existingDocId,
