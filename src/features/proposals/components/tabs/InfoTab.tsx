@@ -42,6 +42,7 @@ import { useContacts, useCreateContact } from '@/hooks/useContacts';
 import type { Contact } from '@/lib/types/contacts';
 import { CONTACT_TYPES } from '@/lib/types/contacts';
 import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js';
+import { ReferenceNumbersCard } from './info/ReferenceNumbersCard';
 
 // Card wrapper component for consistent styling
 interface InfoCardProps {
@@ -1251,6 +1252,9 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           </Field>
         </InfoCard>
       </div>
+
+      {/* Reference Numbers */}
+      <ReferenceNumbersCard mode={mode} />
     </div>
   );
 });

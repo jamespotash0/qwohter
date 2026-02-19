@@ -1,13 +1,17 @@
 /**
  * Proposal Editor (FormBuilder V4)
  *
- * Premium SaaS design with 7-tab structure:
- * Info | Products | Pricing | Lead Times | Misc | Documents | Presentation
+ * Premium SaaS design with 6-tab structure:
+ * Info | Products | Pricing | Lead Times | Documents | Presentation
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Info, CloudCheck, CloudArrowUp, Warning } from '@phosphor-icons/react';
+import { Info, CloudCheck, CloudArrowUp, Warning, Package, CurrencyDollar, Clock, FileText, FilePdf } from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
+import { EditorSidebar } from './EditorSidebar';
+import { ProposalStatusTracker } from './ProposalStatusTracker';
+import { useProposalSigningTokens } from '@/hooks/queries/useSigningTokens';
 import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/sonner';
 import { Input } from '@/components/ui/input';
@@ -49,7 +53,6 @@ import { isProposalComplete } from '@/utils/proposalCompletion';
 // Tab Components
 import { InfoTab, type InfoTabRef, type InfoTabData } from './tabs/InfoTab';
 import { LeadTimesTab } from './tabs/LeadTimesTab';
-import { MiscellaneousTab } from './tabs/MiscellaneousTab';
 import { PricingTab } from './tabs/PricingTab';
 import { DocumentsTab } from './tabs/DocumentsTab';
 import { ProductsTab } from './tabs/ProductsTab';
@@ -69,14 +72,13 @@ export interface TabComponentProps {
 type TabComponent = React.ComponentType<TabComponentProps> | null;
 
 // Tab definitions
-const TABS: { id: string; label: string; component: TabComponent }[] = [
-  { id: 'info', label: 'Info', component: InfoTab },
-  { id: 'products', label: 'Products', component: ProductsTab },
-  { id: 'pricing', label: 'Pricing', component: PricingTab },
-  { id: 'lead_times', label: 'Lead Times', component: LeadTimesTab },
-  { id: 'miscellaneous', label: 'Misc', component: MiscellaneousTab },
-  { id: 'documents', label: 'Documents', component: DocumentsTab },
-  { id: 'presentation', label: 'Presentation', component: PresentationTab },
+const TABS: { id: string; label: string; component: TabComponent; icon: Icon }[] = [
+  { id: 'info', label: 'Info', component: InfoTab, icon: Info },
+  { id: 'products', label: 'Products', component: ProductsTab, icon: Package },
+  { id: 'pricing', label: 'Pricing', component: PricingTab, icon: CurrencyDollar },
+  { id: 'lead_times', label: 'Lead Times', component: LeadTimesTab, icon: Clock },
+  { id: 'documents', label: 'Documents', component: DocumentsTab, icon: FileText },
+  { id: 'presentation', label: 'Presentation', component: PresentationTab, icon: FilePdf },
 ];
 
 type TabId = typeof TABS[number]['id'];
@@ -113,6 +115,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   // Fetch proposal data if proposalId is provided (filler mode)
   const { data: proposalData } = useProposal(proposalId || '', !!proposalId);
+
+  // Fetch signing tokens for status tracker (filler mode only)
+  const { data: signingTokens = [] } = useProposalSigningTokens(proposalId, !isBuilderMode && !!proposalId);
 
   // In filler mode, also fetch the form template the proposal was created from
   // This is needed to get templates and other form configuration
@@ -289,22 +294,22 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       return;
     }
 
-    // No unsaved changes, close immediately
+    // No unsaved changes, navigate to the appropriate list page
     if (onClose) {
       onClose();
     } else {
-      navigate(-1);
+      navigate(isBuilderMode ? '/forms' : '/proposals');
     }
-  }, [combinedIsDirty, navigate, onClose]);
+  }, [combinedIsDirty, navigate, onClose, isBuilderMode]);
 
   // Force close without confirmation (used when user confirms)
   const forceClose = useCallback(() => {
     if (onClose) {
       onClose();
     } else {
-      navigate(-1);
+      navigate(isBuilderMode ? '/forms' : '/proposals');
     }
-  }, [navigate, onClose]);
+  }, [navigate, onClose, isBuilderMode]);
 
   // Handle save (can be called manually or by auto-save)
   const handleSave = useCallback(async (isAutoSave = false) => {
@@ -633,26 +638,16 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
               )}
             </nav>
 
-            {/* Divider */}
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
-
-            {/* Tab Navigation - Inline with header */}
-            <nav className="flex items-center gap-1 p-0.5 bg-gray-100/80 dark:bg-gray-800/50 rounded-lg">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    'px-3 py-1 text-xs font-medium whitespace-nowrap transition-all duration-200 rounded-md',
-                    activeTab === tab.id
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+            {/* Status Tracker (filler mode only) */}
+            {!isBuilderMode && proposalData && (
+              <>
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                <ProposalStatusTracker
+                  proposalData={proposalData}
+                  signingTokens={signingTokens}
+                />
+              </>
+            )}
           </div>
 
           {/* Right: Auto-save status indicator */}
@@ -702,19 +697,26 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         </div>
       </header>
 
-      {/* Content Area - All tabs stay mounted, only active one is visible */}
-      <main className="flex-1 overflow-auto">
-        <div className="px-6 py-4">
-          {TABS.map((tab) => (
-            <div
-              key={tab.id}
-              className={activeTab === tab.id ? 'block' : 'hidden'}
-            >
-              {renderTabContent(tab)}
-            </div>
-          ))}
-        </div>
-      </main>
+      {/* Content Area with Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        <EditorSidebar
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+        <main className="flex-1 overflow-auto">
+          <div className="px-6 py-4">
+            {TABS.map((tab) => (
+              <div
+                key={tab.id}
+                className={activeTab === tab.id ? 'block' : 'hidden'}
+              >
+                {renderTabContent(tab)}
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
 
       {/* Exit Confirmation Dialog */}
       <AlertDialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>

@@ -98,7 +98,7 @@ export function useProposal(proposalId: string | undefined, enabled: boolean = t
       return fetchProposalById(proposalId);
     },
     enabled: !!proposalId && enabled,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0, // Always fetch fresh data - realtime handles cache updates
   });
 }
 

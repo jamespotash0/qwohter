@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner, Signature, CheckCircle } from '@phosphor-icons/react';
+import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner, Signature, CheckCircle, UploadSimple } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import type { EditorMode } from '../ProposalEditor';
@@ -56,6 +56,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Load documents and signatures on mount (filler mode only)
   useEffect(() => {
@@ -89,14 +90,6 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       // Don't show error toast - signatures are supplementary
     }
   }, [proposalId]);
-
-  // Handle file selection
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    const file = files?.[0];
-    if (!file) return;
-    handleFileUpload(file);
-  }, []);
 
   // Handle file upload
   const handleFileUpload = useCallback(async (file: File) => {
@@ -135,6 +128,20 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
     }
   }, [proposalId, organizationId]);
 
+  // Upload files sequentially to avoid isUploading race conditions
+  const handleMultipleFiles = useCallback(async (files: File[]) => {
+    for (const file of files) {
+      await handleFileUpload(file);
+    }
+  }, [handleFileUpload]);
+
+  // Handle file selection (supports multiple files)
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    handleMultipleFiles(Array.from(files));
+  }, [handleMultipleFiles]);
+
   // Handle delete document
   const handleDelete = useCallback(async (docId: string) => {
     setDeletingId(docId);
@@ -162,6 +169,30 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       toast.error('Download URL not available');
     }
   }, []);
+
+  // Drag & drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    handleMultipleFiles(files);
+  }, [handleMultipleFiles]);
 
   // Builder mode: Show disabled state
   if (isBuilderMode) {
@@ -191,7 +222,22 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   const totalFiles = documents.length + signatures.length;
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-10 bg-coral/5 border-2 border-dashed border-coral rounded-xl flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <UploadSimple className="w-8 h-8 text-coral mx-auto mb-2" />
+            <p className="text-sm font-medium text-coral">Drop files to upload</p>
+          </div>
+        </div>
+      )}
+
       {/* Documents Section */}
       <div className="space-y-3">
         {/* Header with Add File button */}
@@ -210,6 +256,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
               className="hidden"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv"
               disabled={isUploading}
+              multiple
             />
             <Button
               onClick={() => fileInputRef.current?.click()}
@@ -236,8 +283,11 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       {totalFiles === 0 ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600">
           <FileIcon className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             No documents uploaded yet
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-sm mx-auto">
+            Attach relevant documents like schematics, blueprints, prior quotes, and drawings pertaining to this proposal.
           </p>
         </div>
       ) : (

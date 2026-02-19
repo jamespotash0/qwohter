@@ -484,6 +484,19 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                   </SortableContext>
                 </DndContext>
 
+                {/* Empty state instructional text */}
+                {section.phases.length === 0 && (
+                  <div className="px-4 py-6 text-center border-t border-gray-100 dark:border-gray-700/50">
+                    <Clock className="w-6 h-6 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                      No phases added yet
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-md mx-auto">
+                      Add timeline phases that proposal users will fill in with durations and dates.
+                    </p>
+                  </div>
+                )}
+
                 {/* Add Field Row */}
                 <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center border-t border-gray-100 dark:border-gray-700/50">
                   <div className="col-span-1"></div>
@@ -541,6 +554,19 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
                   </span>
                 </div>
               </div>
+
+              {/* Empty state instructional text */}
+              {section.phases.length === 0 && (
+                <div className="px-4 py-6 text-center border-t border-gray-100 dark:border-gray-700/50">
+                  <Clock className="w-6 h-6 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                    No phases added yet
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-md mx-auto">
+                    Define project phases with estimated durations and completion dates. Track manufacturing lead times, delivery windows, installation schedules, and other timeline milestones.
+                  </p>
+                </div>
+              )}
 
               {/* Phases for this section */}
               {section.phases.map((phase) => (
