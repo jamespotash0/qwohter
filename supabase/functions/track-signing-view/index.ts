@@ -46,6 +46,29 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+    // Rate limiting: 20 requests per minute per IP (lenient - page refreshes are normal)
+    const rateLimitIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                        req.headers.get('x-real-ip') ||
+                        'unknown';
+    try {
+      const { data: rateCheck } = await supabaseAdmin.rpc('check_auth_rate_limit', {
+        p_identifier: rateLimitIp,
+        p_identifier_type: 'ip',
+        p_attempt_type: 'signing-view',
+        p_max_attempts: 20,
+        p_window_minutes: 1,
+        p_block_duration_minutes: 5,
+      });
+      if (rateCheck && !rateCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (rlError) {
+      console.error('[track-signing-view] Rate limit check failed (allowing request):', rlError);
+    }
+
     // Get signing token with sent_by for notification
     const { data: signingToken, error: tokenError } = await supabaseAdmin
       .from('proposal_signing_tokens')

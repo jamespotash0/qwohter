@@ -61,6 +61,8 @@ export const SendForSignatureDialog: React.FC<SendForSignatureDialogProps> = ({
   const [subject, setSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [expiresInDays, setExpiresInDays] = useState<string>('7');
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [reminderIntervalDays, setReminderIntervalDays] = useState(3);
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [sentTo, setSentTo] = useState<string[]>([]);
@@ -86,6 +88,8 @@ Please review the proposal and sign electronically by clicking the button below.
       setSubject(defaultSubject);
       setEmailBody(defaultEmailBody);
       setExpiresInDays('7');
+      setReminderEnabled(true);
+      setReminderIntervalDays(3);
       setSentSuccess(false);
       setSentTo([]);
     }
@@ -148,6 +152,9 @@ Please review the proposal and sign electronically by clicking the button below.
             expiresInDays: expiresInDays === 'never' ? undefined : parseInt(expiresInDays, 10),
             emailSubject: subject.trim() || undefined,
             emailBody: emailBody.trim() || undefined,
+            reminderConfig: reminderEnabled
+              ? { enabled: true, intervalDays: reminderIntervalDays, maxReminders: 3 }
+              : undefined,
           })
         )
       );
@@ -318,25 +325,60 @@ Please review the proposal and sign electronically by clicking the button below.
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                Expires: {selectedExpiry?.label}
-                <CaretDown className="w-3 h-3" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {EXPIRY_OPTIONS.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  onClick={() => setExpiresInDays(option.value)}
-                  className={expiresInDays === option.value ? 'bg-gray-100 dark:bg-gray-800' : ''}
-                >
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                  Expires: {selectedExpiry?.label}
+                  <CaretDown className="w-3 h-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {EXPIRY_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => setExpiresInDays(option.value)}
+                    className={expiresInDays === option.value ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="flex items-center gap-1.5">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={reminderEnabled}
+                  onChange={(e) => setReminderEnabled(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3 w-3"
+                />
+                <span className="text-xs text-gray-500">Remind</span>
+              </label>
+              {reminderEnabled && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                      every {reminderIntervalDays}d
+                      <CaretDown className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {[1, 2, 3, 5, 7].map((days) => (
+                      <DropdownMenuItem
+                        key={days}
+                        onClick={() => setReminderIntervalDays(days)}
+                        className={reminderIntervalDays === days ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                      >
+                        Every {days} day{days > 1 ? 's' : ''}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
 
           <Button
             onClick={handleSend}

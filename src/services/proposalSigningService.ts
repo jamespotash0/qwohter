@@ -33,6 +33,10 @@ export interface SigningToken {
   sent_by: string | null;
   created_at: string;
   updated_at: string;
+  // Reminder fields
+  reminder_config: { enabled: boolean; intervalDays: number; maxReminders: number } | null;
+  last_reminder_sent_at: string | null;
+  reminder_count: number;
 }
 
 export interface ProposalSignature {
@@ -79,6 +83,12 @@ export interface SendForSignatureParams {
   emailBody?: string;
   /** App URL for signing link (auto-detected from window.location.origin) */
   appUrl?: string;
+  /** Reminder configuration for unsigned proposals */
+  reminderConfig?: {
+    enabled: boolean;
+    intervalDays: number;
+    maxReminders: number;
+  };
 }
 
 export interface SendForSignatureResult {
@@ -293,6 +303,24 @@ export async function revokeSigningToken(tokenId: string): Promise<{ success: bo
 
   if (error) {
     console.error('[revokeSigningToken] Error:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Stop reminders for a signing token (without revoking the signing link)
+ */
+export async function stopSigningReminders(tokenId: string): Promise<{ success: boolean; error?: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase
+    .from('proposal_signing_tokens') as any)
+    .update({ reminder_config: { enabled: false, intervalDays: 0, maxReminders: 0 } })
+    .eq('id', tokenId);
+
+  if (error) {
+    console.error('[stopSigningReminders] Error:', error);
     return { success: false, error: error.message };
   }
 

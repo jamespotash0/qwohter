@@ -117,7 +117,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const { data: proposalData } = useProposal(proposalId || '', !!proposalId);
 
   // Fetch signing tokens for status tracker (filler mode only)
-  const { data: signingTokens = [] } = useProposalSigningTokens(proposalId, !isBuilderMode && !!proposalId);
+  const { data: signingTokens = [], refetch: refetchSigningTokens } = useProposalSigningTokens(proposalId, !isBuilderMode && !!proposalId);
 
   // In filler mode, also fetch the form template the proposal was created from
   // This is needed to get templates and other form configuration
@@ -645,6 +645,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
                 <ProposalStatusTracker
                   proposalData={proposalData}
                   signingTokens={signingTokens}
+                  onTokensChanged={() => refetchSigningTokens()}
                 />
               </>
             )}

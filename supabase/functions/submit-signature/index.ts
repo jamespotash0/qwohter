@@ -791,6 +791,26 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Rate limiting: 5 requests per minute per IP (stricter for submissions)
+    try {
+      const { data: rateCheck } = await supabase.rpc('check_auth_rate_limit', {
+        p_identifier: ipAddress,
+        p_identifier_type: 'ip',
+        p_attempt_type: 'signing-submit',
+        p_max_attempts: 5,
+        p_window_minutes: 1,
+        p_block_duration_minutes: 5,
+      });
+      if (rateCheck && !rateCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }
+        );
+      }
+    } catch (rlError) {
+      console.error('[submit-signature] Rate limit check failed (allowing request):', rlError);
+    }
+
     // Validate signing token
     console.log('[submit-signature] Validating token...');
     const { data: signingToken, error: tokenError } = await supabase
@@ -891,14 +911,62 @@ serve(async (req) => {
     const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
     const signedAt = new Date();
 
-    // Determine signature mode - default to 'page' which adds a separate signature page
-    // This is the cleanest approach that works regardless of document layout
-    const signatureConfig = proposal.form_data?.signature_config || {};
-    // Default to 'page' mode - adds a dedicated signature page at the end
-    const signatureMode: SignatureMode = signatureConfig.mode || 'page';
-    const signaturePosition: SignaturePosition | undefined = signatureConfig.position;
+    // Tamper detection: verify PDF hash matches what was stored at send time
+    if (signingToken.unsigned_pdf_hash) {
+      const hashBuffer = await crypto.subtle.digest('SHA-256', pdfBytes);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const currentHash = hashArray.map((b: number) => b.toString(16).padStart(2, '0')).join('');
 
-    console.log(`[submit-signature] Using signature mode: ${signatureMode}, position:`, signaturePosition);
+      if (currentHash !== signingToken.unsigned_pdf_hash) {
+        console.error('[submit-signature] PDF TAMPER DETECTED!', {
+          expected: signingToken.unsigned_pdf_hash,
+          actual: currentHash,
+        });
+
+        // Log the tamper attempt
+        await supabase.from('proposal_signing_activity').insert({
+          organization_id: organizationId,
+          proposal_id: proposal.id,
+          signing_token_id: signingToken.id,
+          event_type: 'TamperDetected',
+          event_data: {
+            expected_hash: signingToken.unsigned_pdf_hash,
+            actual_hash: currentHash,
+          },
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        });
+
+        return new Response(
+          JSON.stringify({ error: 'Document integrity check failed. The document may have been modified. Please contact the sender.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('[submit-signature] PDF integrity verified');
+    }
+
+    // Determine signature mode - prefer auto-detected positions from PDF scanning
+    let signatureMode: SignatureMode = 'page';
+    let signaturePosition: SignaturePosition | undefined;
+
+    const storedPositions = signingToken.signature_positions;
+    if (storedPositions?.signature) {
+      // Use auto-detected position from PDF text scanning
+      signatureMode = 'position';
+      signaturePosition = {
+        pageIndex: storedPositions.signature.pageIndex,
+        x: storedPositions.signature.x,
+        y: storedPositions.signature.y,
+      };
+      console.log('[submit-signature] Using auto-detected signature position:', JSON.stringify(signaturePosition));
+    } else {
+      // Fall back to proposal-level config (overlay or page mode)
+      const signatureConfig = proposal.form_data?.signature_config || {};
+      signatureMode = signatureConfig.mode || 'page';
+      signaturePosition = signatureConfig.position;
+      console.log(`[submit-signature] Using proposal config mode: ${signatureMode}`);
+    }
 
     // Embed signature into PDF
     const signedPdfBytes = await embedSignatureInPdf(

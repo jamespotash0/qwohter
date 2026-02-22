@@ -47,6 +47,29 @@ serve(async (req) => {
     // Use service role to access data (public endpoint)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+    // Rate limiting: 10 requests per minute per IP
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                      req.headers.get('x-real-ip') ||
+                      'unknown';
+    try {
+      const { data: rateCheck } = await supabaseAdmin.rpc('check_auth_rate_limit', {
+        p_identifier: ipAddress,
+        p_identifier_type: 'ip',
+        p_attempt_type: 'signing-get',
+        p_max_attempts: 10,
+        p_window_minutes: 1,
+        p_block_duration_minutes: 5,
+      });
+      if (rateCheck && !rateCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }
+        );
+      }
+    } catch (rlError) {
+      console.error('[get-signing-data] Rate limit check failed (allowing request):', rlError);
+    }
+
     // Get signing token by access token
     const { data: signingToken, error: tokenError } = await supabaseAdmin
       .from('proposal_signing_tokens')
