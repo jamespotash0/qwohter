@@ -432,17 +432,17 @@ BEGIN
     sn.metadata || jsonb_build_object('scheduled_notification_id', sn.id) as metadata,
     sn.id as scheduled_notification_id
   FROM scheduled_notifications sn
-  WHERE sn.status = 'pending'
+  WHERE sn.status = 'Pending'
     AND sn.scheduled_for <= current_timestamp_utc
     -- For recurring: check if already sent today
     AND (
-      sn.recurrence = 'once'
+      sn.recurrence = 'Once'
       OR sn.last_sent_at IS NULL
       OR (sn.last_sent_at AT TIME ZONE 'UTC')::DATE < current_date_utc
     )
     -- For recurring: check if still within recurrence window
     AND (
-      sn.recurrence = 'once'
+      sn.recurrence = 'Once'
       OR sn.recurrence_end_date IS NULL
       OR current_date_utc <= sn.recurrence_end_date
     );
@@ -2754,13 +2754,13 @@ BEGIN
   -- For one-time notifications: mark as sent
   UPDATE scheduled_notifications
   SET
-    status = 'sent',
+    status = 'Sent',
     sent_at = current_timestamp_utc,
     last_sent_at = current_timestamp_utc,
     updated_at = current_timestamp_utc
   WHERE id = ANY(notification_ids)
-    AND recurrence = 'once'
-    AND status = 'pending';
+    AND recurrence = 'Once'
+    AND status = 'Pending';
 
   GET DIAGNOSTICS rows_affected = ROW_COUNT;
   updated_count := rows_affected;
@@ -2771,8 +2771,8 @@ BEGIN
     last_sent_at = current_timestamp_utc,
     updated_at = current_timestamp_utc
   WHERE id = ANY(notification_ids)
-    AND recurrence IN ('daily', 'weekly')
-    AND status = 'pending';
+    AND recurrence IN ('Daily', 'Weekly')
+    AND status = 'Pending';
 
   GET DIAGNOSTICS rows_affected = ROW_COUNT;
   updated_count := updated_count + rows_affected;
