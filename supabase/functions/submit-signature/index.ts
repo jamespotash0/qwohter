@@ -961,11 +961,17 @@ serve(async (req) => {
       };
       console.log('[submit-signature] Using auto-detected signature position:', JSON.stringify(signaturePosition));
     } else {
-      // Fall back to proposal-level config (overlay or page mode)
-      const signatureConfig = proposal.form_data?.signature_config || {};
-      signatureMode = signatureConfig.mode || 'page';
-      signaturePosition = signatureConfig.position;
-      console.log(`[submit-signature] Using proposal config mode: ${signatureMode}`);
+      // Fall back: prefer user-selected fallback mode from signing token, then proposal config
+      const tokenFallback = signingToken.signature_fallback_mode;
+      if (tokenFallback === 'overlay' || tokenFallback === 'page') {
+        signatureMode = tokenFallback;
+        console.log(`[submit-signature] Using user-selected fallback mode: ${signatureMode}`);
+      } else {
+        const signatureConfig = proposal.form_data?.signature_config || {};
+        signatureMode = signatureConfig.mode || 'page';
+        signaturePosition = signatureConfig.position;
+        console.log(`[submit-signature] Using proposal config mode: ${signatureMode}`);
+      }
     }
 
     // Embed signature into PDF

@@ -90,6 +90,8 @@ interface RequestBody {
     intervalDays: number;
     maxReminders: number;
   };
+  /** Fallback signature placement when auto-detection fails */
+  signatureFallbackMode?: 'overlay' | 'page';
 }
 
 interface DetectedPosition {
@@ -663,7 +665,7 @@ serve(async (req) => {
 
     // Parse request body
     const body: RequestBody = await req.json();
-    const { proposalId, organizationId, clientEmail, clientName, clientCompany, expiresInDays, emailSubject, emailBody, appUrl: clientAppUrl, reminderConfig } = body;
+    const { proposalId, organizationId, clientEmail, clientName, clientCompany, expiresInDays, emailSubject, emailBody, appUrl: clientAppUrl, reminderConfig, signatureFallbackMode } = body;
 
     if (!proposalId || !organizationId || !clientEmail) {
       return new Response(
@@ -778,6 +780,8 @@ serve(async (req) => {
         unsigned_pdf_hash: unsignedPdfHash,
         // Reminder configuration
         reminder_config: reminderConfig?.enabled ? reminderConfig : null,
+        // Signature fallback mode (user preference when auto-detection fails)
+        signature_fallback_mode: signatureFallbackMode || null,
       })
       .select()
       .single();

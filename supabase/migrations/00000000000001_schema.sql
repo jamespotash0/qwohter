@@ -2407,6 +2407,54 @@ ALTER FUNCTION "public"."invoke_notification_email_edge_function"() OWNER TO "po
 COMMENT ON FUNCTION "public"."invoke_notification_email_edge_function"() IS 'Invokes the check-due-notifications Edge Function via HTTP to send emails. Called by process_all_due_notifications.';
 
 
+CREATE OR REPLACE FUNCTION "public"."invoke_signature_reminders_edge_function"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  edge_function_url TEXT;
+  service_key TEXT;
+  request_id BIGINT;
+BEGIN
+  edge_function_url := 'https://piuwrlaoxuefmiisuamc.supabase.co/functions/v1/signature-reminders';
+
+  -- Get service_role key from vault
+  SELECT decrypted_secret INTO service_key
+  FROM vault.decrypted_secrets
+  WHERE name = 'service_role_key'
+  LIMIT 1;
+
+  IF service_key IS NULL THEN
+    RAISE NOTICE 'No service_role_key in vault, calling without auth header';
+    SELECT net.http_post(
+      url := edge_function_url,
+      headers := '{"Content-Type": "application/json"}'::jsonb,
+      body := '{"source": "pg_cron"}'::jsonb
+    ) INTO request_id;
+  ELSE
+    SELECT net.http_post(
+      url := edge_function_url,
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || service_key
+      ),
+      body := '{"source": "pg_cron"}'::jsonb
+    ) INTO request_id;
+  END IF;
+
+  RAISE NOTICE 'Invoked signature-reminders Edge Function, request_id: %', request_id;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'Failed to invoke signature-reminders Edge Function: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."invoke_signature_reminders_edge_function"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."invoke_signature_reminders_edge_function"() IS 'Invokes the signature-reminders Edge Function via HTTP to send reminder emails. Called hourly by pg_cron.';
+
 
 CREATE OR REPLACE FUNCTION "public"."is_active_member"("check_user_id" "uuid", "check_org_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
@@ -4944,7 +4992,7 @@ CREATE TABLE IF NOT EXISTS "public"."auth_rate_limits" (
     "last_attempt_at" timestamp with time zone DEFAULT "now"(),
     "blocked_until" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    CONSTRAINT "auth_rate_limits_attempt_type_check" CHECK (("attempt_type" = ANY (ARRAY['login'::"text", 'otp'::"text", 'password_reset'::"text", 'signup'::"text"]))),
+    CONSTRAINT "auth_rate_limits_attempt_type_check" CHECK (("attempt_type" = ANY (ARRAY['login'::"text", 'otp'::"text", 'password_reset'::"text", 'signup'::"text", 'signing-get'::"text", 'signing-submit'::"text", 'signing-view'::"text"]))),
     CONSTRAINT "auth_rate_limits_identifier_type_check" CHECK (("identifier_type" = ANY (ARRAY['email'::"text", 'ip'::"text"])))
 );
 
@@ -5166,7 +5214,7 @@ CREATE TABLE IF NOT EXISTS "public"."google_oauth_tokens" (
     "organization_id" "uuid" NOT NULL,
     "connected_by_user_id" "uuid",
     "access_token" "text" NOT NULL,
-    "refresh_token" "text" NOT NULL,
+    "refresh_token" "text",
     "token_expires_at" timestamp with time zone NOT NULL,
     "scopes" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
     "google_email" "text",
@@ -5495,7 +5543,8 @@ CREATE TABLE IF NOT EXISTS "public"."organizations" (
     "sync_to_all_storage_providers" boolean DEFAULT false,
     "require_proposal_approval" boolean DEFAULT false,
     "payment_settings" "jsonb" DEFAULT '{}'::"jsonb",
-    "org_prefix" "text" NOT NULL DEFAULT 'TSK'::"text"
+    "org_prefix" "text" NOT NULL DEFAULT 'TSK'::"text",
+    "signing_reminder_defaults" "jsonb" DEFAULT '{"enabled": true, "intervalDays": 3, "maxReminders": 3}'::"jsonb"
 );
 
 ALTER TABLE ONLY "public"."organizations" REPLICA IDENTITY FULL;
@@ -5949,6 +5998,12 @@ CREATE TABLE IF NOT EXISTS "public"."proposal_signing_tokens" (
     "sent_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
+    "signature_positions" "jsonb",
+    "unsigned_pdf_hash" "text",
+    "reminder_config" "jsonb",
+    "last_reminder_sent_at" timestamp with time zone,
+    "reminder_count" integer DEFAULT 0,
+    "signature_fallback_mode" "text",
     CONSTRAINT "proposal_signing_tokens_status_check" CHECK (("status" = ANY (ARRAY['Pending'::"text", 'Viewed'::"text", 'Signed'::"text", 'Expired'::"text", 'Revoked'::"text"])))
 );
 
@@ -7461,6 +7516,8 @@ CREATE INDEX "idx_products_product_number" ON "public"."products" USING "btree" 
 
 
 CREATE INDEX "idx_profiles_is_super_admin" ON "public"."profiles" USING "btree" ("is_super_admin") WHERE ("is_super_admin" = true);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_profiles_email" ON "public"."profiles" USING "btree" ("email");
 
 
 
@@ -11254,6 +11311,14 @@ SELECT cron.schedule(
   'process-due-notifications',
   '*/5 * * * *',
   $$SELECT public.process_all_due_notifications()$$
+);
+
+-- 4. Signature reminders (triggers edge function for reminder emails)
+--    Runs every hour at minute 30
+SELECT cron.schedule(
+  'process-signature-reminders',
+  '30 * * * *',
+  $$SELECT public.invoke_signature_reminders_edge_function()$$
 );
 
 

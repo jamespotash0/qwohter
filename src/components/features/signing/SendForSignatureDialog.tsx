@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PaperPlaneTilt, X, Check, CaretDown, Plus, BellRinging } from '@phosphor-icons/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PenLine } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +69,9 @@ export const SendForSignatureDialog: React.FC<SendForSignatureDialogProps> = ({
   // Org-level reminder defaults (fetched on open, drives footer label)
   const [reminderDefaults, setReminderDefaults] = useState<{ enabled: boolean; intervalDays: number; maxReminders: number }>({ enabled: true, intervalDays: 3, maxReminders: 3 });
 
+  // Signature placement fallback when auto-detection fails
+  const [signatureFallback, setSignatureFallback] = useState<'auto' | 'overlay' | 'page'>('auto');
+
   // Default subject
   const defaultSubject = `Please sign: ${proposalNumber || 'Proposal'}${projectName ? ` - ${projectName}` : ''}`;
 
@@ -92,6 +95,7 @@ Please review the proposal and sign electronically by clicking the button below.
       setExpiresInDays('7');
       setSentSuccess(false);
       setSentTo([]);
+      setSignatureFallback('auto');
 
       // Fetch org-level reminder defaults
       const fallback = { enabled: true, intervalDays: 3, maxReminders: 3 };
@@ -173,6 +177,7 @@ Please review the proposal and sign electronically by clicking the button below.
             reminderConfig: reminderDefaults.enabled
               ? reminderDefaults
               : undefined,
+            signatureFallbackMode: signatureFallback === 'auto' ? undefined : signatureFallback,
           })
         )
       );
@@ -361,6 +366,45 @@ Please review the proposal and sign electronically by clicking the button below.
                     {option.label}
                   </DropdownMenuItem>
                 ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                  <PenLine className="w-3 h-3" />
+                  {signatureFallback === 'auto' ? 'Auto-detect' : signatureFallback === 'overlay' ? 'Last page' : 'Separate page'}
+                  <CaretDown className="w-3 h-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => setSignatureFallback('auto')}
+                  className={signatureFallback === 'auto' ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                >
+                  <div>
+                    <div className="font-medium">Auto-detect</div>
+                    <div className="text-xs text-gray-500">Place on signature line if found</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSignatureFallback('overlay')}
+                  className={signatureFallback === 'overlay' ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                >
+                  <div>
+                    <div className="font-medium">Bottom of last page</div>
+                    <div className="text-xs text-gray-500">Always place at bottom of document</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSignatureFallback('page')}
+                  className={signatureFallback === 'page' ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                >
+                  <div>
+                    <div className="font-medium">Separate page</div>
+                    <div className="text-xs text-gray-500">Add a dedicated signature page</div>
+                  </div>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

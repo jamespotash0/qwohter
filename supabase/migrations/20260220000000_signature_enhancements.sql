@@ -32,6 +32,12 @@ ALTER TABLE public.proposal_signing_tokens
 COMMENT ON COLUMN public.proposal_signing_tokens.reminder_config
   IS 'Reminder settings. Format: { enabled: boolean, intervalDays: number, maxReminders: number }';
 
+ALTER TABLE public.proposal_signing_tokens
+  ADD COLUMN IF NOT EXISTS signature_fallback_mode TEXT;
+
+COMMENT ON COLUMN public.proposal_signing_tokens.signature_fallback_mode
+  IS 'User-selected fallback placement when auto-detection fails. Values: overlay (bottom of last page), page (separate page), or NULL (use proposal config)';
+
 -- ============================================================
 -- 1b. Add org-level signing reminder defaults
 -- ============================================================

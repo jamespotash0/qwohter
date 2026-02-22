@@ -37,6 +37,8 @@ export interface SigningToken {
   reminder_config: { enabled: boolean; intervalDays: number; maxReminders: number } | null;
   last_reminder_sent_at: string | null;
   reminder_count: number;
+  // Signature placement fallback
+  signature_fallback_mode: 'overlay' | 'page' | null;
 }
 
 export interface ProposalSignature {
@@ -89,6 +91,8 @@ export interface SendForSignatureParams {
     intervalDays: number;
     maxReminders: number;
   };
+  /** Fallback signature placement when auto-detection fails: 'overlay' (bottom of last page) or 'page' (separate page) */
+  signatureFallbackMode?: 'overlay' | 'page';
 }
 
 export interface SendForSignatureResult {
