@@ -23,6 +23,7 @@ import { MoreVertical, UserMinus, Crown, AlertTriangle, RotateCcw, Plus, X } fro
 import type { Role } from "@/utils/teamManagementHelpers";
 import { cleanupExpiredTokens } from "@/utils/inviteTokens";
 import { InviteBillingConfirmDialog } from "./InviteBillingConfirmDialog";
+import { trackEvent } from "@/lib/analytics";
 
 interface InviteRow {
   id: string;
@@ -173,6 +174,7 @@ export function TeamTab() {
             role: invite.role,
             department: invite.department
           });
+          trackEvent('team_member_invited', { role: invite.role });
           successfulEmails.push(invite.email);
         } catch (error: any) {
           failedEmails.push(invite.email);

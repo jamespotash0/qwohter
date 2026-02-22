@@ -20,6 +20,7 @@ import {
   submitSignature,
   type SigningPageData,
 } from '@/services/proposalSigningService';
+import { trackEvent } from '@/lib/analytics';
 
 type PageState = 'loading' | 'ready' | 'signing' | 'submitting' | 'success' | 'error' | 'already_signed';
 
@@ -71,6 +72,7 @@ export function ProposalSigningPage() {
         setPageState('ready');
 
         // Track view
+        trackEvent('signature_page_viewed');
         trackSigningView(token);
       } catch (err) {
         console.error('Failed to load signing data:', err);
@@ -111,6 +113,7 @@ export function ProposalSigningPage() {
         return;
       }
 
+      trackEvent('signature_submitted', { signature_type: signatureData.type });
       setSignedPdfUrl(result.signedPdfUrl || null);
       setPageState('success');
     } catch (err) {

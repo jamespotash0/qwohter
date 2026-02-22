@@ -17,6 +17,7 @@ import { PaymentsTab } from "@/components/features/settings/PaymentsTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
+import { trackEvent } from "@/lib/analytics";
 
 const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -237,6 +238,7 @@ const Settings = () => {
   }, [activeTab]); // Only depend on activeTab - availableTabs not needed
 
   const handleTabChange = (tabId: string) => {
+    trackEvent('settings_tab_viewed', { tab: tabId });
     setActiveTab(tabId);
     setSearchParams({ tab: tabId });
   };

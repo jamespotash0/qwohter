@@ -9,6 +9,7 @@ import { contactsService } from '@/services/contactsService';
 import type { Contact, CreateContactInput, UpdateContactInput } from '@/lib/types/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
+import { trackEvent } from '@/lib/analytics';
 
 /**
  * Fetch all contacts for an organization
@@ -77,6 +78,7 @@ export const useCreateContact = (organizationId: string) => {
     mutationFn: (input: CreateContactInput) =>
       contactsService.createContact(organizationId, input),
     onSuccess: (newContact: Contact) => {
+      trackEvent('contact_created', { contact_type: newContact.contact_type });
       // Invalidate contacts query to refetch
       queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
 
@@ -111,6 +113,7 @@ export const useUpdateContact = () => {
       input: UpdateContactInput;
     }) => contactsService.updateContact(contactId, input),
     onSuccess: (updatedContact: Contact) => {
+      trackEvent('contact_updated');
       // Invalidate related queries
       queryClient.invalidateQueries({
         queryKey: ['contacts', updatedContact.organization_id],
@@ -174,6 +177,7 @@ export const useBulkDeleteContacts = (organizationId: string) => {
     mutationFn: (contactIds: string[]) =>
       contactsService.bulkDeleteContacts(contactIds),
     onSuccess: (_, contactIds) => {
+      trackEvent('contacts_bulk_deleted', { count: contactIds.length });
       // Invalidate contacts query to refetch
       queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
 

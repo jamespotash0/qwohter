@@ -25,6 +25,7 @@ import { queryKeys } from '@/lib/queryClient';
 import { AuthEventMutex } from './utils/AuthEventMutex';
 import * as authService from './services/authService';
 import * as profileService from './services/profileService';
+import { identifyUser, setOrganizationGroup } from '@/lib/analytics';
 
 interface AuthContextValue {
   isInitialized: boolean;
@@ -95,11 +96,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Prefetch organization data on initialization
         try {
           const { fetchOrganizationByUserId } = await import('@/services/organizationService');
-          await queryClient.prefetchQuery({
+          const orgData = await queryClient.fetchQuery({
             queryKey: queryKeys.organization.byUser(session.user.id),
             queryFn: () => fetchOrganizationByUserId(session.user.id),
             staleTime: 5 * 60 * 1000,
           });
+
+          // Enrich analytics identity with org data
+          if (orgData) {
+            const profile = queryClient.getQueryData<{ full_name?: string; role?: string }>(
+              queryKeys.user.profile(session.user.id)
+            );
+            identifyUser({
+              id: session.user.id,
+              email: session.user.email ?? undefined,
+              fullName: profile?.full_name ?? undefined,
+              organizationId: orgData.id,
+              organizationName: orgData.name,
+              role: profile?.role ?? undefined,
+            });
+            setOrganizationGroup({
+              id: orgData.id,
+              name: orgData.name,
+            });
+          }
         } catch (error) {
           console.error('Failed to prefetch organization on init:', error);
         }
@@ -180,11 +200,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Prefetch organization data immediately on sign in
     try {
       const { fetchOrganizationByUserId } = await import('@/services/organizationService');
-      await queryClient.prefetchQuery({
+      const orgData = await queryClient.fetchQuery({
         queryKey: queryKeys.organization.byUser(session.user.id),
         queryFn: () => fetchOrganizationByUserId(session.user.id),
         staleTime: 5 * 60 * 1000,
       });
+
+      // Enrich analytics identity with org data
+      if (orgData) {
+        const profile = queryClient.getQueryData<{ full_name?: string; role?: string }>(
+          queryKeys.user.profile(session.user.id)
+        );
+        identifyUser({
+          id: session.user.id,
+          email: session.user.email ?? undefined,
+          fullName: profile?.full_name ?? undefined,
+          organizationId: orgData.id,
+          organizationName: orgData.name,
+          role: profile?.role ?? undefined,
+        });
+        setOrganizationGroup({
+          id: orgData.id,
+          name: orgData.name,
+        });
+      }
     } catch (error) {
       console.error('Failed to prefetch organization on sign in:', error);
     }

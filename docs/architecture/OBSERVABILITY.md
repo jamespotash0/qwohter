@@ -20,6 +20,18 @@
 - Geographic distribution
 - Top pages
 
+### 3. **PostHog** - Product Analytics
+- Event tracking (feature usage, funnels, drop-off analysis)
+- Autocapture (automatic page views, clicks, form interactions)
+- Heatmaps (click tracking on key pages)
+- Session recording (analytics-focused replays)
+- Group analytics (organization-level insights)
+- User identification and person properties
+
+**Configuration:** `src/lib/analytics.ts`
+**Environment variables:** `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`
+**Free tier:** 1M events/month, 5K recordings/month
+
 ---
 
 ## 🎯 Core Principles
@@ -521,9 +533,10 @@ useEffect(() => {
 ```
 
 **Later additions (Month 2+):**
-- PostHog for feature usage
 - Custom Sentry breadcrumbs for user flows
 - Business metric tracking
+
+> **Note:** PostHog has been implemented for feature usage analytics. See `src/lib/analytics.ts` for the full event catalog and tracking setup.
 
 ---
 
@@ -659,9 +672,10 @@ Core Web Vitals:
 
 ## 💰 Cost Tracking
 
-### Current (Month 1-6)
+### Current
 - **Sentry Free:** 5,000 errors/month
 - **Vercel Analytics:** Included with Vercel
+- **PostHog Free:** 1M events/month, 5K recordings/month
 - **Total:** $0/month
 
 ### When to Upgrade
@@ -669,9 +683,9 @@ Core Web Vitals:
   - When: >5,000 errors/month (~500 active users)
   - Gets: 50,000 errors/month + unlimited replays
 
-- **PostHog ($20/month):**
-  - When: Need feature usage analytics (>100 users)
-  - Gets: 1M events/month
+- **PostHog Growth:**
+  - When: >1M events/month
+  - Gets: Higher event limits, advanced analytics features
 
 ---
 

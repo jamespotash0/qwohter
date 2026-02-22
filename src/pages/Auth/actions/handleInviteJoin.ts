@@ -19,6 +19,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { stripeService } from '@/services/stripeService';
 import { notifyMemberJoined } from '@/services/notificationService';
+import { trackEvent } from '@/lib/analytics';
 
 interface HandleInviteJoinParams {
   userId: string | null;
@@ -386,6 +387,8 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.user.all });
 
     console.log('✅ Cache invalidated - fresh data will be fetched');
+
+    trackEvent('invite_accepted', { role: tokenData?.role || 'Member' });
 
     toast({
       title: 'Welcome to the team!',

@@ -8,6 +8,7 @@ import { onboardingStateHelpers } from '@/services/onboardingStateService';
 import { OrganizationCreationLimiter } from '@/services/rateLimitingService';
 import { markSignupInviteAsUsed } from '@/utils/inviteTokens';
 import { NavigateFunction } from 'react-router-dom';
+import { trackEvent } from '@/lib/analytics';
 
 interface HandleOrganizationSubmitParams {
   userId: string | null;
@@ -76,6 +77,8 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
 
     if (result.success && result.data) {
+      trackEvent('organization_created', { industry, found_via: foundVia });
+
       // Store the organization ID for the company-info step (needed for trial enrollment)
       setOrganizationId(result.data.organizationId);
 

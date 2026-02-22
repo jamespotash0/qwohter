@@ -20,6 +20,7 @@ import {
 import { toast } from '@/components/ui/sonner';
 import { sendForSignature } from '@/services/proposalSigningService';
 import { supabase } from '@/integrations/supabase/client';
+import { trackEvent } from '@/lib/analytics';
 
 interface SendForSignatureDialogProps {
   isOpen: boolean;
@@ -186,7 +187,7 @@ Please review the proposal and sign electronically by clicking the button below.
       const failed = results.filter(r => !r.success);
 
       if (failed.length > 0 && successful.length === 0) {
-        toast.error(failed[0].error || 'Failed to send');
+        toast.error(failed[0]!.error || 'Failed to send');
         return;
       }
 
@@ -197,9 +198,15 @@ Please review the proposal and sign electronically by clicking the button below.
       // Check if any emails failed to send (signing token created but email failed)
       const emailFailed = successful.filter(r => r.emailSent === false);
       if (emailFailed.length > 0) {
-        const errorMsg = emailFailed[0].emailError || 'Email delivery failed';
+        const errorMsg = emailFailed[0]!.emailError || 'Email delivery failed';
         toast.error(`Warning: ${errorMsg}. Signing link was created but email may not have been delivered.`);
       }
+
+      trackEvent('proposal_sent_for_signature', {
+        has_expiration: expiresInDays !== 'never',
+        has_reminders: reminderDefaults.enabled,
+        recipient_count: recipients.length,
+      });
 
       setSentSuccess(true);
       setSentTo(recipients);

@@ -8,6 +8,7 @@ import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import * as authService from '@/auth/services/authService';
+import { trackEvent } from '@/lib/analytics';
 
 interface HandleCompanyInfoSubmitParams {
   userId: string | null;
@@ -106,6 +107,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
         console.error('❌ Stripe trial enrollment failed:', trialError);
         // Don't block - continue to dashboard
       } else if (trialData?.success) {
+        trackEvent('trial_started');
         console.log('✅ Stripe trial enrollment successful:', {
           subscriptionId: trialData.subscriptionId,
           customerId: trialData.customerId,
@@ -116,6 +118,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
         // Don't block - continue to dashboard
       }
     }
+
+    trackEvent('onboarding_completed');
 
     // Clear auth state and navigate to dashboard with welcome flag
     clearAuthState();

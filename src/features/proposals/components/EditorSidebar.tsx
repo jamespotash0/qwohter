@@ -7,6 +7,7 @@
 
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
 
 interface TabDefinition {
   id: string;
@@ -36,7 +37,10 @@ export function EditorSidebar({ tabs, activeTab, onTabChange }: EditorSidebarPro
         return (
           <button
             key={tab.id}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => {
+              trackEvent('proposal_tab_switched', { tab: tab.id, previous_tab: activeTab });
+              onTabChange(tab.id);
+            }}
             className={cn(
               'relative flex items-center gap-2.5 w-full rounded transition-all duration-150',
               'px-1.5 py-1.5',

@@ -18,6 +18,7 @@ import { ProjectAttachments } from './ProjectAttachments';
 import { ProjectTasks } from './ProjectTasks';
 import type { Project, ProjectPriority } from '@/services/boardService';
 import type { ProjectAttachment } from '@/lib/types/projectAttachments';
+import { trackEvent } from '@/lib/analytics';
 
 // =============================================================================
 // Types
@@ -114,7 +115,7 @@ export function ProjectBoardOverlay({
             {/* Priority */}
             <select
               value={project.priority || ''}
-              onChange={(e) => handleUpdate({ priority: (e.target.value as ProjectPriority) || null })}
+              onChange={(e) => { trackEvent('project_field_edited', { field: 'priority' }); handleUpdate({ priority: (e.target.value as ProjectPriority) || null }); }}
               className={`h-6 text-[11px] px-2 rounded-md border-0 bg-gray-50 hover:bg-gray-100 cursor-pointer ${
                 project.priority === 'High' || project.priority === 'Highest'
                   ? 'text-red-600'
@@ -135,7 +136,7 @@ export function ProjectBoardOverlay({
             <Input
               type="date"
               value={project.completion_date || ''}
-              onChange={(e) => handleUpdate({ completion_date: e.target.value || null })}
+              onChange={(e) => { trackEvent('project_field_edited', { field: 'completion_date' }); handleUpdate({ completion_date: e.target.value || null }); }}
               className="h-6 text-[11px] w-28 border-0 bg-gray-50 hover:bg-gray-100 px-2"
               placeholder="Due date"
             />

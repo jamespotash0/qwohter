@@ -40,6 +40,7 @@ import {
   formatCurrency,
   generateAnalyticsSummary,
 } from '@/utils/analyticsCalculations';
+import { trackEvent } from '@/lib/analytics';
 
 export interface AnalyticsSourcesTabProps {
   proposals: Proposal[];
@@ -57,6 +58,7 @@ export const AnalyticsSourcesTab = ({ proposals }: AnalyticsSourcesTabProps) => 
   };
 
   const handleEnlarge = (chartName: string) => {
+    trackEvent('analytics_chart_enlarged', { chart: chartName, tab: 'sources' });
     setEnlargedChart(chartName);
   };
 

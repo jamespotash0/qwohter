@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react';
 import { setSentryUser, clearSentryUser } from '@/lib/sentry';
+import { identifyUser, resetAnalyticsUser } from '@/lib/analytics';
 
 export interface SignInCredentials {
   email: string;
@@ -75,6 +76,10 @@ export async function signIn(credentials: SignInCredentials): Promise<AuthRespon
           setSentryUser({
             id: data.user.id,
             email: data.user.email,
+          });
+          identifyUser({
+            id: data.user.id,
+            email: data.user.email ?? undefined,
           });
           span.setAttribute('user.id', data.user.id);
         }
@@ -147,6 +152,10 @@ export async function signUp(credentials: SignUpCredentials): Promise<AuthRespon
             id: data.user.id,
             email: data.user.email,
           });
+          identifyUser({
+            id: data.user.id,
+            email: data.user.email ?? undefined,
+          });
           span.setAttribute('user.id', data.user.id);
         }
 
@@ -191,6 +200,7 @@ export async function signOut(): Promise<{ error: Error | null }> {
               error.message?.includes('Auth session missing')) {
             console.log('Session already invalid, clearing local state');
             clearSentryUser();
+            resetAnalyticsUser();
             span.setStatus({ code: 1 }); // Treat as success
             return { error: null };
           }
@@ -205,8 +215,9 @@ export async function signOut(): Promise<{ error: Error | null }> {
           throw error;
         }
 
-        // Clear user context from Sentry
+        // Clear user context from Sentry and analytics
         clearSentryUser();
+        resetAnalyticsUser();
 
         span.setStatus({ code: 1 }); // Success
         return { error: null };
@@ -217,6 +228,7 @@ export async function signOut(): Promise<{ error: Error | null }> {
             errorMessage.includes('Auth session missing')) {
           console.log('Session already invalid during signOut, clearing local state');
           clearSentryUser();
+          resetAnalyticsUser();
           return { error: null };
         }
 

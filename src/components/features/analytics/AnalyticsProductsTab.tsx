@@ -35,6 +35,7 @@ import {
 import {
   generateAnalyticsSummary,
 } from '@/utils/analyticsCalculations';
+import { trackEvent } from '@/lib/analytics';
 
 export interface AnalyticsProductsTabProps {
   proposals: Proposal[];
@@ -52,6 +53,7 @@ export const AnalyticsProductsTab = ({ proposals }: AnalyticsProductsTabProps) =
   };
 
   const handleEnlarge = (chartName: string) => {
+    trackEvent('analytics_chart_enlarged', { chart: chartName, tab: 'products' });
     setEnlargedChart(chartName);
   };
 

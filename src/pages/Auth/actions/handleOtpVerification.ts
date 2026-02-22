@@ -11,6 +11,7 @@ import {
   clearRateLimit,
   getRateLimitMessage,
 } from '@/services/authRateLimitService';
+import { trackEvent } from '@/lib/analytics';
 
 interface HandleOtpVerificationParams {
   email: string;
@@ -69,6 +70,8 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
     const result = await authFlowHelpers.handleOtpVerification(email, otpCode);
 
     if (result.success && result.data?.userId) {
+      trackEvent('otp_verified');
+
       // Clear OTP rate limit on successful verification
       await clearRateLimit(email, 'otp');
 

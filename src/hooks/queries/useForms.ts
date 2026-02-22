@@ -15,6 +15,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
+import { trackEvent } from '@/lib/analytics';
 import type { Form } from '@/services/formsService';
 import {
   fetchForms,
@@ -151,6 +152,7 @@ export function useCreateForm() {
     },
 
     onSuccess: (newForm) => {
+      trackEvent('form_created', { document_type: newForm.document_type });
       // Invalidate forms list for this organization
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(newForm.organization_id) });
 
@@ -340,6 +342,7 @@ export function useCopyForm() {
     },
 
     onSuccess: (newForm) => {
+      trackEvent('form_copied');
       // Invalidate forms list
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(newForm.organization_id) });
 
@@ -367,6 +370,7 @@ export function useSetDefaultForm() {
     },
 
     onSuccess: (updatedForm) => {
+      trackEvent('form_set_as_default');
       // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(updatedForm.organization_id) });
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.default(updatedForm.organization_id) });
@@ -454,6 +458,7 @@ export function useArchiveForm() {
     },
 
     onSuccess: (archivedForm) => {
+      trackEvent('form_archived');
       // Invalidate both active and archived lists
       if (archivedForm.organization_id) {
         queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(archivedForm.organization_id) });

@@ -29,6 +29,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { CHART_COLORS, CHART_TOOLTIP_STYLE, createMonthlyLabelFormatter } from './analyticsConstants';
+import { trackEvent } from '@/lib/analytics';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -157,6 +158,15 @@ export const AnalyticsOverviewTab = ({ proposals }: AnalyticsOverviewTabProps) =
     console.log(`Exporting ${chartName} data...`);
   };
 
+  const handleEnlarge = (chart: string) => {
+    trackEvent('analytics_chart_enlarged', { chart, tab: 'overview' });
+    setEnlargedChart(chart);
+  };
+
+  const handleTimePeriodChange = (chart: string, period: TimePeriod) => {
+    trackEvent('analytics_time_period_changed', { chart, period });
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────
 
   return (
@@ -205,11 +215,11 @@ export const AnalyticsOverviewTab = ({ proposals }: AnalyticsOverviewTabProps) =
           title="Total Value Quoted"
           subtitle="All proposals created per period"
           showTimePeriodToggle
-          onTimePeriodChange={setQuotedTimePeriod}
+          onTimePeriodChange={(p) => { setQuotedTimePeriod(p); handleTimePeriodChange('value-quoted', p); }}
           onPeriodOffsetChange={setQuotedPeriodOffset}
           defaultTimePeriod={quotedTimePeriod}
           onExport={() => handleExport('value-quoted')}
-          onExpand={() => setEnlargedChart('value-quoted')}
+          onExpand={() => handleEnlarge('value-quoted')}
         >
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={valueQuotedData} margin={chartMargin}>
@@ -228,11 +238,11 @@ export const AnalyticsOverviewTab = ({ proposals }: AnalyticsOverviewTabProps) =
           title="Revenue & Gross Profit"
           subtitle="Running totals over time (Cumulative)"
           showTimePeriodToggle
-          onTimePeriodChange={setRevenueTimePeriod}
+          onTimePeriodChange={(p) => { setRevenueTimePeriod(p); handleTimePeriodChange('revenue', p); }}
           onPeriodOffsetChange={setRevenuePeriodOffset}
           defaultTimePeriod={revenueTimePeriod}
           onExport={() => handleExport('revenue')}
-          onExpand={() => setEnlargedChart('revenue')}
+          onExpand={() => handleEnlarge('revenue')}
         >
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={revenueData} margin={chartMargin}>
@@ -252,11 +262,11 @@ export const AnalyticsOverviewTab = ({ proposals }: AnalyticsOverviewTabProps) =
           title="Win Rate Over Time"
           subtitle="Running win rate (cumulative within period)"
           showTimePeriodToggle
-          onTimePeriodChange={setWinRateTimePeriod}
+          onTimePeriodChange={(p) => { setWinRateTimePeriod(p); handleTimePeriodChange('win-rate', p); }}
           onPeriodOffsetChange={setWinRatePeriodOffset}
           defaultTimePeriod={winRateTimePeriod}
           onExport={() => handleExport('win-rate')}
-          onExpand={() => setEnlargedChart('win-rate')}
+          onExpand={() => handleEnlarge('win-rate')}
         >
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={winRateData} margin={chartMargin}>

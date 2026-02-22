@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { IntegrationType } from '@/lib/types/integrations';
+import { trackEvent } from '@/lib/analytics';
 
 interface IntegrationsTabProps {
   organization: any;
@@ -161,6 +162,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         toast.success('QuickBooks Desktop disconnected');
       } else if (pendingDisconnect === 'google_docs') {
         await disconnectGoogle(organization.id);
+        trackEvent('google_disconnected');
         toast.success('Google Docs disconnected');
       }
 
@@ -201,6 +203,10 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     setShowGoogleDocsDialog(false);
 
     if (!organization?.id) return;
+
+    if (wasGoogleDocs) {
+      trackEvent('google_connected');
+    }
 
     // Invalidate cache to trigger refetch
     await invalidateQueries.connectedIntegrations(organization.id);

@@ -11,6 +11,7 @@ import { Info, CloudCheck, CloudArrowUp, Warning, Package, CurrencyDollar, Clock
 import type { Icon } from '@phosphor-icons/react';
 import { EditorSidebar } from './EditorSidebar';
 import { ProposalStatusTracker } from './ProposalStatusTracker';
+import { trackEvent } from '@/lib/analytics';
 import { useProposalSigningTokens } from '@/hooks/queries/useSigningTokens';
 import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/sonner';
@@ -31,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+// import { cn } from '@/lib/utils';
 import { useForm, useUpdateForm, useCreateForm } from '@/hooks/queries/useForms';
 import { useProposal, useUpdateProposal } from '@/hooks/queries/useProposals';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
@@ -99,6 +100,12 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const [activeTab, setActiveTab] = useState<TabId>('info');
 
   const isBuilderMode = mode === 'builder';
+
+  // Track editor open on mount
+  useEffect(() => {
+    trackEvent('proposal_editor_opened', { mode });
+  }, []);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -261,6 +268,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   // Callback for PresentationTab when a Google Doc is generated/selected
   const handleGoogleDocGenerated = useCallback((docId: string) => {
+    trackEvent('google_doc_generated');
     setSelectedGoogleDocId(docId);
     // Mark as dirty to trigger auto-save
     setTabDirtyStates(prev => ({ ...prev, presentation: true }));
@@ -268,6 +276,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   // Callback for PresentationTab when a Google Doc is unlinked
   const handleGoogleDocUnlinked = useCallback(() => {
+    trackEvent('google_doc_unlinked');
     setSelectedGoogleDocId(null);
     // Mark as dirty to trigger auto-save
     setTabDirtyStates(prev => ({ ...prev, presentation: true }));

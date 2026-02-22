@@ -2,11 +2,15 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { initializeSentry } from './lib/sentry'
+import { initializeAnalytics } from './lib/analytics'
 import { initializeVersionCheck } from './services/versionCheckService'
 import { handleErrorWithRecovery } from './utils/staleClientRecovery'
 
 // Initialize error tracking and performance monitoring
 initializeSentry();
+
+// Initialize product analytics (PostHog)
+initializeAnalytics();
 
 // Initialize version tracking to prevent stale client issues
 // This stores the current deployed version when the app loads

@@ -32,6 +32,7 @@ import { useProductStore, type ProductSelection } from '@/stores/products/produc
 import { ProductEntryCards } from './products/ProductEntryCards';
 import { LineItemsSection } from './products/LineItemsSection';
 import { CatalogProductsSection } from './products/CatalogProductsSection';
+import { trackEvent } from '@/lib/analytics';
 
 interface ProductsTabProps {
   mode: EditorMode;
@@ -81,6 +82,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   // ==================== Product CRUD ====================
 
   const addProduct = useCallback(() => {
+    trackEvent('line_item_added', { method: 'manual' });
     const newProduct: Product = {
       id: Math.random().toString(36).substr(2, 9),
       name: '',
@@ -202,6 +204,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       toast.error('Invalid file type. Please upload PDF, DOCX, image, or text file.');
       return;
     }
+    trackEvent('ai_extraction_used');
     setExtracting(true);
     setExtractingFile(file);
     try {
@@ -429,7 +432,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       {!hasAnyProducts && (
         <ProductEntryCards
           onAddLineItem={addProduct}
-          onBrowseCatalog={() => setCatalogDialogOpen(true)}
+          onBrowseCatalog={() => { trackEvent('catalog_browsed'); setCatalogDialogOpen(true); }}
           onUploadDocument={() => fileInputRef.current?.click()}
           isExtracting={extracting}
         />

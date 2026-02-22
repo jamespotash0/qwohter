@@ -59,6 +59,7 @@ import {
   cancelTaskReminder,
   type TaskReminder,
 } from '@/services/scheduledNotificationsService';
+import { trackEvent } from '@/lib/analytics';
 
 // =============================================================================
 // Types
@@ -275,6 +276,7 @@ export function TaskDetailOverlay({
     if (description !== (task.description || '')) {
       await handleSave('description', description.trim() || null);
       setDescriptionChanged(false);
+      trackEvent('task_description_edited');
     }
   };
 
@@ -544,6 +546,7 @@ export function TaskDetailOverlay({
                   onChange={(e) => {
                     setDueDate(e.target.value);
                     handleSave('due_date', e.target.value || null);
+                    if (e.target.value) trackEvent('task_due_date_set');
                   }}
                   className="h-7 text-xs"
                 />
@@ -589,10 +592,12 @@ export function TaskDetailOverlay({
                       priority: task.priority,
                     });
                     setTaskReminder(newReminder);
+                    trackEvent('task_reminder_scheduled', { recurrence: newRecurrence });
                   } else {
                     // Cancel reminder
                     await cancelTaskReminder(task.id, currentUserId);
                     setTaskReminder(null);
+                    trackEvent('task_reminder_cancelled');
                   }
                 } catch (error) {
                   console.error('Failed to update reminder:', error);
@@ -607,6 +612,7 @@ export function TaskDetailOverlay({
                 onValueChange={(value) => {
                   const newProjectId = value === 'none' ? null : value;
                   onLinkProject(task.id, newProjectId);
+                  if (newProjectId) trackEvent('task_linked_to_project');
                 }}
               >
                 <SelectTrigger className="h-6 text-[11px] border-0 bg-gray-50 hover:bg-gray-100 px-2 gap-1 rounded-md w-auto min-w-[80px] max-w-[120px]">

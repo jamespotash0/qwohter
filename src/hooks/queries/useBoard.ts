@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import { toast } from '@/components/ui/sonner';
+import { trackEvent } from '@/lib/analytics';
 import type { Project, WorkflowColumn } from '@/services/boardService';
 import {
   fetchBoardItems,
@@ -82,6 +83,7 @@ export function useCreateProject(organizationId: string) {
       return createBoardItem(organizationId, projectData);
     },
     onSuccess: () => {
+      trackEvent('project_created', { source: 'manual' });
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
     onError: (error) => {
@@ -161,6 +163,7 @@ export function useDeleteProject(organizationId: string) {
       return { previousProjects };
     },
     onSuccess: () => {
+      trackEvent('project_deleted');
       toast.success('Project deleted successfully');
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
@@ -215,6 +218,7 @@ export function useCreateWorkflowColumn(organizationId: string) {
       return { previousColumns };
     },
     onSuccess: () => {
+      trackEvent('board_column_created');
       queryClient.invalidateQueries({ queryKey: [...queryKeys.board.all, 'columns', organizationId] });
     },
     onError: (error, variables, context) => {
@@ -309,6 +313,7 @@ export function useDeleteWorkflowColumn(organizationId: string) {
       return { previousColumns };
     },
     onSuccess: () => {
+      trackEvent('board_column_deleted');
       toast.success('Workflow column deleted successfully');
       queryClient.invalidateQueries({ queryKey: [...queryKeys.board.all, 'columns', organizationId] });
     },
@@ -341,7 +346,8 @@ export function useMoveBoardItem(organizationId: string) {
     }) => {
       return moveBoardItem(itemId, newColumnStatus, newOrder);
     },
-    onSuccess: () => {
+    onSuccess: (_data, { newColumnStatus }) => {
+      trackEvent('project_moved', { to_column: newColumnStatus });
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
     onError: (error) => {

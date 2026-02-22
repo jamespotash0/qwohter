@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/auth";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
+import { trackEvent } from "@/lib/analytics";
 
 interface BillingTabProps {
   organization: any;
@@ -147,6 +148,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   useEffect(() => {
     const success = searchParams.get('success');
     if (success === 'true' && organization?.id) {
+      trackEvent('subscription_upgraded');
       // Remove success param from URL immediately
       setSearchParams({});
 

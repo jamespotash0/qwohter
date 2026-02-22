@@ -42,7 +42,7 @@ npm run docs:preview           # Preview built docs
 | Payments | Stripe (subscriptions, per-seat pricing) |
 | Email | Resend (transactional emails with retry) |
 | Integrations | Google Docs/Drive |
-| Monitoring | Sentry, Vercel Analytics |
+| Monitoring | Sentry, Vercel Analytics, PostHog |
 
 ---
 

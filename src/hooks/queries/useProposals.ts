@@ -30,6 +30,7 @@ import {
   type UpdateProposalData,
 } from '@/services/proposalsService';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
+import { trackEvent } from '@/lib/analytics';
 
 // ============================================================================
 // Query Keys
@@ -131,7 +132,11 @@ export function useCreateProposal() {
 
   return useMutation({
     mutationFn: createProposal,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      trackEvent('proposal_created', {
+        document_type: data.document_type,
+        form_id: data.form_id,
+      });
       // Invalidate all proposal lists
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.lists(),
@@ -205,6 +210,9 @@ export function useDeleteProposal() {
         });
       }
     },
+    onSuccess: () => {
+      trackEvent('proposal_deleted');
+    },
     // Always refetch after error or success to ensure server state
     onSettled: () => {
       queryClient.invalidateQueries({
@@ -260,6 +268,9 @@ export function useUpdateProposalStatus() {
         });
       }
     },
+    onSuccess: (_data, { status }) => {
+      trackEvent('proposal_status_changed', { status });
+    },
     // Always refetch after error or success to ensure server state
     onSettled: () => {
       queryClient.invalidateQueries({
@@ -278,6 +289,7 @@ export function useArchiveProposal() {
   return useMutation({
     mutationFn: archiveProposal,
     onSuccess: () => {
+      trackEvent('proposal_archived');
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.lists(),
       });
@@ -336,6 +348,7 @@ export function useCreateProposalVersion() {
       return createProposalVersion(parentProposalId);
     },
     onSuccess: () => {
+      trackEvent('proposal_version_created');
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.lists(),
       });

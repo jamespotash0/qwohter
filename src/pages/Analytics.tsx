@@ -6,6 +6,7 @@ import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
 import { filterMainVersionProposals } from "@/utils/analyticsCalculations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { trackEvent } from "@/lib/analytics";
 
 // Tab components
 import { AnalyticsOverviewTab } from "@/components/features/analytics/AnalyticsOverviewTab";
@@ -49,7 +50,7 @@ const Analytics = () => {
           <p className="text-sm text-gray-500">Create some proposals to see analytics</p>
         </div>
       ) : (
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full" onValueChange={(tab) => trackEvent('analytics_tab_viewed', { tab })}>
           <TabsList className="mb-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Overview</TabsTrigger>
             <TabsTrigger value="pipeline" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white text-gray-600 dark:text-gray-400 rounded-md px-4 py-1.5">Pipeline</TabsTrigger>

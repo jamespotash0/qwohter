@@ -23,6 +23,7 @@ import type {
   TaskAttachment,
 } from '@/lib/types/taskComments';
 import { useToast } from '@/hooks/use-toast';
+import { trackEvent } from '@/lib/analytics';
 
 const COMMENTS_KEY = 'task-comments';
 const ATTACHMENTS_KEY = 'task-attachments';
@@ -134,10 +135,16 @@ export function useCreateTaskComment(
         variant: 'destructive',
       });
     },
-    onSettled: () => {
+    onSettled: (_data, _error, newComment) => {
       // Refetch to get server state
       queryClient.invalidateQueries({ queryKey: [COMMENTS_KEY, taskId] });
       queryClient.invalidateQueries({ queryKey: [ACTIVITY_KEY, taskId] });
+      // Track after settled (whether optimistic or server)
+      if (!_error) {
+        trackEvent('task_comment_added', {
+          has_mention: (newComment.mentions?.length ?? 0) > 0,
+        });
+      }
     },
   });
 }
@@ -237,6 +244,7 @@ export function useUploadTaskAttachment(taskId: string, organizationId: string) 
   return useMutation({
     mutationFn: (file: File) => uploadTaskAttachment(taskId, organizationId, file),
     onSuccess: () => {
+      trackEvent('task_attachment_uploaded');
       queryClient.invalidateQueries({ queryKey: [ATTACHMENTS_KEY, taskId] });
       queryClient.invalidateQueries({ queryKey: [ACTIVITY_KEY, taskId] });
       toast({

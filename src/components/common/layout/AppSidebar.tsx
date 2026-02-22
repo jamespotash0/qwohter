@@ -17,6 +17,7 @@ import { stripeService } from "@/services/stripeService";
 import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
 import { Fragment, useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { trackEvent } from "@/lib/analytics";
 // import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
 
 interface AppSidebarProps {
@@ -314,6 +315,7 @@ export function AppSidebar({
   const handleNavigate = useCallback((path: string, title: string, event?: React.MouseEvent) => {
     event?.preventDefault();
     event?.stopPropagation();
+    trackEvent('navigation_clicked', { item: title.toLowerCase().replace(/\s+/g, '_') });
     setClickedItem(title);
     navigate(path);
   }, [navigate]);

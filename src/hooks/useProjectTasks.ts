@@ -25,6 +25,7 @@ import type {
 } from '@/lib/types/projectTasks';
 import { useToast } from '@/hooks/use-toast';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
+import { trackEvent } from '@/lib/analytics';
 
 const QUERY_KEY = 'project-tasks';
 const ORG_TASKS_KEY = 'organization-tasks';
@@ -83,7 +84,12 @@ export function useCreateProjectTask(organizationId: string, projectId: string) 
   return useMutation({
     mutationFn: (input: CreateProjectTaskInput) =>
       createProjectTask(organizationId, input),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
+      trackEvent('task_created', {
+        has_due_date: !!input.due_date,
+        has_assignee: !!input.assigned_to,
+        priority: input.priority || 'Medium',
+      });
       // Invalidate both project-specific and organization-wide task queries
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
@@ -156,6 +162,7 @@ export function useAssignTask(organizationId: string, projectId?: string) {
     mutationFn: ({ taskId, userId }: { taskId: string; userId: string | null }) =>
       assignTask(taskId, userId),
     onSuccess: () => {
+      trackEvent('task_assigned');
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       }
@@ -170,7 +177,8 @@ export function useUpdateTaskStatus(organizationId: string, projectId?: string) 
   return useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
       updateTaskStatus(taskId, status),
-    onSuccess: () => {
+    onSuccess: (_data, { status }) => {
+      if (status === 'Done') trackEvent('task_completed');
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       }
@@ -185,7 +193,8 @@ export function useUpdateTaskPriority(organizationId: string, projectId?: string
   return useMutation({
     mutationFn: ({ taskId, priority }: { taskId: string; priority: TaskPriority }) =>
       updateTaskPriority(taskId, priority),
-    onSuccess: () => {
+    onSuccess: (_data, { priority }) => {
+      trackEvent('task_priority_changed', { priority });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       }
@@ -210,7 +219,8 @@ export function useReorderTask(organizationId: string, projectId?: string) {
       newStatus: string;
       newPosition: number;
     }) => reorderTask(organizationId, taskId, newStatus, newPosition),
-    onSuccess: () => {
+    onSuccess: (_data, { newStatus }) => {
+      trackEvent('task_moved', { to_column: newStatus });
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       }

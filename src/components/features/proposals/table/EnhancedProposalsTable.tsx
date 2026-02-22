@@ -43,6 +43,7 @@ import { groupProposalsByVersion, getBaseProposalNumber, type ProposalVersionGro
 import { formatTimestamp } from '@/lib/utils';
 import useEnhancedProposalSearch from '@/hooks/useEnhancedProposalSearch';
 import { usePagePreferences } from '@/stores';
+import { trackEvent } from '@/lib/analytics';
 
 // ============================================================================
 // Types & Constants
@@ -624,11 +625,11 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
             <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg z-50">
               {!hasMultipleVersions && (
                 <>
-                  <DropdownMenuItem onClick={() => onEditProposal(proposal)}>
+                  <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'edit' }); onEditProposal(proposal); }}>
                     <Edit3 className="mr-2 h-4 w-4" /> Edit
                   </DropdownMenuItem>
                   {onCreateVersion && (
-                    <DropdownMenuItem onClick={() => onCreateVersion(proposal.id)}>
+                    <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'create_version' }); onCreateVersion(proposal.id); }}>
                       <Copy className="mr-2 h-4 w-4" /> Create Version
                     </DropdownMenuItem>
                   )}
@@ -637,31 +638,31 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
               )}
               {/* Manage Reminders - for non-draft proposals */}
               {!hasMultipleVersions && onManageReminders && proposal.status !== 'Draft' && (
-                <DropdownMenuItem onClick={() => onManageReminders(proposal.id, proposal.proposal_number || undefined)}>
+                <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'manage_reminders' }); onManageReminders(proposal.id, proposal.proposal_number || undefined); }}>
                   <Bell className="mr-2 h-4 w-4" /> Manage Reminders
                 </DropdownMenuItem>
               )}
               {/* Project Board options - only for Won + main version proposals */}
               {proposal.status === 'Won' && proposal.is_main_version && (
                 proposal.is_on_board ? (
-                  <DropdownMenuItem onClick={() => handleRemoveFromBoard(proposal.id)}>
+                  <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'remove_from_board' }); handleRemoveFromBoard(proposal.id); }}>
                     <X className="mr-2 h-4 w-4" /> Remove from Board
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onClick={() => handleSendToBoard(proposal.id)}>
+                  <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'send_to_board' }); handleSendToBoard(proposal.id); }}>
                     <Kanban className="mr-2 h-4 w-4" /> Send to Project Board
                   </DropdownMenuItem>
                 )
               )}
               {isArchived ? (
                 onUnarchiveProposal && (
-                  <DropdownMenuItem onClick={() => onUnarchiveProposal(proposal.id)}>
+                  <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'unarchive' }); onUnarchiveProposal(proposal.id); }}>
                     <ArchiveRestore className="mr-2 h-4 w-4" /> Unarchive
                   </DropdownMenuItem>
                 )
               ) : (
                 onArchiveProposal && (
-                  <DropdownMenuItem onClick={() => onArchiveProposal(proposal.id)}>
+                  <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'archive' }); onArchiveProposal(proposal.id); }}>
                     <Archive className="mr-2 h-4 w-4" /> Archive
                   </DropdownMenuItem>
                 )
@@ -669,6 +670,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
+                  trackEvent('proposal_menu_action', { action: 'delete' });
                   const baseNumber = getBaseProposalNumber(proposal.proposal_number || '');
                   setDeleteInfo({
                     id: proposal.id,

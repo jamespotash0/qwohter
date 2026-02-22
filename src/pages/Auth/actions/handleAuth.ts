@@ -12,6 +12,7 @@ import {
   clearRateLimit,
   getRateLimitMessage,
 } from '@/services/authRateLimitService';
+import { trackEvent } from '@/lib/analytics';
 
 interface HandleAuthParams {
   email: string;
@@ -69,6 +70,7 @@ export const handleAuth = async (params: HandleAuthParams) => {
       console.log('SignUp result:', result);
 
       if (result.success) {
+        trackEvent('user_signed_up', { method: 'email' });
         console.log('SignUp successful, setting step to verify-otp');
         setStep('verify-otp');
         saveAuthState({ step: 'verify-otp', email, fullName: combinedFullName });
@@ -102,6 +104,8 @@ export const handleAuth = async (params: HandleAuthParams) => {
       console.log('SignIn result:', result);
 
       if (result.success) {
+        trackEvent('user_signed_in', { method: 'email' });
+
         // Clear rate limit on successful login
         await clearRateLimit(email, 'login');
 
