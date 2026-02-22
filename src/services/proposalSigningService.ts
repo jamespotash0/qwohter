@@ -313,14 +313,46 @@ export async function revokeSigningToken(tokenId: string): Promise<{ success: bo
  * Stop reminders for a signing token (without revoking the signing link)
  */
 export async function stopSigningReminders(tokenId: string): Promise<{ success: boolean; error?: string }> {
+  // Fetch current config to preserve interval/max values
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: token, error: fetchError } = await (supabase
+    .from('proposal_signing_tokens') as any)
+    .select('reminder_config')
+    .eq('id', tokenId)
+    .single();
+
+  const currentConfig = token?.reminder_config || { intervalDays: 3, maxReminders: 3 };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase
     .from('proposal_signing_tokens') as any)
-    .update({ reminder_config: { enabled: false, intervalDays: 0, maxReminders: 0 } })
+    .update({ reminder_config: { ...currentConfig, enabled: false } })
+    .eq('id', tokenId);
+
+  if (error || fetchError) {
+    const err = error || fetchError;
+    console.error('[stopSigningReminders] Error:', err);
+    return { success: false, error: err.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Update reminder config for a signing token
+ */
+export async function updateSigningReminders(
+  tokenId: string,
+  reminderConfig: { enabled: boolean; intervalDays: number; maxReminders: number }
+): Promise<{ success: boolean; error?: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase
+    .from('proposal_signing_tokens') as any)
+    .update({ reminder_config: reminderConfig })
     .eq('id', tokenId);
 
   if (error) {
-    console.error('[stopSigningReminders] Error:', error);
+    console.error('[updateSigningReminders] Error:', error);
     return { success: false, error: error.message };
   }
 

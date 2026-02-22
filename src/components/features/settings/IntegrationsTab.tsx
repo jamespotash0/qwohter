@@ -68,7 +68,6 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         .update({ [field]: value } as never)
         .eq('id', organization.id);
       if (error) throw error;
-      toast.success('Storage settings updated');
       if (onOrganizationUpdate) {
         await onOrganizationUpdate(undefined, true);
       }

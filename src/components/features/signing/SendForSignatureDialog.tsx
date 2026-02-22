@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { PaperPlaneTilt, X, Check, CaretDown, Plus } from '@phosphor-icons/react';
+import { PaperPlaneTilt, X, Check, CaretDown, Plus, BellRinging } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/sonner';
 import { sendForSignature } from '@/services/proposalSigningService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SendForSignatureDialogProps {
   isOpen: boolean;
@@ -61,11 +62,12 @@ export const SendForSignatureDialog: React.FC<SendForSignatureDialogProps> = ({
   const [subject, setSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [expiresInDays, setExpiresInDays] = useState<string>('7');
-  const [reminderEnabled, setReminderEnabled] = useState(true);
-  const [reminderIntervalDays, setReminderIntervalDays] = useState(3);
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [sentTo, setSentTo] = useState<string[]>([]);
+
+  // Org-level reminder defaults (fetched on open, drives footer label)
+  const [reminderDefaults, setReminderDefaults] = useState<{ enabled: boolean; intervalDays: number; maxReminders: number }>({ enabled: true, intervalDays: 3, maxReminders: 3 });
 
   // Default subject
   const defaultSubject = `Please sign: ${proposalNumber || 'Proposal'}${projectName ? ` - ${projectName}` : ''}`;
@@ -80,7 +82,7 @@ Project: ${projectName || 'Your Project'}
 
 Please review the proposal and sign electronically by clicking the button below.`;
 
-  // Reset form when dialog opens
+  // Reset form and fetch org reminder defaults when dialog opens
   useEffect(() => {
     if (isOpen) {
       setRecipients(defaultClientEmail ? [defaultClientEmail] : []);
@@ -88,12 +90,28 @@ Please review the proposal and sign electronically by clicking the button below.
       setSubject(defaultSubject);
       setEmailBody(defaultEmailBody);
       setExpiresInDays('7');
-      setReminderEnabled(true);
-      setReminderIntervalDays(3);
       setSentSuccess(false);
       setSentTo([]);
+
+      // Fetch org-level reminder defaults
+      const fallback = { enabled: true, intervalDays: 3, maxReminders: 3 };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('organizations') as any)
+        .select('signing_reminder_defaults')
+        .eq('id', organizationId)
+        .single()
+        .then(({ data, error: fetchError }: { data: { signing_reminder_defaults?: { enabled: boolean; intervalDays: number; maxReminders: number } } | null; error: unknown }) => {
+          if (fetchError || !data?.signing_reminder_defaults) {
+            setReminderDefaults(fallback);
+          } else {
+            setReminderDefaults(data.signing_reminder_defaults);
+          }
+        })
+        .catch(() => {
+          setReminderDefaults(fallback);
+        });
     }
-  }, [isOpen, defaultClientEmail, defaultSubject, defaultEmailBody]);
+  }, [isOpen, defaultClientEmail, defaultSubject, defaultEmailBody, organizationId]);
 
   // Add email to recipients
   const addRecipient = () => {
@@ -152,8 +170,8 @@ Please review the proposal and sign electronically by clicking the button below.
             expiresInDays: expiresInDays === 'never' ? undefined : parseInt(expiresInDays, 10),
             emailSubject: subject.trim() || undefined,
             emailBody: emailBody.trim() || undefined,
-            reminderConfig: reminderEnabled
-              ? { enabled: true, intervalDays: reminderIntervalDays, maxReminders: 3 }
+            reminderConfig: reminderDefaults.enabled
+              ? reminderDefaults
               : undefined,
           })
         )
@@ -346,38 +364,12 @@ Please review the proposal and sign electronically by clicking the button below.
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="flex items-center gap-1.5">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={reminderEnabled}
-                  onChange={(e) => setReminderEnabled(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-3 w-3"
-                />
-                <span className="text-xs text-gray-500">Remind</span>
-              </label>
-              {reminderEnabled && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                      every {reminderIntervalDays}d
-                      <CaretDown className="w-3 h-3" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {[1, 2, 3, 5, 7].map((days) => (
-                      <DropdownMenuItem
-                        key={days}
-                        onClick={() => setReminderIntervalDays(days)}
-                        className={reminderIntervalDays === days ? 'bg-gray-100 dark:bg-gray-800' : ''}
-                      >
-                        Every {days} day{days > 1 ? 's' : ''}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <BellRinging className="w-3 h-3" />
+              {reminderDefaults.enabled
+                ? `Remind every ${reminderDefaults.intervalDays}d, up to ${reminderDefaults.maxReminders}x`
+                : 'Reminders off'}
+            </span>
           </div>
 
           <Button

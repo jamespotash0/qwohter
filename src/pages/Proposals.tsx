@@ -30,6 +30,7 @@ import { formatTimestamp } from '@/lib/utils';
 import { createProposal, type CreateProposalData } from '@/services/proposalsService';
 import { checkApprovalRequired, requestApproval, approveProposal, getLatestApprovalRequest } from '@/services/proposalApprovalService';
 import { ApprovalRequestDialog } from '@/components/features/proposals/ApprovalRequestDialog';
+import { ManageRemindersDialog } from '@/components/features/signing/ManageRemindersDialog';
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -58,6 +59,11 @@ export default function Proposals() {
     proposalIds: string[];
     proposalNumber?: string;
   }>({ open: false, proposalIds: [] });
+  const [remindersDialog, setRemindersDialog] = useState<{
+    open: boolean;
+    proposalId: string;
+    proposalNumber?: string;
+  }>({ open: false, proposalId: '' });
 
   // Filter proposals by archived status
   const activeProposals = useMemo(() => allProposals.filter(p => !p.archived), [allProposals]);
@@ -543,6 +549,9 @@ export default function Proposals() {
             onSetMainVersion={handleSetMainVersion}
             userRole={role || undefined}
             onApproveProposal={handleApproveProposal}
+            onManageReminders={(proposalId, proposalNumber) =>
+              setRemindersDialog({ open: true, proposalId, proposalNumber })
+            }
           />
         </>
       )}
@@ -564,6 +573,15 @@ export default function Proposals() {
         proposalNumber={approvalDialog.proposalIds.length === 1 ? approvalDialog.proposalNumber : undefined}
         onConfirm={handleApprovalConfirm}
       />
+
+      {remindersDialog.proposalId && (
+        <ManageRemindersDialog
+          isOpen={remindersDialog.open}
+          onClose={() => setRemindersDialog(prev => ({ ...prev, open: false }))}
+          proposalId={remindersDialog.proposalId}
+          proposalNumber={remindersDialog.proposalNumber}
+        />
+      )}
     </PageContent>
   );
 }

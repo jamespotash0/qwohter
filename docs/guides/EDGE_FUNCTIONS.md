@@ -58,8 +58,9 @@ supabase/functions/
 
 | Function | Purpose | Auth |
 |----------|---------|------|
-| `send-for-signature` | Create signing token, send email | JWT required |
-| `submit-signature` | Process client signature | Token verification |
+| `send-for-signature` | Create signing token, scan PDF for signature markers, compute hash, send email | JWT required |
+| `submit-signature` | Verify PDF hash, embed signature at detected position, process signing | Token verification |
+| `signature-reminders` | Send reminder emails for pending signatures (cron-triggered hourly via pg_cron) | Service role (cron) |
 
 ## Function Template
 
@@ -202,6 +203,12 @@ verify_jwt = false
 
 [functions.google-risc-receiver]
 verify_jwt = false
+
+[functions.submit-signature]
+verify_jwt = false  # Uses token verification instead
+
+[functions.signature-reminders]
+verify_jwt = false  # Triggered by pg_cron with service role
 
 # All others default to verify_jwt = true
 ```

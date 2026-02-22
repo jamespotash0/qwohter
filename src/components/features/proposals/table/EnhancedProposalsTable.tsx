@@ -19,7 +19,7 @@ import {
 } from '@tanstack/react-table';
 import {
   ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal,
-  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban, CheckCircle2
+  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban, CheckCircle2, Bell
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -80,6 +80,7 @@ interface EnhancedProposalsTableProps {
   onSetMainVersion?: (proposalId: string, baseNumber: string) => void;
   userRole?: 'Owner' | 'Admin' | 'Member';
   onApproveProposal?: (proposalId: string) => void;
+  onManageReminders?: (proposalId: string, proposalNumber?: string) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -133,6 +134,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   onSetMainVersion,
   userRole = 'Member',
   onApproveProposal,
+  onManageReminders,
 }) => {
   // Centralized page preferences from UI store (persisted to localStorage)
   const {
@@ -633,6 +635,12 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                   <DropdownMenuSeparator />
                 </>
               )}
+              {/* Manage Reminders - for non-draft proposals */}
+              {!hasMultipleVersions && onManageReminders && proposal.status !== 'Draft' && (
+                <DropdownMenuItem onClick={() => onManageReminders(proposal.id, proposal.proposal_number || undefined)}>
+                  <Bell className="mr-2 h-4 w-4" /> Manage Reminders
+                </DropdownMenuItem>
+              )}
               {/* Project Board options - only for Won + main version proposals */}
               {proposal.status === 'Won' && proposal.is_main_version && (
                 proposal.is_on_board ? (
@@ -682,7 +690,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       size: 60,
       enableSorting: false,
     }),
-  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard, userRole, onApproveProposal]);
+  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard, userRole, onApproveProposal, onManageReminders]);
 
   const table = useReactTable({
     data: displayProposals,

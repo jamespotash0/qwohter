@@ -258,21 +258,92 @@ getMissingForCompletion(proposal) → string[]
 1. sendForSignature(proposalId, clientEmail)
    └─ Creates signing token in proposal_signing_tokens
    └─ Exports Google Doc as PDF
+   └─ Computes SHA-256 hash of unsigned PDF → stored as unsigned_pdf_hash
+   └─ Scans PDF for "Signature: ____" markers (from {{SIGNATURE_BLOCK}})
+   └─ Stores detected positions in signature_positions (JSONB)
+   └─ White-outs marker text and adds "[ Sign Here ]" indicator
    └─ Uploads unsigned PDF to storage
    └─ Emails client with signing link (/sign/:token)
 
 2. Client clicks link → viewSigningPage(token)
    └─ Token validated
+   └─ Rate limited (20 views/min via check_auth_rate_limit)
    └─ Logs signature_viewed event
 
 3. Client signs → submitSignature(token, signatureData)
-   └─ Embeds signature in PDF
+   └─ Rate limited (5 submissions/min)
+   └─ Verifies unsigned PDF hash (tamper detection)
+   └─ Embeds signature at detected position (or appends page if no markers)
    └─ Uploads signed PDF
    └─ Updates proposal status to "Won"
    └─ Sends notification to creator
 
 4. Token expires after 30 days
+5. Reminder emails sent on schedule (if enabled)
 ```
+
+### Auto-Detect Signature Placement
+
+When sending for signature, the system scans the exported PDF for signature markers:
+
+1. Uses `pdfjs-dist` to parse the PDF and locate `"Signature: ____"` text (placed via the `{{SIGNATURE_BLOCK}}` template variable)
+2. Records the page number and coordinates of each detected marker
+3. White-outs the marker text and renders a `"[ Sign Here ]"` indicator at the same position
+4. Stores detected positions in `proposal_signing_tokens.signature_positions` (JSONB)
+5. When the signer submits their signature, it is placed at the detected coordinates instead of appending a separate signature page
+6. Falls back to `'page'` mode (signature on a new appended page) if no markers are detected
+
+### PDF Tamper Detection
+
+Prevents modification of the unsigned PDF between send and sign:
+
+1. A **SHA-256 hash** is computed from the unsigned PDF bytes during `send-for-signature`
+2. Hash stored in `proposal_signing_tokens.unsigned_pdf_hash`
+3. Before embedding the signature in `submit-signature`, the stored hash is compared against a fresh hash of the current PDF in storage
+4. If the hashes do not match, signing is **rejected** and a `'TamperDetected'` event is logged in `proposal_signing_activity`
+
+### Signature Reminders
+
+Automated email reminders for unsigned proposals:
+
+**Configuration UI:** `SendForSignatureDialog` includes a reminder config section:
+- Checkbox to enable/disable reminders (default: enabled)
+- Interval selector (default: every 3 days)
+- Maximum reminders cap (default: 3)
+
+**Storage:** `proposal_signing_tokens.reminder_config` (JSONB):
+```json
+{
+  "enabled": true,
+  "interval_days": 3,
+  "max_reminders": 3
+}
+```
+
+**Tracking columns:**
+- `last_reminder_sent_at` - timestamp of most recent reminder
+- `reminder_count` - number of reminders sent so far
+
+**Processing:** The `signature-reminders` edge function runs hourly via `pg_cron`. It:
+1. Queries tokens with `status = 'pending'` or `'viewed'` where reminders are enabled
+2. Checks if enough time has elapsed since `last_reminder_sent_at` (or `created_at` for the first reminder)
+3. Skips tokens that have reached `max_reminders`
+4. Sends reminder email via Resend
+5. Logs a `'Reminder'` event in `proposal_signing_activity`
+
+### Rate Limiting on Signing Endpoints
+
+Signing endpoints are rate-limited using the existing `auth_rate_limits` table and `check_auth_rate_limit()` function:
+
+| Action | Key | Limit |
+|--------|-----|-------|
+| Get signing data | `signing-get` | 10 requests/minute |
+| Submit signature | `signing-submit` | 5 requests/minute |
+| Track signing view | `signing-view` | 20 requests/minute |
+
+- Returns HTTP 429 if the rate limit is exceeded
+- Fails open on errors (signing proceeds if the rate limit check itself fails)
+- The `auth_rate_limits` CHECK constraint was extended to include the new action types
 
 ### Signing Token Table
 
@@ -285,6 +356,11 @@ proposal_signing_tokens
 ├── expires_at (typically 30 days)
 ├── signed_at
 ├── signature_data (JSONB - signature image, metadata)
+├── signature_positions (JSONB - detected marker coordinates)
+├── unsigned_pdf_hash (text - SHA-256 hash for tamper detection)
+├── reminder_config (JSONB - {enabled, interval_days, max_reminders})
+├── last_reminder_sent_at (timestamptz)
+├── reminder_count (integer, default 0)
 └── created_at
 ```
 

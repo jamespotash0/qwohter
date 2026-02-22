@@ -634,6 +634,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
           <WorkflowSettingsSection
             organizationId={organization.id}
             requireProposalApproval={organization?.require_proposal_approval ?? false}
+            signingReminderDefaults={(organization as Record<string, unknown>)?.signing_reminder_defaults as import('./WorkflowSettingsSection').SigningReminderDefaults | null}
             hasEditPermission={hasEditPermission}
             onUpdate={() => onOrganizationUpdate(undefined, true)}
           />

@@ -73,6 +73,53 @@ project_tasks
 └── created_at, updated_at
 ```
 
+### Signing & Activity
+
+```
+proposal_signing_tokens
+├── id (uuid, PK)
+├── proposal_id (FK → proposals)
+├── token (text, unique - signing URL token)
+├── client_email (text)
+├── expires_at (timestamptz - typically 30 days)
+├── signed_at (timestamptz)
+├── signature_data (JSONB - signature image, metadata)
+├── signature_positions (JSONB - detected marker coordinates from PDF scan)
+├── unsigned_pdf_hash (text - SHA-256 hash for tamper detection)
+├── reminder_config (JSONB - {enabled, interval_days, max_reminders})
+├── last_reminder_sent_at (timestamptz)
+├── reminder_count (integer, default 0)
+└── created_at (timestamptz)
+
+proposal_signing_activity
+├── id (uuid, PK)
+├── signing_token_id (FK → proposal_signing_tokens)
+├── event (text - 'Sent' | 'Viewed' | 'Signed' | 'Reminder' | 'TamperDetected' | etc.)
+├── metadata (JSONB - event-specific data)
+└── created_at (timestamptz)
+```
+
+### Auth Rate Limits
+
+```
+auth_rate_limits
+├── id (uuid, PK)
+├── action (text - rate limit action type)
+├── identifier (text - IP or token identifier)
+├── attempts (integer)
+├── last_attempt_at (timestamptz)
+└── created_at (timestamptz)
+
+-- CHECK constraint on action includes:
+-- 'signing-get', 'signing-submit', 'signing-view'
+-- (in addition to existing auth-related actions)
+--
+-- Rate limits:
+--   signing-get:    10 requests/minute
+--   signing-submit:  5 requests/minute
+--   signing-view:   20 requests/minute
+```
+
 ### Forms & Contacts
 
 ```
