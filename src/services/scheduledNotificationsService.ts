@@ -169,7 +169,8 @@ export async function cancelTaskReminder(taskId: string, userId?: string): Promi
  */
 export async function getUserReminders(
   userId: string,
-  status?: 'Pending' | 'Sent' | 'Cancelled'
+  status?: 'Pending' | 'Sent' | 'Cancelled',
+  options?: { upcomingOnly?: boolean }
 ): Promise<TaskReminder[]> {
   let query = (supabase
     .from('scheduled_notifications') as any)
@@ -181,6 +182,10 @@ export async function getUserReminders(
 
   if (status) {
     query = query.eq('status', status);
+  }
+
+  if (options?.upcomingOnly) {
+    query = query.gte('scheduled_for', new Date().toISOString());
   }
 
   const { data, error } = await query;

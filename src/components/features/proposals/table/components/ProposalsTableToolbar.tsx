@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
 import type { Proposal } from "@/services/proposalsService";
+import { trackEvent } from '@/lib/analytics';
 
 interface ProposalsTableToolbarProps {
   table: Table<Proposal>;
@@ -274,11 +275,11 @@ export const ProposalsTableToolbar: React.FC<ProposalsTableToolbarProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onExportCSV?.(table.getFilteredRowModel().rows.map(row => row.original))}>
+              <DropdownMenuItem onClick={() => { trackEvent('export_initiated', { type: 'csv' }); onExportCSV?.(table.getFilteredRowModel().rows.map(row => row.original)); }}>
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Export as CSV
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExportPDF?.(table.getFilteredRowModel().rows.map(row => row.original))}>
+              <DropdownMenuItem onClick={() => { trackEvent('export_initiated', { type: 'pdf' }); onExportPDF?.(table.getFilteredRowModel().rows.map(row => row.original)); }}>
                 <FileText className="w-4 h-4 mr-2" />
                 Export as PDF
               </DropdownMenuItem>

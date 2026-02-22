@@ -245,6 +245,9 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
     // Debounce the actual filter update (150ms delay)
     debounceTimerRef.current = setTimeout(() => {
       setGlobalFilter(value);
+      if (value.trim()) {
+        trackEvent('search_performed', { context: 'proposals' });
+      }
     }, 150);
   }, []);
 

@@ -25,7 +25,7 @@ export function useUpcomingReminders(
     queryKey: ['upcoming-reminders', userId],
     queryFn: async () => {
       if (!userId) return [];
-      return getUserReminders(userId, 'Pending');
+      return getUserReminders(userId, 'Pending', { upcomingOnly: true });
     },
     enabled: enabled && !!userId,
     staleTime: 1000 * 60 * 2, // 2 minutes
