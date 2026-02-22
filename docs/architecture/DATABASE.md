@@ -208,6 +208,9 @@ Standard indexes on all tables:
 - `created_at` - Sorting and pagination
 - Foreign key columns
 
+Notable indexes:
+- `idx_profiles_email` - Unique btree on `profiles.email` for fast signup email lookups
+
 ## RLS Patterns
 
 See [SECURITY.md](./SECURITY.md) for comprehensive RLS documentation.
