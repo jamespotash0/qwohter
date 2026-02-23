@@ -629,12 +629,10 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
       }),
     });
 
-    // Wall specs table - resolves catalog config fields with label resolution
-    // Designed for {{#TABLE:wallspecs}} or {{#TABLE:wallspecs:Header=key,...}} in templates
+    // Build product catalog rows — shared by wallspecs and product_catalog tables
+    // Resolves catalog config fields with label resolution
     // Sends ALL available fields so the edge function can pick which columns to display
-    tables.push({
-      tableId: 'wallspecs',
-      rows: formData.products.items.map((product) => {
+    const catalogRows = formData.products.items.map((product) => {
         const rawData = product.rawData || {};
         const raw = rawData as Record<string, unknown>;
         const specLabels = raw._specificationLabels as Record<string, string> | undefined;
@@ -730,8 +728,14 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
         }
 
         return row;
-      }),
     });
+
+    // Wall specs table (backward compatible)
+    tables.push({ tableId: 'wallspecs', rows: catalogRows });
+
+    // Product catalog table — generic replacement for wallspecs
+    // Same rich data, but with product-generic default columns in the edge function
+    tables.push({ tableId: 'product_catalog', rows: catalogRows });
 
     // Specifications table - designed for wall/product specs tables
     // Uses product data with additional fields from rawData.specifications
@@ -788,13 +792,22 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
   }
 
   // Pricing items table - all line items across all sections
+  // Includes product detail fields (modelNumber, sku, description) when available
   if (formData?.pricing?.sections && formData.pricing.sections.length > 0) {
     const allItems: Array<Record<string, string | number>> = [];
     let itemIndex = 1;
 
+    // Build product lookup for enriching line items with product details
+    const productItems = formData?.products?.items || [];
+    const productMap = new Map(productItems.map(p => [p.id, p]));
+
     formData.pricing.sections.forEach((section) => {
       section.lineItems.forEach((item) => {
         const unitSellPriceValue = calculateUnitSellPrice(item);
+
+        // Look up source product for detail fields
+        const product = item.sourceProductId ? productMap.get(item.sourceProductId) : undefined;
+        const rawData = product?.rawData || {};
 
         allItems.push({
           index: itemIndex++,
@@ -821,6 +834,14 @@ export function buildTableData(formData: FormBuilderData): TableRowData[] {
           // Line total alias (same as sellPrice, clearer naming for templates)
           lineTotal: formatCurrency(item.sellPrice),
           lineTotalRaw: item.sellPrice || 0,
+
+          // Product detail fields (available for custom columns)
+          modelNumber: item.modelNumber || rawData.model || '',
+          sku: rawData.sku || '',
+          description: product?.description || '',
+          manufacturer: rawData.manufacturer || '',
+          series: rawData.series || '',
+          unit: product?.unit || 'ea',
         });
       });
     });

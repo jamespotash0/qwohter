@@ -1061,8 +1061,8 @@ async function processTableMarkers(
       rowKeys = parsed.rowKeys;
       console.log(`[processTableMarkers] Custom columns: ${headers.join(', ')} → ${rowKeys.join(', ')}`);
     } else if (tableDef.tableId === 'pricing') {
-      headers = ['Qty', 'Description', 'Unit Price', 'Disc (%)', 'Extended'];
-      rowKeys = ['quantity', 'name', 'unitSellPrice', 'discountPercent', 'lineTotal'];
+      headers = ['Description', 'Model #', 'SKU', 'Qty', 'Unit Price', 'Disc (%)', 'Extended'];
+      rowKeys = ['name', 'modelNumber', 'sku', 'quantity', 'unitSellPrice', 'discountPercent', 'lineTotal'];
     } else if (tableDef.tableId === 'products') {
       headers = ['#', 'Product', 'Qty', 'Unit'];
       rowKeys = ['index', 'name', 'quantity', 'unit'];
@@ -1073,6 +1073,11 @@ async function processTableMarkers(
       // Default columns when no params specified (backward compatible)
       headers = ['Wall', 'Dimensions', 'STC', 'Finish', 'Pocket Doors', 'Pass Doors', 'Panels', 'Qty'];
       rowKeys = ['wall', 'dimensions', 'stc', 'finish', 'pocketDoors', 'passDoors', 'panelCount', 'qty'];
+    } else if (tableDef.tableId === 'product_catalog') {
+      // Default fallback — use custom columns syntax to pick what you need:
+      // {{#TABLE:product_catalog:Name=alias,Model=model,STC=stc,Finish=finish,Qty=qty}}
+      headers = ['Name', 'Manufacturer', 'Model', 'Dimensions', 'STC', 'Finish', 'Qty'];
+      rowKeys = ['alias', 'manufacturer', 'model', 'dimensions', 'stc', 'finish', 'qty'];
     } else {
       // Generic table - use first row's keys as headers
       if (tableDef.rows.length > 0) {
@@ -1106,9 +1111,10 @@ async function processTableMarkers(
     }
 
     // Calculate table dimensions
-    // +1 for header row, +1 for total row (for pricing)
+    // +1 for header row, +1 for total row (for pricing table only)
+    const isPricingTable = tableDef.tableId === 'pricing';
     const numCols = headers.length;
-    const numRows = tableDef.rows.length + 1 + (tableDef.tableId === 'pricing' ? 1 : 0);
+    const numRows = tableDef.rows.length + 1 + (isPricingTable ? 1 : 0);
 
     console.log(`[processTableMarkers] Creating ${numRows}x${numCols} table`);
 
@@ -1233,8 +1239,8 @@ async function processTableMarkers(
       }
     }
 
-    // Total row (for pricing only)
-    if (tableDef.tableId === 'pricing') {
+    // Total row (for pricing tables)
+    if (isPricingTable) {
       const totalRowIdx = tableDef.rows.length + 1;
       // Empty cells until the second-to-last column
       for (let colIdx = 0; colIdx < headers.length - 2; colIdx++) {
@@ -1371,7 +1377,7 @@ async function processTableMarkers(
       }
 
       // Style total row cells (last two columns) with light green background
-      if (tableDef.tableId === 'pricing') {
+      if (isPricingTable) {
         const totalRowIdx = tableDef.rows.length + 1;
         // "Total:" label cell
         styleRequests.push({
@@ -1486,10 +1492,10 @@ async function processTableMarkers(
       }
 
       // Step 7: Set column widths (Qty small, Description wide, others small)
-      if (tableDef.tableId === 'pricing') {
+      if (isPricingTable) {
         // Column widths in points (pt) - total ~468pt for letter size with 1" margins
-        // Qty: 45pt, Description: 225pt, Unit Price: 70pt, Disc: 50pt, Extended: 78pt
-        const columnWidths = [45, 225, 70, 50, 78]; // in points
+        // Description: 130pt, Model#: 65pt, SKU: 55pt, Qty: 35pt, Unit Price: 65pt, Disc: 40pt, Extended: 78pt
+        const columnWidths = [130, 65, 55, 35, 65, 40, 78];
         const columnWidthRequests: any[] = [];
 
         for (let colIdx = 0; colIdx < columnWidths.length; colIdx++) {

@@ -202,12 +202,13 @@ Full custom layout:
 
 | Table ID | Default Columns | Description |
 |----------|---------|-------------|
-| `pricing` | Qty, Description, Unit Price, Disc (%), Extended | Pricing line items with totals row |
+| `product_catalog` | Name, Manufacturer, Model, Dimensions, STC, Finish, Qty | Product catalog with 30+ fields available via custom columns (see below) |
+| `pricing` | Qty, Description, Model #, SKU, Unit Price, Disc (%), Extended | All pricing line items with totals row. Also includes `description`, `manufacturer`, `series` for custom columns. |
 | `products` | #, Product, Qty, Unit | Simple product listing |
 | `specifications` | Wall, Dimensions, STC, Finish | Basic wall specs (4 columns) |
-| `wallspecs` | Wall, Dimensions, STC, Finish, Pocket Doors, Pass Doors, Panels, Qty | Full wall specs (supports custom columns) |
+| `wallspecs` | Wall, Dimensions, STC, Finish, Pocket Doors, Pass Doors, Panels, Qty | Wall-specific specs (legacy — prefer `product_catalog`) |
 
-### Available Data Keys for wallspecs
+### Available Data Keys for product_catalog / wallspecs
 
 These keys can be used in the custom column syntax above:
 
@@ -243,14 +244,22 @@ These keys can be used in the custom column syntax above:
 ```
 Dear {{client.name}},
 
-Below are the wall specifications for {{project.name}}:
+Below are the product specifications for {{project.name}}:
 
-{{#TABLE:wallspecs}}
+{{#TABLE:product_catalog}}
+
+Pricing:
+
+{{#TABLE:pricing}}
 
 Total investment: {{pricing.total}}
 ```
 
-This generates a table with one row per product, with catalog config fields automatically resolved to human-readable labels.
+- `product_catalog` generates a table with one row per product, with catalog config fields automatically resolved to human-readable labels.
+- `pricing` includes product detail fields (`modelNumber`, `sku`, `description`, `manufacturer`, `series`) that can be used via custom columns:
+  ```
+  {{#TABLE:pricing:Qty=quantity,Product=name,Model=modelNumber,SKU=sku,Unit Price=unitSellPrice,Extended=lineTotal}}
+  ```
 
 ---
 
