@@ -19,6 +19,7 @@ import {
   deleteBillingPhase,
   seedDefaultPhases,
   markPhasePaid,
+  sendPhaseInvoice,
   type PaymentJob,
   type BillingPhase,
   type CreatePaymentJobInput,
@@ -141,6 +142,17 @@ export function useProjectPaymentMutations(projectId: string) {
       toast.error(e instanceof Error ? e.message : 'Failed to mark phase paid'),
   });
 
+  const sendInvoice = useMutation({
+    mutationFn: ({ phase, job }: { phase: BillingPhase; job: PaymentJob }) =>
+      sendPhaseInvoice(phase, job),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Invoice queued — it will sync to QuickBooks Desktop on the next Web Connector run.');
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to send invoice'),
+  });
+
   return {
     createJob,
     updateJob,
@@ -149,5 +161,6 @@ export function useProjectPaymentMutations(projectId: string) {
     updatePhase,
     deletePhase,
     markPaid,
+    sendInvoice,
   };
 }

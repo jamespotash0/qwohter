@@ -8,13 +8,14 @@
  * when the viewer can manage payments.
  */
 
-import { Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Send } from 'lucide-react';
 import {
   useProjectPayments,
   useProjectPaymentMutations,
   resolvePhaseAmount,
   summarizeAllocation,
   type PaymentJobWithPhases,
+  type PaymentJob,
   type BillingPhase,
 } from '@/hooks/queries/useProjectPayments';
 
@@ -124,7 +125,7 @@ function PaymentJobCard({
           <PhaseRow
             key={phase.id}
             phase={phase}
-            contractTotal={job.contract_total}
+            job={job}
             mutations={m}
           />
         ))}
@@ -168,15 +169,16 @@ function PaymentJobCard({
 
 function PhaseRow({
   phase,
-  contractTotal,
+  job,
   mutations: m,
 }: {
   phase: BillingPhase;
-  contractTotal: number;
+  job: PaymentJob;
   mutations: ReturnType<typeof useProjectPaymentMutations>;
 }) {
-  const resolved = resolvePhaseAmount(phase, contractTotal);
+  const resolved = resolvePhaseAmount(phase, job.contract_total);
   const isPaid = phase.status === 'Paid';
+  const canSend = phase.status === 'Draft';
 
   return (
     <div className="flex items-center gap-1.5">
@@ -217,6 +219,18 @@ function PhaseRow({
       <span className={`px-1.5 py-0.5 rounded text-[10px] ${PHASE_STATUS_COLORS[phase.status]}`}>
         {phase.status}
       </span>
+
+      {/* Send invoice to QuickBooks (Draft phases only) */}
+      {canSend && (
+        <button
+          onClick={() => m.sendInvoice.mutate({ phase, job })}
+          disabled={m.sendInvoice.isPending}
+          title="Send invoice to QuickBooks"
+          className="p-0.5 text-gray-300 hover:text-indigo-600 transition-colors disabled:opacity-50"
+        >
+          <Send className="w-3.5 h-3.5" />
+        </button>
+      )}
 
       {/* Mark paid */}
       {!isPaid && (

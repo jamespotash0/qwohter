@@ -304,16 +304,33 @@ async function processInvoiceAddResponse(request: any, response: any) {
     const invoiceRet = response.QBXML?.QBXMLMsgsRs?.InvoiceAddRs?.InvoiceRet;
 
     if (invoiceRet) {
-      await supabase
-        .from('quickbooks_desktop_invoice_sync')
-        .update({
-          qb_txn_id: invoiceRet.TxnID,
-          qb_edit_sequence: invoiceRet.EditSequence,
-          qb_invoice_number: invoiceRet.RefNumber,
-          sync_status: 'Synced',
-          last_sync_at: new Date().toISOString(),
-        })
-        .eq('quote_id', request.source_record_id);
+      const syncUpdate = {
+        qb_txn_id: invoiceRet.TxnID,
+        qb_edit_sequence: invoiceRet.EditSequence,
+        qb_invoice_number: invoiceRet.RefNumber,
+        sync_status: 'Synced',
+        last_sync_at: new Date().toISOString(),
+      };
+
+      if (request.source_record_type === 'BillingPhase') {
+        // Phase invoice: link by phase, and advance the phase to "Sent".
+        await supabase
+          .from('quickbooks_desktop_invoice_sync')
+          .update(syncUpdate)
+          .eq('billing_phase_id', request.source_record_id);
+
+        await supabase
+          .from('billing_phases')
+          .update({ status: 'Sent' })
+          .eq('id', request.source_record_id);
+      } else {
+        // Legacy whole-proposal invoice: link by proposal_id.
+        await supabase
+          .from('quickbooks_desktop_invoice_sync')
+          .update(syncUpdate)
+          .eq('proposal_id', request.source_record_id)
+          .is('billing_phase_id', null);
+      }
 
       console.log(`Invoice created: ${invoiceRet.RefNumber}`);
     }

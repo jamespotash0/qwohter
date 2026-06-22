@@ -77,6 +77,63 @@ export function generateInvoiceQBXML(proposal: Proposal): string {
 }
 
 /**
+ * Generate InvoiceAdd QBXML for a single billing phase.
+ *
+ * Unlike generateInvoiceQBXML (which itemizes the whole proposal), a phase
+ * invoice has one line for the phase's resolved dollar amount. Customer and
+ * address come from the proposal; the phase name becomes the line description.
+ */
+export function generatePhaseInvoiceQBXML(
+  proposal: Proposal,
+  phase: { name: string; refNumber: string; amount: number }
+): string {
+  const formData = (proposal.form_data ?? {}) as Record<string, any>;
+  const customerName = escapeXml(proposal.client_name || 'Unknown Customer');
+  const invoiceDate = formatQBDate(new Date());
+  const dueDate = formatQBDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  const lineDesc = `${phase.name} - ${proposal.project_name || proposal.proposal_number || ''}`;
+
+  const qbxml = `
+    <InvoiceAddRq>
+      <InvoiceAdd>
+        <CustomerRef>
+          <FullName>${customerName}</FullName>
+        </CustomerRef>
+
+        <TxnDate>${invoiceDate}</TxnDate>
+        <DueDate>${dueDate}</DueDate>
+
+        <RefNumber>${escapeXml(phase.refNumber)}</RefNumber>
+
+        <BillAddress>
+          <Addr1>${escapeXml(formData.address || '')}</Addr1>
+          <City>${escapeXml(formData.city || '')}</City>
+          <State>${escapeXml(formData.state || '')}</State>
+          <PostalCode>${escapeXml(formData.zipCode || '')}</PostalCode>
+        </BillAddress>
+
+        <Memo>${escapeXml(lineDesc)}</Memo>
+
+        <InvoiceLineAdd>
+          <ItemRef>
+            <FullName>Service</FullName>
+          </ItemRef>
+          <Desc>${escapeXml(lineDesc)}</Desc>
+          <Quantity>1</Quantity>
+          <Rate>${phase.amount.toFixed(2)}</Rate>
+        </InvoiceLineAdd>
+
+        <CustomerMsgRef>
+          <FullName>Thank you for your business!</FullName>
+        </CustomerMsgRef>
+      </InvoiceAdd>
+    </InvoiceAddRq>
+  `;
+
+  return qbxml.trim();
+}
+
+/**
  * Build invoice line items from proposal
  */
 function buildInvoiceLineItems(proposal: Proposal): string {

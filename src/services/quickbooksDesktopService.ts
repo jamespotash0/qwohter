@@ -25,7 +25,7 @@ export interface QBDesktopConnection {
 
 export interface QBInvoiceSync {
   id: string;
-  quote_id: string;
+  proposal_id: string;
   organization_id: string;
   qb_txn_id: string | null;
   qb_edit_sequence: string | null;
@@ -171,12 +171,13 @@ export async function createInvoiceInQBDesktop(
     throw new Error('QuickBooks Desktop not connected');
   }
 
-  // Check if invoice already exists
+  // Check if invoice already exists (the phase-less, whole-proposal row)
   const { data: existingSync } = await supabase
     .from('quickbooks_desktop_invoice_sync')
     .select('*')
-    .eq('quote_id', proposal.id)
-    .single();
+    .eq('proposal_id', proposal.id)
+    .is('billing_phase_id', null)
+    .maybeSingle();
 
   if (existingSync && existingSync.sync_status === 'Synced') {
     throw new Error('Invoice already synced to QuickBooks');
@@ -207,12 +208,13 @@ export async function createInvoiceInQBDesktop(
         sync_status: 'Pending',
         sync_error: null,
       })
-      .eq('quote_id', proposal.id);
+      .eq('proposal_id', proposal.id)
+      .is('billing_phase_id', null);
   } else {
     await supabase
       .from('quickbooks_desktop_invoice_sync')
       .insert({
-        quote_id: proposal.id,
+        proposal_id: proposal.id,
         organization_id: organizationId,
         sync_status: 'Pending',
       } as any);
@@ -223,13 +225,14 @@ export async function createInvoiceInQBDesktop(
  * Get invoice sync status
  */
 export async function getInvoiceSyncStatus(
-  quoteId: string
+  proposalId: string
 ): Promise<QBInvoiceSync | null> {
   const { data, error } = await supabase
     .from('quickbooks_desktop_invoice_sync')
     .select('*')
-    .eq('quote_id', quoteId)
-    .single();
+    .eq('proposal_id', proposalId)
+    .is('billing_phase_id', null)
+    .maybeSingle();
 
   if (error) {
     if (error.code === 'PGRST116') return null;

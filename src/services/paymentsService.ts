@@ -11,6 +11,10 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { fetchProposalById } from '@/services/proposalsService';
+import { generatePhaseInvoiceQBXML } from '@/lib/qbxml/generators';
+import { checkQBDesktopConnection } from '@/services/quickbooksDesktopService';
+import { checkQBOnlineConnection } from '@/services/quickbooksOnlineService';
 
 // ============================================================================
 // Types
@@ -303,5 +307,105 @@ export async function markPhasePaid(id: string): Promise<BillingPhase> {
   return updateBillingPhase(id, {
     status: 'Paid',
     paid_at: new Date().toISOString(),
+  });
+}
+
+// ============================================================================
+// Invoice send (per phase → QuickBooks Desktop)
+// ============================================================================
+
+/**
+ * Push a billing phase to QuickBooks Desktop as its own invoice.
+ *
+ * Resolves the phase → job → project → proposal chain for the customer/address,
+ * generates a single-line qbXML invoice for the phase amount, queues it for the
+ * Web Connector, links the invoice_sync row to the phase, and advances the phase
+ * to "Invoiced" (the Web Connector flips it to "Sent" once QuickBooks confirms).
+ *
+ * QuickBooks Online phased billing is not supported yet — it uses a separate
+ * per-proposal sync table and a server-built invoice.
+ */
+export async function sendPhaseInvoice(
+  phase: BillingPhase,
+  job: PaymentJob
+): Promise<void> {
+  if (phase.status === 'Invoiced' || phase.status === 'Sent' || phase.status === 'Paid') {
+    throw new Error('This phase has already been invoiced');
+  }
+
+  // Provider must be Desktop.
+  const desktop = await checkQBDesktopConnection(job.organization_id);
+  if (!desktop) {
+    const online = await checkQBOnlineConnection(job.organization_id);
+    if (online) {
+      throw new Error(
+        'Phased billing currently supports QuickBooks Desktop only. Online phased invoicing is coming soon.'
+      );
+    }
+    throw new Error('QuickBooks Desktop is not connected');
+  }
+
+  // Resolve project → proposal for the customer details.
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('proposal_id')
+    .eq('id', job.project_id)
+    .single();
+  if (projectError) throw projectError;
+  const proposalId = (project as { proposal_id: string | null })?.proposal_id;
+  if (!proposalId) throw new Error('Project is not linked to a proposal');
+
+  const proposal = await fetchProposalById(proposalId);
+
+  const amount = resolvePhaseAmount(phase, job.contract_total);
+  const refNumber = `${proposal.proposal_number || 'INV'}-${phase.sequence + 1}`;
+  const qbxml = generatePhaseInvoiceQBXML(proposal, {
+    name: phase.name,
+    refNumber,
+    amount,
+  });
+
+  // Queue the qbXML for the Web Connector to drain. source_record_type tells the
+  // response handler to link the result back by billing_phase_id, not proposal_id.
+  const { error: queueError } = await supabase
+    .from('quickbooks_request_queue')
+    .insert({
+      organization_id: job.organization_id,
+      request_type: 'InvoiceAdd',
+      qbxml_request: qbxml,
+      priority: 5,
+      source_record_type: 'BillingPhase',
+      source_record_id: phase.id,
+    } as any);
+  if (queueError) throw queueError;
+
+  // One sync row per phase (partial-unique on billing_phase_id).
+  const { data: existingSync } = await supabase
+    .from('quickbooks_desktop_invoice_sync')
+    .select('id')
+    .eq('billing_phase_id', phase.id)
+    .maybeSingle();
+
+  if (existingSync) {
+    await supabase
+      .from('quickbooks_desktop_invoice_sync')
+      .update({ sync_status: 'Pending', sync_error: null } as any)
+      .eq('billing_phase_id', phase.id);
+  } else {
+    await supabase
+      .from('quickbooks_desktop_invoice_sync')
+      .insert({
+        proposal_id: proposalId,
+        billing_phase_id: phase.id,
+        organization_id: job.organization_id,
+        sync_status: 'Pending',
+      } as any);
+  }
+
+  // Snapshot the billed amount and advance the phase.
+  await updateBillingPhase(phase.id, {
+    status: 'Invoiced',
+    resolved_amount: amount,
+    invoiced_at: new Date().toISOString(),
   });
 }
