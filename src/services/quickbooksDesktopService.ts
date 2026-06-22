@@ -91,12 +91,33 @@ export async function createQBDesktopConnection(
   connectionData: CreateConnectionData
 ): Promise<QBDesktopConnection> {
   // Call Edge Function to hash password and create connection
-  const { data, error } = await supabase.functions.invoke('quickbooks-desktop-handler', {
+  const { data, error } = await supabase.functions.invoke('qb-desktop-setup', {
     body: connectionData,
   });
 
   if (error) throw error;
   return data.connection;
+}
+
+/**
+ * Fixed application identity for the Qwohter QBWC integration. OwnerID identifies
+ * the *application* and MUST be the same GUID for every customer/install.
+ */
+const QBWC_OWNER_ID = '{8F3A1C2E-4B5D-4E6F-9A7B-0C1D2E3F4A5B}';
+
+/**
+ * Derive a stable GUID from a seed string (SHA-256 → 8-4-4-4-12 hex).
+ * Used for FileID so re-downloading the .QWC always yields the same value —
+ * a changing FileID makes the Web Connector treat it as a new app and can
+ * create duplicate registrations.
+ */
+async function deterministicGuid(seed: string): Promise<string> {
+  const bytes = new TextEncoder().encode(seed);
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  const hex = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  return `{${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}}`;
 }
 
 /**
@@ -110,9 +131,12 @@ export async function generateQWCFile(organizationId: string): Promise<Blob> {
     throw new Error('No QuickBooks Desktop connection found');
   }
 
-  // Use Supabase Edge Function URL
+  // Use Supabase Edge Function URL (must match the deployed function folder name)
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const edgeFunctionUrl = `${supabaseUrl}/functions/v1/quickbooks-web-connector`;
+  const edgeFunctionUrl = `${supabaseUrl}/functions/v1/qb-web-connector`;
+
+  // FileID is stable per connection so repeated downloads are identical.
+  const fileId = await deterministicGuid(`qwohter-qbwc-file-${connection.id}`);
 
   const qwcContent = `<?xml version="1.0" encoding="utf-8"?>
 <QBWCXML>
@@ -122,8 +146,8 @@ export async function generateQWCFile(organizationId: string): Promise<Blob> {
   <AppDescription>Sync quotes and invoices between Qwohter and QuickBooks Desktop</AppDescription>
   <AppSupport>https://yourapp.com/support</AppSupport>
   <UserName>${connection.username}</UserName>
-  <OwnerID>{${crypto.randomUUID()}}</OwnerID>
-  <FileID>{${crypto.randomUUID()}}</FileID>
+  <OwnerID>${QBWC_OWNER_ID}</OwnerID>
+  <FileID>${fileId}</FileID>
   <QBType>QBFS</QBType>
   <Scheduler>
     <RunEveryNMinutes>${connection.sync_frequency_minutes}</RunEveryNMinutes>

@@ -13,15 +13,33 @@ import { parse } from 'https://deno.land/x/xml@2.1.1/mod.ts';
 //@ts-ignore
 import * as bcrypt from 'https://deno.land/x/bcrypt@v0.4.1/mod.ts';
 
-// Active sessions (in-memory, consider using Supabase for production)
-const activeSessions = new Map<string, any>();
-
 // Initialize Supabase client with service role
 //@ts-ignore
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 //@ts-ignore
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Look up an active session by its ticket.
+ *
+ * Edge functions are stateless and ephemeral — the Web Connector's call
+ * sequence (authenticate → sendRequestXML → receiveResponseXML → closeConnection)
+ * can land on different instances, so session state MUST live in the database,
+ * not in process memory. The session row is created during authenticate.
+ */
+async function getActiveSession(
+  ticket: string
+): Promise<{ organization_id: string } | null> {
+  if (!ticket) return null;
+  const { data } = await supabase
+    .from('quickbooks_desktop_session_logs')
+    .select('organization_id')
+    .eq('session_ticket', ticket)
+    .eq('status', 'active')
+    .maybeSingle();
+  return data ?? null;
+}
 
 /**
  * Parse SOAP XML request
@@ -103,15 +121,9 @@ async function handleAuthenticate(params: any): Promise<string> {
       return '<string>nvu</string>';
     }
 
-    // Create session ticket
+    // Create session ticket. This row IS the session store — read back by
+    // getActiveSession() on subsequent (stateless) Web Connector calls.
     const sessionTicket = crypto.randomUUID();
-    activeSessions.set(sessionTicket, {
-      organizationId: connection.organization_id,
-      companyFileName: connection.company_file_name,
-      startedAt: new Date(),
-    });
-
-    // Log session
     await supabase.from('quickbooks_desktop_session_logs').insert({
       organization_id: connection.organization_id,
       session_ticket: sessionTicket,
@@ -140,7 +152,7 @@ async function handleAuthenticate(params: any): Promise<string> {
  */
 async function handleSendRequestXML(params: any): Promise<string> {
   const { ticket } = params;
-  const session = activeSessions.get(ticket);
+  const session = await getActiveSession(ticket);
 
   if (!session) {
     console.log('Invalid session ticket');
@@ -152,7 +164,7 @@ async function handleSendRequestXML(params: any): Promise<string> {
     const { data: requests, error } = await supabase
       .from('quickbooks_request_queue')
       .select('*')
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', session.organization_id)
       .eq('queue_status', 'Pending')
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
@@ -167,7 +179,9 @@ async function handleSendRequestXML(params: any): Promise<string> {
 
     const request = requests[0];
 
-    // Mark request as sent
+    // Mark request as sent. The 'Sent' status itself tracks the in-flight
+    // request — receiveResponseXML pairs the response back to it by org +
+    // status, so no per-process session state is needed.
     await supabase
       .from('quickbooks_request_queue')
       .update({
@@ -176,10 +190,6 @@ async function handleSendRequestXML(params: any): Promise<string> {
         processed_at: new Date().toISOString(),
       })
       .eq('id', request.id);
-
-    // Store current request in session
-    session.currentRequestId = request.id;
-    activeSessions.set(ticket, session);
 
     console.log(`Sending QBXML request: ${request.request_type}`);
 
@@ -205,15 +215,31 @@ async function handleSendRequestXML(params: any): Promise<string> {
  */
 async function handleReceiveResponseXML(params: any): Promise<number> {
   const { ticket, response, hresult } = params;
-  const session = activeSessions.get(ticket);
+  const session = await getActiveSession(ticket);
 
-  if (!session || !session.currentRequestId) {
-    console.log('Invalid session or missing request ID');
+  if (!session) {
+    console.log('Invalid session ticket');
     return 100; // Error percentage
   }
 
   try {
-    const requestId = session.currentRequestId;
+    // The response belongs to the request we just marked 'Sent' for this org.
+    // The Web Connector processes one request per send/receive cycle, so the
+    // most-recently-sent request is the one being answered now.
+    const { data: sentRequests } = await supabase
+      .from('quickbooks_request_queue')
+      .select('*')
+      .eq('organization_id', session.organization_id)
+      .eq('queue_status', 'Sent')
+      .order('processed_at', { ascending: false })
+      .limit(1);
+
+    const request = sentRequests?.[0];
+    if (!request) {
+      console.log('No in-flight request to match response to');
+      return 100;
+    }
+
     const hasError = hresult && hresult !== '0';
     const queueStatus = hasError ? 'Failed' : 'Completed';
 
@@ -226,16 +252,9 @@ async function handleReceiveResponseXML(params: any): Promise<number> {
         error_message: hasError ? `HRESULT: ${hresult}` : null,
         completed_at: new Date().toISOString(),
       })
-      .eq('id', requestId);
+      .eq('id', request.id);
 
-    // Get request details to process response
-    const { data: request } = await supabase
-      .from('quickbooks_request_queue')
-      .select('*')
-      .eq('id', requestId)
-      .single();
-
-    if (request && !hasError) {
+    if (!hasError) {
       // Process successful responses
       await processSuccessfulResponse(request, response);
     }
@@ -246,10 +265,10 @@ async function handleReceiveResponseXML(params: any): Promise<number> {
     const { count } = await supabase
       .from('quickbooks_request_queue')
       .select('*', { count: 'exact', head: true })
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', session.organization_id)
       .eq('queue_status', 'Pending');
 
-    return count > 0 ? 10 : 100; // 10% if more requests, 100% if done
+    return count && count > 0 ? 10 : 100; // 10% if more requests, 100% if done
 
   } catch (error) {
     console.error('Error processing response:', error);
@@ -304,12 +323,24 @@ async function processInvoiceAddResponse(request: any, response: any) {
 }
 
 /**
- * Handle getLastError - QB requests last error
+ * Handle getLastError - QB requests the reason the last call returned no work.
+ * The Web Connector displays this string in its log; an empty/normal queue is
+ * not an error condition.
  */
-function handleGetLastError(params: any): string {
+async function handleGetLastError(params: any): Promise<string> {
   const { ticket } = params;
-  const session = activeSessions.get(ticket);
-  return session?.lastError || 'No error';
+  const session = await getActiveSession(ticket);
+  if (!session) return 'Invalid or expired session ticket';
+  return 'No error';
+}
+
+/**
+ * Handle connectionError - QB Web Connector could not reach/open QuickBooks.
+ * Returning "done" tells the connector to stop trying for this run.
+ */
+function handleConnectionError(params: any): string {
+  console.log(`Connection error reported: hresult=${params.hresult}, message=${params.message}`);
+  return 'done';
 }
 
 /**
@@ -317,23 +348,144 @@ function handleGetLastError(params: any): string {
  */
 async function handleCloseConnection(params: any): Promise<string> {
   const { ticket } = params;
-  const session = activeSessions.get(ticket);
 
-  if (session) {
-    // Update session log
-    await supabase
-      .from('quickbooks_desktop_session_logs')
-      .update({
-        status: 'completed',
-        session_ended_at: new Date().toISOString(),
-      })
-      .eq('session_ticket', ticket);
+  // Mark the session row completed. Safe to call even if already closed.
+  await supabase
+    .from('quickbooks_desktop_session_logs')
+    .update({
+      status: 'completed',
+      session_ended_at: new Date().toISOString(),
+    })
+    .eq('session_ticket', ticket)
+    .eq('status', 'active');
 
-    activeSessions.delete(ticket);
-    console.log(`Session closed: ${ticket}`);
-  }
-
+  console.log(`Session closed: ${ticket}`);
   return 'OK';
+}
+
+/**
+ * Build the QBWebConnectorSvc WSDL document. The Web Connector requests this
+ * (GET ?wsdl) to learn the SOAP operations before it calls authenticate.
+ * The soap:address location is set to the live endpoint so the connector
+ * posts back to the right place.
+ */
+function buildWSDL(endpoint: string): string {
+  return `<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://developer.intuit.com/"
+                  targetNamespace="http://developer.intuit.com/"
+                  name="QBWebConnectorSvc">
+  <wsdl:types>
+    <xsd:schema elementFormDefault="qualified" targetNamespace="http://developer.intuit.com/">
+      <xsd:complexType name="ArrayOfString">
+        <xsd:sequence>
+          <xsd:element minOccurs="0" maxOccurs="unbounded" name="string" nillable="true" type="xsd:string"/>
+        </xsd:sequence>
+      </xsd:complexType>
+      <xsd:element name="serverVersion"><xsd:complexType><xsd:sequence/></xsd:complexType></xsd:element>
+      <xsd:element name="serverVersionResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="serverVersionResult" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="clientVersion"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="strVersion" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="clientVersionResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="clientVersionResult" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="authenticate"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="strUserName" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="strPassword" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="authenticateResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="authenticateResult" type="tns:ArrayOfString"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="sendRequestXML"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ticket" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="strHCPResponse" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="strCompanyFileName" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="qbXMLCountry" type="xsd:string"/>
+        <xsd:element minOccurs="1" maxOccurs="1" name="qbXMLMajorVers" type="xsd:int"/>
+        <xsd:element minOccurs="1" maxOccurs="1" name="qbXMLMinorVers" type="xsd:int"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="sendRequestXMLResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="sendRequestXMLResult" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="receiveResponseXML"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ticket" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="response" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="hresult" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="message" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="receiveResponseXMLResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="1" maxOccurs="1" name="receiveResponseXMLResult" type="xsd:int"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="connectionError"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ticket" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="hresult" type="xsd:string"/>
+        <xsd:element minOccurs="0" maxOccurs="1" name="message" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="connectionErrorResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="connectionErrorResult" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="getLastError"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ticket" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="getLastErrorResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="getLastErrorResult" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="closeConnection"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="ticket" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+      <xsd:element name="closeConnectionResponse"><xsd:complexType><xsd:sequence>
+        <xsd:element minOccurs="0" maxOccurs="1" name="closeConnectionResult" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType></xsd:element>
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="serverVersionSoapIn"><wsdl:part name="parameters" element="tns:serverVersion"/></wsdl:message>
+  <wsdl:message name="serverVersionSoapOut"><wsdl:part name="parameters" element="tns:serverVersionResponse"/></wsdl:message>
+  <wsdl:message name="clientVersionSoapIn"><wsdl:part name="parameters" element="tns:clientVersion"/></wsdl:message>
+  <wsdl:message name="clientVersionSoapOut"><wsdl:part name="parameters" element="tns:clientVersionResponse"/></wsdl:message>
+  <wsdl:message name="authenticateSoapIn"><wsdl:part name="parameters" element="tns:authenticate"/></wsdl:message>
+  <wsdl:message name="authenticateSoapOut"><wsdl:part name="parameters" element="tns:authenticateResponse"/></wsdl:message>
+  <wsdl:message name="sendRequestXMLSoapIn"><wsdl:part name="parameters" element="tns:sendRequestXML"/></wsdl:message>
+  <wsdl:message name="sendRequestXMLSoapOut"><wsdl:part name="parameters" element="tns:sendRequestXMLResponse"/></wsdl:message>
+  <wsdl:message name="receiveResponseXMLSoapIn"><wsdl:part name="parameters" element="tns:receiveResponseXML"/></wsdl:message>
+  <wsdl:message name="receiveResponseXMLSoapOut"><wsdl:part name="parameters" element="tns:receiveResponseXMLResponse"/></wsdl:message>
+  <wsdl:message name="connectionErrorSoapIn"><wsdl:part name="parameters" element="tns:connectionError"/></wsdl:message>
+  <wsdl:message name="connectionErrorSoapOut"><wsdl:part name="parameters" element="tns:connectionErrorResponse"/></wsdl:message>
+  <wsdl:message name="getLastErrorSoapIn"><wsdl:part name="parameters" element="tns:getLastError"/></wsdl:message>
+  <wsdl:message name="getLastErrorSoapOut"><wsdl:part name="parameters" element="tns:getLastErrorResponse"/></wsdl:message>
+  <wsdl:message name="closeConnectionSoapIn"><wsdl:part name="parameters" element="tns:closeConnection"/></wsdl:message>
+  <wsdl:message name="closeConnectionSoapOut"><wsdl:part name="parameters" element="tns:closeConnectionResponse"/></wsdl:message>
+  <wsdl:portType name="QBWebConnectorSvcSoap">
+    <wsdl:operation name="serverVersion"><wsdl:input message="tns:serverVersionSoapIn"/><wsdl:output message="tns:serverVersionSoapOut"/></wsdl:operation>
+    <wsdl:operation name="clientVersion"><wsdl:input message="tns:clientVersionSoapIn"/><wsdl:output message="tns:clientVersionSoapOut"/></wsdl:operation>
+    <wsdl:operation name="authenticate"><wsdl:input message="tns:authenticateSoapIn"/><wsdl:output message="tns:authenticateSoapOut"/></wsdl:operation>
+    <wsdl:operation name="sendRequestXML"><wsdl:input message="tns:sendRequestXMLSoapIn"/><wsdl:output message="tns:sendRequestXMLSoapOut"/></wsdl:operation>
+    <wsdl:operation name="receiveResponseXML"><wsdl:input message="tns:receiveResponseXMLSoapIn"/><wsdl:output message="tns:receiveResponseXMLSoapOut"/></wsdl:operation>
+    <wsdl:operation name="connectionError"><wsdl:input message="tns:connectionErrorSoapIn"/><wsdl:output message="tns:connectionErrorSoapOut"/></wsdl:operation>
+    <wsdl:operation name="getLastError"><wsdl:input message="tns:getLastErrorSoapIn"/><wsdl:output message="tns:getLastErrorSoapOut"/></wsdl:operation>
+    <wsdl:operation name="closeConnection"><wsdl:input message="tns:closeConnectionSoapIn"/><wsdl:output message="tns:closeConnectionSoapOut"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="QBWebConnectorSvcSoap" type="tns:QBWebConnectorSvcSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+    <wsdl:operation name="serverVersion"><soap:operation soapAction="http://developer.intuit.com/serverVersion" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="clientVersion"><soap:operation soapAction="http://developer.intuit.com/clientVersion" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="authenticate"><soap:operation soapAction="http://developer.intuit.com/authenticate" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="sendRequestXML"><soap:operation soapAction="http://developer.intuit.com/sendRequestXML" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="receiveResponseXML"><soap:operation soapAction="http://developer.intuit.com/receiveResponseXML" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="connectionError"><soap:operation soapAction="http://developer.intuit.com/connectionError" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="getLastError"><soap:operation soapAction="http://developer.intuit.com/getLastError" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+    <wsdl:operation name="closeConnection"><soap:operation soapAction="http://developer.intuit.com/closeConnection" style="document"/><wsdl:input><soap:body use="literal"/></wsdl:input><wsdl:output><soap:body use="literal"/></wsdl:output></wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="QBWebConnectorSvc">
+    <wsdl:port name="QBWebConnectorSvcSoap" binding="tns:QBWebConnectorSvcSoap">
+      <soap:address location="${endpoint}"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>`;
 }
 
 /**
@@ -352,10 +504,22 @@ serve(async (req) => {
     });
   }
 
-  // Health check
   if (req.method === 'GET') {
+    const url = new URL(req.url);
+
+    // The Web Connector fetches the WSDL (typically AppURL?wsdl) to discover the
+    // SOAP contract before it ever calls authenticate. Without this it cannot
+    // connect at all.
+    if (url.searchParams.has('wsdl') || url.search.toLowerCase().includes('wsdl')) {
+      const endpoint = `${url.origin}${url.pathname}`;
+      return new Response(buildWSDL(endpoint), {
+        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+      });
+    }
+
+    // Health check
     return new Response(
-      JSON.stringify({ status: 'OK', activeSessions: activeSessions.size }),
+      JSON.stringify({ status: 'OK' }),
       { headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -392,7 +556,11 @@ serve(async (req) => {
           break;
 
         case 'getLastError':
-          response = handleGetLastError(params);
+          response = await handleGetLastError(params);
+          break;
+
+        case 'connectionError':
+          response = handleConnectionError(params);
           break;
 
         case 'closeConnection':
