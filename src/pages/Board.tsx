@@ -67,8 +67,9 @@ const COLUMN_COLORS = [
 export default function Board() {
   // Get user and organization
   const user = useUser();
-  const { organization } = useCurrentOrganization(user?.id || '');
+  const { organization, role } = useCurrentOrganization(user?.id || '');
   const organizationId = organization?.id || '';
+  const canManagePayments = role === 'Owner' || role === 'Admin';
 
   // URL Search Params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1103,6 +1104,7 @@ export default function Board() {
           onClose={closeProjectOverlay}
           onUpdate={(projectId, updates) => updateProject({ id: projectId, updates })}
           onAttachmentsChange={refetchAttachments}
+          canManagePayments={canManagePayments}
         />
       )}
 

@@ -16,6 +16,7 @@ import {
 import { TimelineVisualizer } from './TimelineVisualizer';
 import { ProjectAttachments } from './ProjectAttachments';
 import { ProjectTasks } from './ProjectTasks';
+import { ProjectPaymentsSection } from './ProjectPaymentsSection';
 import type { Project, ProjectPriority } from '@/services/boardService';
 import type { ProjectAttachment } from '@/lib/types/projectAttachments';
 import { trackEvent } from '@/lib/analytics';
@@ -31,6 +32,8 @@ interface ProjectBoardOverlayProps {
   onClose: () => void;
   onUpdate: (projectId: string, updates: Partial<Project>) => void;
   onAttachmentsChange: () => void;
+  /** Show the Payments section (invoices are admin-only). */
+  canManagePayments?: boolean;
 }
 
 // =============================================================================
@@ -58,6 +61,7 @@ export function ProjectBoardOverlay({
   onClose,
   onUpdate,
   onAttachmentsChange,
+  canManagePayments = false,
 }: ProjectBoardOverlayProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
@@ -255,6 +259,34 @@ export function ProjectBoardOverlay({
                 </div>
               )}
             </div>
+
+            {/* Payments Section (admin only — invoices) */}
+            {canManagePayments && (
+              <div>
+                <button
+                  onClick={() => toggleSection('payments')}
+                  className="w-full flex items-center gap-1.5 mb-2 group"
+                >
+                  {collapsedSections.has('payments') ? (
+                    <CaretRightIcon className="w-3 h-3 text-gray-400" />
+                  ) : (
+                    <CaretDownIcon className="w-3 h-3 text-gray-400" />
+                  )}
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                    Payments
+                  </span>
+                </button>
+                {!collapsedSections.has('payments') && (
+                  <div className="pl-4">
+                    <ProjectPaymentsSection
+                      projectId={project.id}
+                      organizationId={organizationId}
+                      contractDefault={project.proposal?.total_value || 0}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Documents Section */}
             <div>
