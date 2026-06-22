@@ -87,6 +87,76 @@ serve(async (req) => {
       .from('stripe_webhook_events')
       .insert({ stripe_event_id: event.id, event_type: event.type });
 
+    // ------------------------------------------------------------------
+    // Period-sync helpers
+    //
+    // Webhook payloads are rendered at the endpoint's Stripe API version
+    // (currently 2025-09-30.clover), where `current_period_start/end` were
+    // removed from the Subscription object and `invoice.subscription` was
+    // removed from the Invoice object. Reading those fields off
+    // `event.data.object` yields `undefined`, so the renewal handlers below
+    // never advanced the billing period.
+    //
+    // This `stripe` client is pinned to apiVersion 2023-10-16, so any value
+    // we *retrieve* through it comes back in the old top-level shape. We
+    // therefore never trust the event payload for period data — we retrieve.
+    // ------------------------------------------------------------------
+    const periodToISO = (ts: number | undefined | null): string | null => {
+      if (!ts) return null;
+      const d = new Date(ts * 1000);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    };
+
+    // Retrieve a subscription via the pinned client and return its (old-shape)
+    // period + status. Returns null if the retrieve fails.
+    const fetchPeriodFromStripe = async (
+      subscriptionId: string
+    ): Promise<{ current_period_start: string | null; current_period_end: string | null; status: string } | null> => {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        return {
+          current_period_start: periodToISO(sub.current_period_start),
+          current_period_end: periodToISO(sub.current_period_end),
+          status: sub.status,
+        };
+      } catch (err) {
+        console.error('[fetchPeriodFromStripe] retrieve failed:', subscriptionId, err);
+        return null;
+      }
+    };
+
+    // On a renewal invoice, advance the stored billing period. Re-retrieves the
+    // invoice through the pinned client so `subscription`/`billing_reason` are
+    // present even when the webhook payload omits them.
+    const syncRenewalPeriodFromInvoice = async (invoiceId: string): Promise<void> => {
+      try {
+        const fullInvoice = await stripe.invoices.retrieve(invoiceId);
+        const subId = fullInvoice.subscription as string | null;
+        if (!subId || fullInvoice.billing_reason !== 'subscription_cycle') {
+          console.log('[syncRenewalPeriod] not a renewal invoice:', invoiceId, fullInvoice.billing_reason);
+          return;
+        }
+        const period = await fetchPeriodFromStripe(subId);
+        if (!period?.current_period_start || !period?.current_period_end) {
+          console.warn('[syncRenewalPeriod] no period returned for subscription:', subId);
+          return;
+        }
+        await supabase
+          .from('subscriptions')
+          .update({
+            current_period_start: period.current_period_start,
+            current_period_end: period.current_period_end,
+            stripe_subscription_status: period.status.charAt(0).toUpperCase() + period.status.slice(1),
+            is_active: ['active', 'trialing'].includes(period.status),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', subId);
+        console.log('[syncRenewalPeriod] advanced billing period for renewal:', subId);
+      } catch (err) {
+        console.error('[syncRenewalPeriod] failed for invoice:', invoiceId, err);
+      }
+    };
+
     // Handle different event types
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -217,9 +287,12 @@ serve(async (req) => {
         };
 
         // Build update object, only including date fields if they have valid values
-        // This prevents overwriting existing data with null
-        const currentPeriodStartISO = safeToISOString(subscription.current_period_start);
-        const currentPeriodEndISO = safeToISOString(subscription.current_period_end);
+        // This prevents overwriting existing data with null.
+        // Period dates are absent from clover (2025+) webhook payloads, so retrieve
+        // them via the pinned client rather than reading the event object.
+        const period = await fetchPeriodFromStripe(stripeSubscriptionId);
+        const currentPeriodStartISO = period?.current_period_start ?? null;
+        const currentPeriodEndISO = period?.current_period_end ?? null;
         const trialStartISO = safeToISOString(subscription.trial_start);
         const trialEndISO = safeToISOString(subscription.trial_end);
 
@@ -362,6 +435,11 @@ serve(async (req) => {
         const invoice = event.data.object as Stripe.Invoice;
         console.log('Payment succeeded for invoice:', invoice.id);
 
+        // Advance the billing period on subscription renewals. (invoice.paid
+        // handles the same case; both fire on renewal and the update is
+        // idempotent, so this is resilient to either event being missed.)
+        await syncRenewalPeriodFromInvoice(invoice.id);
+
         break;
       }
 
@@ -442,8 +520,10 @@ serve(async (req) => {
         };
 
         const createdDateFields: Record<string, string> = {};
-        const periodStart = toISO(subscription.current_period_start);
-        const periodEnd = toISO(subscription.current_period_end);
+        // Period dates are absent from clover (2025+) webhook payloads; retrieve them.
+        const createdPeriod = await fetchPeriodFromStripe(stripeSubscriptionId);
+        const periodStart = createdPeriod?.current_period_start ?? null;
+        const periodEnd = createdPeriod?.current_period_end ?? null;
         const trialStart = toISO(subscription.trial_start);
         const trialEnd = toISO(subscription.trial_end);
         if (periodStart) createdDateFields.current_period_start = periodStart;
@@ -511,32 +591,11 @@ serve(async (req) => {
             .eq('access_blocked_reason', 'Payment failed');
         }
 
-        // Update billing period dates ONLY on actual subscription renewals
-        // Skip prorated invoices (seat changes, plan upgrades) - they don't change the billing period
-        // billing_reason: 'subscription_cycle' = renewal, 'subscription_update' = proration, 'subscription_create' = initial
-        const isRenewalInvoice = invoice.billing_reason === 'subscription_cycle';
-
-        if (invoice.subscription && isRenewalInvoice) {
-          try {
-            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-
-            await supabase
-              .from('subscriptions')
-              .update({
-                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                stripe_subscription_status: subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1),
-                updated_at: new Date().toISOString(),
-              })
-              .eq('stripe_subscription_id', subscription.id);
-
-            console.log('Updated billing period from invoice.paid (renewal):', subscription.id);
-          } catch (err) {
-            console.error('Failed to update billing period from invoice.paid:', err);
-          }
-        } else if (invoice.subscription) {
-          console.log('Skipping billing period update - not a renewal invoice:', invoice.billing_reason);
-        }
+        // Advance billing period dates on actual subscription renewals only.
+        // The helper re-retrieves the invoice via the pinned client to recover
+        // `subscription` and `billing_reason`, which are absent from clover
+        // (2025+) webhook payloads, then skips prorations/non-renewals.
+        await syncRenewalPeriodFromInvoice(invoice.id);
 
         console.log('Invoice paid:', invoice.id);
         break;

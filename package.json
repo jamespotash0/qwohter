@@ -27,7 +27,9 @@
     "test:stripe:watch": "vitest --config tests/stripe/vitest.integration.config.ts",
     "test:stripe:unit": "vitest run --testPathPattern=stripeService",
     "test:stripe:integration": "vitest run --config tests/stripe/vitest.integration.config.ts --testPathPattern=integration",
-    "test:stripe:webhook": "vitest run --config tests/stripe/vitest.integration.config.ts --testPathPattern=webhook"
+    "test:stripe:webhook": "vitest run --config tests/stripe/vitest.integration.config.ts --testPathPattern=webhook",
+    "backfill:periods": "node scripts/backfill-subscription-periods.js",
+    "backfill:periods:apply": "node scripts/backfill-subscription-periods.js --apply"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
