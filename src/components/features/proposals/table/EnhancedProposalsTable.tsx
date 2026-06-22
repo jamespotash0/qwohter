@@ -19,7 +19,7 @@ import {
 } from '@tanstack/react-table';
 import {
   ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal,
-  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban, CheckCircle2, Bell
+  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText, Clock, Kanban, CheckCircle2, Bell, Receipt
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -82,6 +82,10 @@ interface EnhancedProposalsTableProps {
   userRole?: 'Owner' | 'Admin' | 'Member';
   onApproveProposal?: (proposalId: string) => void;
   onManageReminders?: (proposalId: string, proposalNumber?: string) => void;
+  /** Push a Won proposal to QuickBooks as an invoice. Admin-only. */
+  onCreateInvoice?: (proposal: Proposal) => void;
+  /** Whether the "Create Invoice" action should be offered (QB connected + admin). */
+  canCreateInvoice?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -136,6 +140,8 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   userRole = 'Member',
   onApproveProposal,
   onManageReminders,
+  onCreateInvoice,
+  canCreateInvoice = false,
 }) => {
   // Centralized page preferences from UI store (persisted to localStorage)
   const {
@@ -645,6 +651,12 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                   <Bell className="mr-2 h-4 w-4" /> Manage Reminders
                 </DropdownMenuItem>
               )}
+              {/* Create Invoice - Won + main version, admin with QuickBooks connected */}
+              {canCreateInvoice && onCreateInvoice && proposal.status === 'Won' && proposal.is_main_version && (
+                <DropdownMenuItem onClick={() => { trackEvent('proposal_menu_action', { action: 'create_invoice' }); onCreateInvoice(proposal); }}>
+                  <Receipt className="mr-2 h-4 w-4" /> Create Invoice
+                </DropdownMenuItem>
+              )}
               {/* Project Board options - only for Won + main version proposals */}
               {proposal.status === 'Won' && proposal.is_main_version && (
                 proposal.is_on_board ? (
@@ -695,7 +707,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       size: 60,
       enableSorting: false,
     }),
-  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard, userRole, onApproveProposal, onManageReminders]);
+  ], [proposalGroups, proposalToGroupMap, expanded, versionSelection, handleStatusChangeWithConfirm, onEditProposal, onCreateVersion, onArchiveProposal, onUnarchiveProposal, handleSendToBoard, handleRemoveFromBoard, userRole, onApproveProposal, onManageReminders, onCreateInvoice, canCreateInvoice]);
 
   const table = useReactTable({
     data: displayProposals,

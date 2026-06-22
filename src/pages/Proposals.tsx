@@ -31,6 +31,11 @@ import { createProposal, type CreateProposalData } from '@/services/proposalsSer
 import { checkApprovalRequired, requestApproval, approveProposal, getLatestApprovalRequest } from '@/services/proposalApprovalService';
 import { ApprovalRequestDialog } from '@/components/features/proposals/ApprovalRequestDialog';
 import { ManageRemindersDialog } from '@/components/features/signing/ManageRemindersDialog';
+import { useQuickBooksInvoicing, isAlreadySyncedError } from '@/hooks/queries/useQuickBooksInvoicing';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -50,6 +55,11 @@ export default function Proposals() {
   const setMainVersionMutation = useSetMainVersion();
   const createVersionMutation = useCreateProposalVersion();
 
+  // QuickBooks invoicing (admins only; routes to Online or Desktop)
+  const qbInvoicing = useQuickBooksInvoicing(organization?.id);
+  const isAdmin = role === 'Owner' || role === 'Admin';
+  const canCreateInvoice = isAdmin && qbInvoicing.isConnected;
+
   // Local state
   const [showArchived, setShowArchived] = useState(false);
   const [createWizardOpen, setCreateWizardOpen] = useState(false);
@@ -64,6 +74,11 @@ export default function Proposals() {
     proposalId: string;
     proposalNumber?: string;
   }>({ open: false, proposalId: '' });
+  // "Proposal won — create invoice?" prompt
+  const [wonInvoicePrompt, setWonInvoicePrompt] = useState<{
+    open: boolean;
+    proposal: Proposal | null;
+  }>({ open: false, proposal: null });
 
   // Filter proposals by archived status
   const activeProposals = useMemo(() => allProposals.filter(p => !p.archived), [allProposals]);
@@ -164,6 +179,34 @@ export default function Proposals() {
     // Direct status change (for Admins/Owners or when approval not required)
     updateStatusMutation.mutate({ proposalId: id, status }, {
       onError: () => toast.error('Failed to update status'),
+      onSuccess: () => {
+        // Nudge the admin to push the won deal to QuickBooks (deliberate click,
+        // not auto-created). Only when QB is connected and the user can invoice.
+        if (status === 'Won' && canCreateInvoice) {
+          const proposal = allProposals.find(p => p.id === id);
+          if (proposal) setWonInvoicePrompt({ open: true, proposal });
+        }
+      },
+    });
+  };
+
+  const handleCreateInvoice = (proposal: Proposal) => {
+    const dest = qbInvoicing.provider === 'desktop' ? 'QuickBooks Desktop' : 'QuickBooks';
+    qbInvoicing.createInvoice.mutate(proposal, {
+      onSuccess: () => {
+        toast.success(
+          qbInvoicing.provider === 'desktop'
+            ? 'Invoice queued — it will sync to QuickBooks Desktop on the next Web Connector run.'
+            : `Invoice created in ${dest}.`
+        );
+      },
+      onError: (error) => {
+        if (isAlreadySyncedError(error)) {
+          toast.info('This proposal has already been sent to QuickBooks.');
+        } else {
+          toast.error(error instanceof Error ? error.message : 'Failed to create invoice');
+        }
+      },
     });
   };
 
@@ -552,6 +595,8 @@ export default function Proposals() {
             onManageReminders={(proposalId, proposalNumber) =>
               setRemindersDialog({ open: true, proposalId, proposalNumber })
             }
+            onCreateInvoice={handleCreateInvoice}
+            canCreateInvoice={canCreateInvoice}
           />
         </>
       )}
@@ -582,6 +627,32 @@ export default function Proposals() {
           proposalNumber={remindersDialog.proposalNumber}
         />
       )}
+
+      <AlertDialog
+        open={wonInvoicePrompt.open}
+        onOpenChange={(open) => setWonInvoicePrompt(prev => ({ ...prev, open }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Proposal won 🎉</AlertDialogTitle>
+            <AlertDialogDescription>
+              {wonInvoicePrompt.proposal?.proposal_number
+                ? `Create an invoice for ${wonInvoicePrompt.proposal.proposal_number} in ${qbInvoicing.provider === 'desktop' ? 'QuickBooks Desktop' : 'QuickBooks'}?`
+                : 'Create an invoice for this proposal in QuickBooks?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (wonInvoicePrompt.proposal) handleCreateInvoice(wonInvoicePrompt.proposal);
+              }}
+            >
+              Create Invoice
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContent>
   );
 }
