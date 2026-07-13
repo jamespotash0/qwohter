@@ -264,7 +264,10 @@ export const AppRouter = () => (
           <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
-          <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
+          {/* NOT wrapped in AuthRoute: a recovery link establishes a session, and AuthRoute
+              would redirect the (already-onboarded) user to /dashboard before they can set a
+              new password. This page manages its own recovery session. */}
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
           <Route path="/invalid-invitation" element={<InvalidInvitation />} />

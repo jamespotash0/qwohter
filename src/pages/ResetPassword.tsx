@@ -35,72 +35,84 @@ const ResetPassword = () => {
   const { mutate: signOut } = useSignOut();
 
   useEffect(() => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+    let cancelled = false;
 
-    const hash = window.location.hash;
-    const hashParams = new URLSearchParams(hash.substring(1));
-    const hashAccessToken = hashParams.get('access_token');
-    const hashRefreshToken = hashParams.get('refresh_token');
-
-    const handleSessionSetup = async () => {
-      const finalAccessToken = hashAccessToken || accessToken;
-      const finalRefreshToken = hashRefreshToken || refreshToken;
-
-      if (finalAccessToken && finalRefreshToken) {
-        try {
-          const { error } = await supabase.auth.setSession({
-            access_token: finalAccessToken,
-            refresh_token: finalRefreshToken
-          });
-
-          if (error) {
-            console.error('Error setting session:', error);
-            setSessionError('There was an issue with your reset link. Please request a new password reset.');
-            toast({
-              title: "Session Error",
-              description: "There was an issue with your reset link. Please request a new password reset.",
-              variant: "destructive",
-            });
-          } else {
-            const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
-            if (sessionCheckError) {
-              console.error('Session check error:', sessionCheckError);
-              setSessionError('Session validation failed. Please try the reset link again.');
-            } else if (!sessionData.session) {
-              console.error('No session found after setting');
-              setSessionError('Session not established. Please try the reset link again.');
-            } else {
-              setSessionReady(true);
-            }
-          }
-        } catch (err) {
-          console.error('Exception setting session:', err);
-          setSessionError('Unable to authenticate your reset link. Please request a new password reset.');
-          toast({
-            title: "Session Error",
-            description: "Unable to authenticate your reset link. Please request a new password reset.",
-            variant: "destructive",
-          });
-        }
-      } else if (searchParams.size > 0 || hashParams.size > 0) {
-        console.error('Missing required parameters for password reset.');
-        setSessionError('The reset link is invalid or has expired.');
-        toast({
-          title: "Invalid Reset Link",
-          description: "The reset link is invalid or has expired. Please request a new password reset.",
-          variant: "destructive",
-        });
-      } else {
-        setSessionError('Please use the reset link from your email.');
-      }
+    const invalidLink = () => {
+      if (cancelled) return;
+      setSessionError('The reset link is invalid or has expired. Please request a new password reset.');
+      toast({
+        title: "Invalid Reset Link",
+        description: "The reset link is invalid or has expired. Please request a new password reset.",
+        variant: "destructive",
+      });
     };
 
-    if (searchParams.size > 0 || hashParams.size > 0) {
-      handleSessionSetup();
-    } else {
-      setSessionError('Please use the reset link from your email.');
-    }
+    // The Supabase client is configured with flowType 'pkce' + detectSessionInUrl, so it
+    // automatically exchanges the recovery link's `?code=` for a session and fires
+    // PASSWORD_RECOVERY. Listen for that event in case it lands before this component mounts,
+    // we also proactively check getSession() below.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setSessionError(null);
+        setSessionReady(true);
+      }
+    });
+
+    const handleSessionSetup = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+      // Supabase redirects here with an error in the URL when the link is expired/already used
+      // (e.g. consumed by an email security scanner). Surface it instead of spinning.
+      const errorCode =
+        hashParams.get('error_code') || searchParams.get('error_code') ||
+        hashParams.get('error') || searchParams.get('error');
+      if (errorCode) {
+        invalidLink();
+        return;
+      }
+
+      // Legacy implicit-flow links carry tokens directly in the hash/query.
+      const accessToken = hashParams.get('access_token') || searchParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (cancelled) return;
+        if (error) {
+          console.error('Error setting session:', error);
+          setSessionError('There was an issue with your reset link. Please request a new password reset.');
+          return;
+        }
+        setSessionReady(true);
+        return;
+      }
+
+      // PKCE flow: detectSessionInUrl has already exchanged `?code=` and stripped it from the
+      // URL, so the recovery session should already exist. Confirm it.
+      const { data, error } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (error) {
+        console.error('Session check error:', error);
+        setSessionError('Session validation failed. Please try the reset link again.');
+        return;
+      }
+      if (data.session) {
+        setSessionReady(true);
+        return;
+      }
+
+      invalidLink();
+    };
+
+    handleSessionSetup();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [searchParams, toast]);
 
   const validatePassword = (password: string) => {

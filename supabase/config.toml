@@ -92,6 +92,14 @@ verify_jwt = false
 [auth]
 # Site URL for password reset links
 site_url = "env(SITE_URL)"
+# Allowlist of URLs that auth redirects (password reset, magic link, OAuth) may target.
+# GoTrue only honors a `redirectTo` if it matches site_url or one of these; otherwise it
+# silently falls back to site_url. The bare site_url does NOT match sub-paths like
+# /reset-password, so the wildcard entry is required for the local reset flow to work.
+additional_redirect_urls = [
+  "http://localhost:8080",
+  "http://localhost:8080/**",
+]
 
 [auth.email]
 enable_signup = true
