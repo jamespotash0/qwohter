@@ -107,6 +107,21 @@ export function getUserTimezone(): string {
 }
 
 /**
+ * Get the list of IANA timezone names for pickers (e.g., "America/New_York").
+ *
+ * Sourced from the browser rather than the database - querying
+ * pg_timezone_names re-parses the entire tzdata directory on every call.
+ * @returns Sorted canonical IANA timezone strings
+ */
+export function getTimezoneOptions(): string[] {
+  // Intl.supportedValuesOf is ES2022; tsconfig targets ES2020, so it is untyped here.
+  const supportedValuesOf = (Intl as { supportedValuesOf?: (key: string) => string[] })
+    .supportedValuesOf;
+  if (!supportedValuesOf) return [getUserTimezone()];
+  return supportedValuesOf('timeZone');
+}
+
+/**
  * Get the user's timezone abbreviation (e.g., "EST", "PST", "GMT")
  * @returns Timezone abbreviation
  */

@@ -32,6 +32,8 @@ pnpm-lock.yaml
 .env.test.local
 .env.production.local
 .env.localdb
+.env.functions
+.env.cws
 
 # VitePress
 .vitepress/cache

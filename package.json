@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "vite --mode localdb",
+    "dev:cws": "vite --mode cws",
     "prebuild": "node scripts/generate-version.js",
     "build": "vite build",
     "build:development": "vite build --mode development",

@@ -111,13 +111,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: session.user.id,
               email: session.user.email ?? undefined,
               fullName: profile?.full_name ?? undefined,
-              organizationId: orgData.id,
-              organizationName: orgData.name,
+              organizationId: orgData.organization_id,
+              organizationName: orgData.organization?.name,
               role: profile?.role ?? undefined,
             });
             setOrganizationGroup({
-              id: orgData.id,
-              name: orgData.name,
+              id: orgData.organization_id,
+              name: orgData.organization?.name,
             });
           }
         } catch (error) {
@@ -215,13 +215,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: session.user.id,
           email: session.user.email ?? undefined,
           fullName: profile?.full_name ?? undefined,
-          organizationId: orgData.id,
-          organizationName: orgData.name,
+          organizationId: orgData.organization_id,
+          organizationName: orgData.organization?.name,
           role: profile?.role ?? undefined,
         });
         setOrganizationGroup({
-          id: orgData.id,
-          name: orgData.name,
+          id: orgData.organization_id,
+          name: orgData.organization?.name,
         });
       }
     } catch (error) {

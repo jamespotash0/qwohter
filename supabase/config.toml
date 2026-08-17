@@ -1,4 +1,4 @@
-project_id = "piuwrlaoxuefmiisuamc"
+project_id = "iukfjhzmjgvtxefhhshd"
 
 # =====================================================
 # EDGE FUNCTIONS SECURITY CONFIGURATION
@@ -41,6 +41,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.google-disconnect]
 verify_jwt = false
+[functions.google-get-token]
+verify_jwt = false
 [functions.google-list-drive-files]
 verify_jwt = false
 [functions.google-oauth-callback]
@@ -73,6 +75,9 @@ verify_jwt = false
 verify_jwt = false
 [functions.send-signup-invite]
 verify_jwt = false
+# Invoked hourly by pg_cron via pg_net, which sends no user JWT.
+[functions.signature-reminders]
+verify_jwt = false
 [functions.stripe-handler]
 verify_jwt = false
 [functions.stripe-webhook]
@@ -96,15 +101,61 @@ site_url = "env(SITE_URL)"
 # GoTrue only honors a `redirectTo` if it matches site_url or one of these; otherwise it
 # silently falls back to site_url. The bare site_url does NOT match sub-paths like
 # /reset-password, so the wildcard entry is required for the local reset flow to work.
+# qwohter.com 307-redirects to www.qwohter.com, and Supabase matches these
+# exactly -- a link pointing at the apex bounces through the redirect, which can
+# drop the URL fragment Supabase puts the token in. Both forms are listed so
+# either works regardless of which host the link was generated from.
 additional_redirect_urls = [
+  "https://www.qwohter.com",
+  "https://www.qwohter.com/**",
+  "https://qwohter.com",
+  "https://qwohter.com/**",
   "http://localhost:8080",
   "http://localhost:8080/**",
 ]
+
+# Pushed to the remote project with:  supabase config push --project-ref <REF>
+# site_url reads from the environment because it is the one value that differs
+# per app: https://qwohter.com for the new version, https://cws-qwohter.com for
+# the legacy client app.  export SITE_URL=... before pushing.
+# Match what the project already enforces. Any key omitted here is pushed as a
+# CLI default and OVERWRITES the remote value -- omitting this one silently
+# removes password complexity requirements.
+password_requirements = "lower_upper_letters_digits"
+minimum_password_length = 8
+
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
 
 [auth.email]
 enable_signup = true
 enable_confirmations = true
 double_confirm_changes = true
+secure_password_change = true
+max_frequency = "60s"
+otp_expiry = 900
+
+# Transactional email via Resend. Never commit the credential -- it is read from
+# the environment:  export RESEND_SMTP_PASSWORD='re_...'
+# Without SMTP configured, signup confirmation, invites and password reset all
+# fail silently on a fresh project.
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_SMTP_PASSWORD)"
+admin_email = "noreply@qwohter.com"
+sender_name = "Qwohter"
+
+# TOTP MFA is enabled on the project. Not declaring these pushes false and
+# turns MFA off.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
 
 [auth.external]
 # Disable unused auth providers to reduce attack surface
