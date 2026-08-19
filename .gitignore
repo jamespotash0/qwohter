@@ -76,3 +76,6 @@ MULTI_AGENT_GUIDE.md
 supabase/.temp/
 supabase/.branches/
 supabase/.env
+
+# Playwright saved auth state (contains live session tokens)
+playwright/.auth/
