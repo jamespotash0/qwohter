@@ -278,9 +278,9 @@ export const FeatureSection = (): JSX.Element => {
               </div>
 
               {/* Analytics card overlay - positioned outside top-left corner */}
-              <div className="absolute top-[-30px] left-[-30px] z-10">
+              <div className="absolute -top-3 -left-3 sm:top-[-30px] sm:left-[-30px] z-10">
                 <img
-                  className="w-30 h-30 rounded-[20px]"
+                  className="w-30 h-30 max-w-full rounded-[20px]"
                   alt="Analytics card"
                   src="/images/landing/analytics_image1.svg"
                 />

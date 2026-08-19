@@ -20,8 +20,8 @@ const Demo = () => {
         />
 
         {/* Book a Demo Badge Container */}
-        <div className="relative max-w-[1920px] mx-auto px-[10.4vw] pt-[170px] z-10">
-          <div className="text-center mb-[30px]">
+        <div className="relative max-w-[1920px] mx-auto px-5 sm:px-8 lg:px-12 xl:px-24 2xl:px-[10.4vw] pt-28 sm:pt-36 lg:pt-[170px] z-10">
+          <div className="text-center mb-6 sm:mb-[30px]">
             <div className="inline-block px-6 py-1 bg-[#ee6c4d]/10 rounded-full">
               <span className="text-[#ee6c4d] font-semibold text-sm uppercase tracking-wider" style={{ fontFamily: 'Urbanist, sans-serif' }}>
                 Book a Demo
@@ -31,10 +31,10 @@ const Demo = () => {
         </div>
 
         {/* Calendar Container */}
-        <div className="relative max-w-[1920px] mx-auto px-[10.4vw] pb-[40px]">
+        <div className="relative max-w-[1920px] mx-auto px-5 sm:px-8 lg:px-12 xl:px-24 2xl:px-[10.4vw] pb-10 sm:pb-[40px]">
           <div className="max-w-[1200px] mx-auto">
-            <div className="bg-[#fbf8f1] rounded-[30px] p-[8px]">
-              <div className="bg-[#f7f2e9] rounded-[30px] p-[8px]">
+            <div className="bg-[#fbf8f1] rounded-[20px] sm:rounded-[30px] p-[8px]">
+              <div className="bg-[#f7f2e9] rounded-[20px] sm:rounded-[30px] p-[8px]">
                 <CalComEmbed />
               </div>
             </div>

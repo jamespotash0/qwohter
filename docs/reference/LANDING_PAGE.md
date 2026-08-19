@@ -282,23 +282,80 @@ useEffect(() => {
 
 ## Responsive Design
 
+The marketing site was originally pixel-designed for a single 1440px viewport.
+It is now fluid across mobile, tablet, and desktop. Two rules keep it that way.
+
+### 1. Use the fluid type scale, not fixed pixel sizes
+
+Defined in `tailwind.config.ts`. Each `clamp()` reaches its maximum around
+1280px, so the 1440px design still renders at its original sizes.
+
+| Class | Range | Use for |
+|-------|-------|---------|
+| `text-fluid-sm` | 14 → 16px | Nav links, button labels |
+| `text-fluid-base` | 16 → 18px | Body copy |
+| `text-fluid-lg` | 18 → 22px | Lead paragraphs |
+| `text-fluid-xl` | 20 → 28px | Card headings |
+| `text-fluid-2xl` | 24 → 42px | Section taglines |
+| `text-fluid-3xl` | 28 → 52px | Section headings |
+| `text-fluid-hero` | 32 → 60px | Hero headline |
+
+Pair headings with `text-balance` and body copy with `text-pretty`.
+
+### 2. Use `SectionContainer` for section gutters
+
+`src/components/features/landing/SectionContainer.tsx` provides the standard
+stepped gutter (`px-5` → `px-[200px]`) and capped content width. Do not
+reintroduce fixed paddings like `px-[180px]` or `px-[10.4vw]` — those require
+~1350px of viewport and clip everything below it.
+
 ### Breakpoints
 
 ```css
+xs:  480px   /* Large phone */
 sm:  640px   /* Mobile landscape */
-md:  768px   /* Tablet */
+md:  768px   /* Tablet — nav switches from sheet to inline pill */
 lg:  1024px  /* Desktop */
-xl:  1280px  /* Large desktop */
+xl:  1280px  /* Full desktop nav (logo / pill / Sign In + CTA) */
 2xl: 1536px  /* Extra large */
 ```
 
-### Mobile Considerations
+For JS-side decisions needing a real tablet tier, use `useBreakpoint()`
+(`src/hooks/useBreakpoint.ts`), which returns `mobile | tablet | desktop`.
+`useIsMobile()` is a binary 768px check and cannot express tablet.
 
-- Hero: Stack to single column (`grid-cols-1`)
-- Features: Stack with reversed order for even sections
-- Stats: 1 column on mobile, 3 on desktop
-- Navigation: Hamburger menu on mobile
-- CTAs: Full-width buttons on mobile
+### Navigation
+
+`LandingNav` renders three layouts:
+
+- **< md** — logo + hamburger; full menu in a slide-over `Sheet`
+- **md–xl** — logo + condensed inline pill + demo CTA
+- **xl+** — the full desktop design
+
+`ContactNavigation` and `DemoNavigation` keep the logo and Sign In reachable on
+mobile and hide only the link row.
+
+### Gotchas that caused past breakage
+
+- **`whitespace-nowrap` on headings** — forces a single line that cannot fit.
+- **`flex-[0_0_auto]` on a wrapping container** — blocks `flex-wrap` from
+  shrinking, so the row overflows instead of wrapping.
+- **`inline-flex` on a full-width row** — sizes to content, not the parent.
+- **`overflow-hidden` wrappers** — these hide the symptom. Breakage shows up as
+  silently cropped content, never a scrollbar, so always test at real widths.
+- **Decorative blurs** — size them in `vw`/`%`, not fixed px like `w-[2093px]`.
+- **Tap targets** — minimum 44px on touch viewports (`min-h-[44px] md:min-h-0`).
+
+### Regression guard
+
+```bash
+npm run test:responsive
+```
+
+`tests/responsive-layout.spec.ts` asserts zero horizontal overflow and no
+clipped elements across `/`, `/demo`, and `/contact-us` at 375 / 430 / 768 /
+1024 / 1280 / 1440px, plus that the mobile menu opens and the hero headline
+wraps. Run it after any landing page change.
 
 ## Performance
 
@@ -334,11 +391,15 @@ if (!prefersReducedMotion) {
 
 ## Key Files
 
-- `src/pages/Landing.tsx` - Original landing page
-- `src/pages/LandingEnhanced.tsx` - Animated version
+- `src/pages/LandingPage.tsx` - Landing page composition
+- `src/components/features/landing/` - All marketing sections
+- `src/components/features/landing/LandingNav.tsx` - Responsive nav + mobile sheet
+- `src/components/features/landing/SectionContainer.tsx` - Shared responsive container
+- `src/hooks/useBreakpoint.ts` - mobile/tablet/desktop tier hook
 - `src/utils/animations.ts` - Animation functions (anime.js)
 - `src/hooks/useAnimations.ts` - React animation hooks
 - `public/images/landing/` - SVG illustrations
+- `tests/responsive-layout.spec.ts` - Responsive regression guard
 
 ## Animation Timing Guide
 

@@ -103,6 +103,21 @@ export default {
 				'18': '4.5rem',
 				'22': '5.5rem'
 			},
+			screens: {
+				'xs': '480px'
+			},
+			// Fluid type scale — sizes interpolate with the viewport instead of
+			// snapping at breakpoints. Each clamp() reaches its max around 1280px
+			// so the 1440px desktop design renders at its original sizes.
+			fontSize: {
+				'fluid-sm': ['clamp(0.875rem, 0.83rem + 0.22vw, 1rem)', { lineHeight: '1.5' }],
+				'fluid-base': ['clamp(1rem, 0.95rem + 0.24vw, 1.125rem)', { lineHeight: '1.65' }],
+				'fluid-lg': ['clamp(1.125rem, 1.05rem + 0.35vw, 1.375rem)', { lineHeight: '1.45' }],
+				'fluid-xl': ['clamp(1.25rem, 1.1rem + 0.7vw, 1.75rem)', { lineHeight: '1.4' }],
+				'fluid-2xl': ['clamp(1.5rem, 1.05rem + 2.1vw, 2.625rem)', { lineHeight: '1.3' }],
+				'fluid-3xl': ['clamp(1.75rem, 1.25rem + 2.6vw, 3.25rem)', { lineHeight: '1.2' }],
+				'fluid-hero': ['clamp(2rem, 1.3rem + 3.4vw, 3.75rem)', { lineHeight: '1.12', letterSpacing: '0.02em' }]
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {
