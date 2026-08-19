@@ -1,0 +1,36 @@
+# https://www.qwohter.com/robots.txt
+#
+# /sign/ is deliberately NOT disallowed below. Those URLs carry a secret
+# access token, and Disallow only blocks crawling, not indexing -- a blocked
+# URL that Google discovers can still be listed as a bare URL, which would
+# publish the token itself. They are excluded with an X-Robots-Tag: noindex
+# response header (see vercel.json), which Google can only honour if it is
+# allowed to fetch the page and read the header.
+User-agent: *
+# Authenticated application routes. No search value, and every crawl of one
+# is budget spent re-rendering the same client-side shell.
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /project-board
+Disallow: /task-board
+Disallow: /contacts
+Disallow: /calendar
+Disallow: /analytics
+Disallow: /settings
+Disallow: /team
+Disallow: /proposals
+Disallow: /forms
+# Auth and error routes.
+Disallow: /sign-in
+Disallow: /create-account
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /access-denied
+Disallow: /account-inactive
+Disallow: /invalid-invitation
+Disallow: /auth
+Disallow: /login
+Disallow: /signup
+Disallow: /404
+
+Sitemap: https://www.qwohter.com/sitemap.xml
