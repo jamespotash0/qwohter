@@ -144,8 +144,10 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Qwohter Contact <onboarding@resend.dev>', // Change to 'contact@qwohter.com' after domain verification
-        to: ['james.potash0@gmail.com'], // Change to contact/support email
+        from: 'Qwohter Contact <contact@qwohter.com>',
+        // Both recipients while the M365 mailbox is being confirmed -- drop the
+        // gmail once contact@qwohter.com is verified as receiving.
+        to: ['contact@qwohter.com', 'james.potash0@gmail.com'],
         reply_to: requestData.email,
         subject: `Contact Form: Message from ${escapeHtml(requestData.firstName)} ${escapeHtml(requestData.lastName)}`,
         html: emailHtml,

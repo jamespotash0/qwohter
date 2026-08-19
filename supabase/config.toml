@@ -138,17 +138,24 @@ secure_password_change = true
 max_frequency = "60s"
 otp_expiry = 900
 
-# Transactional email via Resend. Never commit the credential -- it is read from
-# the environment:  export RESEND_SMTP_PASSWORD='re_...'
-# Without SMTP configured, signup confirmation, invites and password reset all
-# fail silently on a fresh project.
+# Transactional email via Resend.
+#
+# !! SMTP is managed by the Resend <-> Supabase integration, which generated its
+# own API key and set the sender to auth@qwohter.com. These values are kept in
+# sync ONLY so that `supabase config push` does not overwrite the integration --
+# omitting the block entirely is worse, since the CLI would push defaults and
+# disable SMTP.
+#
+# Before any future `config push`, export the integration's Resend API key:
+#     export RESEND_SMTP_PASSWORD='re_...'
+# Pushing with it unset writes an empty password and silently breaks all auth email.
 [auth.email.smtp]
 enabled = true
 host = "smtp.resend.com"
 port = 465
 user = "resend"
 pass = "env(RESEND_SMTP_PASSWORD)"
-admin_email = "noreply@qwohter.com"
+admin_email = "auth@qwohter.com"
 sender_name = "Qwohter"
 
 # TOTP MFA is enabled on the project. Not declaring these pushes false and
