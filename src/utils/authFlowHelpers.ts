@@ -139,18 +139,21 @@ export const authFlowHelpers = {
     console.log('Email:', email);
 
     try {
-      // Check if user already exists in profiles (should work with fixed RLS policy)
-      // Note: This may fail if RLS policy doesn't allow anonymous access
-      // We'll handle this gracefully and let Supabase auth handle duplicate detection
+      // Check if the email is already registered.
+      //
+      // This calls a SECURITY DEFINER function that returns a boolean rather
+      // than reading profiles directly. The anon SELECT policy that used to
+      // make the direct read work was USING (true), i.e. a full-table read of
+      // every user's email, full_name and is_super_admin -- see migration
+      // 20260819000001_restrict_anon_profiles_access.sql.
+      //
+      // Still handled gracefully on failure: Supabase auth catches duplicates
+      // on its own, so a failed pre-check only costs message specificity.
       try {
-        const { data: existingProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, email, full_name')
-          .eq('email', email)
-          .maybeSingle(); // Returns null if no rows found (no error)
+        const { data: emailTaken, error: profileError } = await supabase
+          .rpc('email_is_registered', { p_email: email });
 
-        if (existingProfile) {
-          console.log('User already exists in profiles:', existingProfile);
+        if (emailTaken) {
           // User has a profile, which means they completed OTP verification
           // They should sign in instead
           return {
@@ -159,10 +162,10 @@ export const authFlowHelpers = {
           };
         }
 
-        // If profile check fails due to RLS or other errors, log but continue
+        // If the check fails, log but continue
         // Let Supabase auth handle duplicate detection instead
         if (profileError) {
-          console.warn('Profile check failed, continuing with signup:', profileError.message);
+          console.warn('Email check failed, continuing with signup:', profileError.message);
           // Continue with signup - Supabase will catch duplicates
         }
       } catch (profileCheckError) {
