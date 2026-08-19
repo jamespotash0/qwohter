@@ -21,8 +21,9 @@ const WIDTHS = {
  *
  * Replaces the fixed `px-[180px]` / `px-[10.4vw]` paddings that were scattered
  * across the landing sections — those needed ~1350px of viewport to fit and
- * clipped everything below that. The gutter now steps up with the viewport and
- * the content width is capped rather than fixed.
+ * clipped everything below that. The gutter now scales smoothly with the
+ * viewport and the content width is capped rather than fixed, so widening the
+ * window never narrows the content.
  */
 export const SectionContainer: React.FC<SectionContainerProps> = ({
   children,
@@ -33,8 +34,13 @@ export const SectionContainer: React.FC<SectionContainerProps> = ({
   <Tag
     className={cn(
       'w-full mx-auto',
-      'px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-24',
-      '[@media(min-width:1700px)]:px-32 [@media(min-width:1850px)]:px-[200px]',
+      // Fluid gutter. It must stop growing at roughly the widest cap above:
+      // box-sizing is border-box, so once a section hits its max-width every
+      // further pixel of padding is taken *out* of the content, and a stepped
+      // ladder that keeps climbing past the cap makes the layout narrower as
+      // the viewport gets wider. 5vw reaches the 4.5rem ceiling at ~1440px;
+      // past that mx-auto turns the extra viewport into margin instead.
+      'px-[clamp(1.25rem,5vw,4.5rem)]',
       WIDTHS[width],
       className
     )}
