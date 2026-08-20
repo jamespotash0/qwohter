@@ -3,7 +3,7 @@
 -- then purged of every quote-era object and of document_templates.
 --
 -- Contains: CREATE TABLE, constraints (PK/FK/UNIQUE/CHECK), indexes, defaults,
---           the pgcrypto/uuid-ossp extensions, and the 2 helper functions that
+--           the pgcrypto extension, and the 2 helper functions that
 --           CHECK constraints call.
 -- Excludes: triggers, RLS policies, grants, cron jobs, views, seed data -- all
 --           of which live in new-app-layer.sql.
@@ -13,7 +13,6 @@
 -- Tables: 60   Statements: 542
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE OR REPLACE FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") RETURNS boolean
     LANGUAGE "plpgsql" IMMUTABLE
     SET "search_path" TO 'public'
@@ -66,7 +65,7 @@ BEGIN
 END;
 $$;
 CREATE TABLE IF NOT EXISTS "public"."available_integrations" (
-    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "integration_type" "text" NOT NULL,
     "name" "text" NOT NULL,
     "description" "text",
@@ -292,7 +291,7 @@ CREATE TABLE IF NOT EXISTS "public"."google_oauth_tokens" (
 );
 ALTER TABLE "public"."google_oauth_tokens" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."integrations" (
-    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "organization_id" "uuid" NOT NULL,
     "integration_type" "text" NOT NULL,
     "integration_name" "text" NOT NULL,

@@ -1,4 +1,5 @@
 import React, { JSX, useEffect, useRef } from "react";
+import { SectionContainer } from "./SectionContainer";
 
 export const FeatureSection = (): JSX.Element => {
   const feature1Ref = useRef<HTMLDivElement>(null);
@@ -30,8 +31,11 @@ export const FeatureSection = (): JSX.Element => {
   }, []);
 
   return (
-    <section id="features" className="w-full flex justify-center bg-[#FFFEFA] px-4 md:px-5 lg:px-8 xl:px-[220px]">
-      <div className="flex flex-col items-start gap-12 md:gap-16 lg:gap-[60px] max-w-[1480px] w-full">
+    <section id="features" className="w-full bg-[#FFFEFA]">
+      <SectionContainer
+        width="full"
+        className="flex flex-col items-start gap-12 md:gap-16 lg:gap-[60px] max-w-[1480px]"
+      >
         {/* Feature 1: Design (Image Left on desktop, top on mobile) */}
         <div
           ref={feature1Ref}
@@ -39,7 +43,7 @@ export const FeatureSection = (): JSX.Element => {
         >
           <div className="relative w-full lg:flex-shrink-0 lg:w-[600px] flex justify-center items-start">
             {/* Background gradient card */}
-            <div className="relative w-[600px] h-[500px]">
+            <div className="relative w-full max-w-[600px] aspect-[6/5]">
               {/* Gradient background with rounded corners and overflow hidden */}
               <div className="absolute inset-0 rounded-[30px] overflow-hidden bg-white shadow-lg">
                 {/* Gradient blobs */}
@@ -75,9 +79,9 @@ export const FeatureSection = (): JSX.Element => {
                 </svg>
 
                 {/* Feature image positioned with offset - diagonal rounded corners (top-left, bottom-right) */}
-                <div className="absolute top-[80px] left-[80px] right-0 bottom-0">
+                <div className="absolute top-[16%] left-[13.3333%] right-0 bottom-0">
                   <img
-                    className="w-[600px] h-[441px] object-cover rounded-tl-[30px] rounded-br-[30px]"
+                    className="w-full h-[105%] object-cover rounded-tl-[30px] rounded-br-[30px]"
                     alt="Design beautiful proposals"
                     src="/images/landing/design_image.svg"
                   />
@@ -137,7 +141,7 @@ export const FeatureSection = (): JSX.Element => {
         >
           <div className="relative w-full lg:flex-shrink-0 lg:w-[600px] flex justify-center items-start">
             {/* Background gradient card */}
-            <div className="relative w-[600px] h-[500px] rounded-[30px] overflow-hidden bg-white shadow-lg">
+            <div className="relative w-full max-w-[600px] aspect-[6/5] rounded-[30px] overflow-hidden bg-white shadow-lg">
               {/* Gradient blobs */}
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 500" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
                 <g opacity="0.8">
@@ -171,9 +175,9 @@ export const FeatureSection = (): JSX.Element => {
               </svg>
 
               {/* Feature image positioned with offset - diagonal rounded corners (top-right, bottom-left) */}
-              <div className="absolute top-20 left-0 right-20 bottom-0">
+              <div className="absolute top-[16%] left-0 right-[13.3333%] bottom-0">
                 <img
-                  className="w-[520px] h-[441px] object-cover rounded-tr-[30px] rounded-bl-[30px]"
+                  className="w-full h-[105%] object-cover rounded-tr-[30px] rounded-bl-[30px]"
                   alt="Generate proposals in seconds"
                   src="/images/landing/generate_proposals_image.png"
                 />
@@ -232,7 +236,7 @@ export const FeatureSection = (): JSX.Element => {
         >
           <div className="relative w-full lg:flex-shrink-0 lg:w-[600px] flex justify-center items-start">
             {/* Background gradient card */}
-            <div className="relative w-[600px] h-[500px]">
+            <div className="relative w-full max-w-[600px] aspect-[6/5]">
               {/* Gradient background with rounded corners and overflow hidden */}
               <div className="absolute inset-0 rounded-[30px] overflow-hidden bg-white shadow-lg">
                 {/* Gradient blobs */}
@@ -268,9 +272,9 @@ export const FeatureSection = (): JSX.Element => {
                 </svg>
 
                 {/* Feature image positioned with offset - diagonal rounded corners (top-left, bottom-right) */}
-                <div className="absolute top-10 left-10 right-0 bottom-0">
+                <div className="absolute top-[8%] left-[6.6667%] right-0 bottom-0">
                   <img
-                    className="w-30 h-30 rounded-tl-[30px] rounded-br-[30px]"
+                    className="w-full h-auto rounded-tl-[30px] rounded-br-[30px]"
                     alt="Track performance"
                     src="/images/landing/tracking_image.svg"
                   />
@@ -278,9 +282,9 @@ export const FeatureSection = (): JSX.Element => {
               </div>
 
               {/* Analytics card overlay - positioned outside top-left corner */}
-              <div className="absolute top-[-30px] left-[-30px] z-10">
+              <div className="absolute top-[-6%] left-[-5%] w-[75.3333%] z-10">
                 <img
-                  className="w-30 h-30 rounded-[20px]"
+                  className="w-full h-auto rounded-[20px]"
                   alt="Analytics card"
                   src="/images/landing/analytics_image1.svg"
                 />
@@ -331,7 +335,7 @@ export const FeatureSection = (): JSX.Element => {
             </div>
           </div>
         </div>
-      </div>
+      </SectionContainer>
 
       {/* Animation styles */}
       <style>{`

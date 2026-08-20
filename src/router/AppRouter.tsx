@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { ScrollToTop } from "@/components/common/ScrollToTop";
+import { Canonical } from "@/components/common/Canonical";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { useUser, useAuthStatus } from "@/auth";
@@ -227,6 +228,9 @@ export const AppRouter = () => (
     <BrowserRouter>
       {/* Scroll to top on route change */}
       <ScrollToTop />
+
+      {/* Keep <link rel="canonical"> in sync with the route */}
+      <Canonical />
 
       {/* Ada - Global AI Assistant (DISABLED FOR PRODUCTION TESTING) */}
       {/* <AdaWithAuthCheck /> */}

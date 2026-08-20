@@ -11,6 +11,7 @@ npm run test              # Watch mode (development)
 npm run test:run          # Single run (CI)
 npm run test:coverage     # With coverage report
 npm run test:ui           # Visual UI dashboard
+npm run test:responsive   # Playwright responsive-layout guard (marketing site)
 ```
 
 ## Configuration

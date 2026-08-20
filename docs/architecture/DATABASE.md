@@ -5,6 +5,23 @@
 - **Database:** PostgreSQL via Supabase
 - **Multi-tenancy:** Organization-based isolation via RLS
 - **Flexible Data:** JSONB for form data and configurations
+- **Primary keys:** `uuid` defaulting to `gen_random_uuid()` (core PostgreSQL, no extension needed)
+
+### Extensions
+
+| Extension | Purpose |
+|-----------|---------|
+| `plpgsql` | Core procedural language |
+| `pgcrypto` | Required by Supabase Auth for password hashing |
+| `pg_cron` | Scheduled jobs (profile cleanup, signing reminders) |
+| `pg_net` | Async HTTP, backs Database Webhooks |
+| `pg_graphql` | Supabase-managed GraphQL endpoint (unused by the app) |
+| `pg_stat_statements` | Query performance statistics |
+| `supabase_vault` | Secret storage |
+
+Do **not** reintroduce `uuid-ossp`. It was retired in
+`20260819000000_consolidate_uuid_generation.sql` — `gen_random_uuid()` has been
+in core PostgreSQL since 13 and is what every table uses.
 
 ## Core Tables
 

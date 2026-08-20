@@ -35,7 +35,13 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: !isProd,
-      minify: isProd ? 'terser' : isStaging ? 'esbuild' : false,
+      // esbuild, not terser: terser 5.46.0 miscompiles this bundle. It emitted
+      // an entry chunk whose export list referenced ~200 bindings it had
+      // dropped from the chunk body, so the browser rejected the module with
+      // "Export 'AlertDialog' is not defined in module" and the app rendered a
+      // blank page. The corrupted output was 765kB against esbuild's 2.0MB --
+      // the difference was deleted code, not better minification.
+      minify: isProd || isStaging ? 'esbuild' : false,
       rollupOptions: {
         output: {
           chunkFileNames: isProd 
