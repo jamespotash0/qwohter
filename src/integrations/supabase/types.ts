@@ -1072,7 +1072,6 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
       };
   
       // ============================================================================
@@ -1113,7 +1112,6 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
       };
 
       
@@ -1229,11 +1227,297 @@ export interface Database {
           created_by?: string | null;
         };
       };
+
+      /**
+       * Companies - customer accounts you sell to (bill-to / ship-to).
+       * Distinct from contacts, which model people. A purchase order or invoice
+       * is addressed to a company, not a person.
+       */
+      companies: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          legal_name: string | null;
+          company_type: 'Customer' | 'Prospect' | 'Partner' | 'Other';
+          billing_address_line1: string | null;
+          billing_address_line2: string | null;
+          billing_city: string | null;
+          billing_state: string | null;
+          billing_postal_code: string | null;
+          billing_country: string | null;
+          shipping_address_line1: string | null;
+          shipping_address_line2: string | null;
+          shipping_city: string | null;
+          shipping_state: string | null;
+          shipping_postal_code: string | null;
+          shipping_country: string | null;
+          phone: string | null;
+          website: string | null;
+          payment_terms: string | null;
+          tax_exempt: boolean;
+          tax_exempt_certificate: string | null;
+          default_tax_rate: number | null;
+          primary_contact_id: string | null;
+          external_accounting_id: string | null;
+          notes: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          legal_name?: string | null;
+          company_type?: 'Customer' | 'Prospect' | 'Partner' | 'Other';
+          billing_address_line1?: string | null;
+          billing_address_line2?: string | null;
+          billing_city?: string | null;
+          billing_state?: string | null;
+          billing_postal_code?: string | null;
+          billing_country?: string | null;
+          shipping_address_line1?: string | null;
+          shipping_address_line2?: string | null;
+          shipping_city?: string | null;
+          shipping_state?: string | null;
+          shipping_postal_code?: string | null;
+          shipping_country?: string | null;
+          phone?: string | null;
+          website?: string | null;
+          payment_terms?: string | null;
+          tax_exempt?: boolean;
+          tax_exempt_certificate?: string | null;
+          default_tax_rate?: number | null;
+          primary_contact_id?: string | null;
+          external_accounting_id?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          legal_name?: string | null;
+          company_type?: 'Customer' | 'Prospect' | 'Partner' | 'Other';
+          billing_address_line1?: string | null;
+          billing_address_line2?: string | null;
+          billing_city?: string | null;
+          billing_state?: string | null;
+          billing_postal_code?: string | null;
+          billing_country?: string | null;
+          shipping_address_line1?: string | null;
+          shipping_address_line2?: string | null;
+          shipping_city?: string | null;
+          shipping_state?: string | null;
+          shipping_postal_code?: string | null;
+          shipping_country?: string | null;
+          phone?: string | null;
+          website?: string | null;
+          payment_terms?: string | null;
+          tax_exempt?: boolean;
+          tax_exempt_certificate?: string | null;
+          default_tax_rate?: number | null;
+          primary_contact_id?: string | null;
+          external_accounting_id?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Vendors - manufacturers and suppliers you buy from. Purchase orders are
+       * addressed to a vendor; optionally linked to product_manufacturers so the
+       * catalog hierarchy and the purchasing relationship stay in step.
+       */
+      vendors: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          vendor_type: 'Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other';
+          manufacturer_id: string | null;
+          account_number: string | null;
+          order_method: 'Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone';
+          order_email: string | null;
+          acknowledgment_email: string | null;
+          portal_url: string | null;
+          remit_to_name: string | null;
+          remit_to_address_line1: string | null;
+          remit_to_address_line2: string | null;
+          remit_to_city: string | null;
+          remit_to_state: string | null;
+          remit_to_postal_code: string | null;
+          remit_to_country: string | null;
+          phone: string | null;
+          payment_terms: string | null;
+          freight_terms:
+            | 'FOB Origin'
+            | 'FOB Destination'
+            | 'Prepaid'
+            | 'Prepaid and Add'
+            | 'Collect'
+            | null;
+          standard_lead_time_days: number | null;
+          rep_name: string | null;
+          rep_email: string | null;
+          rep_phone: string | null;
+          external_accounting_id: string | null;
+          notes: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          vendor_type?: 'Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other';
+          manufacturer_id?: string | null;
+          account_number?: string | null;
+          order_method?: 'Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone';
+          order_email?: string | null;
+          acknowledgment_email?: string | null;
+          portal_url?: string | null;
+          remit_to_name?: string | null;
+          remit_to_address_line1?: string | null;
+          remit_to_address_line2?: string | null;
+          remit_to_city?: string | null;
+          remit_to_state?: string | null;
+          remit_to_postal_code?: string | null;
+          remit_to_country?: string | null;
+          phone?: string | null;
+          payment_terms?: string | null;
+          freight_terms?:
+            | 'FOB Origin'
+            | 'FOB Destination'
+            | 'Prepaid'
+            | 'Prepaid and Add'
+            | 'Collect'
+            | null;
+          standard_lead_time_days?: number | null;
+          rep_name?: string | null;
+          rep_email?: string | null;
+          rep_phone?: string | null;
+          external_accounting_id?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          vendor_type?: 'Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other';
+          manufacturer_id?: string | null;
+          account_number?: string | null;
+          order_method?: 'Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone';
+          order_email?: string | null;
+          acknowledgment_email?: string | null;
+          portal_url?: string | null;
+          remit_to_name?: string | null;
+          remit_to_address_line1?: string | null;
+          remit_to_address_line2?: string | null;
+          remit_to_city?: string | null;
+          remit_to_state?: string | null;
+          remit_to_postal_code?: string | null;
+          remit_to_country?: string | null;
+          phone?: string | null;
+          payment_terms?: string | null;
+          freight_terms?:
+            | 'FOB Origin'
+            | 'FOB Destination'
+            | 'Prepaid'
+            | 'Prepaid and Add'
+            | 'Collect'
+            | null;
+          standard_lead_time_days?: number | null;
+          rep_name?: string | null;
+          rep_email?: string | null;
+          rep_phone?: string | null;
+          external_accounting_id?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Vendor discounts - discount off manufacturer list, by series and
+       * contract vehicle. NULL series_id or contract_vehicle means "applies to
+       * anything"; rows resolve most-specific-first. Margin data: RLS gates this
+       * table on can_view_cost(), not plain membership.
+       */
+      vendor_discounts: {
+        Row: {
+          id: string;
+          organization_id: string;
+          vendor_id: string;
+          series_id: string | null;
+          contract_vehicle: string | null;
+          discount_percent: number;
+          effective_from: string | null;
+          effective_to: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          vendor_id: string;
+          series_id?: string | null;
+          contract_vehicle?: string | null;
+          discount_percent: number;
+          effective_from?: string | null;
+          effective_to?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          vendor_id?: string;
+          series_id?: string | null;
+          contract_vehicle?: string | null;
+          discount_percent?: number;
+          effective_from?: string | null;
+          effective_to?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      /**
+       * Whether a user may see cost and margin figures for an organization.
+       * Single source of truth for buy-side visibility.
+       */
+      can_view_cost: {
+        Args: {
+          check_user_id: string;
+          check_org_id: string;
+        };
+        Returns: boolean;
+      };
       // ============================================================================
       // Auth Rate Limiting Functions (Security)
       // ============================================================================
