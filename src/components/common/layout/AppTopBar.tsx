@@ -87,14 +87,14 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
         rail, and the same x as the nav icons below.
       */}
       <div
-        className={`flex items-center h-full flex-shrink-0 overflow-hidden px-[14px] duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`flex items-center h-full flex-shrink-0 overflow-hidden px-4 duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isCollapsed ? 'w-[--sidebar-width-icon]' : 'w-[--sidebar-width]'
         }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <div
-          className="relative h-11 w-11 flex-shrink-0"
+          className="relative h-10 w-10 flex-shrink-0"
           onMouseEnter={() => setIsLogoHovered(true)}
           onMouseLeave={() => setIsLogoHovered(false)}
         >
@@ -103,7 +103,7 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
               isLogoHovered ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            <QwohterLogo size="md" />
+            <QwohterLogo size="sm" />
           </div>
           <div
             className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${

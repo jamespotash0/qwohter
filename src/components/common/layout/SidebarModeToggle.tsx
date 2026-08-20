@@ -40,11 +40,11 @@ export function SidebarModeToggle({ className = "" }: { className?: string }) {
           type="button"
           onClick={cycleMode}
           aria-label={`${MODE_LABELS[mode]}. ${NEXT_MODE_LABELS[mode]}`}
-          className={`h-11 w-11 flex items-center justify-center text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-200 focus:outline-none focus-visible:outline-none ${className}`}
+          className={`h-10 w-10 flex items-center justify-center text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-200 focus:outline-none focus-visible:outline-none ${className}`}
           style={{ borderRadius: "var(--sidebar-nav-border-radius)" }}
         >
           <Icon
-            size={22}
+            size={20}
             weight={mode === "expanded" ? "fill" : "regular"}
             className="text-[var(--sidebar-icon-default)] hover:text-[var(--sidebar-icon-hover)] transition-all duration-200"
           />
