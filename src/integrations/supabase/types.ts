@@ -806,61 +806,6 @@ export type Database = {
           },
         ]
       }
-      config_value_sets: {
-        Row: {
-          category: string | null
-          created_at: string | null
-          id: string
-          manufacturer_id: string | null
-          name: string
-          slug: string
-          updated_at: string | null
-          values: Json
-        }
-        Insert: {
-          category?: string | null
-          created_at?: string | null
-          id?: string
-          manufacturer_id?: string | null
-          name: string
-          slug: string
-          updated_at?: string | null
-          values?: Json
-        }
-        Update: {
-          category?: string | null
-          created_at?: string | null
-          id?: string
-          manufacturer_id?: string | null
-          name?: string
-          slug?: string
-          updated_at?: string | null
-          values?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "config_value_sets_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "product_manufacturers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "config_value_sets_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_manufacturers_by_domain"
-            referencedColumns: ["manufacturer_id"]
-          },
-          {
-            foreignKeyName: "config_value_sets_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["manufacturer_id"]
-          },
-        ]
-      }
       contacts: {
         Row: {
           addresses: string[] | null
@@ -1261,63 +1206,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      manufacturer_product_domains: {
-        Row: {
-          created_at: string | null
-          domain_id: string
-          id: string
-          manufacturer_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          domain_id: string
-          id?: string
-          manufacturer_id: string
-        }
-        Update: {
-          created_at?: string | null
-          domain_id?: string
-          id?: string
-          manufacturer_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "manufacturer_product_domains_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "product_domain"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "manufacturer_product_domains_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "v_manufacturers_by_domain"
-            referencedColumns: ["domain_id"]
-          },
-          {
-            foreignKeyName: "manufacturer_product_domains_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "product_manufacturers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "manufacturer_product_domains_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_manufacturers_by_domain"
-            referencedColumns: ["manufacturer_id"]
-          },
-          {
-            foreignKeyName: "manufacturer_product_domains_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["manufacturer_id"]
           },
         ]
       }
@@ -2006,245 +1894,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_domain: {
-        Row: {
-          code: string
-          created_at: string | null
-          id: string
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          code: string
-          created_at?: string | null
-          id?: string
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          code?: string
-          created_at?: string | null
-          id?: string
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      product_line: {
-        Row: {
-          code: string
-          created_at: string | null
-          domain_id: string | null
-          id: string
-          manufacturer_id: string | null
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          code: string
-          created_at?: string | null
-          domain_id?: string | null
-          id?: string
-          manufacturer_id?: string | null
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          code?: string
-          created_at?: string | null
-          domain_id?: string | null
-          id?: string
-          manufacturer_id?: string | null
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_category_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "product_domain"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_category_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "v_manufacturers_by_domain"
-            referencedColumns: ["domain_id"]
-          },
-          {
-            foreignKeyName: "product_line_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "product_manufacturers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_line_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_manufacturers_by_domain"
-            referencedColumns: ["manufacturer_id"]
-          },
-          {
-            foreignKeyName: "product_line_manufacturer_id_fkey"
-            columns: ["manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["manufacturer_id"]
-          },
-        ]
-      }
-      product_manufacturers: {
-        Row: {
-          code: string
-          created_at: string | null
-          id: string
-          logo_url: string | null
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          code: string
-          created_at?: string | null
-          id?: string
-          logo_url?: string | null
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          code?: string
-          created_at?: string | null
-          id?: string
-          logo_url?: string | null
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      product_models: {
-        Row: {
-          config_schema: Json | null
-          created_at: string | null
-          id: string
-          name: string
-          product_line_id: string
-          product_manufacturer_id: string | null
-          product_series_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          config_schema?: Json | null
-          created_at?: string | null
-          id?: string
-          name: string
-          product_line_id: string
-          product_manufacturer_id?: string | null
-          product_series_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          config_schema?: Json | null
-          created_at?: string | null
-          id?: string
-          name?: string
-          product_line_id?: string
-          product_manufacturer_id?: string | null
-          product_series_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "models_product_category_id_fkey"
-            columns: ["product_line_id"]
-            isOneToOne: false
-            referencedRelation: "product_line"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "models_product_category_id_fkey"
-            columns: ["product_line_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["product_line_id"]
-          },
-          {
-            foreignKeyName: "models_product_series_id_fkey"
-            columns: ["product_series_id"]
-            isOneToOne: false
-            referencedRelation: "product_series"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "models_product_series_id_fkey"
-            columns: ["product_series_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["series_id"]
-          },
-          {
-            foreignKeyName: "product_models_product_manufacturer_id_fkey"
-            columns: ["product_manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "product_manufacturers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_models_product_manufacturer_id_fkey"
-            columns: ["product_manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_manufacturers_by_domain"
-            referencedColumns: ["manufacturer_id"]
-          },
-          {
-            foreignKeyName: "product_models_product_manufacturer_id_fkey"
-            columns: ["product_manufacturer_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["manufacturer_id"]
-          },
-        ]
-      }
-      product_series: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          product_line_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          product_line_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          product_line_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_series_product_line_id_fkey"
-            columns: ["product_line_id"]
-            isOneToOne: false
-            referencedRelation: "product_line"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_series_product_line_id_fkey"
-            columns: ["product_line_id"]
-            isOneToOne: false
-            referencedRelation: "v_models_by_manufacturer"
-            referencedColumns: ["product_line_id"]
           },
         ]
       }
@@ -4614,29 +4263,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v_manufacturers_by_domain: {
-        Row: {
-          domain_id: string | null
-          domain_name: string | null
-          manufacturer_id: string | null
-          manufacturer_name: string | null
-        }
-        Relationships: []
-      }
-      v_models_by_manufacturer: {
-        Row: {
-          manufacturer_id: string | null
-          manufacturer_name: string | null
-          model_id: string | null
-          model_name: string | null
-          model_path: string | null
-          product_line_id: string | null
-          product_line_name: string | null
-          series_id: string | null
-          series_name: string | null
-        }
-        Relationships: []
-      }
     }
     Functions: {
       approve_member: { Args: { member_id: string }; Returns: boolean }
@@ -4815,7 +4441,6 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      get_model_configuration: { Args: { p_model_id: string }; Returns: Json }
       get_org_member_ids: {
         Args: { target_user_id: string }
         Returns: {
@@ -4869,7 +4494,6 @@ export type Database = {
       }
       is_owner_or_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
-      is_valid_config_schema: { Args: { schema: Json }; Returns: boolean }
       log_invite_attempt: {
         Args: {
           p_error_message?: string
