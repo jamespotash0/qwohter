@@ -183,6 +183,9 @@ const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
 
+// Back office: purchase order acknowledgment variance
+const VarianceQueue = lazy(() => import("@/pages/VarianceQueue"));
+
 // Calendar page
 const Calendar = lazy(() => import("@/pages/Calendar"));
 
@@ -306,6 +309,9 @@ export const AppRouter = () => (
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />
+
+          {/* Back office: acknowledgment variance queue */}
+          <Route path="/acknowledgments" element={<VarianceQueue />} />
 
           {/* Calendar */}
           <Route path="/calendar" element={<Calendar />} />

@@ -1,7 +1,7 @@
 import { Clock, Check,
   // ChevronDown, LogOut} 
 } from "lucide-react";
-import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Buildings, AddressBook, CheckSquare, CaretDown, Stack, CalendarBlankIcon } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Buildings, AddressBook, CheckSquare, CaretDown, Stack, CalendarBlankIcon, ClipboardText } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -77,6 +77,14 @@ const menuItems: MenuItem[] = [
     icon: AddressBook,
     path: "/contacts",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
+  },
+  {
+    // Purchase order lines a vendor has not answered, or answered at a
+    // different price or date than was ordered.
+    title: "Acknowledgments",
+    icon: ClipboardText,
+    path: "/acknowledgments",
+    roles: ['Owner', 'Admin', 'Member'],
   },
   {
     title: "Calendar",

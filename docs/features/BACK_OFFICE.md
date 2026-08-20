@@ -132,6 +132,18 @@ can say exactly which vendor did not get an order.
 
 ### The variance queue
 
+**Screen:** `/acknowledgments` in the sidebar. Summary tiles first — outstanding
+acknowledgments, lines that changed, net cost exposure, worst schedule slip —
+then the rows, ranked unanswered-first and then by size of the difference.
+Filtered to what needs review by default; matched lines are the healthy majority
+and showing them buries the exceptions.
+
+State is encoded in form as well as number: a severity stripe down the left edge
+and a status pill, so the rows that matter are findable without reading every
+figure. Overcharges are red, credits green — a vendor honouring a lower price is
+good news and should not be painted as a problem.
+
+
 `po_lines` carries both the price ordered at and the price acknowledged. The
 acknowledged columns stay `NULL` until an acknowledgment arrives, which is what
 separates *not yet acknowledged* from *acknowledged unchanged*.
@@ -373,6 +385,7 @@ Two behavior changes came with the consolidation:
 | Variance logic | `src/lib/pricing/variance.ts` |
 | Fulfillment routing | `src/lib/pricing/fulfillment.ts` |
 | Work orders | `src/services/workOrdersService.ts` |
+| Variance queue UI | `src/pages/VarianceQueue.tsx`, `src/components/features/variance/` |
 | Discount resolution | `src/lib/pricing/discounts.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
