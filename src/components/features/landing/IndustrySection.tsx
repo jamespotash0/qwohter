@@ -11,7 +11,7 @@ const industriesData = [
   { title: 'HVAC Systems', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-6.png' }
 ];
 
-export const IndustrySection = (): JSX.Element => {
+export const IndustrySection = (): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeButton, setActiveButton] = useState<'left' | 'right'>('right');
 

@@ -36,7 +36,7 @@ const metricsData = [
   },
 ];
 
-export const PlatformStatsSection = (): JSX.Element => {
+export const PlatformStatsSection = (): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

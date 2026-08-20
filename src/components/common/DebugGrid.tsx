@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export const DebugGrid = (): JSX.Element | null => {
+export const DebugGrid = (): React.JSX.Element | null => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

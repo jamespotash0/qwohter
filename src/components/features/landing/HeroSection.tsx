@@ -8,7 +8,7 @@ interface HeroSectionProps {
   onRipple: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
-export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionProps): JSX.Element => {
+export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionProps): React.JSX.Element => {
   return (
     <section className="w-full bg-[#FFFEFA] px-3 sm:px-[20px] pt-3 sm:pt-[20px] pb-3 sm:pb-[20px]">
       <LandingNav activeSection={activeSection} onGetDemo={onGetDemo} onRipple={onRipple} />

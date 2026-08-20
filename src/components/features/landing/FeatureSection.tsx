@@ -1,7 +1,7 @@
 import React, { JSX, useEffect, useRef } from "react";
 import { SectionContainer } from "./SectionContainer";
 
-export const FeatureSection = (): JSX.Element => {
+export const FeatureSection = (): React.JSX.Element => {
   const feature1Ref = useRef<HTMLDivElement>(null);
   const feature2Ref = useRef<HTMLDivElement>(null);
   const feature3Ref = useRef<HTMLDivElement>(null);

@@ -5,9 +5,9 @@ Foundation for dealer back-office operations — everything that happens between
 come from the tools dealers already use (CET, Giza, 2020, ProjectMatrix); this
 system owns the order lifecycle those tools do not.
 
-> **Status:** Phase 0 (foundations) implemented. Order lines, purchase orders,
-> acknowledgments, receiving, and work orders are not built yet — the tables and
-> types below are what they will hang off.
+> **Status:** Phase 0 (foundations) and the order spine implemented. Purchase
+> orders, acknowledgments, receiving, and work orders are not built yet — the
+> tables and types below are what they will hang off.
 
 ---
 
@@ -26,6 +26,49 @@ spec tool ──SIF──► quote ──► project ──► sales order ─�
 
 The right-hand end (`payment_jobs` → `billing_phases` → invoice) already exists;
 see [BILLING.md](BILLING.md). The middle is what Phase 1 builds.
+
+---
+
+## The order spine
+
+`project → sales_order → order_lines`. A project may have several sales orders;
+change orders and added scope get their own, mirroring `payment_jobs`.
+
+**Ship-to is snapshotted** onto the order, not read through to `companies`. A
+customer moving office must not silently rewrite where last year's order went.
+
+**Fulfillment is event-sourced.** `order_line_events` is append-only and signed
+— a return or correction is a negative event, not an edit. Quantities are
+derived through the `order_line_fulfillment` view (`security_invoker`), which is
+the only correct source. There is deliberately no `qty_received` column:
+partial shipments, damage replacements, and returns corrupt stored counters
+inside the first real job.
+
+**Creation is atomic.** `create_sales_order_with_lines(p_order, p_lines)` is
+`SECURITY INVOKER`, so RLS applies. supabase-js has no transaction and a real
+furniture order is hundreds to thousands of lines; a partial insert would
+produce an order that looks complete and silently under-orders.
+
+Pricing is computed in TypeScript and passed in already resolved. Recomputing it
+in SQL would create a second source of truth that could disagree with the quote
+the customer accepted.
+
+### Materialization
+
+`materializeOrderLines()` flattens a proposal's pricing sections into numbered
+order lines. Line numbers run across the whole order, not per section, because a
+purchase order references "line 47 of the order". Section names become the
+`area`, since that is what dealers use them for.
+
+Cost is **resolved**, not copied — in `list_down` mode the stored `unitCost` is a
+cache that may lag list price and discount.
+
+Lines whose manufacturer has no vendor account get `vendor_id = null`. They are
+still created — that is real scope the customer bought — but cannot go on a
+purchase order until a vendor is assigned. Call `previewOrderFromProposal()`
+first and show `summarizeMaterialization()`: a dealer should see *"3
+manufacturers have no vendor account, 47 lines cannot be ordered"* before the
+order exists, not after. `assignVendorToLines()` is the fix.
 
 ---
 
@@ -175,14 +218,16 @@ Two behavior changes came with the consolidation:
 | Concern | Files |
 |---------|-------|
 | Pricing math | `src/lib/pricing/calculate.ts` |
+| Materialization | `src/lib/pricing/materialize.ts` |
+| Sales orders | `src/services/salesOrdersService.ts` |
 | Discount resolution | `src/lib/pricing/discounts.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
 | Vendors & discounts | `src/services/vendorsService.ts`, `src/hooks/queries/useVendors.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql` |
-| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts` |
+| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql` |
+| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts` |
 
 ---
 

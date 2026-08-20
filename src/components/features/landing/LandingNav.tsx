@@ -35,7 +35,7 @@ interface LandingNavProps {
  * Replaces the previous `grid-cols-[auto_500px_auto]` + `px-[180px]` header,
  * which required ~1350px of viewport and pushed the CTAs off-screen below that.
  */
-export const LandingNav = ({ activeSection, onGetDemo, onRipple }: LandingNavProps): JSX.Element => {
+export const LandingNav = ({ activeSection, onGetDemo, onRipple }: LandingNavProps): React.JSX.Element => {
   const navigate = useNavigate();
   const [indicatorStyle, setIndicatorStyle] = React.useState({ left: 0, width: 0 });
   const [isScrolled, setIsScrolled] = React.useState(false);

@@ -49,7 +49,7 @@ const testimonials = [
   },
 ];
 
-export const TestimonialsSection = (): JSX.Element => {
+export const TestimonialsSection = (): React.JSX.Element => {
   const navigate = useNavigate();
 
   return (

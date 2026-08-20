@@ -25,6 +25,17 @@ export {
 } from './calculate';
 
 export {
+  materializeOrderLines,
+  summarizeMaterialization,
+} from './materialize';
+
+export type {
+  MaterializedOrderLine,
+  MaterializeOptions,
+  MaterializeSummary,
+} from './materialize';
+
+export {
   resolveDiscount,
   resolveDiscountPercent,
   isAgreementEffective,

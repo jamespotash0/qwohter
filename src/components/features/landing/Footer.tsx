@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
-export const Footer = (): JSX.Element => {
+export const Footer = (): React.JSX.Element => {
   const navigate = useNavigate();
 
   return (

@@ -24,7 +24,7 @@ const bottomFeatures = [
   { icon: "close", text: "Cancel anytime" },
 ];
 
-export const PricingPlanSection = (): JSX.Element => {
+export const PricingPlanSection = (): React.JSX.Element => {
   const navigate = useNavigate();
 
   return (
