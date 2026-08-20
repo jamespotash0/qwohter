@@ -7,11 +7,10 @@ export type SidebarState = "expanded" | "collapsed";
 
 /**
  * Sidebar display mode (user preference, persisted):
- * - "expanded"  → stays open
- * - "hover"     → collapsed, expands while the pointer is over it
- * - "collapsed" → stays collapsed
+ * - "expanded" → stays open
+ * - "hover"    → collapsed, expands while the pointer is over it
  */
-export type SidebarMode = "expanded" | "hover" | "collapsed";
+export type SidebarMode = "expanded" | "hover";
 
 export type SidebarContext = {
   state: SidebarState;
@@ -24,7 +23,7 @@ export type SidebarContext = {
   /** Persisted display mode */
   mode: SidebarMode;
   setMode: (mode: SidebarMode) => void;
-  /** Cycle expanded → hover → collapsed → expanded */
+  /** Toggle between expanded and hover */
   cycleMode: () => void;
   /** Whether the pointer is currently over the sidebar (drives "hover" mode) */
   isHovered: boolean;

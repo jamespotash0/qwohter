@@ -5,19 +5,23 @@
 The authenticated app is framed by `MainLayout`, which composes three pieces:
 
 ```
-┌──────────┬────────────────────────────────────┐
-│          │  AppTopBar        [🔔] [avatar ▾]  │
-│ AppSide  ├────────────────────────────────────┤
-│   bar    │ ╭─ content panel (rounded top-left)│
-│          │ │  <page>                          │
-└──────────┴─┴──────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│ [logo]  [⇤] │           AppTopBar  [🔔][avatar] │
+├─────────────┼──────────────────────────────────┤
+│  AppSidebar │ ╭─ content panel (rounded top-left)
+│   (nav)     │ │  <page>                        │
+└─────────────┴─┴────────────────────────────────┘
 ```
+
+The top bar spans the **full width**, above both the sidebar and the content.
+Its left cluster tracks the sidebar's width on the same easing, so the logo and
+mode toggle sit over the sidebar column without being part of the sidebar.
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
 | `MainLayout` | `MainLayout.tsx` | Auth/membership gating, version polling, paywall, frame |
 | `AppSidebar` | `AppSidebar.tsx` | Primary navigation |
-| `AppTopBar` | `AppTopBar.tsx` | Notification bell + profile menu |
+| `AppTopBar` | `AppTopBar.tsx` | Logo + mode toggle (left), bell + profile menu (right) |
 | `SidebarModeToggle` | `SidebarModeToggle.tsx` | Cycles the sidebar display mode |
 
 The content panel is rounded on the **top-left corner only** so it meets the
@@ -25,23 +29,30 @@ sidebar with a soft edge and runs flush against the window elsewhere.
 
 ## Sidebar display modes
 
-The sidebar has three persisted modes, cycled by `SidebarModeToggle` in the
-sidebar header. State lives in `SidebarProvider`
+The sidebar has two persisted modes, toggled by `SidebarModeToggle` in the top
+bar. State lives in `SidebarProvider`
 (`src/components/ui/sidebar/SidebarProvider.tsx`).
 
 | Mode | Behaviour | Icon |
 |------|-----------|------|
-| `expanded` | Pinned open | `PushPinSimple` (filled) |
+| `expanded` | Stays open | `PushPinSimple` (filled) |
 | `hover` | Collapsed, expands while the pointer is over it | `SidebarSimple` |
-| `collapsed` | Pinned collapsed | `ArrowLineLeft` |
+
+**The hover region spans two sibling elements** — the top bar's left cluster and
+the sidebar itself. Moving between them fires a leave before the matching enter,
+so `setIsHovered(false)` is deferred by 120ms (cancelled by any enter) to stop
+the sidebar flickering shut mid-handoff. This is also what makes the toggle
+reachable in hover mode: pointing at the top-left corner opens the sidebar,
+which widens the cluster and reveals the toggle.
 
 - Persisted in the `sidebar:mode` cookie (7 days). The legacy `sidebar:state`
   boolean cookie is still written for back-compat and is read as a fallback on
-  first load.
+  first load. A stored `"collapsed"` (a third mode that has since been removed)
+  resolves to `"hover"`.
 - `open` is derived: `mode === 'expanded' || (mode === 'hover' && isHovered)`.
   `AppSidebar` feeds `isHovered` from its own mouse enter/leave handlers.
 - `setOpen`/`toggleSidebar` (including <kbd>Cmd/Ctrl</kbd>+<kbd>B</kbd>) still
-  work — they resolve to `expanded` or `collapsed`.
+  work — they resolve to `expanded` or `hover`.
 
 ## Navigation
 
@@ -66,15 +77,16 @@ Two upstream gotchas the sidebar overrides:
 
 - `sidebarMenuButtonVariants` applies `!size-8 !p-2` when collapsed, snapping
   rows to a different shape mid-slide. `AppSidebar` overrides both.
-- The layout spacer was `calc(var(--sidebar-width) - 1rem)` when expanded but
-  exactly `--sidebar-width-icon` when collapsed, so the content edge and the
-  sidebar edge slid at different offsets. Both now use the full width.
+- The desktop sidebar used to be a `fixed` panel paired with an invisible
+  spacer, whose widths disagreed by 1rem when expanded. It is now a plain flex
+  child in normal flow — one element, one width — which is also what lets a
+  full-width top bar sit above it.
 
 Panel width, labels and header share one easing curve
 (`cubic-bezier(0.32, 0.72, 0, 1)`, 300ms) so the whole thing reads as a single
-motion. The header is fixed-height with fixed padding and the logo sits in a
-40px slot that never unmounts — it previously remounted into a different
-subtree on each toggle, which made it appear to drop.
+motion. The logo sits in a fixed 40px slot in the top bar — it previously lived
+in the sidebar header and remounted into a different subtree on each toggle,
+which made it appear to drop.
 
 **Settings is not a sidebar item** — it is reached from the profile menu, and
 has its own inner sidebar (see [SETTINGS.md](../features/SETTINGS.md)).
@@ -83,6 +95,7 @@ has its own inner sidebar (see [SETTINGS.md](../features/SETTINGS.md)).
 
 - **Notification bell** — unread count badge, dropdown of recent notifications,
   "View all" → `/notifications`. See [NOTIFICATIONS.md](../features/NOTIFICATIONS.md).
+- **Logo + mode toggle** — left cluster, width-tracked to the sidebar.
 - **Profile menu** — avatar (no caret). The header row shows the display name
   with a role/department tag beside it and the email below. Owners and Admins
   also see trial or grace-period status here, sourced from

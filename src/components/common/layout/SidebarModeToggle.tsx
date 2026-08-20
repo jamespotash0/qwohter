@@ -1,29 +1,26 @@
-import { SidebarSimple, PushPinSimple, ArrowLineLeft } from "@phosphor-icons/react";
+import { SidebarSimple, PushPinSimple } from "@phosphor-icons/react";
 import { useSidebar, type SidebarMode } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const MODE_LABELS: Record<SidebarMode, string> = {
-  expanded: "Sidebar pinned open",
+  expanded: "Sidebar stays open",
   hover: "Sidebar opens on hover",
-  collapsed: "Sidebar collapsed",
 };
 
 const NEXT_MODE_LABELS: Record<SidebarMode, string> = {
-  expanded: "Click for hover mode",
-  hover: "Click to keep collapsed",
-  collapsed: "Click to pin open",
+  expanded: "Click to open on hover instead",
+  hover: "Click to keep it open",
 };
 
 /** A distinct glyph per mode so the current state is readable at a glance */
 const MODE_ICONS: Record<SidebarMode, typeof SidebarSimple> = {
-  expanded: PushPinSimple,   // pinned open
-  hover: SidebarSimple,      // panel slides out on hover
-  collapsed: ArrowLineLeft,  // pushed shut
+  expanded: PushPinSimple, // pinned open
+  hover: SidebarSimple,    // panel slides out on hover
 };
 
 /**
- * Cycles the sidebar between its three display modes:
- * pinned open → opens on hover → pinned collapsed.
+ * Toggles the sidebar between its two display modes: stays open, or collapsed
+ * until hovered.
  *
  * Sized, weighted and coloured like the nav icons so it reads as part of the
  * sidebar rather than a foreign control.
@@ -49,7 +46,7 @@ export function SidebarModeToggle({ className = "" }: { className?: string }) {
           />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">
+      <TooltipContent side="bottom">
         <p className="text-xs font-medium">{MODE_LABELS[mode]}</p>
         <p className="text-xs opacity-70">{NEXT_MODE_LABELS[mode]}</p>
       </TooltipContent>

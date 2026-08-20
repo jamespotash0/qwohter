@@ -325,15 +325,17 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   );
 
   return (
-      <div className="h-screen flex w-full overflow-hidden bg-[var(--sidebar-bg)]">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Top bar: organization, notifications, profile */}
-          <AppTopBar onLogout={handleLogout} />
+      <div className="h-screen flex flex-col w-full overflow-hidden bg-[var(--sidebar-bg)]">
+        {/* Top bar spans the full width: logo and sidebar toggle on the left,
+            notifications and profile on the right */}
+        <AppTopBar onLogout={handleLogout} />
+
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          <AppSidebar />
 
           {/* Main Content - only the top-left corner is rounded, so the panel
               meets the sidebar with a soft edge and runs flush elsewhere */}
-          <main className="flex-1 overflow-hidden rounded-tl-lg bg-[var(--content-bg)]">
+          <main className="flex-1 min-w-0 overflow-hidden rounded-tl-lg bg-[var(--content-bg)]">
             {/* Standard layout with padding and max-width */}
             <div className="h-full pt-6 pb-8 space-y-4 overflow-auto px-6 lg:px-10">
               <div className="max-w-[1350px] mx-auto w-full">

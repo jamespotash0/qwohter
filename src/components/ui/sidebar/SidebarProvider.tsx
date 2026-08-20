@@ -23,7 +23,15 @@ export interface SidebarProviderProps extends React.ComponentProps<"div"> {
   onOpenChange?: (open: boolean) => void;
 }
 
-const MODE_CYCLE: SidebarMode[] = ["expanded", "hover", "collapsed"];
+const MODE_CYCLE: SidebarMode[] = ["expanded", "hover"];
+
+/**
+ * Grace period before an un-hover collapses the sidebar. The hover region spans
+ * two sibling elements (the top bar cluster and the sidebar), so moving between
+ * them fires a leave before the matching enter — without this the sidebar
+ * flickers shut in between.
+ */
+const HOVER_LEAVE_DELAY_MS = 120;
 
 function readCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
@@ -66,15 +74,36 @@ export const SidebarProvider = React.forwardRef<HTMLDivElement, SidebarProviderP
   ) => {
     const isMobile = useIsMobile();
     const [openMobile, setOpenMobile] = React.useState(false);
-    const [isHovered, setIsHovered] = React.useState(false);
+    const [isHovered, _setIsHovered] = React.useState(false);
+    const hoverLeaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Enter wins immediately; leave is deferred so a hand-off between the two
+    // hover surfaces does not read as a leave.
+    const setIsHovered = React.useCallback((hovered: boolean) => {
+      if (hoverLeaveTimer.current) {
+        clearTimeout(hoverLeaveTimer.current);
+        hoverLeaveTimer.current = null;
+      }
+      if (hovered) {
+        _setIsHovered(true);
+      } else {
+        hoverLeaveTimer.current = setTimeout(() => _setIsHovered(false), HOVER_LEAVE_DELAY_MS);
+      }
+    }, []);
+
+    React.useEffect(() => () => {
+      if (hoverLeaveTimer.current) clearTimeout(hoverLeaveTimer.current);
+    }, []);
 
     // Resolve the initial mode: mode cookie wins, then the legacy boolean
     // cookie, then the defaults passed in by the caller.
     const getInitialMode = (): SidebarMode => {
       const storedMode = readCookie(SIDEBAR_MODE_COOKIE_NAME);
-      if (storedMode === "expanded" || storedMode === "hover" || storedMode === "collapsed") {
+      if (storedMode === "expanded" || storedMode === "hover") {
         return storedMode;
       }
+      // "collapsed" was a third mode that has since been removed
+      if (storedMode === "collapsed") return "hover";
       const legacyOpen = readCookie(SIDEBAR_COOKIE_NAME);
       if (legacyOpen === "true") return "expanded";
       if (legacyOpen === "false") return "hover";
@@ -111,7 +140,7 @@ export const SidebarProvider = React.forwardRef<HTMLDivElement, SidebarProviderP
         if (setOpenProp) {
           setOpenProp(openState);
         } else {
-          setMode(openState ? "expanded" : "collapsed");
+          setMode(openState ? "expanded" : "hover");
         }
       },
       [setOpenProp, open, setMode]
@@ -159,7 +188,7 @@ export const SidebarProvider = React.forwardRef<HTMLDivElement, SidebarProviderP
         isHovered,
         setIsHovered,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, mode, setMode, cycleMode, isHovered]
+      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, mode, setMode, cycleMode, isHovered, setIsHovered]
     );
 
     return (

@@ -74,45 +74,36 @@ export const Sidebar = React.forwardRef<
       );
     }
 
+    // Desktop: a plain flex child rather than a fixed panel + spacer pair.
+    // Being in normal flow lets a full-width top bar sit above it, and keeps
+    // the sidebar edge and the content edge moving as one during the slide.
+    const isIconCollapsed = state === "collapsed" && collapsible === "icon";
+    const isOffcanvasCollapsed = state === "collapsed" && collapsible === "offcanvas";
+
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className={cn(
+          "group peer hidden h-full flex-shrink-0 overflow-hidden text-sidebar-foreground md:flex",
+          "duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]",
+          isOffcanvasCollapsed
+            ? "w-0"
+            : isIconCollapsed
+            ? "w-[--sidebar-width-icon]"
+            : "w-[--sidebar-width]",
+          className
+        )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        {...props}
       >
-        {/* Sidebar gap handler for desktop */}
         <div
-          className={cn(
-            "duration-300 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]",
-            "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
-          )}
-        />
-        <div
-          className={cn(
-            "duration-300 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-[cubic-bezier(0.32,0.72,0,1)] md:flex",
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
-            className
-          )}
-          {...props}
+          data-sidebar="sidebar"
+          className="flex h-full w-full flex-col overflow-hidden bg-sidebar"
         >
-          <div
-            data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-          >
-            {children}
-          </div>
+          {children}
         </div>
       </div>
     );

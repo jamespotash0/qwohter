@@ -17,11 +17,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { QwohterLogo } from "@/components/common/QwohterLogo";
-import { SidebarModeToggle } from "./SidebarModeToggle";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
 import { useMemo, useCallback } from "react";
@@ -69,7 +66,7 @@ export function AppSidebar() {
     [currentUserRole]
   );
 
-  const { state, isHovered, setIsHovered } = useSidebar();
+  const { state, setIsHovered } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
@@ -81,10 +78,6 @@ export function AppSidebar() {
     navigate(path);
   }, [navigate]);
 
-  // While pinned collapsed, hovering swaps the logo for the mode toggle so the
-  // user can get back out. In hover mode the sidebar just opens instead.
-  const showToggleInLogoSlot = isCollapsed && isHovered;
-
   return (
     <Sidebar
       className="bg-sidebar-bg"
@@ -92,40 +85,7 @@ export function AppSidebar() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/*
-        Fixed-height, fixed-padding header. The logo lives in a 40px slot whose
-        centre lines up with the nav icons (12px padding + 20px = 32px, the
-        centre of the 64px rail), so nothing shifts when the panel resizes.
-      */}
-      <SidebarHeader className="h-16 flex-row items-center gap-0 px-3 py-0 overflow-hidden">
-        <div className="relative h-10 w-10 flex-shrink-0">
-          <div
-            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-              showToggleInLogoSlot ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            <QwohterLogo size="sm" />
-          </div>
-          <div
-            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-              showToggleInLogoSlot ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            <SidebarModeToggle />
-          </div>
-        </div>
-
-        {/* Right-hand toggle, only reachable once the panel is open */}
-        <div
-          className={`ml-auto flex-shrink-0 transition-opacity duration-200 ${
-            isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
-        >
-          <SidebarModeToggle />
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent className="px-0 pt-2 pb-6 flex-1">
+      <SidebarContent className="px-0 pt-3 pb-6 flex-1">
         <SidebarGroup className="px-2 py-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
