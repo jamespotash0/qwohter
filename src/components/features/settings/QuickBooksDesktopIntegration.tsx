@@ -15,10 +15,9 @@ import {
   createQBDesktopConnection,
   generateQWCFile,
   disconnectQBDesktop,
-  getQBSyncLogs,
   type QBDesktopConnection,
 } from '@/services/quickbooksDesktopService';
-import { Download, RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Download, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface QuickBooksDesktopIntegrationProps {
   organization: any;

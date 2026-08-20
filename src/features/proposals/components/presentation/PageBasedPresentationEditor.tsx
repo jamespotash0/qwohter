@@ -22,7 +22,6 @@ import {
 } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import type { Selection } from '@tiptap/pm/state';
-import { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';

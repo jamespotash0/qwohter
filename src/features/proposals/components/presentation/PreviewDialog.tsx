@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react';
-import { X, FilePdf, FileDoc, Printer } from '@phosphor-icons/react';
+import { FilePdf, FileDoc, Printer } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,

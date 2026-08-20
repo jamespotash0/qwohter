@@ -23,8 +23,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/sonner';
 import type { Proposal } from '@/services/proposalsService';
 import type { IntegrationType } from '@/lib/types/integrations';
-import { checkQBOnlineConnection, createInvoiceInQBOnline } from '@/services/quickbooksOnlineService';
-import { checkQBDesktopConnection, createInvoiceInQBDesktop } from '@/services/quickbooksDesktopService';
+import { createInvoiceInQBOnline } from '@/services/quickbooksOnlineService';
+import { createInvoiceInQBDesktop } from '@/services/quickbooksDesktopService';
 import { getIntegrations } from '@/services/integrationsService';
 
 interface CreateInvoiceDialogProps {

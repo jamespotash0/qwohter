@@ -829,13 +829,6 @@ export function PricingTab({ mode }: PricingTabProps) {
     return items;
   }, [sections]);
 
-  // Toggle section collapse
-  const toggleSection = (sectionId: string) => {
-    setSections(
-      sections.map((s) => (s.id === sectionId ? { ...s, collapsed: !s.collapsed } : s))
-    );
-  };
-
   // Add line item to section
   const addLineItem = (sectionId: string) => {
     setSections(

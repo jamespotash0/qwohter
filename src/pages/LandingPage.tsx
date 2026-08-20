@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { rippleEffect } from '@/utils/animations';
 import { PlatformStatsSection } from '@/components/features/landing/PlatformStatsSection';
 import { TestimonialsSection } from '@/components/features/landing/TestimonialsSection';

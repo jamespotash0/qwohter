@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { X, Copy, Tabs as TabsIcon } from '@phosphor-icons/react';
+import { Copy, Tabs as TabsIcon } from '@phosphor-icons/react';
 import { Template } from '@/services/templateService';
 import {
   Dialog,

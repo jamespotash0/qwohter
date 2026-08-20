@@ -12,22 +12,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import {
-  addColumnAfter,
-  addColumnBefore,
-  addRowAfter,
-  addRowBefore,
-  deleteColumn,
-  deleteRow,
-  deleteTable,
-  mergeCells,
-  splitCell,
-  setCellAttr,
-  toggleHeaderRow,
-  toggleHeaderColumn,
-  toggleHeaderCell,
-  CellSelection,
-} from '@tiptap/pm/tables';
+import { addColumnAfter, addRowAfter } from '@tiptap/pm/tables';
 
 export interface EnhancedTableOptions {
   /** Minimum column width in pixels */

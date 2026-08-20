@@ -1,4 +1,4 @@
-import React, { JSX, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { SectionContainer } from "./SectionContainer";
 
 export const FeatureSection = (): React.JSX.Element => {

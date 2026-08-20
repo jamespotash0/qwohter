@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, FileText, ArrowsOutLineVertical, ArrowsOutLineHorizontal } from '@phosphor-icons/react';
+import { FileText, ArrowsOutLineVertical, ArrowsOutLineHorizontal } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,

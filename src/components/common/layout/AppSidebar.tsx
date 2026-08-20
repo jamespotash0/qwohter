@@ -1,7 +1,7 @@
 import { Clock, Check,
   // ChevronDown, LogOut} 
 } from "lucide-react";
-import { House, FileText, ChartBar, Gear, Kanban, Package, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Buildings, AddressBook, CheckSquare, CaretDown, Stack, CalendarBlankIcon } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Buildings, AddressBook, CheckSquare, CaretDown, Stack, CalendarBlankIcon } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

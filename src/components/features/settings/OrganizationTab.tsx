@@ -38,13 +38,6 @@ function isValidPhoneNumber(value: string): boolean {
   return digits.length === 10;
 }
 
-/**
- * Get raw digits from formatted phone number
- */
-function getPhoneDigits(value: string): string {
-  return value.replace(/\D/g, '');
-}
-
 interface OrganizationTabProps {
   organization: any;
   userRole: string;

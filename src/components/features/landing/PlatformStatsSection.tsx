@@ -1,4 +1,4 @@
-import React, { JSX, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 // import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";

@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, Plus, Minus, Mail, HelpCircle, X } from 'lucide-react';
+import { CheckCircle, Plus, Minus, X } from 'lucide-react';
 import { useMagneticHover } from '@/hooks/useAnimations';
 import { sendContactUsEmail } from '@/services/emailService';
 import { toast } from '@/components/ui/sonner';

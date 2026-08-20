@@ -5,7 +5,7 @@
  * Appears when user types "/" and shows available commands.
  */
 
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';

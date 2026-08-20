@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Check, Trash, X } from '@phosphor-icons/react';
+import { Bell, Check, X } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,

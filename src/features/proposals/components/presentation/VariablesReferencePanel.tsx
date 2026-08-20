@@ -19,7 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
 import { getAllFormVariables, type VariableDefinition } from './VariableExtension';
-import { PRODUCT_VARIABLE_FIELDS, getFieldsByCategory } from '../../utils/productVariables';
+import { getFieldsByCategory } from '../../utils/productVariables';
 import type { FormBuilderData } from '../../context/FormBuilderContext';
 
 interface VariablesReferencePanelProps {
