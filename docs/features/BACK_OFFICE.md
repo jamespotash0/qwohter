@@ -5,9 +5,9 @@ Foundation for dealer back-office operations — everything that happens between
 come from the tools dealers already use (CET, Giza, 2020, ProjectMatrix); this
 system owns the order lifecycle those tools do not.
 
-> **Status:** Foundations, the order spine, and the PO fan-out with
-> acknowledgment variance are implemented. Receiving, work orders, and
-> specification import are not built yet.
+> **Status:** Foundations, the order spine, the PO fan-out with acknowledgment
+> variance, and work orders are implemented. Receiving UI, punch lists, job
+> costing, and specification import are not built yet.
 
 ---
 
@@ -145,6 +145,62 @@ slip 21 days."*
 Credits net against overcharges in the exposure figure — a vendor honouring a
 lower price is real money back. But the queue *sorts* by magnitude, so a large
 credit is as visible as a large overcharge; both warrant a look.
+
+---
+
+## Work orders
+
+The service half of the job. Product is bought through purchase orders; delivery
+and installation are scheduled.
+
+A work order is performed **either** by one of the dealer's crews **or** by a
+subcontractor — never both, enforced by a CHECK. Subcontracted work is therefore
+both purchasable *and* schedulable: it gets a PO to the subcontractor and a work
+order for the day they show up. Someone else swinging the wrench does not remove
+the need for a date, a site contact, and dock access.
+
+`planSchedulableLines()` subtracts what is already installed **and** what other
+live work orders already cover, so re-running it on a part-scheduled job does not
+book the same chairs onto a second day. Cancelled work orders release their claim;
+completed ones are already counted through installed quantities.
+
+### A crew cannot be in two places at once
+
+This is a database exclusion constraint over the scheduled time range, not a
+check the UI remembers to run:
+
+```sql
+EXCLUDE USING gist (crew_id WITH =, tstzrange(scheduled_start, scheduled_end) WITH &&)
+  WHERE (crew_id IS NOT NULL AND ... AND status <> 'Cancelled')
+```
+
+Double-booking is the most expensive scheduling mistake a dealer makes — a crew
+shows up to a site that is not ready while another job goes uninstalled — and a
+check the application has to remember is a check that eventually does not run.
+It holds even when two people schedule at the same moment. Cancelling a work
+order releases its slot. The service surfaces the violation as
+`CrewDoubleBookedError` rather than a raw constraint message.
+
+A `Scheduled` work order must also have a start, an end, and a performer. `Draft`
+is where an incomplete one lives.
+
+### Site access is a first-class field
+
+`access_notes` carries dock hours, elevator reservations, COI requirements, and
+after-hours access. These are what actually sink an install day, and they belong
+on the work order the crew reads that morning — not buried in a project note.
+
+### Completion
+
+`complete_work_order()` applies completed quantities, writes `installed`
+fulfillment events, and marks the order Complete — together, because a work order
+marked Complete whose events did not write would leave the product looking
+uninstalled and get it scheduled a second time. Omit a line from the completions
+array and it completes at its planned quantity, which is the common case.
+
+`crews.hourly_cost` is the cost side of every self-performed line. Product cost
+comes from a manufacturer invoice; labor cost comes from crew-hours × rate. Job
+costing needs both, and until now the model could not tell them apart.
 
 ---
 
@@ -316,13 +372,14 @@ Two behavior changes came with the consolidation:
 | Purchase orders | `src/services/vendorPOService.ts` |
 | Variance logic | `src/lib/pricing/variance.ts` |
 | Fulfillment routing | `src/lib/pricing/fulfillment.ts` |
+| Work orders | `src/services/workOrdersService.ts` |
 | Discount resolution | `src/lib/pricing/discounts.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
 | Vendors & discounts | `src/services/vendorsService.ts`, `src/hooks/queries/useVendors.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql` |
+| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql` |
 | Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
 
 ---

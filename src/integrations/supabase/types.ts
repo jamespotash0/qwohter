@@ -892,6 +892,62 @@ export type Database = {
           },
         ]
       }
+      crews: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          crew_type: string
+          hourly_cost: number | null
+          id: string
+          is_active: boolean
+          lead_name: string | null
+          lead_phone: string | null
+          name: string
+          notes: string | null
+          organization_id: string
+          size: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          crew_type?: string
+          hourly_cost?: number | null
+          id?: string
+          is_active?: boolean
+          lead_name?: string | null
+          lead_phone?: string | null
+          name: string
+          notes?: string | null
+          organization_id: string
+          size?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          crew_type?: string
+          hourly_cost?: number | null
+          id?: string
+          is_active?: boolean
+          lead_name?: string | null
+          lead_phone?: string | null
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          size?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crews_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_templates: {
         Row: {
           content: Json | null
@@ -4284,6 +4340,201 @@ export type Database = {
           },
         ]
       }
+      work_order_lines: {
+        Row: {
+          completed_quantity: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          updated_at: string
+          work_order_id: string
+        }
+        Insert: {
+          completed_quantity?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          updated_at?: string
+          work_order_id: string
+        }
+        Update: {
+          completed_quantity?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_line_id?: string
+          organization_id?: string
+          quantity?: number
+          updated_at?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_order_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_line_fulfillment"
+            referencedColumns: ["order_line_id"]
+          },
+          {
+            foreignKeyName: "work_order_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_order_lines_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_order_schedule"
+            referencedColumns: ["work_order_id"]
+          },
+          {
+            foreignKeyName: "work_order_lines_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_orders: {
+        Row: {
+          access_notes: string | null
+          actual_end: string | null
+          actual_start: string | null
+          created_at: string
+          created_by: string | null
+          crew_id: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          project_id: string
+          sales_order_id: string | null
+          scheduled_end: string | null
+          scheduled_start: string | null
+          site_address_line1: string | null
+          site_address_line2: string | null
+          site_city: string | null
+          site_contact_name: string | null
+          site_contact_phone: string | null
+          site_name: string | null
+          site_postal_code: string | null
+          site_state: string | null
+          status: string
+          subcontractor_vendor_id: string | null
+          updated_at: string
+          work_order_number: string | null
+          work_type: string
+        }
+        Insert: {
+          access_notes?: string | null
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          created_by?: string | null
+          crew_id?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          project_id: string
+          sales_order_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          site_address_line1?: string | null
+          site_address_line2?: string | null
+          site_city?: string | null
+          site_contact_name?: string | null
+          site_contact_phone?: string | null
+          site_name?: string | null
+          site_postal_code?: string | null
+          site_state?: string | null
+          status?: string
+          subcontractor_vendor_id?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+          work_type?: string
+        }
+        Update: {
+          access_notes?: string | null
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          created_by?: string | null
+          crew_id?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          project_id?: string
+          sales_order_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          site_address_line1?: string | null
+          site_address_line2?: string | null
+          site_city?: string | null
+          site_contact_name?: string | null
+          site_contact_phone?: string | null
+          site_name?: string | null
+          site_postal_code?: string | null
+          site_state?: string | null
+          status?: string
+          subcontractor_vendor_id?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+          work_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_subcontractor_vendor_id_fkey"
+            columns: ["subcontractor_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       ai_feedback_analytics: {
@@ -4531,6 +4782,68 @@ export type Database = {
         }
         Relationships: []
       }
+      work_order_schedule: {
+        Row: {
+          access_notes: string | null
+          crew_hours: number | null
+          crew_id: string | null
+          crew_name: string | null
+          crew_size: number | null
+          line_count: number | null
+          organization_id: string | null
+          project_id: string | null
+          sales_order_id: string | null
+          scheduled_end: string | null
+          scheduled_hours: number | null
+          scheduled_start: string | null
+          site_city: string | null
+          site_name: string | null
+          site_state: string | null
+          status: string | null
+          subcontractor_name: string | null
+          subcontractor_vendor_id: string | null
+          work_order_id: string | null
+          work_order_number: string | null
+          work_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_subcontractor_vendor_id_fkey"
+            columns: ["subcontractor_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_member: { Args: { member_id: string }; Returns: boolean }
@@ -4642,6 +4955,10 @@ export type Database = {
         Args: { p_attempt_type: string; p_email: string }
         Returns: undefined
       }
+      complete_work_order: {
+        Args: { p_completions?: Json; p_work_order_id: string }
+        Returns: undefined
+      }
       create_default_task_columns: {
         Args: { org_id: string }
         Returns: undefined
@@ -4668,6 +4985,10 @@ export type Database = {
       }
       create_vendor_po_with_lines: {
         Args: { p_lines: Json; p_po: Json }
+        Returns: string
+      }
+      create_work_order_with_lines: {
+        Args: { p_lines: Json; p_work_order: Json }
         Returns: string
       }
       email_is_registered: { Args: { p_email: string }; Returns: boolean }

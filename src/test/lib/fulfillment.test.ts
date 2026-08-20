@@ -82,18 +82,39 @@ describe('isPurchasable', () => {
 });
 
 describe('isWorkOrderLine', () => {
-  it('is true only for self-performed work', () => {
+  it('is true for work performed at the site, whoever performs it', () => {
     expect(isWorkOrderLine('self_perform')).toBe(true);
-    expect(isWorkOrderLine('subcontract')).toBe(false);
+    // Someone else swinging the wrench does not remove the need for a date,
+    // a site contact, and dock access.
+    expect(isWorkOrderLine('subcontract')).toBe(true);
+  });
+
+  it('is false for product and for costs that are merely re-billed', () => {
     expect(isWorkOrderLine('purchase')).toBe(false);
+    expect(isWorkOrderLine('pass_through')).toBe(false);
     expect(isWorkOrderLine(null)).toBe(false);
   });
 });
 
-describe('a line is never both bought and crewed', () => {
-  it('holds for every fulfillment type', () => {
+describe('routing invariants', () => {
+  it('subcontracted work is both purchased and scheduled', () => {
+    expect(isPurchasable('subcontract')).toBe(true);
+    expect(isWorkOrderLine('subcontract')).toBe(true);
+  });
+
+  it('bought product is never scheduled as labor', () => {
+    expect(isWorkOrderLine('purchase')).toBe(false);
+  });
+
+  it('a pass-through is neither bought nor scheduled', () => {
+    expect(isPurchasable('pass_through')).toBe(false);
+    expect(isWorkOrderLine('pass_through')).toBe(false);
+  });
+
+  it('every type is routed somewhere or explicitly nowhere', () => {
     for (const type of FULFILLMENT_TYPES) {
-      expect(isPurchasable(type) && isWorkOrderLine(type)).toBe(false);
+      expect(typeof isPurchasable(type)).toBe('boolean');
+      expect(typeof isWorkOrderLine(type)).toBe('boolean');
     }
   });
 

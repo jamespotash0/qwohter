@@ -98,7 +98,14 @@ export function isPurchasable(type: FulfillmentType | null): boolean {
   return type === 'purchase' || type === 'subcontract';
 }
 
-/** Whether a line is work the dealer performs, and so becomes a work order. */
+/**
+ * Whether a line involves work at the site, and so belongs on a work order.
+ *
+ * Includes subcontracted work: someone else swinging the wrench does not remove
+ * the need for a date, a site contact, and dock access. A subcontracted install
+ * is therefore BOTH purchasable and schedulable — it gets a purchase order to
+ * the subcontractor and a work order for the day they show up.
+ */
 export function isWorkOrderLine(type: FulfillmentType | null): boolean {
-  return type === 'self_perform';
+  return type === 'self_perform' || type === 'subcontract';
 }
