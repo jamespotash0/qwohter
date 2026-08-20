@@ -1,7 +1,9 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
+import { AppTopBar } from './AppTopBar';
+import { SettingsSidebar } from '@/components/features/settings/SettingsSidebar';
 import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
@@ -34,7 +36,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // ✅ v3.0.0: Use new auth hooks
   const user = useUser();
   const { isInitialized, isLoading } = useAuthStatus();
-  const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
+  const { mutate: signOut } = useSignOut();
 
   // Note: isAuthChanging removed in v3.0 (handled by AuthEventMutex)
   const queryClient = useQueryClient();
@@ -269,10 +271,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     });
   };
 
-  // Get sidebar state - only call this hook for protected routes
-  const sidebarState = shouldShowSidebar ? useSidebar() : null;
-  const sidebarOpen = sidebarState?.open ?? false;
-
   // For public routes, render children directly without layout
   if (!shouldShowSidebar) {
     // Editor route needs auth check but no sidebar
@@ -313,6 +311,9 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     );
   }
 
+  // Routes that get a secondary sidebar between the app sidebar and content
+  const hasSecondarySidebar = location.pathname.startsWith('/settings');
+
   // Check if we need to wait for subscription check on protected routes
   const excludedPaths = ['/settings'];
   const shouldApplyPaywall = currentOrganization?.id && !excludedPaths.includes(location.pathname);
@@ -328,13 +329,23 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   );
 
   return (
-      <div className="h-screen flex w-full overflow-hidden bg-[var(--content-bg)]">
-          <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Main Content */}
-          <main className="flex-1 overflow-hidden">
+      <div className="h-screen flex flex-col w-full overflow-hidden bg-[var(--sidebar-bg)]">
+        {/* Top bar spans the full width: logo and sidebar toggle on the left,
+            notifications and profile on the right */}
+        <AppTopBar onLogout={handleLogout} />
+
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          <AppSidebar />
+
+          {/* Secondary sidebar, flush against the app sidebar. Rendered here
+              rather than inside the page so it reaches the shell edge. */}
+          {hasSecondarySidebar && <SettingsSidebar />}
+
+          {/* Main Content - whichever panel comes first owns the rounded
+              corner, so the pair reads as one surface */}
+          <main className={`flex-1 min-w-0 overflow-hidden bg-[var(--content-bg)] ${hasSecondarySidebar ? '' : 'rounded-tl-lg'}`}>
             {/* Standard layout with padding and max-width */}
-            <div className={`h-full pt-6 pb-8 space-y-4 overflow-auto ${sidebarOpen ? 'px-8 lg:px-12' : 'px-6 lg:px-10'}`}>
+            <div className="h-full pt-4 pb-8 space-y-4 overflow-auto px-6 lg:px-10">
               <div className="max-w-[1350px] mx-auto w-full">
                 <Suspense fallback={getPageSkeleton(location.pathname)}>
                   {content}

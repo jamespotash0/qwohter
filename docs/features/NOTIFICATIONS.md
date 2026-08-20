@@ -16,6 +16,18 @@ User Action → notificationService.ts
 
 ## In-App Notifications
 
+### Where users see them
+
+| Surface | Location | Notes |
+|---------|----------|-------|
+| Bell dropdown | `src/components/common/NotificationBell.tsx` | Lives in the app top bar. Red badge shows the unread count (`9+` above nine). Lists the six most recent, with "Mark all read", per-item dismiss, and a "View all" footer link. |
+| Notifications page | `src/pages/Notifications.tsx` (`/notifications`) | Full list with All/Unread filters, mark-all-read and clear-all. The "View all" target from the bell. |
+
+The dashboard no longer carries a notifications column — the bell and the
+`/notifications` page are the only surfaces. Emoji-per-type mapping is shared
+between both via `src/lib/notificationDisplay.ts`.
+
+
 ### Data Model
 
 ```typescript
