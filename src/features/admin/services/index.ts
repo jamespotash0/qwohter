@@ -1,24 +1,10 @@
 /**
  * Admin Services Index
+ *
+ * The product catalog services (productAdminService, optionAdminService,
+ * configValueSetsService) were removed along with the catalog hierarchy.
+ * Specification tools resolve part numbers and list price upstream, so there is
+ * no catalog to administer.
  */
 
-export { productAdminService } from './productAdminService';
-export type {
-  ProductDomain,
-  ProductManufacturer,
-  ProductLine,
-  ProductSeries,
-  ProductModel,
-  ProductVariant,
-} from './productAdminService';
-
-export { optionAdminService } from './optionAdminService';
-export type {
-  OptionGroup,
-  OptionValue,
-  ModelOption,
-  ModelAllowedValue,
-  ProductRule,
-} from './optionAdminService';
-
-export { configValueSetsService } from './configValueSetsService';
+export {};

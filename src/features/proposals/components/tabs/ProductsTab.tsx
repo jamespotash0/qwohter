@@ -9,7 +9,7 @@
  * Filler Mode: Full functionality - persisted via FormBuilderContext
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Plus, UploadSimple, Package, Database, PencilSimple } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,8 +27,10 @@ import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { ExtractionProgressDialog } from './ExtractionProgressDialog';
 import { ExtractedProductEditor } from './ExtractedProductEditor';
 import { generateProductAlias } from '../../utils/productVariables';
-import { CascadingProductSelectorV2 } from '@/components/features/products/CascadingProductSelectorV2';
-import { useProductStore, type ProductSelection } from '@/stores/products/productStore';
+import { ProductLibraryPicker } from '@/components/features/products/ProductLibraryPicker';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { useUser } from '@/auth';
+import type { Product as LibraryProduct } from '@/lib/types/products';
 import { ProductEntryCards } from './products/ProductEntryCards';
 import { LineItemsSection } from './products/LineItemsSection';
 import { CatalogProductsSection } from './products/CatalogProductsSection';
@@ -58,16 +60,12 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   // Catalog selection state
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const { reset: resetProductStore, fetchTypes, restoreFromProduct } = useProductStore();
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id ?? '');
 
   // AI-extracted product editing state
   const [aiEditDialogOpen, setAiEditDialogOpen] = useState(false);
   const [editingAiProduct, setEditingAiProduct] = useState<Product | null>(null);
-
-  // Pre-fetch product types on mount for catalog availability
-  useEffect(() => {
-    fetchTypes();
-  }, [fetchTypes]);
 
   // Separate products by source
   const isAIExtractedProduct = useCallback((product: Product): boolean => {
@@ -271,94 +269,78 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     setExtractionSummary(undefined);
   }, [products, setProductsData, onDirtyChange]);
 
-  // ==================== Catalog Selection ====================
+  // ==================== Product Library ====================
 
-  const createProductFromSelection = useCallback((
-    selection: ProductSelection, existingProducts: Product[]
+  /** Map a saved product into a proposal line. */
+  const createProductFromLibrary = useCallback((
+    libraryProduct: LibraryProduct, existingProducts: Product[]
   ): Product => {
-    const { product_hierarchy, specifications, specification_labels } = selection;
-    const qty = typeof specifications.quantity === 'number' ? specifications.quantity
-      : typeof specifications.Quantity === 'number' ? specifications.Quantity : null;
     const existingAliases = existingProducts.filter(p => p.alias).map(p => p.alias as string);
     const newProduct: Product = {
       id: Math.random().toString(36).substr(2, 9),
-      name: `${product_hierarchy.manufacturer} ${product_hierarchy.series} ${product_hierarchy.model}`.trim(),
-      quantity: qty ?? 1, unit: 'ea', description: '',
+      name: libraryProduct.name,
+      quantity: 1,
+      unit: 'ea',
+      description: '',
       rawData: {
-        productDomain: product_hierarchy.domain,
-        productLine: product_hierarchy.product_line,
-        manufacturer: product_hierarchy.manufacturer,
-        series: product_hierarchy.series,
-        model: product_hierarchy.model,
-        domain_id: product_hierarchy.domain_id,
-        manufacturer_id: product_hierarchy.manufacturer_id,
-        product_line_id: product_hierarchy.product_line_id,
-        series_id: product_hierarchy.series_id,
-        model_id: selection.product_model_id,
-        ...specifications,
-        _specificationLabels: specification_labels,
-        source: 'catalog',
+        // Manufacturer, series, and model are plain text on a saved product.
+        // There is no catalog hierarchy to record ids from.
+        manufacturer: libraryProduct.manufacturer,
+        series: libraryProduct.series,
+        model: libraryProduct.model,
+        sku: libraryProduct.display_id,
+        ...(libraryProduct.specifications ?? {}),
+        source: 'library',
       },
     };
     newProduct.alias = generateProductAlias(newProduct, existingAliases, existingProducts.length);
     return newProduct;
   }, []);
 
-  const handleCatalogProductSelect = useCallback((selection: ProductSelection) => {
-    const { product_hierarchy, specifications, specification_labels } = selection;
-    const qty = typeof specifications.quantity === 'number' ? specifications.quantity
-      : typeof specifications.Quantity === 'number' ? specifications.Quantity : null;
-
+  const handleLibraryProductSelect = useCallback((libraryProduct: LibraryProduct) => {
     if (editingProduct) {
       const updatedProduct: Product = {
         ...editingProduct,
-        name: `${product_hierarchy.manufacturer} ${product_hierarchy.series} ${product_hierarchy.model}`.trim(),
-        quantity: qty ?? editingProduct.quantity ?? 1,
+        name: libraryProduct.name,
         rawData: {
-          productDomain: product_hierarchy.domain, productLine: product_hierarchy.product_line,
-          manufacturer: product_hierarchy.manufacturer, series: product_hierarchy.series,
-          model: product_hierarchy.model, domain_id: product_hierarchy.domain_id,
-          manufacturer_id: product_hierarchy.manufacturer_id,
-          product_line_id: product_hierarchy.product_line_id,
-          series_id: product_hierarchy.series_id, model_id: selection.product_model_id,
-          ...specifications, _specificationLabels: specification_labels, source: 'catalog',
+          ...editingProduct.rawData,
+          manufacturer: libraryProduct.manufacturer,
+          series: libraryProduct.series,
+          model: libraryProduct.model,
+          sku: libraryProduct.display_id,
+          ...(libraryProduct.specifications ?? {}),
+          source: 'library',
         },
       };
       setProductsData({ items: products.map(p => p.id === editingProduct.id ? updatedProduct : p) });
       onDirtyChange?.(true);
       toast.success(`Updated "${updatedProduct.name}"`);
     } else {
-      const newProduct = createProductFromSelection(selection, products);
+      const newProduct = createProductFromLibrary(libraryProduct, products);
       setProductsData({ items: [...products, newProduct] });
       onDirtyChange?.(true);
-      toast.success(`Added "${newProduct.name}" from catalog`);
+      toast.success(`Added "${newProduct.name}"`);
     }
-    resetProductStore();
     setEditingProduct(null);
     setCatalogDialogOpen(false);
-  }, [products, setProductsData, onDirtyChange, resetProductStore, editingProduct, createProductFromSelection]);
+  }, [products, setProductsData, onDirtyChange, editingProduct, createProductFromLibrary]);
 
-  const handleCatalogProductSelectAndContinue = useCallback((selection: ProductSelection) => {
-    const newProduct = createProductFromSelection(selection, products);
+  const handleLibraryProductSelectAndContinue = useCallback((libraryProduct: LibraryProduct) => {
+    const newProduct = createProductFromLibrary(libraryProduct, products);
     setProductsData({ items: [...products, newProduct] });
     onDirtyChange?.(true);
-    toast.success(`Added "${newProduct.name}" - select another product`);
-    resetProductStore();
-  }, [products, setProductsData, onDirtyChange, resetProductStore, createProductFromSelection]);
+    toast.success(`Added "${newProduct.name}" - pick another`);
+  }, [products, setProductsData, onDirtyChange, createProductFromLibrary]);
 
   const handleCatalogCancel = useCallback(() => {
-    resetProductStore();
     setEditingProduct(null);
     setCatalogDialogOpen(false);
-  }, [resetProductStore]);
+  }, []);
 
-  const handleEditCatalogProduct = useCallback(async (product: Product) => {
-    if (product.rawData) {
-      await restoreFromProduct(product.rawData as Record<string, unknown>);
-    }
+  const handleEditCatalogProduct = useCallback((product: Product) => {
     setEditingProduct(product);
     setCatalogDialogOpen(true);
-  }, [restoreFromProduct]);
+  }, []);
 
   // ==================== AI Edit ====================
 
@@ -517,18 +499,18 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           <DialogHeader className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {editingProduct ? (
-                <><PencilSimple className="w-5 h-5 text-emerald-600" /> Edit Product Configuration</>
+                <><PencilSimple className="w-5 h-5 text-emerald-600" /> Replace Product</>
               ) : (
-                <><Database className="w-5 h-5 text-emerald-600" /> Select Product from Catalog</>
+                <><Database className="w-5 h-5 text-emerald-600" /> Add from Product Library</>
               )}
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-6 py-4">
-            <CascadingProductSelectorV2
-              onProductSelect={handleCatalogProductSelect}
-              onProductSelectAndContinue={editingProduct ? undefined : handleCatalogProductSelectAndContinue}
+            <ProductLibraryPicker
+              organizationId={organization?.id}
+              onSelect={handleLibraryProductSelect}
+              onSelectAndContinue={editingProduct ? undefined : handleLibraryProductSelectAndContinue}
               onCancel={handleCatalogCancel}
-              initialValues={editingProduct?.rawData as Record<string, unknown> | undefined}
               className="h-full"
             />
           </div>

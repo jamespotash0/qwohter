@@ -1414,89 +1414,6 @@ BEGIN
 END;
 $$;
 ALTER FUNCTION "public"."get_integrations_for_plan"("plan_name" "text") OWNER TO "postgres";
-CREATE OR REPLACE FUNCTION "public"."get_model_configuration"("p_model_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-    v_result JSONB;
-BEGIN
-    SELECT jsonb_build_object(
-        'model_id', pm.id,
-        'model_name', pm.name,
-        'series_id', ps.id,
-        'series_name', ps.name,
-        'product_line_id', pl.id,
-        'product_line_name', pl.name,
-        'option_groups', (
-            SELECT COALESCE(jsonb_agg(
-                jsonb_build_object(
-                    'id', og.id,
-                    'name', og.name,
-                    'slug', og.slug,
-                    'field_type', og.field_type,
-                    'input_type', og.input_type,
-                    'allowed_values', (
-                        SELECT COALESCE(jsonb_agg(
-                            jsonb_build_object(
-                                'id', ov.id,
-                                'value', ov.value
-                            ) ORDER BY COALESCE(mav.sort_order, ov.sort_order)
-                        ), '[]'::jsonb)
-                        FROM pc_model_allowed_values mav
-                        JOIN pc_option_values ov ON ov.id = mav.option_value_id
-                        WHERE mav.model_option_id = mo.id
-                        AND ov.is_active = true
-                    ),
-                    'default_value', COALESCE(
-                        (SELECT ov.value FROM pc_option_values ov WHERE ov.id = mo.default_value_id),
-                        mo.default_input_value
-                    ),
-                    'ui_metadata', jsonb_build_object(
-                        'display_order', mo.display_order,
-                        'display_group', mo.display_group,
-                        'grid_span', mo.grid_span,
-                        'placeholder', mo.placeholder,
-                        'help_text', mo.help_text,
-                        'is_required', mo.is_required,
-                        'is_multi_select', mo.is_multi_select,
-                        'is_manual_select', mo.is_manual_select,
-                        'is_visible', mo.is_visible,
-                        'min_value', mo.min_value,
-                        'max_value', mo.max_value,
-                        'step_value', mo.step_value
-                    )
-                ) ORDER BY mo.display_order
-            ), '[]'::jsonb)
-            FROM pc_model_options mo
-            JOIN pc_option_groups og ON og.id = mo.option_group_id
-            WHERE mo.model_id = pm.id
-        ),
-        'rules', (
-            SELECT COALESCE(jsonb_agg(
-                jsonb_build_object(
-                    'id', r.id,
-                    'name', r.name,
-                    'description', r.description,
-                    'priority', r.priority,
-                    'condition', r.condition,
-                    'effect', r.effect
-                ) ORDER BY r.priority DESC
-            ), '[]'::jsonb)
-            FROM pc_rules r
-            WHERE r.model_id = pm.id
-            AND r.is_active = true
-        )
-    ) INTO v_result
-    FROM product_models pm
-    LEFT JOIN product_series ps ON ps.id = pm.product_series_id
-    LEFT JOIN product_line pl ON pl.id = pm.product_line_id
-    WHERE pm.id = p_model_id;
-
-    RETURN v_result;
-END;
-$$;
-ALTER FUNCTION "public"."get_model_configuration"("p_model_id" "uuid") OWNER TO "postgres";
 CREATE OR REPLACE FUNCTION "public"."get_org_member_ids"("target_user_id" "uuid") RETURNS TABLE("user_id" "uuid")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1573,41 +1490,6 @@ END;
 $$;
 ALTER FUNCTION "public"."get_user_org_ids"("check_user_id" "uuid") OWNER TO "postgres";
 COMMENT ON FUNCTION "public"."get_user_org_ids"("check_user_id" "uuid") IS 'Get all organization IDs where user is active member. SECURITY DEFINER bypasses RLS.';
-CREATE OR REPLACE FUNCTION "public"."get_value_set"("p_slug" character varying) RETURNS TABLE("id" "uuid", "slug" character varying, "name" character varying, "category" character varying, "manufacturer_id" "uuid", "values" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT
-    cvs.id,
-    cvs.slug,
-    cvs.name,
-    cvs.category,
-    cvs.manufacturer_id,
-    cvs."values",
-    cvs.created_at,
-    cvs.updated_at
-  FROM config_value_sets cvs
-  WHERE cvs.slug = p_slug;
-$$;
-ALTER FUNCTION "public"."get_value_set"("p_slug" character varying) OWNER TO "postgres";
-COMMENT ON FUNCTION "public"."get_value_set"("p_slug" character varying) IS 'Get a config_value_set by its slug. Returns the complete value set record.';
-CREATE OR REPLACE FUNCTION "public"."get_value_sets_by_slugs"("p_slugs" character varying[]) RETURNS TABLE("id" "uuid", "slug" character varying, "name" character varying, "category" character varying, "manufacturer_id" "uuid", "values" "jsonb", "created_at" timestamp with time zone, "updated_at" timestamp with time zone)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT
-    cvs.id,
-    cvs.slug,
-    cvs.name,
-    cvs.category,
-    cvs.manufacturer_id,
-    cvs."values",
-    cvs.created_at,
-    cvs.updated_at
-  FROM config_value_sets cvs
-  WHERE cvs.slug = ANY(p_slugs);
-$$;
-ALTER FUNCTION "public"."get_value_sets_by_slugs"("p_slugs" character varying[]) OWNER TO "postgres";
 CREATE OR REPLACE FUNCTION "public"."handle_auth_user_email_sync"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1950,40 +1832,6 @@ CREATE OR REPLACE FUNCTION "public"."is_super_admin"() RETURNS boolean
   );
 $$;
 ALTER FUNCTION "public"."is_super_admin"() OWNER TO "postgres";
-CREATE OR REPLACE FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") RETURNS boolean
-    LANGUAGE "plpgsql" IMMUTABLE
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  -- Check required top-level keys
-  IF schema IS NULL THEN
-    RETURN TRUE; -- NULL is allowed
-  END IF;
-
-  IF NOT (schema ? 'version' AND schema ? 'options') THEN
-    RETURN FALSE;
-  END IF;
-
-  -- Check version is a string
-  IF jsonb_typeof(schema->'version') != 'string' THEN
-    RETURN FALSE;
-  END IF;
-
-  -- Check options is an object
-  IF jsonb_typeof(schema->'options') != 'object' THEN
-    RETURN FALSE;
-  END IF;
-
-  -- If groups exists, it must be an array
-  IF schema ? 'groups' AND jsonb_typeof(schema->'groups') != 'array' THEN
-    RETURN FALSE;
-  END IF;
-
-  RETURN TRUE;
-END;
-$$;
-ALTER FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") OWNER TO "postgres";
-COMMENT ON FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") IS 'Validates that a config_schema JSONB value has the required structure (version, options, optional groups).';
 CREATE OR REPLACE FUNCTION "public"."link_contact_to_member"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -3735,13 +3583,6 @@ COMMENT ON TABLE "public"."ai_suggestions" IS 'Stores AI-generated suggestions f
 COMMENT ON COLUMN "public"."ai_suggestions"."suggestion_type" IS 'Type of suggestion: follow_up_email, status_reminder, action_recommendation, win_loss_insight, pricing_suggestion';
 COMMENT ON COLUMN "public"."ai_suggestions"."confidence_score" IS 'AI confidence in the suggestion (0.00-1.00)';
 COMMENT ON TABLE "public"."auth_rate_limits" IS 'Tracks authentication attempts for rate limiting';
-COMMENT ON TABLE "public"."config_option_group_metadata" IS 'Supplementary metadata for option groups, preserving field_type and input_type from pc_option_groups for use in config_schema building.';
-COMMENT ON TABLE "public"."config_value_sets" IS 'Shared value libraries for product configuration. Referenced by config_schema via values_ref property. Examples: vinyl_colors, ral_paints, standard_support_systems.';
-COMMENT ON COLUMN "public"."config_value_sets"."slug" IS 'URL-safe unique identifier used in config_schema values_ref. Example: "vinyl_colors", "ral_paints"';
-COMMENT ON COLUMN "public"."config_value_sets"."name" IS 'Human-readable display name. Example: "Vinyl Colors", "RAL Paint Colors"';
-COMMENT ON COLUMN "public"."config_value_sets"."category" IS 'Category for organizing in admin UI. Example: "materials", "colors", "hardware", "structural"';
-COMMENT ON COLUMN "public"."config_value_sets"."manufacturer_id" IS 'Optional manufacturer scoping. NULL means globally available to all manufacturers.';
-COMMENT ON COLUMN "public"."config_value_sets"."values" IS 'Array of value options. Format: [{code, label, hex?, image_url?, description?, sort_order?, is_active?, metadata?}]';
 COMMENT ON TABLE "public"."contacts" IS 'Customer/prospect contacts for organizations (non-user accounts)';
 COMMENT ON COLUMN "public"."contacts"."organization_id" IS 'Organization this contact belongs to';
 COMMENT ON COLUMN "public"."contacts"."full_name" IS 'Contact full name';
@@ -3790,7 +3631,6 @@ COMMENT ON COLUMN "public"."organizations"."primary_storage_provider" IS 'Primar
 COMMENT ON COLUMN "public"."organizations"."sync_to_all_storage_providers" IS 'If true, documents are uploaded to all connected storage providers. If false, only the primary provider is used.';
 COMMENT ON COLUMN "public"."organizations"."require_proposal_approval" IS 'When true, Members must request approval from Admins/Owners before submitting proposals';
 COMMENT ON TABLE "public"."password_reset_audit" IS 'Audit trail for password reset requests';
-COMMENT ON COLUMN "public"."product_models"."config_schema" IS 'Product configuration schema (v2.0). Stores option definitions, cascading rules, computed fields, and UI grouping. Replaces the legacy default_configurations column. See src/lib/types/configSchema.ts for TypeScript types.';
 COMMENT ON TABLE "public"."products" IS 'Simplified product catalog for organizations. Core fields: name, category, price.';
 COMMENT ON COLUMN "public"."products"."display_id" IS 'User-customizable display ID. Falls back to product_number if null.';
 COMMENT ON COLUMN "public"."products"."amount" IS 'The monetary amount or rate for this product';
@@ -3929,34 +3769,6 @@ CREATE OR REPLACE VIEW "public"."unverified_profiles_to_cleanup" WITH ("security
   WHERE (("u"."email_confirmed_at" IS NULL) AND ("m"."id" IS NULL))
   ORDER BY "u"."created_at" DESC;
 COMMENT ON VIEW "public"."unverified_profiles_to_cleanup" IS 'Shows unverified profiles that will be or have been cleaned up. Use this to monitor the cleanup process.';
-CREATE OR REPLACE VIEW "public"."v_manufacturers_by_domain" WITH ("security_invoker"='on') AS
- SELECT "d"."id" AS "domain_id",
-    "d"."name" AS "domain_name",
-    "m"."id" AS "manufacturer_id",
-    "m"."name" AS "manufacturer_name"
-   FROM (("public"."product_domain" "d"
-     JOIN "public"."manufacturer_product_domains" "md" ON (("md"."domain_id" = "d"."id")))
-     JOIN "public"."product_manufacturers" "m" ON (("m"."id" = "md"."manufacturer_id")))
-  ORDER BY "d"."name", "m"."name";
-CREATE OR REPLACE VIEW "public"."v_models_by_manufacturer" WITH ("security_invoker"='on') AS
- SELECT "mfr"."id" AS "manufacturer_id",
-    "mfr"."name" AS "manufacturer_name",
-    "pl"."id" AS "product_line_id",
-    "pl"."name" AS "product_line_name",
-    "s"."id" AS "series_id",
-    "s"."name" AS "series_name",
-    "pm"."id" AS "model_id",
-    "pm"."name" AS "model_name",
-        CASE
-            WHEN ("pm"."product_series_id" IS NOT NULL) THEN 'via_series'::"text"
-            ELSE 'direct'::"text"
-        END AS "model_path"
-   FROM ((("public"."product_manufacturers" "mfr"
-     LEFT JOIN "public"."product_line" "pl" ON (("pl"."manufacturer_id" = "mfr"."id")))
-     LEFT JOIN "public"."product_series" "s" ON (("s"."product_line_id" = "pl"."id")))
-     LEFT JOIN "public"."product_models" "pm" ON ((("pm"."product_series_id" = "s"."id") OR (("pm"."product_series_id" IS NULL) AND ("pm"."product_manufacturer_id" = "mfr"."id")))))
-  WHERE ("pm"."id" IS NOT NULL)
-  ORDER BY "mfr"."name", "pl"."name", "s"."name", "pm"."name";
 
 -- TRIGGERS
 CREATE OR REPLACE TRIGGER "ensure_single_main_version_trigger" BEFORE UPDATE OF "is_main_version" ON "public"."proposals" FOR EACH ROW WHEN (("new"."is_main_version" = true)) EXECUTE FUNCTION "public"."ensure_single_main_version_for_proposals"();
@@ -4003,22 +3815,10 @@ CREATE OR REPLACE TRIGGER "update_active_users_trigger" AFTER INSERT OR DELETE O
 CREATE OR REPLACE TRIGGER "update_ai_suggestions_updated_at" BEFORE UPDATE ON "public"."ai_suggestions" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_approval_requests_updated_at" BEFORE UPDATE ON "public"."proposal_approval_requests" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_calendar_events_updated_at" BEFORE UPDATE ON "public"."calendar_events" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-CREATE OR REPLACE TRIGGER "update_config_value_sets_updated_at" BEFORE UPDATE ON "public"."config_value_sets" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_invite_tokens_updated_at" BEFORE UPDATE ON "public"."invite_tokens" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 COMMENT ON TRIGGER "update_invite_tokens_updated_at" ON "public"."invite_tokens" IS 'Automatically updates updated_at timestamp when invite token is modified';
-CREATE OR REPLACE TRIGGER "update_manufacturers_updated_at" BEFORE UPDATE ON "public"."product_manufacturers" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_memberships_updated_at" BEFORE UPDATE ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_organizations_updated_at" BEFORE UPDATE ON "public"."organizations" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-CREATE OR REPLACE TRIGGER "update_product_categories_updated_at" BEFORE UPDATE ON "public"."product_line" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-COMMENT ON TRIGGER "update_product_categories_updated_at" ON "public"."product_line" IS 'Automatically updates updated_at timestamp when product category is modified';
-CREATE OR REPLACE TRIGGER "update_product_category_updated_at" BEFORE UPDATE ON "public"."product_line" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-CREATE OR REPLACE TRIGGER "update_product_domain_updated_at" BEFORE UPDATE ON "public"."product_domain" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-CREATE OR REPLACE TRIGGER "update_product_manufacturers_updated_at" BEFORE UPDATE ON "public"."product_manufacturers" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-COMMENT ON TRIGGER "update_product_manufacturers_updated_at" ON "public"."product_manufacturers" IS 'Automatically updates updated_at timestamp when product manufacturer is modified';
-CREATE OR REPLACE TRIGGER "update_product_models_updated_at" BEFORE UPDATE ON "public"."product_models" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-CREATE OR REPLACE TRIGGER "update_product_series_updated_at" BEFORE UPDATE ON "public"."product_series" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-CREATE OR REPLACE TRIGGER "update_product_types_updated_at" BEFORE UPDATE ON "public"."product_domain" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-COMMENT ON TRIGGER "update_product_types_updated_at" ON "public"."product_domain" IS 'Automatically updates updated_at timestamp when product type is modified';
 CREATE OR REPLACE TRIGGER "update_profiles_updated_at" BEFORE UPDATE ON "public"."profiles" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_proposal_documents_updated_at" BEFORE UPDATE ON "public"."proposal_documents" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
 CREATE OR REPLACE TRIGGER "update_signing_token_timestamp" BEFORE UPDATE ON "public"."proposal_signing_tokens" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
@@ -4047,13 +3847,6 @@ CREATE POLICY "Anyone can create an organization" ON "public"."organizations" FO
   WHERE (("memberships"."user_id" = ( SELECT "auth"."uid"() AS "uid")) AND ("memberships"."role" = 'Owner'::"text"))))));
 COMMENT ON POLICY "Anyone can create an organization" ON "public"."organizations" IS 'Allow authenticated users to create organizations - trigger handles owner membership';
 CREATE POLICY "Anyone can view available integrations" ON "public"."available_integrations" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read config value sets" ON "public"."config_value_sets" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read manufacturer domains" ON "public"."manufacturer_product_domains" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read product domains" ON "public"."product_domain" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read product lines" ON "public"."product_line" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read product manufacturers" ON "public"."product_manufacturers" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read product models" ON "public"."product_models" FOR SELECT TO "authenticated" USING (true);
-CREATE POLICY "Authenticated users can read product series" ON "public"."product_series" FOR SELECT TO "authenticated" USING (true);
 CREATE POLICY "Authenticated users can update signup invites" ON "public"."signup_invites" FOR UPDATE TO "authenticated" USING (("public"."is_super_admin"() OR ((NOT "is_used") AND ("revoked_at" IS NULL) AND ("lower"("email") = "lower"(( SELECT "auth"."email"() AS "email")))))) WITH CHECK (("public"."is_super_admin"() OR ("is_used" = true)));
 COMMENT ON POLICY "Authenticated users can update signup invites" ON "public"."signup_invites" IS 'Combined UPDATE policy: Super admins can update any invite. Regular users can only mark their own invite (email match) as used. Uses (SELECT auth.email()) for optimal performance.';
 CREATE POLICY "Members can create approval requests" ON "public"."proposal_approval_requests" FOR INSERT WITH CHECK (("public"."is_active_member"(( SELECT "auth"."uid"() AS "uid"), "organization_id") AND ("requested_by" = ( SELECT "auth"."uid"() AS "uid"))));
@@ -4088,29 +3881,6 @@ CREATE POLICY "Service role full access to ai_capability_gaps" ON "public"."ai_c
 CREATE POLICY "Service role only" ON "public"."auth_rate_limits" TO "service_role" USING ((( SELECT ("auth"."jwt"() ->> 'role'::"text")) = 'service_role'::"text"));
 CREATE POLICY "Service role only" ON "public"."password_reset_audit" USING ((( SELECT (( SELECT "auth"."jwt"() AS "jwt") ->> 'role'::"text")) = 'service_role'::"text"));
 CREATE POLICY "Service role only" ON "public"."security_audit_log" TO "service_role" USING ((( SELECT ("auth"."jwt"() ->> 'role'::"text")) = 'service_role'::"text"));
-CREATE POLICY "Super admin can delete config option group metadata" ON "public"."config_option_group_metadata" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete config value sets" ON "public"."config_value_sets" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete manufacturer domains" ON "public"."manufacturer_product_domains" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete product domains" ON "public"."product_domain" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete product lines" ON "public"."product_line" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete product manufacturers" ON "public"."product_manufacturers" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete product models" ON "public"."product_models" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can delete product series" ON "public"."product_series" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert config option group metadata" ON "public"."config_option_group_metadata" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert config value sets" ON "public"."config_value_sets" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert manufacturer domains" ON "public"."manufacturer_product_domains" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert product domains" ON "public"."product_domain" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert product lines" ON "public"."product_line" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert product manufacturers" ON "public"."product_manufacturers" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert product models" ON "public"."product_models" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can insert product series" ON "public"."product_series" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update config value sets" ON "public"."config_value_sets" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update manufacturer domains" ON "public"."manufacturer_product_domains" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update product domains" ON "public"."product_domain" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update product lines" ON "public"."product_line" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update product manufacturers" ON "public"."product_manufacturers" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update product models" ON "public"."product_models" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
-CREATE POLICY "Super admin can update product series" ON "public"."product_series" FOR UPDATE TO "authenticated" USING ("public"."is_super_admin"());
 CREATE POLICY "Super admins can create signup invites" ON "public"."signup_invites" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_super_admin"());
 CREATE POLICY "Super admins can delete signup invites" ON "public"."signup_invites" FOR DELETE TO "authenticated" USING ("public"."is_super_admin"());
 CREATE POLICY "System can insert proposal transitions" ON "public"."proposal_status_transitions" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_active_member"(( SELECT "auth"."uid"() AS "uid"), "organization_id"));
@@ -4364,8 +4134,6 @@ ALTER TABLE "public"."ai_user_feedback" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."auth_rate_limits" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."available_integrations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."calendar_events" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."config_option_group_metadata" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."config_value_sets" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "creation_log_insert_policy" ON "public"."organization_creation_log" FOR INSERT TO "service_role" WITH CHECK (true);
 CREATE POLICY "creation_log_select_policy" ON "public"."organization_creation_log" FOR SELECT TO "authenticated" USING ((("user_id" = ( SELECT "auth"."uid"() AS "uid")) OR "public"."is_owner_or_admin"()));
@@ -4382,7 +4150,6 @@ ALTER TABLE "public"."google_oauth_tokens" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."integrations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."invite_token_attempts" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."invite_tokens" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."manufacturer_product_domains" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."memberships" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "memberships_insert_policy" ON "public"."memberships" FOR INSERT TO "authenticated" WITH CHECK ((("user_id" = ( SELECT "auth"."uid"() AS "uid")) OR "public"."has_org_role"(( SELECT "auth"."uid"() AS "uid"), "organization_id", ARRAY['Owner'::"text", 'Admin'::"text"]) OR "public"."org_has_no_members"("organization_id")));
 COMMENT ON POLICY "memberships_insert_policy" ON "public"."memberships" IS 'Users can create own memberships, admins can invite others, or first member can join empty org. Uses SECURITY DEFINER functions to prevent recursion.';
@@ -4402,11 +4169,6 @@ CREATE POLICY "onboarding_update_policy" ON "public"."user_onboarding_progress" 
 ALTER TABLE "public"."organization_creation_log" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."organizations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."password_reset_audit" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."product_domain" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."product_line" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."product_manufacturers" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."product_models" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "public"."product_series" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "profiles_delete_policy" ON "public"."profiles" FOR DELETE USING (false);
@@ -4589,9 +4351,6 @@ GRANT ALL ON TABLE "public"."available_integrations" TO "service_role";
 REVOKE ALL ON FUNCTION "public"."get_integrations_for_plan"("plan_name" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_integrations_for_plan"("plan_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_integrations_for_plan"("plan_name" "text") TO "service_role";
-REVOKE ALL ON FUNCTION "public"."get_model_configuration"("p_model_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_model_configuration"("p_model_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_model_configuration"("p_model_id" "uuid") TO "service_role";
 REVOKE ALL ON FUNCTION "public"."get_org_member_ids"("target_user_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_org_member_ids"("target_user_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_org_member_ids"("target_user_id" "uuid") TO "service_role";
@@ -4605,10 +4364,6 @@ GRANT ALL ON FUNCTION "public"."get_user_org_folders"("check_user_id" "uuid") TO
 REVOKE ALL ON FUNCTION "public"."get_user_org_ids"("check_user_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_user_org_ids"("check_user_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_user_org_ids"("check_user_id" "uuid") TO "service_role";
-GRANT ALL ON FUNCTION "public"."get_value_set"("p_slug" character varying) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_value_set"("p_slug" character varying) TO "service_role";
-GRANT ALL ON FUNCTION "public"."get_value_sets_by_slugs"("p_slugs" character varying[]) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_value_sets_by_slugs"("p_slugs" character varying[]) TO "service_role";
 REVOKE ALL ON FUNCTION "public"."handle_auth_user_email_sync"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."handle_auth_user_email_sync"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_auth_user_email_sync"() TO "service_role";
@@ -4642,8 +4397,6 @@ GRANT ALL ON FUNCTION "public"."is_owner_or_admin"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_owner_or_admin"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."is_super_admin"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_super_admin"() TO "service_role";
-GRANT ALL ON FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") TO "service_role";
 REVOKE ALL ON FUNCTION "public"."link_contact_to_member"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."link_contact_to_member"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."link_contact_to_member"() TO "service_role";
@@ -4810,12 +4563,6 @@ GRANT ALL ON TABLE "public"."auth_rate_limits" TO "service_role";
 GRANT ALL ON TABLE "public"."calendar_events" TO "anon";
 GRANT ALL ON TABLE "public"."calendar_events" TO "authenticated";
 GRANT ALL ON TABLE "public"."calendar_events" TO "service_role";
-GRANT ALL ON TABLE "public"."config_option_group_metadata" TO "anon";
-GRANT ALL ON TABLE "public"."config_option_group_metadata" TO "authenticated";
-GRANT ALL ON TABLE "public"."config_option_group_metadata" TO "service_role";
-GRANT ALL ON TABLE "public"."config_value_sets" TO "anon";
-GRANT ALL ON TABLE "public"."config_value_sets" TO "authenticated";
-GRANT ALL ON TABLE "public"."config_value_sets" TO "service_role";
 GRANT ALL ON TABLE "public"."contacts" TO "anon";
 GRANT ALL ON TABLE "public"."contacts" TO "authenticated";
 GRANT ALL ON TABLE "public"."contacts" TO "service_role";
@@ -4834,9 +4581,6 @@ GRANT ALL ON TABLE "public"."invite_token_attempts" TO "service_role";
 GRANT ALL ON TABLE "public"."invite_tokens" TO "anon";
 GRANT ALL ON TABLE "public"."invite_tokens" TO "authenticated";
 GRANT ALL ON TABLE "public"."invite_tokens" TO "service_role";
-GRANT ALL ON TABLE "public"."manufacturer_product_domains" TO "anon";
-GRANT ALL ON TABLE "public"."manufacturer_product_domains" TO "authenticated";
-GRANT ALL ON TABLE "public"."manufacturer_product_domains" TO "service_role";
 GRANT ALL ON TABLE "public"."memberships" TO "anon";
 GRANT ALL ON TABLE "public"."memberships" TO "authenticated";
 GRANT ALL ON TABLE "public"."memberships" TO "service_role";
@@ -4858,21 +4602,6 @@ GRANT ALL ON TABLE "public"."organizations" TO "service_role";
 GRANT ALL ON TABLE "public"."password_reset_audit" TO "anon";
 GRANT ALL ON TABLE "public"."password_reset_audit" TO "authenticated";
 GRANT ALL ON TABLE "public"."password_reset_audit" TO "service_role";
-GRANT ALL ON TABLE "public"."product_domain" TO "anon";
-GRANT ALL ON TABLE "public"."product_domain" TO "authenticated";
-GRANT ALL ON TABLE "public"."product_domain" TO "service_role";
-GRANT ALL ON TABLE "public"."product_line" TO "anon";
-GRANT ALL ON TABLE "public"."product_line" TO "authenticated";
-GRANT ALL ON TABLE "public"."product_line" TO "service_role";
-GRANT ALL ON TABLE "public"."product_manufacturers" TO "anon";
-GRANT ALL ON TABLE "public"."product_manufacturers" TO "authenticated";
-GRANT ALL ON TABLE "public"."product_manufacturers" TO "service_role";
-GRANT ALL ON TABLE "public"."product_models" TO "anon";
-GRANT ALL ON TABLE "public"."product_models" TO "authenticated";
-GRANT ALL ON TABLE "public"."product_models" TO "service_role";
-GRANT ALL ON TABLE "public"."product_series" TO "anon";
-GRANT ALL ON TABLE "public"."product_series" TO "authenticated";
-GRANT ALL ON TABLE "public"."product_series" TO "service_role";
 GRANT ALL ON TABLE "public"."products" TO "anon";
 GRANT ALL ON TABLE "public"."products" TO "authenticated";
 GRANT ALL ON TABLE "public"."products" TO "service_role";
@@ -4961,12 +4690,6 @@ GRANT ALL ON TABLE "public"."unverified_profiles_to_cleanup" TO "service_role";
 GRANT ALL ON TABLE "public"."user_onboarding_progress" TO "anon";
 GRANT ALL ON TABLE "public"."user_onboarding_progress" TO "authenticated";
 GRANT ALL ON TABLE "public"."user_onboarding_progress" TO "service_role";
-GRANT ALL ON TABLE "public"."v_manufacturers_by_domain" TO "anon";
-GRANT ALL ON TABLE "public"."v_manufacturers_by_domain" TO "authenticated";
-GRANT ALL ON TABLE "public"."v_manufacturers_by_domain" TO "service_role";
-GRANT ALL ON TABLE "public"."v_models_by_manufacturer" TO "anon";
-GRANT ALL ON TABLE "public"."v_models_by_manufacturer" TO "authenticated";
-GRANT ALL ON TABLE "public"."v_models_by_manufacturer" TO "service_role";
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('organization-logos', 'organization-logos', false)
 ON CONFLICT (id) DO NOTHING;

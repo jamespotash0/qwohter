@@ -160,6 +160,31 @@ contacts
 └── created_at, updated_at
 ```
 
+### Products
+
+```
+products                           (the dealer's own item list)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── product_number, display_id
+├── name, amount, amount_unit
+├── category, product_type
+├── manufacturer, series, model    (plain TEXT - no catalog hierarchy)
+├── specifications (JSONB), options (JSONB)
+├── sort_order
+└── created_by, created_at, updated_at
+```
+
+**There is no product catalog.** The domain → manufacturer → line → series →
+model hierarchy, its per-model configuration schemas, option value sets, and
+business rules were removed. CET, Giza, 2020, and ProjectMatrix already resolve
+the part number, validate the option combination, and apply list price before a
+specification reaches this app; reproducing that would mean licensing catalog
+data and tracking quarterly price books across dozens of manufacturers.
+
+`products` is what remains: a flat, org-scoped list a dealer curates for what no
+spec tool provides — labor, freight, delivery, install, and ancillary items.
+
 ### Back Office (Companies, Vendors, Attachments)
 
 Foundation tables for dealer back-office operations. `contacts` model people;

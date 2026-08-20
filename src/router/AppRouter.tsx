@@ -189,12 +189,6 @@ const Calendar = lazy(() => import("@/pages/Calendar"));
 // Admin pages - Product Catalog Management
 const AdminLayout = lazy(() => import("@/features/admin/components/AdminLayout").then(m => ({ default: m.AdminLayout })));
 const AdminDashboard = lazy(() => import("@/features/admin/pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
-const DomainsPage = lazy(() => import("@/features/admin/pages/DomainsPage").then(m => ({ default: m.DomainsPage })));
-const ManufacturersPage = lazy(() => import("@/features/admin/pages/ManufacturersPage").then(m => ({ default: m.ManufacturersPage })));
-const ProductLinesPage = lazy(() => import("@/features/admin/pages/ProductLinesPage").then(m => ({ default: m.ProductLinesPage })));
-const SeriesPage = lazy(() => import("@/features/admin/pages/SeriesPage").then(m => ({ default: m.SeriesPage })));
-const ModelsPage = lazy(() => import("@/features/admin/pages/ModelsPage").then(m => ({ default: m.ModelsPage })));
-const ValueSetsPage = lazy(() => import("@/features/admin/pages/ValueSetsPage").then(m => ({ default: m.ValueSetsPage })));
 const AdminInvitePage = lazy(() => import("@/features/admin/pages/AdminInvitePage").then(m => ({ default: m.AdminInvitePage })));
 
 // Products page - HIDDEN for now
@@ -298,12 +292,6 @@ export const AppRouter = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="appinvite" element={<AdminInvitePage />} />
-            <Route path="products/domains" element={<DomainsPage />} />
-            <Route path="products/manufacturers" element={<ManufacturersPage />} />
-            <Route path="products/lines" element={<ProductLinesPage />} />
-            <Route path="products/series" element={<SeriesPage />} />
-            <Route path="products/models" element={<ModelsPage />} />
-            <Route path="options/value-sets" element={<ValueSetsPage />} />
           </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}

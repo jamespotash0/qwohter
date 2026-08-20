@@ -82,7 +82,6 @@ export const PRODUCT_VARIABLE_FIELDS: ProductVariableField[] = [
 /** Keys in rawData that are internal metadata, not user-facing spec fields */
 const INTERNAL_RAWDATA_KEYS = new Set([
   '_specificationLabels', 'source',
-  'domain_id', 'manufacturer_id', 'product_line_id', 'series_id', 'model_id',
   // Already handled by PRODUCT_VARIABLE_FIELDS (identity fields)
   'productDomain', 'productLine', 'manufacturer', 'series', 'model',
   // Quantity is handled as a base product field

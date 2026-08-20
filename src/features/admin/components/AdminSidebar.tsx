@@ -5,14 +5,8 @@
 
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutGrid,
-  Factory,
-  Layers,
-  BoxesIcon,
-  ListTree,
   ChevronLeft,
   LogOut,
-  ListChecks,
   UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,22 +30,6 @@ const navSections: NavSection[] = [
       { label: 'Send App Invite', path: '/admin/appinvite', icon: UserPlus },
     ],
   },
-  {
-    title: 'Product Catalog',
-    items: [
-      { label: 'Domains', path: '/admin/products/domains', icon: LayoutGrid },
-      { label: 'Manufacturers', path: '/admin/products/manufacturers', icon: Factory },
-      { label: 'Product Lines', path: '/admin/products/lines', icon: Layers },
-      { label: 'Series', path: '/admin/products/series', icon: ListTree },
-      { label: 'Models', path: '/admin/products/models', icon: BoxesIcon },
-    ],
-  },
-  {
-    title: 'Configuration',
-    items: [
-      { label: 'Value Sets', path: '/admin/options/value-sets', icon: ListChecks },
-    ],
-  },
 ];
 
 export function AdminSidebar() {
@@ -60,7 +38,7 @@ export function AdminSidebar() {
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Product Admin
+          Admin
         </h1>
         <NavLink
           to="/"

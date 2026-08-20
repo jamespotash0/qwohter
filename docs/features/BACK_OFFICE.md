@@ -109,6 +109,12 @@ nothing to show for it. A vendor row *is* the manufacturer identity, and a
 series is matched by name — normalized for case and whitespace, because that
 text is hand-entered upstream.
 
+The catalog hierarchy that used to exist (domains, manufacturers, lines, series,
+models, config schemas, option value sets, business rules) was removed outright —
+9 tables, 2 views, 4 functions, and 24 source files. Products a dealer curates
+for labor, freight, and ancillary items live in the ordinary `products` table and
+are picked with `ProductLibraryPicker`.
+
 ### Summary totals
 
 `PricingSummary.totalList` reports the manufacturer list value of an order before

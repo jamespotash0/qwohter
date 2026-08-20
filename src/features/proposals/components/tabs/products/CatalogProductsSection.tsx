@@ -1,7 +1,7 @@
 /**
  * Catalog Products Section
  *
- * Displays catalog-selected and AI-extracted products in a card grid.
+ * Displays library-picked and AI-extracted products in a card grid.
  * Each card shows alias, manufacturer/series/model, key info, and specs.
  */
 
@@ -72,7 +72,11 @@ function CatalogProductCard({
   onEditCatalog: (product: Product) => void;
   onEditAi: (product: Product) => void;
 }) {
-  const isCatalogProduct = product.rawData?.source === 'catalog';
+  // 'catalog' is the legacy value from the removed product hierarchy; 'library'
+  // is what the product-library picker writes. Both mean "picked from a saved
+  // product" as opposed to AI-extracted.
+  const isCatalogProduct =
+    product.rawData?.source === 'library' || product.rawData?.source === 'catalog';
   const rawData = product.rawData as unknown as Record<string, unknown> | undefined;
 
   return (
