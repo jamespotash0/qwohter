@@ -32,7 +32,34 @@ All functions use `SECURITY DEFINER` and `STABLE` modifiers for RLS policy compa
 |----------|-----------|-------------|
 | `is_active_member` | `(user_id uuid, org_id uuid) → boolean` | Check if user has active membership in organization |
 | `has_org_role` | `(user_id uuid, org_id uuid, roles text[]) → boolean` | Check if user has ANY of the specified roles (e.g., `ARRAY['Admin', 'Owner']`) |
+| `can_view_cost` | `(user_id uuid, org_id uuid) → boolean` | Whether a user may see cost and margin figures. Single source of truth for buy-side visibility |
 | `can_view_membership` | `(user_id uuid, membership_user_id uuid, membership_org_id uuid) → boolean` | Check if user can view another user's membership (same org or self) |
+
+### Cost & Margin Visibility
+
+Buy-side numbers — what the dealer pays a manufacturer — are not visible to
+everyone with an account. An installer or warehouse user needs to write receipts
+and upload damage photos while never seeing what the product cost.
+
+`can_view_cost(user_id, org_id)` is the single predicate for this. It resolves to
+Owner/Admin against the current role vocabulary (Owner, Admin, Member); when
+back-office roles land (PM, warehouse, installer, AP) this function is the only
+place that changes.
+
+```sql
+-- vendor_discounts is margin data: gated on cost visibility, not membership
+CREATE POLICY "Cost viewers can view vendor discounts"
+  ON public.vendor_discounts FOR SELECT TO authenticated
+  USING (public.can_view_cost((SELECT auth.uid()), organization_id));
+```
+
+The client mirror is `useCanViewCost(userId, organizationId)`, so the UI hides
+cost columns rather than rendering empty ones. It **fails closed**: a failed
+permission check returns `false`.
+
+Note that RLS *filters* rather than rejects, so a user without cost visibility
+receives an empty discount list, not an error. Callers must treat "no discounts"
+as "cannot price" — never as "zero discount".
 
 ### Current User Helpers (uses `auth.uid()`)
 

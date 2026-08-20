@@ -160,6 +160,81 @@ contacts
 └── created_at, updated_at
 ```
 
+### Back Office (Companies, Vendors, Attachments)
+
+Foundation tables for dealer back-office operations. `contacts` model people;
+`companies` and `vendors` are the accounts a dealer transacts with, because a
+purchase order or invoice cannot be addressed to a person's name alone.
+
+```
+companies                          (who you sell to)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── name, legal_name
+├── company_type ('Customer' | 'Prospect' | 'Partner' | 'Other')
+├── billing_address_* (line1, line2, city, state, postal_code, country)
+├── shipping_address_* (falls back to billing when unset)
+├── payment_terms, tax_exempt, tax_exempt_certificate, default_tax_rate
+├── primary_contact_id (FK → contacts)
+├── external_accounting_id (customer id in QuickBooks)
+├── is_active (boolean - deactivate rather than delete)
+└── created_by, created_at, updated_at
+
+vendors                            (who you buy from)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── name
+├── vendor_type ('Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other')
+├── manufacturer_id (FK → product_manufacturers, nullable)
+├── account_number (the dealer's account with this vendor)
+├── order_method ('Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone')
+├── order_email, acknowledgment_email, portal_url
+├── remit_to_* (payment address; often not the plant)
+├── payment_terms, freight_terms, standard_lead_time_days
+├── rep_name, rep_email, rep_phone
+├── external_accounting_id (vendor id in QuickBooks)
+├── is_active (boolean)
+└── created_by, created_at, updated_at
+
+vendor_discounts                   (what you pay them)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── vendor_id (FK → vendors)
+├── series_id (FK → product_series, NULL = any series)
+├── contract_vehicle (text, NULL = any contract)
+├── discount_percent (0-100; 55 means "55 off list" = 0.45 multiplier)
+├── effective_from, effective_to (NULL = unbounded)
+└── created_by, created_at, updated_at
+
+attachments                        (polymorphic file attachments)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── entity_type ('vendor_po' | 'receipt' | 'work_order' | 'order_line' | ...)
+├── entity_id (uuid, NO foreign key - polymorphic)
+├── document_type ('acknowledgment' | 'packing_slip' | 'damage_photo' | ...)
+├── file_name, file_path, file_size, file_type
+├── description
+└── uploaded_by, created_at, updated_at
+```
+
+**Discount resolution.** A dealer's discount is not one number. Rows match
+most-specific-first: series + contract, then series, then contract, then the
+blanket agreement; ties inside a tier go to the larger discount. Resolution
+lives in `src/lib/pricing/discounts.ts` so quoting and purchasing arrive at the
+same dealer cost. "No agreement on file" returns `null`, which is distinct from
+a genuine 0% discount and must not be coerced to it.
+
+**Cost visibility.** `vendor_discounts` is margin data and is gated on
+`can_view_cost()`, not plain membership. See [SECURITY.md](SECURITY.md).
+
+**Attachment caveat.** `entity_id` carries no foreign key — that is the cost of
+a polymorphic table. Deleting a parent row must clean up here explicitly via
+`deleteAttachmentsForEntity()`; nothing cascades on its own.
+
+**`project_attachments` no longer exists.** It was folded into `attachments`
+(`entity_type = 'project'`) and dropped. Legacy rows keep their original storage
+paths; no files moved.
+
 ### Subscriptions & Billing
 
 ```

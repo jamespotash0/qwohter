@@ -66,6 +66,7 @@ npm run docs:preview           # Preview built docs
 | [PROJECTS.md](docs/features/PROJECTS.md) | Kanban board, tasks, attachments |
 | [CONTACTS.md](docs/features/CONTACTS.md) | Contact management, phone validation |
 | [FORMS.md](docs/features/FORMS.md) | Form builder, templates, JSONB structure |
+| [BACK_OFFICE.md](docs/features/BACK_OFFICE.md) | Dealer back office: companies, vendors, discount resolution, list-down pricing, attachments |
 | [NOTIFICATIONS.md](docs/features/NOTIFICATIONS.md) | Email/in-app notifications, retry logic, preferences |
 | [SETTINGS.md](docs/features/SETTINGS.md) | All settings tabs, workflow settings |
 | [BILLING.md](docs/features/BILLING.md) | Stripe subscriptions, webhooks, seat management |
