@@ -95,7 +95,13 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
       >
         <div
           className="relative h-10 w-10 flex-shrink-0"
-          onMouseEnter={() => setIsLogoHovered(true)}
+          onMouseEnter={() => {
+            // Set both directly rather than relying on the enter event
+            // reaching the cluster: the slot's children are swapped and
+            // absolutely stacked, so propagation here is fragile.
+            setIsLogoHovered(true);
+            setIsHovered(true);
+          }}
           onMouseLeave={() => setIsLogoHovered(false)}
         >
           <div
