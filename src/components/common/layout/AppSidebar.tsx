@@ -140,7 +140,7 @@ export function AppSidebar() {
                       />
                       {/* Label stays mounted and fades, so it reveals with the panel */}
                       <span
-                        className={`font-inter text-[15px] tracking-tight whitespace-nowrap ${SLIDE} ${
+                        className={`font-inter text-sm tracking-tight whitespace-nowrap ${SLIDE} ${
                           isActive ? 'font-medium' : 'font-normal'
                         } ${isCollapsed ? 'opacity-0 -translate-x-1' : 'opacity-100 translate-x-0'}`}
                       >
