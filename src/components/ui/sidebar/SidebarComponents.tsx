@@ -37,7 +37,7 @@ export const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+    const { isMobile, state, mode, openMobile, setOpenMobile } = useSidebar();
 
     if (collapsible === "none") {
       return (
@@ -74,23 +74,50 @@ export const Sidebar = React.forwardRef<
       );
     }
 
-    // Desktop: a plain flex child rather than a fixed panel + spacer pair.
-    // Being in normal flow lets a full-width top bar sit above it, and keeps
-    // the sidebar edge and the content edge moving as one during the slide.
-    const isIconCollapsed = state === "collapsed" && collapsible === "icon";
+    // Desktop layout depends on the mode:
+    //
+    //  - pinned open ("expanded") -> the sidebar sits in normal flow and the
+    //    content shrinks around it.
+    //  - opens on hover ("hover") -> the layout permanently reserves only the
+    //    rail width, and the panel floats above the content when it expands,
+    //    so nothing reflows as the pointer moves in and out.
+    //
+    // Either way it is one element in flow, not the fixed panel + spacer pair
+    // the upstream component used, whose widths disagreed and which would sit
+    // over a full-width top bar.
+    const isIconCollapsible = collapsible === "icon";
     const isOffcanvasCollapsed = state === "collapsed" && collapsible === "offcanvas";
+    const overlays = mode === "hover" && isIconCollapsible;
+
+    const railWidth = "w-[--sidebar-width-icon]";
+    const fullWidth = "w-[--sidebar-width]";
+    const expandedNow = state === "expanded";
+
+    // Space the layout gives up. In hover mode this never changes.
+    const flowWidth = isOffcanvasCollapsed
+      ? "w-0"
+      : overlays || (!expandedNow && isIconCollapsible)
+      ? railWidth
+      : fullWidth;
+
+    // Width the visible panel animates to.
+    const panelWidth = isOffcanvasCollapsed
+      ? "w-0"
+      : !expandedNow && isIconCollapsible
+      ? railWidth
+      : fullWidth;
+
+    const slide = "duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]";
 
     return (
       <div
         ref={ref}
         className={cn(
-          "group peer hidden h-full flex-shrink-0 overflow-hidden text-sidebar-foreground md:flex",
-          "duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]",
-          isOffcanvasCollapsed
-            ? "w-0"
-            : isIconCollapsed
-            ? "w-[--sidebar-width-icon]"
-            : "w-[--sidebar-width]",
+          "group peer relative hidden h-full flex-shrink-0 text-sidebar-foreground md:block",
+          slide,
+          flowWidth,
+          // Lift above the content only while it is actually floating over it
+          overlays && expandedNow && "z-30",
           className
         )}
         data-state={state}
@@ -101,7 +128,13 @@ export const Sidebar = React.forwardRef<
       >
         <div
           data-sidebar="sidebar"
-          className="flex h-full w-full flex-col overflow-hidden bg-sidebar"
+          className={cn(
+            "flex h-full flex-col overflow-hidden bg-sidebar",
+            slide,
+            overlays
+              ? cn("absolute inset-y-0 left-0", panelWidth, expandedNow && "shadow-xl")
+              : "w-full"
+          )}
         >
           {children}
         </div>

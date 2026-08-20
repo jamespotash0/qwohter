@@ -38,6 +38,22 @@ bar. State lives in `SidebarProvider`
 | `expanded` | Stays open | `PushPinSimple` (filled) |
 | `hover` | Collapsed, expands while the pointer is over it | `SidebarSimple` |
 
+### Push vs float
+
+The two modes lay out differently, which is the point:
+
+| Mode | Layout | Content |
+|------|--------|---------|
+| `expanded` | Panel sits in normal flow | Shrinks to make room |
+| `hover` | Layout reserves only the rail width; the panel floats above the content on `z-30` when it expands | Never moves |
+
+So in hover mode nothing reflows as the pointer passes in and out — the content
+keeps a fixed origin and width while the panel slides over it. Pinned open, the
+sidebar behaves like a normal column and the content resizes around it.
+
+Verified against the compiled CSS: in hover mode the content stays at x=64 /
+w=1136 whether the panel is at 64px or 220px; pinned, it moves to x=220 / w=980.
+
 **The hover region spans two sibling elements** — the top bar's left cluster and
 the sidebar itself. Moving between them fires a leave before the matching enter,
 so `setIsHovered(false)` is deferred by 120ms (cancelled by any enter) to stop
