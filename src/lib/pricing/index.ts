@@ -35,6 +35,14 @@ export type {
   MaterializeSummary,
 } from './materialize';
 
+export { summarizeVariance, sortVarianceQueue } from './variance';
+
+export type {
+  VarianceStatus,
+  VarianceLine,
+  VarianceSummary,
+} from './variance';
+
 export {
   resolveDiscount,
   resolveDiscountPercent,

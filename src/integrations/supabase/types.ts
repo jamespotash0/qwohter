@@ -1897,6 +1897,95 @@ export type Database = {
           },
         ]
       }
+      po_lines: {
+        Row: {
+          acked_quantity: number | null
+          acked_ship_date: string | null
+          acked_unit_cost: number | null
+          acknowledged_at: string | null
+          cost_variance: number | null
+          created_at: string
+          dealer_discount_percent: number | null
+          id: string
+          line_number: number
+          list_price: number | null
+          notes: string | null
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          unit_cost: number
+          updated_at: string
+          vendor_po_id: string
+        }
+        Insert: {
+          acked_quantity?: number | null
+          acked_ship_date?: string | null
+          acked_unit_cost?: number | null
+          acknowledged_at?: string | null
+          cost_variance?: number | null
+          created_at?: string
+          dealer_discount_percent?: number | null
+          id?: string
+          line_number: number
+          list_price?: number | null
+          notes?: string | null
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          unit_cost: number
+          updated_at?: string
+          vendor_po_id: string
+        }
+        Update: {
+          acked_quantity?: number | null
+          acked_ship_date?: string | null
+          acked_unit_cost?: number | null
+          acknowledged_at?: string | null
+          cost_variance?: number | null
+          created_at?: string
+          dealer_discount_percent?: number | null
+          id?: string
+          line_number?: number
+          list_price?: number | null
+          notes?: string | null
+          order_line_id?: string
+          organization_id?: string
+          quantity?: number
+          unit_cost?: number
+          updated_at?: string
+          vendor_po_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_line_fulfillment"
+            referencedColumns: ["order_line_id"]
+          },
+          {
+            foreignKeyName: "po_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_lines_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           amount: number | null
@@ -3979,6 +4068,115 @@ export type Database = {
           },
         ]
       }
+      vendor_pos: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_ship_date: string | null
+          created_at: string
+          created_by: string | null
+          freight_terms: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          payment_terms: string | null
+          po_number: string | null
+          requested_ship_date: string | null
+          sales_order_id: string
+          sent_at: string | null
+          sent_by: string | null
+          sent_to_email: string | null
+          ship_to_address_line1: string | null
+          ship_to_address_line2: string | null
+          ship_to_city: string | null
+          ship_to_country: string | null
+          ship_to_name: string | null
+          ship_to_postal_code: string | null
+          ship_to_state: string | null
+          status: string
+          updated_at: string
+          vendor_ack_number: string | null
+          vendor_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_ship_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_terms?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          payment_terms?: string | null
+          po_number?: string | null
+          requested_ship_date?: string | null
+          sales_order_id: string
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_to_email?: string | null
+          ship_to_address_line1?: string | null
+          ship_to_address_line2?: string | null
+          ship_to_city?: string | null
+          ship_to_country?: string | null
+          ship_to_name?: string | null
+          ship_to_postal_code?: string | null
+          ship_to_state?: string | null
+          status?: string
+          updated_at?: string
+          vendor_ack_number?: string | null
+          vendor_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_ship_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_terms?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          payment_terms?: string | null
+          po_number?: string | null
+          requested_ship_date?: string | null
+          sales_order_id?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_to_email?: string | null
+          ship_to_address_line1?: string | null
+          ship_to_address_line2?: string | null
+          ship_to_city?: string | null
+          ship_to_country?: string | null
+          ship_to_name?: string | null
+          ship_to_postal_code?: string | null
+          ship_to_state?: string | null
+          status?: string
+          updated_at?: string
+          vendor_ack_number?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_pos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           account_number: string | null
@@ -4136,6 +4334,73 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      po_line_variance: {
+        Row: {
+          acked_quantity: number | null
+          acked_ship_date: string | null
+          acked_unit_cost: number | null
+          acknowledged_at: string | null
+          cost_variance: number | null
+          description: string | null
+          model_number: string | null
+          order_line_id: string | null
+          ordered_quantity: number | null
+          ordered_unit_cost: number | null
+          organization_id: string | null
+          po_line_id: string | null
+          po_number: string | null
+          requested_ship_date: string | null
+          sales_order_id: string | null
+          ship_date_slip_days: number | null
+          variance_status: string | null
+          vendor_id: string | null
+          vendor_po_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_line_fulfillment"
+            referencedColumns: ["order_line_id"]
+          },
+          {
+            foreignKeyName: "po_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_lines_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -4396,6 +4661,10 @@ export type Database = {
       }
       create_sales_order_with_lines: {
         Args: { p_lines: Json; p_order: Json }
+        Returns: string
+      }
+      create_vendor_po_with_lines: {
+        Args: { p_lines: Json; p_po: Json }
         Returns: string
       }
       email_is_registered: { Args: { p_email: string }; Returns: boolean }

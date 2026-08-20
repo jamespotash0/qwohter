@@ -5,9 +5,9 @@ Foundation for dealer back-office operations — everything that happens between
 come from the tools dealers already use (CET, Giza, 2020, ProjectMatrix); this
 system owns the order lifecycle those tools do not.
 
-> **Status:** Phase 0 (foundations) and the order spine implemented. Purchase
-> orders, acknowledgments, receiving, and work orders are not built yet — the
-> tables and types below are what they will hang off.
+> **Status:** Foundations, the order spine, and the PO fan-out with
+> acknowledgment variance are implemented. Receiving, work orders, and
+> specification import are not built yet.
 
 ---
 
@@ -69,6 +69,48 @@ purchase order until a vendor is assigned. Call `previewOrderFromProposal()`
 first and show `summarizeMaterialization()`: a dealer should see *"3
 manufacturers have no vendor account, 47 lines cannot be ordered"* before the
 order exists, not after. `assignVendorToLines()` is the fix.
+
+---
+
+## Purchase orders and the fan-out
+
+One customer order becomes N purchase orders, one per manufacturer — a 1,200-line
+job might be six POs to six factories, each acknowledged, shipped, and invoiced
+on its own schedule.
+
+`po_lines` **reference** order lines rather than duplicating them. An order line
+is what was sold; a PO line is a claim on some of its quantity. Partial ordering
+is normal, so `planFanOut()` reads outstanding quantity from
+`order_line_fulfillment` and is safe to re-run as a job is released in phases.
+
+A line only flips to `Ordered` once its **full** quantity is on a PO. Releasing
+12 of 20 leaves it `Open`, because the remaining 8 still have to be bought —
+flagging it early would hide them from the next fan-out.
+
+Issuing goes through `create_vendor_po_with_lines`, which writes the header, its
+lines, and one `ordered` event per line together. Unit cost is read from the
+order line **inside** the function — what the dealer commits to buy at is not the
+client's to assert.
+
+`fanOutPurchaseOrders()` issues each vendor's PO independently: one vendor
+failing does not roll back the rest, and failures come back named so the caller
+can say exactly which vendor did not get an order.
+
+### The variance queue
+
+`po_lines` carries both the price ordered at and the price acknowledged. The
+acknowledged columns stay `NULL` until an acknowledgment arrives, which is what
+separates *not yet acknowledged* from *acknowledged unchanged*.
+
+`cost_variance` is a **generated column**, so it cannot drift from its inputs.
+The `po_line_variance` view classifies each line as `awaiting_ack`, `match`,
+`price`, `date`, or `price_and_date`, and `summarizeVariance()` produces the
+headline: *"12 awaiting acknowledgment, 4 with variances totalling $8,400, worst
+slip 21 days."*
+
+Credits net against overcharges in the exposure figure — a vendor honouring a
+lower price is real money back. But the queue *sorts* by magnitude, so a large
+credit is as visible as a large overcharge; both warrant a look.
 
 ---
 
@@ -237,34 +279,36 @@ Two behavior changes came with the consolidation:
 | Pricing math | `src/lib/pricing/calculate.ts` |
 | Materialization | `src/lib/pricing/materialize.ts` |
 | Sales orders | `src/services/salesOrdersService.ts` |
+| Purchase orders | `src/services/vendorPOService.ts` |
+| Variance logic | `src/lib/pricing/variance.ts` |
 | Discount resolution | `src/lib/pricing/discounts.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
 | Vendors & discounts | `src/services/vendorsService.ts`, `src/hooks/queries/useVendors.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql` |
-| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts` |
+| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql` |
+| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts` |
 
 ---
 
 ## Known constraints
 
-**Supabase typing is not enforced — reads included.** The hand-maintained
-`Database` type omits the `Relationships` key that supabase-js requires on every
-table. That fails the `GenericSchema` constraint, which collapses **both**
-`Insert`/`Update` **and select results** to `never` across the entire app.
-Because `never` is assignable to anything, a select compiles against any shape:
+**Supabase typing is now enforced.** `types.ts` is generated with
+`supabase gen types typescript --local` rather than hand-maintained, so every
+table carries `Relationships` and the schema declares `CompositeTypes`. Selects
+and writes are properly typed instead of collapsing to `never`. Regenerate it
+after every migration.
 
-```ts
-const { data } = await supabase.from('vendors').select('*');
-const wrong: { nope: string }[] | null = data;  // compiles. data is `never`.
-```
+The `as never` casts left in the older back-office services are no longer
+load-bearing and can be removed.
 
-So the interfaces in these services *describe* rows; they do not *verify* them.
-Adding `Relationships` repo-wide surfaces ~125 previously-hidden errors, which is
-the real size of the problem. Until that is done deliberately, writes are cast at
-the boundary (`as never`), matching `contactsService` and `paymentsService`.
+**Migration drift.** Regenerating from local revealed three tables the app code
+uses that exist in neither the local database nor the migrations:
+`form_document_templates`, `quickbooks_online_invoice_sync`, and
+`quickbooks_online_connections`. They appear to have been created directly
+against the remote project, so `supabase/migrations` does not fully describe
+production. Worth reconciling before the next environment is stood up.
 
 **Role vocabulary.** Roles are still Owner / Admin / Member. The back office
 needs designer, PM, sales, warehouse, installer, and AP. Expanding the set
