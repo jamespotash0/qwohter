@@ -39,6 +39,34 @@ see [BILLING.md](BILLING.md). The middle is what Phase 1 builds.
 | Order detail | `/orders/:id` | Lines with derived fulfillment quantities, the purchasing fan-out, and the issued POs. |
 | Acknowledgments | `/acknowledgments` | The variance queue. |
 
+### Sending a purchase order
+
+The PDF is drawn as vector text and tables (`src/lib/pdf/purchaseOrder.ts`),
+not screenshotted from the DOM the way the proposal exporter works. A PO is a
+tabular document a factory's order-entry clerk keys from: it has to stay crisp,
+be selectable, and print small. A 60-line order comes out under 20 KB; the
+rasterised equivalent would be megabytes.
+
+Option strings sit on their own row beneath each description rather than being
+truncated into a column — that string is what the clerk keys to build the
+product, so losing characters produces the wrong item.
+
+Rendering happens on the client and the base64 is passed to the
+`send-purchase-order` edge function, which attaches it and sends via Resend.
+One renderer, deliberately: a Deno reimplementation would drift from the one a
+dealer previews, and the document a manufacturer receives must be the one that
+was reviewed.
+
+Two ordering decisions in that flow:
+
+- The PDF is **filed as an attachment before the email is sent**. An orphaned
+  attachment is recoverable; a sent document nobody kept a copy of is not, and
+  "what exactly did we order" is the whole question in a vendor dispute.
+- The PO is marked `Sent` **only after Resend accepts it**. A PO recorded as
+  sent that never left is worse than one that failed loudly — the dealer would
+  wait weeks for an acknowledgment that was never coming. If the email lands but
+  the status update fails, the response says so and warns against resending.
+
 The acknowledgment dialog lives on the order's Purchase orders tab. Lines
 pre-fill with what was ordered — an unchanged acknowledgment is the common case
 and should not require retyping every figure — and the running variance total
@@ -404,6 +432,7 @@ Two behavior changes came with the consolidation:
 | Fulfillment routing | `src/lib/pricing/fulfillment.ts` |
 | Work orders | `src/services/workOrdersService.ts` |
 | Variance queue UI | `src/pages/VarianceQueue.tsx`, `src/components/features/variance/` |
+| PO document | `src/lib/pdf/purchaseOrder.ts`, `src/services/purchaseOrderDocumentService.ts` |
 | Discount resolution | `src/lib/pricing/discounts.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |

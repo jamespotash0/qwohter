@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Storefront, ListChecks } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, Storefront, ListChecks, PaperPlaneTilt } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,8 +20,11 @@ import {
   useVendorPOs,
 } from '@/hooks/queries/useSalesOrders';
 import { useVendors } from '@/hooks/queries/useVendors';
+import { useUser } from '@/auth';
+import { useCurrentOrganization } from '@/hooks/queries';
 import { FanOutPanel } from '@/components/features/orders/FanOutPanel';
 import { AcknowledgmentDialog } from '@/components/features/orders/AcknowledgmentDialog';
+import { SendPurchaseOrderDialog } from '@/components/features/orders/SendPurchaseOrderDialog';
 import { cn } from '@/lib/utils';
 
 export default function SalesOrderDetailPage() {
@@ -34,8 +37,18 @@ export default function SalesOrderDetailPage() {
   const { data: pos = [] } = useVendorPOs(orderId);
   const { data: vendors = [] } = useVendors(order?.organization_id);
 
-  const [ackPOId, setAckPOId] = useState<string | null>(null);
+  // The dealer's own name goes on the purchase order letterhead.
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id ?? '');
+  const organizationName = organization?.name ?? 'Your organization';
 
+  const [ackPOId, setAckPOId] = useState<string | null>(null);
+  const [sendPOId, setSendPOId] = useState<string | null>(null);
+
+  const vendorById = useMemo(
+    () => Object.fromEntries(vendors.map(v => [v.id, v])),
+    [vendors]
+  );
   const vendorName = useMemo(
     () => Object.fromEntries(vendors.map(v => [v.id, v.name])),
     [vendors]
@@ -56,6 +69,7 @@ export default function SalesOrderDetailPage() {
   }, [lines]);
 
   const activePO = pos.find(p => p.id === ackPOId);
+  const sendingPO = pos.find(p => p.id === sendPOId);
 
   if (isLoading) {
     return (
@@ -257,6 +271,12 @@ export default function SalesOrderDetailPage() {
                       </p>
                       <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500">
                         <span>{po.status}</span>
+                        {po.sent_at && (
+                          <span>
+                            Sent {new Date(po.sent_at).toLocaleDateString()}
+                            {po.sent_to_email ? ` to ${po.sent_to_email}` : ''}
+                          </span>
+                        )}
                         {po.requested_ship_date && (
                           <span>Requested {po.requested_ship_date}</span>
                         )}
@@ -265,13 +285,23 @@ export default function SalesOrderDetailPage() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant={po.acknowledged_at ? 'outline' : 'default'}
-                      size="sm"
-                      onClick={() => setAckPOId(po.id)}
-                    >
-                      {po.acknowledged_at ? 'Update ack' : 'Record ack'}
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        variant={po.sent_at ? 'ghost' : 'default'}
+                        size="sm"
+                        onClick={() => setSendPOId(po.id)}
+                      >
+                        <PaperPlaneTilt className="w-4 h-4 mr-1.5" />
+                        {po.sent_at ? 'Resend' : 'Send'}
+                      </Button>
+                      <Button
+                        variant={po.acknowledged_at ? 'ghost' : 'outline'}
+                        size="sm"
+                        onClick={() => setAckPOId(po.id)}
+                      >
+                        {po.acknowledged_at ? 'Update ack' : 'Record ack'}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -279,6 +309,20 @@ export default function SalesOrderDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <SendPurchaseOrderDialog
+        open={!!sendPOId}
+        onOpenChange={open => !open && setSendPOId(null)}
+        vendorPOId={sendPOId}
+        organizationId={order.organization_id}
+        dealerName={organizationName}
+        poNumber={sendingPO?.po_number}
+        vendorName={sendingPO ? vendorName[sendingPO.vendor_id] : null}
+        defaultEmail={
+          sendingPO ? vendorById[sendingPO.vendor_id]?.order_email : null
+        }
+        alreadySent={!!sendingPO?.sent_at}
+      />
 
       <AcknowledgmentDialog
         open={!!ackPOId}

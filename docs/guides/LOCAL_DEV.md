@@ -134,6 +134,7 @@ All edge functions live in `supabase/functions/<name>/index.ts`. The local gatew
 |----------|---------|-----------------|
 | `send-invite` | Team invitation emails | `RESEND_API_KEY` |
 | `send-notification-email` | Notification emails | `RESEND_API_KEY` |
+| `send-purchase-order` | Purchase order transmission | `RESEND_API_KEY` |
 | `send-signup-invite` | Signup invitation emails | `RESEND_API_KEY` |
 | `contact-us` | Contact form emails | `RESEND_API_KEY` |
 | `stripe-handler` | Create checkout sessions | `STRIPE_SECRET_KEY` |
