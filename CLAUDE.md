@@ -52,6 +52,7 @@ npm run docs:preview           # Preview built docs
 
 | Doc | Description |
 |-----|-------------|
+| [APP_SHELL.md](docs/architecture/APP_SHELL.md) | Sidebar modes, top bar, profile menu, content frame |
 | [AUTH.md](docs/architecture/AUTH.md) | Auth flows, sign-in/out edge cases, rate limiting, onboarding |
 | [DATABASE.md](docs/architecture/DATABASE.md) | Schema overview, tables, triggers, indexes |
 | [SECURITY.md](docs/architecture/SECURITY.md) | RLS policies, helper functions, security checklist |

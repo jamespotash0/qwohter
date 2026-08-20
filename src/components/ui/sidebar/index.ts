@@ -64,5 +64,5 @@ export {
 } from './SidebarMenu';
 
 // Types and Constants
-export type { SidebarState, SidebarContext as SidebarContextType } from './types';
+export type { SidebarState, SidebarMode, SidebarContext as SidebarContextType } from './types';
 export * from './constants';

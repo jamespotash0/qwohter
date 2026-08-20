@@ -185,6 +185,9 @@ const Contacts = lazy(() => import("@/pages/Contacts"));
 // Calendar page
 const Calendar = lazy(() => import("@/pages/Calendar"));
 
+// Notifications centre
+const Notifications = lazy(() => import("@/pages/Notifications"));
+
 // Admin pages - Product Catalog Management
 const AdminLayout = lazy(() => import("@/features/admin/components/AdminLayout").then(m => ({ default: m.AdminLayout })));
 const AdminDashboard = lazy(() => import("@/features/admin/pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
@@ -323,6 +326,9 @@ export const AppRouter = () => (
 
                 {/* Analytics and reporting */}
                 <Route path="/analytics" element={<Analytics />} />
+
+                {/* Notifications - "View all" target from the top bar bell */}
+                <Route path="/notifications" element={<Notifications />} />
 
                 {/* Application settings */}
                 <Route path="/settings" element={<Settings />} />

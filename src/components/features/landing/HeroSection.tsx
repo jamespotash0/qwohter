@@ -54,7 +54,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
       <header className="fixed top-0 left-0 right-0 z-50 pt-[50px] animate-fade-in opacity-0 [--animation-delay:0ms] transition-all duration-300">
         {isScrolled ? (
           /* Scrolled State: Everything merged into one pill */
-          <nav className="mx-auto max-w-[600px] h-[48px] rounded-full flex items-center pl-4 pr-2 shadow-lg bg-gradient-to-r from-[#272727] to-[#393939] transition-all duration-500">
+          <nav className="mx-auto w-fit max-w-[calc(100%-2rem)] h-[48px] rounded-full flex items-center pl-4 pr-2 shadow-lg bg-gradient-to-r from-[#272727] to-[#393939] transition-all duration-500">
             {/* Logo */}
             <div className="flex items-center transition-all duration-300 mr-8">
               <img
@@ -65,7 +65,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
             </div>
 
             {/* Navigation Items - Centered */}
-            <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-4">
               {navItems.map((item) => {
                 const isActive = activeSection === item.section;
                 return (
@@ -98,8 +98,15 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
               })}
             </div>
 
-            {/* Get a Demo */}
-            <div className="flex items-center ml-6">
+            {/* Sign In + Get a Demo */}
+            <div className="flex items-center gap-3 ml-6">
+              <button
+                onClick={() => navigate('/sign-in')}
+                className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap relative group transition-all"
+              >
+                Sign In
+                <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#ee6c4d] transition-all duration-300 group-hover:w-full"></span>
+              </button>
               <Button
                 onClick={(e) => {
                   onRipple(e);
@@ -115,18 +122,18 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
           </nav>
         ) : (
           /* Not Scrolled State: Grid layout with separate pill */
-          <div className="mx-auto h-[50px] grid grid-cols-[auto_500px_auto] items-center bg-transparent px-[180px] transition-all duration-500">
+          <div className="mx-auto h-[50px] flex items-center justify-between gap-4 bg-transparent px-6 md:px-10 lg:px-16 xl:px-[180px] transition-all duration-500">
             {/* Logo */}
-            <div className="flex items-center justify-start transition-all duration-300">
+            <div className="flex items-center justify-start transition-all duration-300 flex-shrink">
               <img
                 src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
                 alt="Qwohter Logo"
-                className="w-[232px] h-[30px]"
+                className="w-[160px] lg:w-[232px] h-auto"
               />
             </div>
 
             {/* Center Navigation Pill */}
-            <nav className="hidden md:flex items-center relative rounded-full px-[15px] py-2.5 bg-[#FFFFFF]/25 backdrop-blur-sm justify-evenly transition-all duration-500">
+            <nav className="hidden lg:flex items-center relative rounded-full px-[15px] py-2.5 gap-6 bg-[#FFFFFF]/25 backdrop-blur-sm justify-evenly transition-all duration-500">
               {/* Animated indicator bar */}
               <div
                 className="absolute bottom-0 h-[2px] bg-[#ee6c4d] transition-all duration-300 ease-out"
@@ -168,8 +175,8 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
               })}
             </nav>
 
-            {/* Sign In and Get a Demo Buttons */}
-            <div className="flex items-center gap-5 justify-end transition-all duration-300">
+            {/* Sign In and Get a Demo Buttons - always visible, never pushed off */}
+            <div className="flex items-center gap-3 sm:gap-5 justify-end flex-shrink-0 transition-all duration-300">
               <button
                 onClick={() => navigate('/sign-in')}
                 className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap relative group transition-all"
@@ -183,7 +190,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
                   onRipple(e);
                   onGetDemo();
                 }}
-                className="py-0 h-[48px] px-[30px] inline-flex gap-[5px] bg-[#f7f2e9] border border-solid border-neutral-900 items-center justify-center rounded-3xl hover:bg-[#ebe5d9] hover:border-[#ee6c4d] transition-all duration-200"
+                className="py-0 h-[40px] sm:h-[48px] px-[18px] sm:px-[30px] inline-flex gap-[5px] bg-[#f7f2e9] border border-solid border-neutral-900 items-center justify-center rounded-3xl hover:bg-[#ebe5d9] hover:border-[#ee6c4d] transition-all duration-200"
               >
                 <span className="[font-family:'Urbanist',Helvetica] font-semibold text-neutral-900 text-base tracking-[0] leading-6 whitespace-nowrap">
                   Get a Demo

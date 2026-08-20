@@ -4,7 +4,18 @@
 
 ## Overview
 
-Settings are organized into tabs with role-based access control. Some tabs are only visible to Admin/Owner roles.
+Settings are organized into sections with role-based access control. Some sections are only visible to Admin/Owner roles.
+
+### Navigation
+
+Settings uses an **inner sidebar** (`src/components/features/settings/SettingsSidebar.tsx`)
+that sits *beside* the main app sidebar rather than replacing it. It lists the
+sections vertically and carries a Back button that returns to the previous page
+(falling back to `/dashboard` on a cold deep-link). The active section is
+mirrored in the `?tab=` query param, so deep links still work.
+
+Settings is reached from the profile menu in the app top bar; it is not a main
+sidebar item.
 
 ## Settings Tabs
 

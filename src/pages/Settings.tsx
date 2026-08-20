@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug, Bell, Banknote } from "lucide-react";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
@@ -14,6 +14,7 @@ import { TeamTab } from "@/components/features/settings/TeamTab";
 import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { NotificationsTab } from "@/components/features/settings/NotificationsTab";
 import { PaymentsTab } from "@/components/features/settings/PaymentsTab";
+import { SettingsSidebar } from "@/components/features/settings/SettingsSidebar";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
@@ -23,8 +24,6 @@ const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'profile';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
   // Initialize hasValidSubscription from localStorage to prevent flicker
   const [hasValidSubscription, setHasValidSubscription] = useState(() => {
@@ -228,66 +227,36 @@ const Settings = () => {
     });
   }, [user, organization, userRole, profile, refetchOrganization, hasValidSubscription]);
 
-  // Update indicator position when active tab changes
-  useEffect(() => {
-    const activeTabElement = tabRefs.current[activeTab];
-    if (activeTabElement) {
-      const { offsetLeft, offsetWidth } = activeTabElement;
-      setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
-    }
-  }, [activeTab]); // Only depend on activeTab - availableTabs not needed
-
   const handleTabChange = (tabId: string) => {
     trackEvent('settings_tab_viewed', { tab: tabId });
     setActiveTab(tabId);
     setSearchParams({ tab: tabId });
   };
 
-  return (
-    <div className="max-w-7xl mx-auto">
-      {/* Page Title */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Manage your account, organization, and preferences</p>
-      </div>
+  const activeTabDefinition = availableTabs.find((tab) => tab.id === activeTab) ?? availableTabs[0];
 
-      {/* Horizontal Tab Navigation with Background Slider */}
-      <div className="mb-8 overflow-x-auto">
-        <div className="relative inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-0.5 min-w-max">
-          {/* Sliding indicator */}
-          <div
-            className="absolute top-1 bottom-1 bg-white dark:bg-gray-700 shadow-sm rounded-md transition-all duration-300 ease-out"
-            style={{
-              left: `${indicatorStyle.left}px`,
-              width: `${indicatorStyle.width}px`,
-            }}
-          />
-          {availableTabs.map((tab) => (
-            <button
-              key={tab.id}
-              ref={(el) => { tabRefs.current[tab.id] = el; }}
-              onClick={() => handleTabChange(tab.id)}
-              className={`relative z-10 px-6 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap min-w-[140px] text-center ${
-                activeTab === tab.id
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+  const navItems = useMemo(
+    () => availableTabs.map(({ id, label, icon }) => ({ id, label, icon })),
+    [availableTabs]
+  );
+
+  return (
+    <div className="flex gap-6 items-start">
+      {/* Inner settings sidebar - sits beside the main app sidebar */}
+      <SettingsSidebar
+        items={navItems}
+        activeTab={activeTabDefinition?.id ?? activeTab}
+        onTabChange={handleTabChange}
+      />
 
       {/* Content Area */}
-      <div>
-        {availableTabs.map((tab) => (
-          activeTab === tab.id && (
-            <div key={tab.id}>
-              {tab.component}
-            </div>
-          )
-        ))}
+      <div className="flex-1 min-w-0">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[var(--content-header-text)]">
+            {activeTabDefinition?.label ?? "Settings"}
+          </h1>
+        </div>
+        {activeTabDefinition?.component}
       </div>
     </div>
   );

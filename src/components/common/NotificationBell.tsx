@@ -1,12 +1,14 @@
 /**
  * NotificationBell Component
  *
- * Displays a notification bell icon with unread count and dropdown
+ * Bell icon in the app top bar with an unread badge and a dropdown of recent
+ * notifications. "View all" links through to the full notifications page.
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Check, Trash, X } from '@phosphor-icons/react';
+import { Bell, Check, X } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -21,10 +23,15 @@ import {
   useMarkAllNotificationsAsRead,
   useDeleteNotification,
 } from '@/hooks/useNotifications';
+import { getNotificationIcon } from '@/lib/notificationDisplay';
 import type { Notification } from '@/lib/types/notifications';
+
+/** How many notifications the dropdown shows before deferring to "View all" */
+const PREVIEW_COUNT = 6;
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
   const user = useUser();
   const userId = user?.id;
 
@@ -34,29 +41,21 @@ export function NotificationBell() {
   const markAllAsRead = useMarkAllNotificationsAsRead(userId || '');
   const deleteNotification = useDeleteNotification(userId || '');
 
+  const previewNotifications = notifications.slice(0, PREVIEW_COUNT);
+
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.is_read) {
       markAsRead.mutate(notification.id);
     }
     if (notification.link) {
-      window.location.href = notification.link;
       setIsOpen(false);
+      navigate(notification.link);
     }
   };
 
-  const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'task_assigned':
-        return '📋';
-      case 'task_due':
-        return '⏰';
-      case 'update_mention':
-        return '@';
-      case 'update_reply':
-        return '💬';
-      default:
-        return '🔔';
-    }
+  const handleViewAll = () => {
+    setIsOpen(false);
+    navigate('/notifications');
   };
 
   return (
@@ -65,51 +64,51 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="sm"
-          className="relative p-2"
-          aria-label="Notifications"
+          className="relative h-9 w-9 p-0 rounded-full hover:bg-[var(--sidebar-nav-bg-hover)]"
+          aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
         >
-          <Bell className="w-5 h-5 text-gray-600" />
+          <Bell size={20} weight={unreadCount > 0 ? 'fill' : 'regular'} className="text-[var(--content-body-text)]" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium text-white bg-red-500 rounded-full">
+            <span className="absolute top-0.5 right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium text-white bg-red-500 rounded-full">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-96 p-0 rounded-xl overflow-hidden" align="end">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h3 className="font-semibold text-sm">Notifications</h3>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--content-card-border)]">
+          <h3 className="font-semibold text-sm text-[var(--content-header-text)]">Notifications</h3>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs h-7 text-blue-600 hover:text-blue-700"
+              className="text-xs h-7"
               onClick={() => markAllAsRead.mutate()}
             >
-              <Check className="w-3 h-3 mr-1" />
+              <Check size={12} className="mr-1" />
               Mark all read
             </Button>
           )}
         </div>
 
         {/* Notification List */}
-        <div className="max-h-80 overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center text-sm text-gray-500">
+            <div className="p-4 text-center text-sm text-[var(--content-muted-text)]">
               Loading...
             </div>
-          ) : notifications.length === 0 ? (
+          ) : previewNotifications.length === 0 ? (
             <div className="p-8 text-center">
-              <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm text-gray-500">No notifications yet</p>
+              <Bell size={32} className="mx-auto mb-2 text-[var(--content-muted-text)] opacity-50" />
+              <p className="text-sm text-[var(--content-muted-text)]">No notifications yet</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            previewNotifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`flex items-start gap-3 px-4 py-3 border-b hover:bg-gray-50 cursor-pointer transition-colors ${
-                  !notification.is_read ? 'bg-blue-50' : ''
+                className={`group flex items-start gap-3 px-4 py-3 border-b border-[var(--content-card-border)] last:border-b-0 hover:bg-[var(--content-table-row-hover)] cursor-pointer transition-colors ${
+                  !notification.is_read ? 'bg-[var(--content-table-row-selected)]' : ''
                 }`}
                 onClick={() => handleNotificationClick(notification)}
               >
@@ -117,13 +116,13 @@ export function NotificationBell() {
                   {getNotificationIcon(notification.type)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!notification.is_read ? 'font-medium' : ''}`}>
+                  <p className={`text-sm text-[var(--content-body-text)] ${!notification.is_read ? 'font-medium' : ''}`}>
                     {notification.title}
                   </p>
-                  <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                  <p className="text-xs text-[var(--content-muted-text)] mt-0.5 line-clamp-2">
                     {notification.message}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-[var(--content-muted-text)] opacity-70 mt-1">
                     {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                   </p>
                 </div>
@@ -132,13 +131,24 @@ export function NotificationBell() {
                     e.stopPropagation();
                     deleteNotification.mutate(notification.id);
                   }}
-                  className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Dismiss notification"
+                  className="p-1 rounded hover:bg-[var(--content-button-secondary-hover)] opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <X className="w-3 h-3 text-gray-400" />
+                  <X size={12} className="text-[var(--content-muted-text)]" />
                 </button>
               </div>
             ))
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-[var(--content-card-border)]">
+          <button
+            onClick={handleViewAll}
+            className="w-full px-4 py-2.5 text-sm font-medium text-[var(--content-button-primary-bg)] hover:bg-[var(--content-table-row-hover)] transition-colors"
+          >
+            View all
+          </button>
         </div>
       </PopoverContent>
     </Popover>
