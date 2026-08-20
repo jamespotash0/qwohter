@@ -73,7 +73,7 @@ const Calendar = () => {
       case 'day':
         return format(selectedDate, 'EEEE, MMMM d, yyyy');
       case 'week': {
-        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
         const weekEnd = addDays(weekStart, 6);
         return `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`;
       }

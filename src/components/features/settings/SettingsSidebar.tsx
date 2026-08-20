@@ -1,71 +1,67 @@
-import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "@phosphor-icons/react";
-
-export interface SettingsNavItem {
-  id: string;
-  label: string;
-  icon: ReactNode;
-}
-
-interface SettingsSidebarProps {
-  items: SettingsNavItem[];
-  activeTab: string;
-  onTabChange: (tabId: string) => void;
-}
+import { useSearchParams } from "react-router-dom";
+import { useSettingsGroups } from "./settingsTabs";
+import { trackEvent } from "@/lib/analytics";
 
 /**
- * Settings Inner Sidebar
+ * Settings Secondary Sidebar
  *
- * Sits alongside the main app sidebar (it does not replace it) and lists the
- * settings sections vertically. The back button returns to wherever the user
- * came from, falling back to the dashboard on a cold deep-link.
+ * A full-height panel flush against the main app sidebar — it sits beside it
+ * rather than replacing it. Rendered by MainLayout (not by the Settings page)
+ * so it can reach the edge of the shell instead of floating inside the page's
+ * padding.
+ *
+ * Sections are bold headers with an icon; the entries under them are plain text
+ * with the active one filled. Row height, radius, hover and active states reuse
+ * the main sidebar's tokens so the two columns read as one surface. There is no
+ * back button — the main app sidebar stays visible alongside, so navigating
+ * away is always one click.
  */
-export function SettingsSidebar({ items, activeTab, onTabChange }: SettingsSidebarProps) {
-  const navigate = useNavigate();
+export function SettingsSidebar() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const groups = useSettingsGroups();
 
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/dashboard");
-    }
+  const activeTab = searchParams.get("tab") || "profile";
+
+  const handleTabChange = (tabId: string) => {
+    trackEvent("settings_tab_viewed", { tab: tabId });
+    setSearchParams({ tab: tabId });
   };
 
   return (
-    <aside className="w-56 flex-shrink-0 rounded-tl-lg bg-[var(--content-card-bg)] p-2 self-start sticky top-0">
-      {/* Back to the rest of the app */}
-      <button
-        onClick={handleBack}
-        className="w-full flex items-center gap-2 px-3 py-2 mb-1 rounded-xl text-sm font-medium text-[var(--content-muted-text)] hover:text-[var(--content-header-text)] hover:bg-[var(--content-table-row-hover)] transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back
-      </button>
+    <aside className="w-64 flex-shrink-0 h-full overflow-y-auto rounded-tl-lg bg-[var(--content-card-bg)] pb-6">
+      <nav className="px-2 pt-4 space-y-6">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <div className="flex items-center gap-3.5 px-4 pb-1 text-[var(--content-header-text)]">
+              <span className="text-[var(--sidebar-icon-default)]">{group.icon}</span>
+              <span className="text-[15px] font-semibold">{group.label}</span>
+            </div>
 
-      <div className="h-px bg-[var(--content-card-border)] mx-2 mb-1" />
-
-      <nav className="space-y-0.5">
-        {items.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              aria-current={isActive ? "page" : undefined}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
-                isActive
-                  ? "bg-[var(--content-table-row-selected)] text-[var(--content-header-text)] font-medium"
-                  : "text-[var(--content-body-text)] hover:bg-[var(--content-table-row-hover)]"
-              }`}
-            >
-              <span className={isActive ? "text-[var(--sidebar-icon-active)]" : "text-[var(--content-muted-text)]"}>
-                {item.icon}
-              </span>
-              <span className="truncate">{item.label}</span>
-            </button>
-          );
-        })}
+            <div className="space-y-0.5">
+              {group.tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`w-full h-12 flex items-center text-left px-4 text-[15px] tracking-tight transition-colors duration-200 ${
+                      isActive
+                        ? "text-[var(--sidebar-nav-text-active)] font-medium"
+                        : "text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]"
+                    }`}
+                    style={{
+                      borderRadius: "var(--sidebar-nav-border-radius)",
+                      ...(isActive ? { backgroundColor: "var(--sidebar-nav-bg-active)" } : {}),
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
     </aside>
   );

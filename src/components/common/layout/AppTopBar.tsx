@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, Gear, SignOut, UserCircle } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -70,36 +70,48 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
   const canManageBilling = role === "Owner" || role === "Admin";
 
   // The cluster is part of the sidebar's hover region, so pointing at the
-  // top-left corner opens the sidebar in hover mode and reveals the toggle.
+  // top-left corner opens the sidebar in hover mode.
   const { state, setIsHovered } = useSidebar();
   const isCollapsed = state === "collapsed";
 
+  // Hovering the logo reveals the mode toggle in its place, showing whichever
+  // mode is currently selected.
+  const [isLogoHovered, setIsLogoHovered] = useState(false);
+
   return (
-    <header className="flex items-center h-16 flex-shrink-0">
+    <header className="flex items-center h-14 flex-shrink-0">
       {/*
         Left cluster: same width as the sidebar below it, on the same easing, so
-        the logo and toggle stay over the sidebar column as it slides. The logo
-        sits in a 40px slot whose centre (12px + 20px = 32px) lines up with the
-        nav icons in the collapsed rail.
+        the logo stays over the sidebar column as it slides. 16px of padding
+        puts the 40px slot's centre at 36px — the centre of the 72px collapsed
+        rail, and the same x as the nav icons below.
       */}
       <div
-        className={`flex items-center h-full flex-shrink-0 overflow-hidden px-3 duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`flex items-center h-full flex-shrink-0 overflow-hidden px-4 duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isCollapsed ? 'w-[--sidebar-width-icon]' : 'w-[--sidebar-width]'
         }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center">
-          <QwohterLogo size="sm" />
-        </div>
-
-        {/* Toggle in its resting place, once the column is wide enough for it */}
         <div
-          className={`ml-auto flex-shrink-0 transition-opacity duration-200 ${
-            isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
+          className="relative h-10 w-10 flex-shrink-0"
+          onMouseEnter={() => setIsLogoHovered(true)}
+          onMouseLeave={() => setIsLogoHovered(false)}
         >
-          <SidebarModeToggle />
+          <div
+            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+              isLogoHovered ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            <QwohterLogo size="sm" />
+          </div>
+          <div
+            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+              isLogoHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            <SidebarModeToggle />
+          </div>
         </div>
       </div>
 

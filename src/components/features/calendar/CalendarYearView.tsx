@@ -29,7 +29,7 @@ interface CalendarYearViewProps {
   onMonthZoom: (date: Date) => void;
 }
 
-const MINI_WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const MINI_WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export const CalendarYearView: React.FC<CalendarYearViewProps> = ({
   currentYear,
@@ -76,8 +76,8 @@ const MiniMonth: React.FC<MiniMonthProps> = ({ month, itemsByDate, onDayClick, o
   const weeks = useMemo(() => {
     const monthStart = startOfMonth(month);
     const monthEnd = endOfMonth(month);
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
     const allDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
     const rows: Date[][] = [];
