@@ -97,15 +97,21 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       /*
-                        size-8/p-2 come from the shared cva as !important when
-                        collapsed, which snaps the button to a different shape
-                        mid-slide — override both so the row keeps one geometry
-                        and only the label reveals. Equal 12px insets keep the
-                        row's fill symmetric, and put the 24px icon's centre at
-                        32px (8px group padding + 12px + 12px) — the centre of
-                        the 64px rail and of the logo slot above it.
+                        Three things in the shared cva have to be overridden:
+                        !size-8 and !p-2 when collapsed, which snap the row to a
+                        different shape mid-slide, and [&>svg]:size-4, which
+                        pins every icon to 16px no matter what `size` the Icon
+                        is given.
+
+                        [&>svg]:!size-5 is the icon size dial (20px). The left
+                        inset must stay in step with it, since centring in the
+                        collapsed rail is:
+                          pl = (rail - 2*groupPadding - icon) / 2
+                             = (64 - 16 - 20) / 2 = 14px
+                        which also puts the icon centre on 32px — the centre of
+                        the rail and of the logo slot above it.
                       */
-                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-3 pr-3 group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-3 transition-colors duration-200 ${
+                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-[14px] pr-[14px] [&>svg]:!size-5 group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[14px] transition-colors duration-200 ${
                         isActive
                           ? 'text-[var(--sidebar-nav-text-active)] [&:hover]:text-[var(--sidebar-nav-text-active)]'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
@@ -123,7 +129,7 @@ export function AppSidebar() {
                     >
                       {/* Icon sits at a fixed x in both states, so it never moves */}
                       <Icon
-                        size={24}
+                        size={20}
                         weight={isActive ? 'fill' : 'regular'}
                         className={`flex-shrink-0 transition-colors duration-200 ${
                           isActive
