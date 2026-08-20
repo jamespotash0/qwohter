@@ -3171,16 +3171,6 @@ BEGIN
 END;
 $$;
 ALTER FUNCTION "public"."update_org_creator_profile"("user_id" "uuid", "org_id" "uuid", "role_value" "text", "status_value" "text") OWNER TO "postgres";
-CREATE OR REPLACE FUNCTION "public"."update_project_attachments_updated_at"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-ALTER FUNCTION "public"."update_project_attachments_updated_at"() OWNER TO "postgres";
 CREATE OR REPLACE FUNCTION "public"."update_proposal_ai_suggestions_count"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -4007,7 +3997,6 @@ CREATE OR REPLACE TRIGGER "trigger_sync_project_on_proposal_status_change" BEFOR
 CREATE OR REPLACE TRIGGER "trigger_update_ai_suggestions_count" AFTER INSERT OR DELETE OR UPDATE ON "public"."ai_suggestions" FOR EACH ROW EXECUTE FUNCTION "public"."update_proposal_ai_suggestions_count"();
 CREATE OR REPLACE TRIGGER "trigger_update_contact_creator_name_on_profile" AFTER UPDATE OF "full_name", "email" ON "public"."profiles" FOR EACH ROW WHEN ((("old"."full_name" IS DISTINCT FROM "new"."full_name") OR ("old"."email" IS DISTINCT FROM "new"."email"))) EXECUTE FUNCTION "public"."update_contact_creator_name_on_profile_change"();
 CREATE OR REPLACE TRIGGER "trigger_update_notification_preferences_updated_at" BEFORE UPDATE ON "public"."notification_preferences" FOR EACH ROW EXECUTE FUNCTION "public"."update_notification_preferences_updated_at"();
-CREATE OR REPLACE TRIGGER "trigger_update_project_attachments_updated_at" BEFORE UPDATE ON "public"."project_attachments" FOR EACH ROW EXECUTE FUNCTION "public"."update_project_attachments_updated_at"();
 CREATE OR REPLACE TRIGGER "trigger_update_proposal_creator_name" AFTER INSERT OR DELETE OR UPDATE OF "status" ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."update_proposal_creator_name_on_membership_change"();
 CREATE OR REPLACE TRIGGER "trigger_update_proposal_creator_name_on_profile" AFTER UPDATE OF "full_name", "email" ON "public"."profiles" FOR EACH ROW WHEN ((("old"."full_name" IS DISTINCT FROM "new"."full_name") OR ("old"."email" IS DISTINCT FROM "new"."email"))) EXECUTE FUNCTION "public"."update_proposal_creator_name_on_profile_change"();
 CREATE OR REPLACE TRIGGER "update_active_users_trigger" AFTER INSERT OR DELETE OR UPDATE ON "public"."memberships" FOR EACH ROW EXECUTE FUNCTION "public"."update_active_user_count"();
@@ -4143,7 +4132,6 @@ CREATE POLICY "Users can create workflow columns in their organization" ON "publ
 
 
 
-CREATE POLICY "Users can delete attachments from their organization" ON "public"."project_attachments" FOR DELETE USING ("public"."is_active_member"(( SELECT "auth"."uid"() AS "uid"), "organization_id"));
 
 
 
@@ -4255,7 +4243,6 @@ CREATE POLICY "Users can update their own AI suggestions" ON "public"."ai_sugges
 
 
 
-CREATE POLICY "Users can update their own attachments" ON "public"."project_attachments" FOR UPDATE USING ((("uploaded_by" = ( SELECT "auth"."uid"() AS "uid")) AND "public"."is_active_member"(( SELECT "auth"."uid"() AS "uid"), "organization_id")));
 
 
 
@@ -4275,7 +4262,6 @@ CREATE POLICY "Users can update workflow columns in their organization" ON "publ
 
 
 
-CREATE POLICY "Users can upload attachments to their organization projects" ON "public"."project_attachments" FOR INSERT WITH CHECK ("public"."is_active_member"(( SELECT "auth"."uid"() AS "uid"), "organization_id"));
 
 
 
@@ -4291,7 +4277,6 @@ CREATE POLICY "Users can view approval requests in their org" ON "public"."propo
 
 
 
-CREATE POLICY "Users can view attachments from their organization" ON "public"."project_attachments" FOR SELECT USING ("public"."is_active_member"(( SELECT "auth"."uid"() AS "uid"), "organization_id"));
 
 
 
@@ -4429,7 +4414,6 @@ CREATE POLICY "profiles_insert_policy" ON "public"."profiles" FOR INSERT WITH CH
 CREATE POLICY "profiles_select_policy" ON "public"."profiles" FOR SELECT TO "authenticated" USING ((("id" = ( SELECT "auth"."uid"() AS "uid")) OR ("id" IN ( SELECT "get_org_member_ids"."user_id"
    FROM "public"."get_org_member_ids"(( SELECT "auth"."uid"() AS "uid")) "get_org_member_ids"("user_id")))));
 CREATE POLICY "profiles_update_policy" ON "public"."profiles" FOR UPDATE USING ((( SELECT "auth"."uid"() AS "uid") = "id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "id"));
-ALTER TABLE "public"."project_attachments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."project_tasks" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."project_workflow_columns" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."projects" ENABLE ROW LEVEL SECURITY;
@@ -4758,9 +4742,6 @@ GRANT ALL ON FUNCTION "public"."update_notification_preferences_updated_at"() TO
 REVOKE ALL ON FUNCTION "public"."update_org_creator_profile"("user_id" "uuid", "org_id" "uuid", "role_value" "text", "status_value" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."update_org_creator_profile"("user_id" "uuid", "org_id" "uuid", "role_value" "text", "status_value" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_org_creator_profile"("user_id" "uuid", "org_id" "uuid", "role_value" "text", "status_value" "text") TO "service_role";
-REVOKE ALL ON FUNCTION "public"."update_project_attachments_updated_at"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_project_attachments_updated_at"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_project_attachments_updated_at"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."update_proposal_ai_suggestions_count"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_proposal_ai_suggestions_count"() TO "service_role";
 REVOKE ALL ON FUNCTION "public"."update_proposal_documents_count"() FROM PUBLIC;
@@ -4901,9 +4882,6 @@ GRANT ALL ON SEQUENCE "public"."products_product_number_seq" TO "service_role";
 GRANT ALL ON TABLE "public"."profiles" TO "anon";
 GRANT ALL ON TABLE "public"."profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles" TO "service_role";
-GRANT ALL ON TABLE "public"."project_attachments" TO "anon";
-GRANT ALL ON TABLE "public"."project_attachments" TO "authenticated";
-GRANT ALL ON TABLE "public"."project_attachments" TO "service_role";
 GRANT ALL ON TABLE "public"."project_tasks" TO "anon";
 GRANT ALL ON TABLE "public"."project_tasks" TO "authenticated";
 GRANT ALL ON TABLE "public"."project_tasks" TO "service_role";
@@ -5237,3 +5215,95 @@ CREATE TRIGGER set_billing_phases_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 ALTER TABLE public.quickbooks_desktop_invoice_sync
   DROP CONSTRAINT IF EXISTS quickbooks_desktop_invoice_sync_proposal_id_key;
+
+-- ============================================================================
+-- Back office: cost visibility, RLS, triggers
+-- Source: supabase/migrations/20260819100000_companies_vendors.sql
+--         supabase/migrations/20260819100001_attachments.sql
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.can_view_cost(check_user_id uuid, check_org_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  allowed boolean;
+BEGIN
+  SELECT EXISTS(
+    SELECT 1 FROM public.memberships
+    WHERE user_id = check_user_id
+      AND organization_id = check_org_id
+      AND role = ANY(ARRAY['Owner'::text, 'Admin'::text])
+      AND status = 'Active'
+  ) INTO allowed;
+  RETURN allowed;
+END;
+$$;
+ALTER FUNCTION public.can_view_cost(uuid, uuid) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.can_view_cost(uuid, uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.can_view_cost(uuid, uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.can_view_cost(uuid, uuid) TO service_role;
+
+ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Members can view companies" ON public.companies FOR SELECT TO authenticated
+  USING (public.is_active_member((SELECT auth.uid()), organization_id));
+CREATE POLICY "Members can insert companies" ON public.companies FOR INSERT TO authenticated
+  WITH CHECK (public.is_active_member((SELECT auth.uid()), organization_id));
+CREATE POLICY "Members can update companies" ON public.companies FOR UPDATE TO authenticated
+  USING (public.is_active_member((SELECT auth.uid()), organization_id))
+  WITH CHECK (public.is_active_member((SELECT auth.uid()), organization_id));
+CREATE POLICY "Admin can delete companies" ON public.companies FOR DELETE TO authenticated
+  USING (public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]));
+CREATE TRIGGER set_companies_updated_at BEFORE UPDATE ON public.companies
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Members can view vendors" ON public.vendors FOR SELECT TO authenticated
+  USING (public.is_active_member((SELECT auth.uid()), organization_id));
+CREATE POLICY "Admin can insert vendors" ON public.vendors FOR INSERT TO authenticated
+  WITH CHECK (public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]));
+CREATE POLICY "Admin can update vendors" ON public.vendors FOR UPDATE TO authenticated
+  USING (public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]))
+  WITH CHECK (public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]));
+CREATE POLICY "Admin can delete vendors" ON public.vendors FOR DELETE TO authenticated
+  USING (public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]));
+CREATE TRIGGER set_vendors_updated_at BEFORE UPDATE ON public.vendors
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+ALTER TABLE public.vendor_discounts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Cost viewers can view vendor discounts" ON public.vendor_discounts FOR SELECT TO authenticated
+  USING (public.can_view_cost((SELECT auth.uid()), organization_id));
+CREATE POLICY "Cost viewers can insert vendor discounts" ON public.vendor_discounts FOR INSERT TO authenticated
+  WITH CHECK (public.can_view_cost((SELECT auth.uid()), organization_id));
+CREATE POLICY "Cost viewers can update vendor discounts" ON public.vendor_discounts FOR UPDATE TO authenticated
+  USING (public.can_view_cost((SELECT auth.uid()), organization_id))
+  WITH CHECK (public.can_view_cost((SELECT auth.uid()), organization_id));
+CREATE POLICY "Cost viewers can delete vendor discounts" ON public.vendor_discounts FOR DELETE TO authenticated
+  USING (public.can_view_cost((SELECT auth.uid()), organization_id));
+CREATE TRIGGER set_vendor_discounts_updated_at BEFORE UPDATE ON public.vendor_discounts
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+ALTER TABLE public.attachments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Members can view attachments" ON public.attachments FOR SELECT TO authenticated
+  USING (public.is_active_member((SELECT auth.uid()), organization_id));
+CREATE POLICY "Members can insert attachments" ON public.attachments FOR INSERT TO authenticated
+  WITH CHECK (public.is_active_member((SELECT auth.uid()), organization_id));
+CREATE POLICY "Uploader or admin can update attachments" ON public.attachments FOR UPDATE TO authenticated
+  USING (uploaded_by = (SELECT auth.uid())
+    OR public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]))
+  WITH CHECK (uploaded_by = (SELECT auth.uid())
+    OR public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]));
+CREATE POLICY "Uploader or admin can delete attachments" ON public.attachments FOR DELETE TO authenticated
+  USING (uploaded_by = (SELECT auth.uid())
+    OR public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text]));
+CREATE TRIGGER set_attachments_updated_at BEFORE UPDATE ON public.attachments
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+GRANT ALL ON TABLE public.companies TO authenticated;
+GRANT ALL ON TABLE public.companies TO service_role;
+GRANT ALL ON TABLE public.vendors TO authenticated;
+GRANT ALL ON TABLE public.vendors TO service_role;
+GRANT ALL ON TABLE public.vendor_discounts TO authenticated;
+GRANT ALL ON TABLE public.vendor_discounts TO service_role;
+GRANT ALL ON TABLE public.attachments TO authenticated;
+GRANT ALL ON TABLE public.attachments TO service_role;

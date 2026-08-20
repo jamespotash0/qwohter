@@ -24,13 +24,19 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ProjectAttachmentsService } from '@/services/projectAttachmentsService';
-import type { ProjectAttachment, AttachmentCategory } from '@/lib/types/projectAttachments';
+import {
+  uploadAttachment,
+  deleteAttachment,
+  getFileIcon,
+  formatFileSize,
+  type AttachmentWithUrl,
+  type AttachmentDocumentType,
+} from '@/services/attachmentsService';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProjectAttachmentsProps {
   projectId: string;
-  attachments: ProjectAttachment[];
+  attachments: AttachmentWithUrl[];
   onAttachmentsChange: () => void;
 }
 
@@ -44,7 +50,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<AttachmentCategory | ''>('');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<AttachmentDocumentType | ''>('');
   const [description, setDescription] = useState('');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,33 +66,27 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
     setUploading(true);
 
     try {
-      const result = await ProjectAttachmentsService.uploadAttachment(
-        projectId,
-        selectedFile,
-        description || undefined,
-        selectedCategory || undefined
-      );
+      await uploadAttachment({
+        entityType: 'project',
+        entityId: projectId,
+        file: selectedFile,
+        description: description || undefined,
+        documentType: selectedDocumentType || undefined,
+      });
 
-      if (result.success) {
-        toast({
-          title: 'File Uploaded',
-          description: `${selectedFile.name} has been uploaded successfully.`,
-        });
-        resetForm();
-        setIsModalOpen(false);
-        onAttachmentsChange();
-      } else {
-        toast({
-          title: 'Upload Failed',
-          description: result.error || 'Failed to upload file.',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'File Uploaded',
+        description: `${selectedFile.name} has been uploaded successfully.`,
+      });
+      resetForm();
+      setIsModalOpen(false);
+      onAttachmentsChange();
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: 'Upload Failed',
-        description: 'An unexpected error occurred.',
+        description:
+          error instanceof Error ? error.message : 'An unexpected error occurred.',
         variant: 'destructive',
       });
     } finally {
@@ -96,7 +96,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
 
   const resetForm = () => {
     setSelectedFile(null);
-    setSelectedCategory('');
+    setSelectedDocumentType('');
     setDescription('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -113,26 +113,34 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
   const handleDelete = async (attachmentId: string, fileName: string) => {
     if (!confirm(`Are you sure you want to delete "${fileName}"?`)) return;
 
-    const result = await ProjectAttachmentsService.deleteAttachment(attachmentId);
-
-    if (result.success) {
+    try {
+      await deleteAttachment(attachmentId);
       toast({
         title: 'File Deleted',
         description: `${fileName} has been deleted.`,
       });
       onAttachmentsChange();
-    } else {
+    } catch (error) {
       toast({
         title: 'Delete Failed',
-        description: result.error || 'Failed to delete file.',
+        description:
+          error instanceof Error ? error.message : 'Failed to delete file.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleDownload = (publicUrl: string, fileName: string) => {
+  const handleDownload = (signedUrl: string | null, fileName: string) => {
+    if (!signedUrl) {
+      toast({
+        title: 'Download Unavailable',
+        description: 'This file could not be reached. Try reloading the page.',
+        variant: 'destructive',
+      });
+      return;
+    }
     const link = document.createElement('a');
-    link.href = publicUrl;
+    link.href = signedUrl;
     link.download = fileName;
     link.target = '_blank';
     document.body.appendChild(link);
@@ -151,18 +159,20 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
               className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors group"
             >
               <span className="text-lg flex-shrink-0">
-                {ProjectAttachmentsService.getFileIcon(attachment.file_type)}
+                {getFileIcon(attachment.file_type)}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-900 truncate">
                   {attachment.file_name}
                 </p>
                 <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                  <span>{ProjectAttachmentsService.formatFileSize(attachment.file_size)}</span>
-                  {attachment.category && (
+                  <span>{formatFileSize(attachment.file_size)}</span>
+                  {attachment.document_type !== 'other' && (
                     <>
                       <span>•</span>
-                      <span className="capitalize">{attachment.category}</span>
+                      <span className="capitalize">
+                        {attachment.document_type.replace(/_/g, ' ')}
+                      </span>
                     </>
                   )}
                 </div>
@@ -171,7 +181,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDownload(attachment.public_url, attachment.file_name)}
+                  onClick={() => handleDownload(attachment.signed_url, attachment.file_name)}
                   className="h-6 w-6 p-0"
                 >
                   <Download className="w-3.5 h-3.5 text-gray-600" />
@@ -227,7 +237,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
               />
               {selectedFile && (
                 <p className="text-xs text-gray-500">
-                  Selected: {selectedFile.name} ({ProjectAttachmentsService.formatFileSize(selectedFile.size)})
+                  Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
                 </p>
               )}
             </div>
@@ -236,8 +246,8 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
             <div className="space-y-2">
               <Label htmlFor="category">File Type</Label>
               <Select
-                value={selectedCategory}
-                onValueChange={(value) => setSelectedCategory(value as AttachmentCategory)}
+                value={selectedDocumentType}
+                onValueChange={(value) => setSelectedDocumentType(value as AttachmentDocumentType)}
                 disabled={uploading}
               >
                 <SelectTrigger id="category">
@@ -245,7 +255,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="drawing">Drawing</SelectItem>
-                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="customer_invoice">Invoice</SelectItem>
                   <SelectItem value="photo">Photo</SelectItem>
                   <SelectItem value="contract">Contract</SelectItem>
                   <SelectItem value="proposal">Proposal</SelectItem>

@@ -18,7 +18,7 @@ import { ProjectAttachments } from './ProjectAttachments';
 import { ProjectTasks } from './ProjectTasks';
 import { ProjectPaymentsSection } from './ProjectPaymentsSection';
 import type { Project, ProjectPriority } from '@/services/boardService';
-import type { ProjectAttachment } from '@/lib/types/projectAttachments';
+import type { AttachmentWithUrl } from '@/hooks/queries/useAttachments';
 import { trackEvent } from '@/lib/analytics';
 
 // =============================================================================
@@ -28,7 +28,7 @@ import { trackEvent } from '@/lib/analytics';
 interface ProjectBoardOverlayProps {
   project: Project;
   organizationId: string;
-  attachments: ProjectAttachment[];
+  attachments: AttachmentWithUrl[];
   onClose: () => void;
   onUpdate: (projectId: string, updates: Partial<Project>) => void;
   onAttachmentsChange: () => void;

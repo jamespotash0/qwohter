@@ -548,23 +548,6 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
 );
 ALTER TABLE ONLY "public"."profiles" REPLICA IDENTITY FULL;
 ALTER TABLE "public"."profiles" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."project_attachments" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "project_id" "uuid" NOT NULL,
-    "organization_id" "uuid" NOT NULL,
-    "file_name" "text" NOT NULL,
-    "file_path" "text" NOT NULL,
-    "file_size" bigint NOT NULL,
-    "file_type" "text" NOT NULL,
-    "public_url" "text" NOT NULL,
-    "uploaded_by" "uuid" NOT NULL,
-    "description" "text",
-    "category" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "project_attachments_category_check" CHECK (("category" = ANY (ARRAY['drawing'::"text", 'proposal'::"text", 'invoice'::"text", 'photo'::"text", 'contract'::"text", 'specification'::"text", 'other'::"text"])))
-);
-ALTER TABLE "public"."project_attachments" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."project_tasks" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "project_id" "uuid",
@@ -1026,8 +1009,6 @@ ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_unique_display_id_per_org" UNIQUE ("organization_id", "display_id");
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."project_tasks"
     ADD CONSTRAINT "project_tasks_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."project_tasks"
@@ -1205,11 +1186,6 @@ CREATE INDEX "idx_products_organization_id" ON "public"."products" USING "btree"
 CREATE INDEX "idx_products_product_number" ON "public"."products" USING "btree" ("organization_id", "product_number");
 CREATE INDEX "idx_profiles_is_super_admin" ON "public"."profiles" USING "btree" ("is_super_admin") WHERE ("is_super_admin" = true);
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_profiles_email" ON "public"."profiles" USING "btree" ("email");
-CREATE INDEX "idx_project_attachments_category" ON "public"."project_attachments" USING "btree" ("category");
-CREATE INDEX "idx_project_attachments_created_at" ON "public"."project_attachments" USING "btree" ("created_at" DESC);
-CREATE INDEX "idx_project_attachments_organization_id" ON "public"."project_attachments" USING "btree" ("organization_id");
-CREATE INDEX "idx_project_attachments_project_id" ON "public"."project_attachments" USING "btree" ("project_id");
-CREATE INDEX "idx_project_attachments_uploaded_by" ON "public"."project_attachments" USING "btree" ("uploaded_by");
 CREATE INDEX "idx_project_tasks_assigned_to" ON "public"."project_tasks" USING "btree" ("assigned_to");
 CREATE INDEX "idx_project_tasks_created_at" ON "public"."project_tasks" USING "btree" ("created_at" DESC);
 CREATE INDEX "idx_project_tasks_created_by" ON "public"."project_tasks" USING "btree" ("created_by");
@@ -1402,12 +1378,6 @@ ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON UPDATE CASCADE ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."project_tasks"
     ADD CONSTRAINT "project_tasks_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."project_tasks"
@@ -1668,3 +1638,148 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_invoice_sync_billing_phase
   WHERE billing_phase_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_invoice_sync_proposal
   ON public.quickbooks_desktop_invoice_sync (proposal_id);
+
+-- ============================================================================
+-- Back office: companies, vendors, vendor discounts, attachments
+-- Source: supabase/migrations/20260819100000_companies_vendors.sql
+--         supabase/migrations/20260819100001_attachments.sql
+--         supabase/migrations/20260819100002_consolidate_attachments.sql
+-- NOTE: project_attachments was folded into attachments and dropped; it is
+--       deliberately absent from this script.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.companies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  legal_name text,
+  company_type text NOT NULL DEFAULT 'Customer'
+    CHECK (company_type IN ('Customer', 'Prospect', 'Partner', 'Other')),
+  billing_address_line1 text,
+  billing_address_line2 text,
+  billing_city text,
+  billing_state text,
+  billing_postal_code text,
+  billing_country text DEFAULT 'US',
+  shipping_address_line1 text,
+  shipping_address_line2 text,
+  shipping_city text,
+  shipping_state text,
+  shipping_postal_code text,
+  shipping_country text DEFAULT 'US',
+  phone text,
+  website text,
+  payment_terms text DEFAULT 'Net 30',
+  tax_exempt boolean NOT NULL DEFAULT false,
+  tax_exempt_certificate text,
+  default_tax_rate numeric CHECK (default_tax_rate IS NULL OR default_tax_rate >= 0),
+  primary_contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  external_accounting_id text,
+  notes text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_companies_org ON public.companies (organization_id);
+CREATE INDEX IF NOT EXISTS idx_companies_org_active_name
+  ON public.companies (organization_id, is_active, name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_org_name_unique
+  ON public.companies (organization_id, lower(name));
+ALTER TABLE public.contacts
+  ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_contacts_company
+  ON public.contacts (company_id) WHERE company_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS public.vendors (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  vendor_type text NOT NULL DEFAULT 'Manufacturer'
+    CHECK (vendor_type IN ('Manufacturer', 'Supplier', 'Subcontractor', 'Freight', 'Other')),
+  manufacturer_id uuid REFERENCES public.product_manufacturers(id) ON DELETE SET NULL,
+  account_number text,
+  order_method text NOT NULL DEFAULT 'Email'
+    CHECK (order_method IN ('Email', 'Portal', 'EDI', 'Fax', 'Phone')),
+  order_email text,
+  acknowledgment_email text,
+  portal_url text,
+  remit_to_name text,
+  remit_to_address_line1 text,
+  remit_to_address_line2 text,
+  remit_to_city text,
+  remit_to_state text,
+  remit_to_postal_code text,
+  remit_to_country text DEFAULT 'US',
+  phone text,
+  payment_terms text DEFAULT 'Net 30',
+  freight_terms text
+    CHECK (freight_terms IS NULL OR freight_terms IN (
+      'FOB Origin', 'FOB Destination', 'Prepaid', 'Prepaid and Add', 'Collect')),
+  standard_lead_time_days integer
+    CHECK (standard_lead_time_days IS NULL OR standard_lead_time_days >= 0),
+  rep_name text,
+  rep_email text,
+  rep_phone text,
+  external_accounting_id text,
+  notes text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_vendors_org ON public.vendors (organization_id);
+CREATE INDEX IF NOT EXISTS idx_vendors_org_active_name
+  ON public.vendors (organization_id, is_active, name);
+CREATE INDEX IF NOT EXISTS idx_vendors_manufacturer
+  ON public.vendors (manufacturer_id) WHERE manufacturer_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vendors_org_name_unique
+  ON public.vendors (organization_id, lower(name));
+CREATE TABLE IF NOT EXISTS public.vendor_discounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  vendor_id uuid NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
+  series_id uuid REFERENCES public.product_series(id) ON DELETE CASCADE,
+  contract_vehicle text,
+  discount_percent numeric NOT NULL
+    CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  effective_from date,
+  effective_to date,
+  CONSTRAINT vendor_discounts_effective_range
+    CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from),
+  notes text,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_vendor_discounts_lookup
+  ON public.vendor_discounts (vendor_id, series_id, contract_vehicle);
+CREATE INDEX IF NOT EXISTS idx_vendor_discounts_org
+  ON public.vendor_discounts (organization_id);
+CREATE TABLE IF NOT EXISTS public.attachments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  entity_type text NOT NULL
+    CHECK (entity_type IN (
+      'project', 'proposal', 'company', 'vendor', 'sales_order', 'order_line',
+      'vendor_po', 'acknowledgment', 'receipt', 'work_order', 'punch_item')),
+  entity_id uuid NOT NULL,
+  document_type text NOT NULL DEFAULT 'other'
+    CONSTRAINT attachments_document_type_check
+    CHECK (document_type IN (
+      'acknowledgment', 'packing_slip', 'bill_of_lading', 'damage_photo',
+      'vendor_invoice', 'customer_invoice', 'quote', 'proposal', 'drawing',
+      'specification', 'spec_file', 'photo', 'contract', 'other')),
+  file_name text NOT NULL,
+  file_path text NOT NULL,
+  file_size bigint NOT NULL,
+  file_type text NOT NULL,
+  description text,
+  uploaded_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_entity
+  ON public.attachments (entity_type, entity_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_attachments_org
+  ON public.attachments (organization_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_org_doctype
+  ON public.attachments (organization_id, document_type, created_at DESC);

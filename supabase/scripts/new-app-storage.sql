@@ -16,12 +16,14 @@
 -- each policy -- so re-applying after the layer file is a safe no-op.
 --
 -- Bucket names are taken from the code, not from prod:
---   projects-attachments  src/services/projectAttachmentsService.ts:17   (note: plural "projects")
+--   projects-attachments  src/services/attachmentsService.ts:15   (note: plural "projects")
 --   proposal-documents    src/services/proposalDocumentsService.ts:48
 --   task-attachments      src/services/taskCommentsService.ts:301
 --
 -- Path convention for all three, from the same services:
---   projects-attachments  {organization_id}/{project_id}/{timestamp}_{filename}
+--   projects-attachments  {organization_id}/{entity_type}/{entity_id}/{timestamp}_{filename}
+--                         (legacy rows keep {organization_id}/{project_id}/... ; the RLS
+--                          policy only checks segment 1, so both conventions pass)
 --   proposal-documents    {organization_id}/{proposal_id}/{timestamp}_{filename}
 --   task-attachments      {organization_id}/tasks/{task_id}/{timestamp}-{rand}.{ext}
 -- so (storage.foldername(name))[1] is the organization id in every case.
