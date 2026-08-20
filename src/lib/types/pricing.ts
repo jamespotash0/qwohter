@@ -22,6 +22,26 @@
 export type PricingMode = 'cost_up' | 'list_down';
 
 /**
+ * How a line actually gets delivered — which decides whether it can ever appear
+ * on a purchase order.
+ *
+ * A dealer sells product *and* service on the same quote. Chairs are bought from
+ * a factory; installation is performed by the dealer's own crew. Treating both
+ * as "needs a vendor" makes the crew's own labor look like a blocked order.
+ *
+ * - `purchase`     bought from a manufacturer. Gets a purchase order.
+ * - `subcontract`  work someone else performs. Gets a PO to that subcontractor.
+ * - `self_perform` the dealer's own crew or truck. NEVER gets a purchase order;
+ *                  this is what becomes a work order.
+ * - `pass_through` a cost re-billed, not procured. Tariffs, permits, storage.
+ */
+export type FulfillmentType =
+  | 'purchase'
+  | 'subcontract'
+  | 'self_perform'
+  | 'pass_through';
+
+/**
  * Specification metadata carried by a line that originated in a spec tool
  * (CET, Giza, 2020, ProjectMatrix). Inert for pricing — it exists so an
  * imported line keeps its provenance through to the purchase order.
@@ -60,6 +80,12 @@ export interface PricingLineItem extends LineSpecMetadata {
   unitCost: number;
   /** Which direction cost is derived from. Absent means `cost_up`. */
   pricingMode?: PricingMode;
+  /**
+   * Overrides the section's fulfillment type for this line alone — an install
+   * line that gets subcontracted on this one job, for instance. Absent means
+   * inherit from the section.
+   */
+  fulfillmentType?: FulfillmentType;
   /** Manufacturer list price per unit. `list_down` mode only. */
   listPrice?: number;
   /**
@@ -88,7 +114,18 @@ export interface PricingLineItem extends LineSpecMetadata {
 export interface PricingSection {
   id: string;
   name: string;
+  /**
+   * Legacy category slug ('merchandise', 'delivery_install', 'freight',
+   * 'tariffs', 'other'). Retained because existing forms carry it, and it is
+   * what fulfillmentType is derived from when that has not been set.
+   */
   type: string;
+  /**
+   * How lines in this section get delivered. Set once per section when the form
+   * is built, so whoever fills in a proposal never has to think about it.
+   * Lines may override individually.
+   */
+  fulfillmentType?: FulfillmentType;
   collapsed: boolean;
   lineItems: PricingLineItem[];
 }

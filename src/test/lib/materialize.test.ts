@@ -230,3 +230,47 @@ describe('summarizeMaterialization', () => {
     expect(summary.unresolvedManufacturers).toEqual([]);
   });
 });
+
+describe('materializeOrderLines fulfillment routing', () => {
+  it('routes a merchandise section to purchasing', () => {
+    const result = materializeOrderLines([
+      section([line()], { type: 'merchandise', fulfillmentType: 'purchase' }),
+    ]);
+    expect(result[0]!.fulfillment_type).toBe('purchase');
+  });
+
+  it('keeps install labor off the purchase path', () => {
+    // The bug this prevents: install labor reported as "assign a vendor before
+    // you can order", when the dealer's own crew is doing the work.
+    const result = materializeOrderLines([
+      section([line({ name: 'Install labor', sellRule: 'per_hour', quantity: 40 })], {
+        name: 'Delivery & Installation',
+        type: 'delivery_install',
+        fulfillmentType: 'self_perform',
+      }),
+    ]);
+    expect(result[0]!.fulfillment_type).toBe('self_perform');
+    expect(result[0]!.vendor_id).toBeNull();
+  });
+
+  it('lets a single line be subcontracted out of a self-performed section', () => {
+    const result = materializeOrderLines([
+      section(
+        [line({ id: 'a' }), line({ id: 'b', fulfillmentType: 'subcontract' })],
+        { type: 'delivery_install', fulfillmentType: 'self_perform' }
+      ),
+    ]);
+    expect(result[0]!.fulfillment_type).toBe('self_perform');
+    expect(result[1]!.fulfillment_type).toBe('subcontract');
+  });
+
+  it('leaves an unset section unrouted rather than guessing', () => {
+    const result = materializeOrderLines([section([line()], { type: 'other' })]);
+    expect(result[0]!.fulfillment_type).toBeNull();
+  });
+
+  it('falls back to the legacy section category', () => {
+    const result = materializeOrderLines([section([line()], { type: 'tariffs' })]);
+    expect(result[0]!.fulfillment_type).toBe('pass_through');
+  });
+});

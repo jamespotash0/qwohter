@@ -64,8 +64,11 @@ import {
   calculatePricing,
   calculateCostMarkupPercent,
   formatCurrency,
+  FULFILLMENT_TYPES,
+  FULFILLMENT_TYPE_LABELS,
   type PricingLineItem,
   type PricingSection,
+  type FulfillmentType,
 } from '@/lib/pricing';
 
 // Sell rule options
@@ -300,6 +303,7 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'merchandise',
     name: 'Merchandise',
     type: 'merchandise',
+    fulfillmentType: 'purchase',
     collapsed: false,
     lineItems: [],
   },
@@ -307,6 +311,9 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'delivery_install',
     name: 'Delivery & Installation',
     type: 'delivery_install',
+    // The dealer's own crew by default. Sections that get subcontracted are
+    // switched here, or overridden on the individual line.
+    fulfillmentType: 'self_perform',
     collapsed: false,
     lineItems: [],
   },
@@ -314,6 +321,9 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'freight',
     name: 'Freight & Shipping',
     type: 'freight',
+    // Bought either way -- from the factory as prepaid-and-add, or from a
+    // carrier -- so it belongs in the purchase order fan-out.
+    fulfillmentType: 'purchase',
     collapsed: false,
     lineItems: [],
   },
@@ -321,6 +331,7 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'tariffs',
     name: 'Tariffs & Fees',
     type: 'tariffs',
+    fulfillmentType: 'pass_through',
     collapsed: false,
     lineItems: [],
   },
@@ -328,6 +339,7 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'other',
     name: 'Other Costs',
     type: 'other',
+    fulfillmentType: 'pass_through',
     collapsed: false,
     lineItems: [],
   },
@@ -342,6 +354,7 @@ interface SortableSectionRowProps {
   section: PricingSection;
   sectionIndex: number;
   onUpdateName: (name: string) => void;
+  onUpdateFulfillmentType: (type: FulfillmentType) => void;
   onToggleCollapse: (checked: boolean) => void;
   onRemove: () => void;
 }
@@ -350,6 +363,7 @@ function SortableSectionRow({
   section,
   sectionIndex,
   onUpdateName,
+  onUpdateFulfillmentType,
   onToggleCollapse,
   onRemove,
 }: SortableSectionRowProps) {
@@ -389,13 +403,39 @@ function SortableSectionRow({
       </div>
 
       {/* Section Name (editable) */}
-      <div className="col-span-9">
+      <div className="col-span-6">
         <Input
           value={section.name}
           onChange={(e) => onUpdateName(e.target.value)}
           className="h-8 font-semibold text-gray-900 dark:text-gray-100 border-transparent bg-transparent hover:border-gray-300 focus:border-coral"
           placeholder="Section name"
         />
+      </div>
+
+      {/*
+        How lines in this section get delivered. Set once here so whoever fills
+        in a proposal never has to think about it -- and so the back office knows
+        which lines to buy and which to crew.
+      */}
+      <div className="col-span-3">
+        <Select
+          value={section.fulfillmentType ?? 'pass_through'}
+          onValueChange={(value) => onUpdateFulfillmentType(value as FulfillmentType)}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Fulfillment" />
+          </SelectTrigger>
+          <SelectContent>
+            {FULFILLMENT_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                <span className="font-medium">{FULFILLMENT_TYPE_LABELS[type].label}</span>
+                <span className="block text-[10px] text-gray-500">
+                  {FULFILLMENT_TYPE_LABELS[type].description}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Collapsed by default checkbox */}
@@ -905,6 +945,9 @@ export function PricingTab({ mode }: PricingTabProps) {
       id: `section_${Date.now()}`,
       name: 'New Section',
       type: 'other',
+      // Never routed to purchasing by default: raising a purchase order nobody
+      // asked for is worse than a line the dealer has to categorise.
+      fulfillmentType: 'pass_through',
       collapsed: false,
       lineItems: [],
     };
@@ -979,6 +1022,13 @@ export function PricingTab({ mode }: PricingTabProps) {
                       section={section}
                       sectionIndex={sectionIndex}
                       onUpdateName={(name) => updateSectionName(section.id, name)}
+                      onUpdateFulfillmentType={(fulfillmentType) =>
+                        setSections(
+                          sections.map((s) =>
+                            s.id === section.id ? { ...s, fulfillmentType } : s
+                          )
+                        )
+                      }
                       onToggleCollapse={(checked) => {
                         setSections(
                           sections.map((s) =>

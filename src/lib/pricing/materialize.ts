@@ -15,7 +15,12 @@
  */
 
 import { resolveUnitCost, calculateSellPrice, round2 } from './calculate';
-import type { PricingLineItem, PricingSection } from '@/lib/types/pricing';
+import { resolveFulfillmentType } from './fulfillment';
+import type {
+  FulfillmentType,
+  PricingLineItem,
+  PricingSection,
+} from '@/lib/types/pricing';
 
 /** A line ready to be inserted, matching the order_lines column names. */
 export interface MaterializedOrderLine {
@@ -30,6 +35,11 @@ export interface MaterializedOrderLine {
   option_string: string | null;
   quantity: number;
   pricing_mode: 'cost_up' | 'list_down';
+  /**
+   * How the line gets delivered. Null when the form never said, which blocks
+   * both ordering and scheduling until someone decides.
+   */
+  fulfillment_type: FulfillmentType | null;
   list_price: number | null;
   dealer_discount_percent: number | null;
   unit_cost: number;
@@ -119,6 +129,7 @@ export function materializeOrderLines(
         option_string: trimmed(item.optionString),
         quantity: item.quantity,
         pricing_mode: item.pricingMode ?? 'cost_up',
+        fulfillment_type: resolveFulfillmentType(item, section),
         list_price: item.listPrice ?? null,
         dealer_discount_percent: item.dealerDiscountPercent ?? null,
         // Resolved, not copied: in list_down mode the stored unitCost is a cache

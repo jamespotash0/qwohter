@@ -72,6 +72,40 @@ order exists, not after. `assignVendorToLines()` is the fix.
 
 ---
 
+## How a line gets delivered
+
+A dealer sells product *and* service on one quote: chairs bought from Steelcase,
+installation performed by their own crew, a tariff re-billed at cost. Only some
+of those are things you buy, so every order line carries a `fulfillment_type`.
+
+| Type | Meaning | Where it goes |
+|------|---------|---------------|
+| `purchase` | Bought from a manufacturer | Purchase order |
+| `subcontract` | Work someone else performs | Purchase order to that subcontractor |
+| `self_perform` | The dealer's own crew or truck | Work order — **never** a PO |
+| `pass_through` | A cost re-billed, not procured | Neither |
+
+**This is set in the form builder**, per pricing section, so whoever fills in a
+proposal never thinks about it. `Merchandise` defaults to purchased,
+`Delivery & Installation` to self-performed, `Freight` to purchased, `Tariffs`
+to pass-through. An individual line can override its section — an install line
+that gets subcontracted on one job.
+
+`NULL` is a real state: the form never said. Resolution goes line override →
+section setting → a guess from the legacy section category, and anything
+unrecognised — including every section the old builder stamped `other` with no
+way to change it — stays `NULL` rather than being guessed. A wrong guess either
+raises a purchase order for the dealer's own labor or silently drops product
+that needed buying; unrouted is recoverable and visible.
+
+`planFanOut()` reports four buckets accordingly: vendor groups ready to order,
+`unassignedLines` (purchasable, no vendor account — a real blocker),
+`unroutedLines` (fixed in the form's section settings, not the vendor screen),
+and `notPurchased` (own labor and pass-throughs, shown so the picture is
+complete without implying a problem).
+
+---
+
 ## Purchase orders and the fan-out
 
 One customer order becomes N purchase orders, one per manufacturer — a 1,200-line
@@ -281,14 +315,15 @@ Two behavior changes came with the consolidation:
 | Sales orders | `src/services/salesOrdersService.ts` |
 | Purchase orders | `src/services/vendorPOService.ts` |
 | Variance logic | `src/lib/pricing/variance.ts` |
+| Fulfillment routing | `src/lib/pricing/fulfillment.ts` |
 | Discount resolution | `src/lib/pricing/discounts.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
 | Vendors & discounts | `src/services/vendorsService.ts`, `src/hooks/queries/useVendors.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql` |
-| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts` |
+| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql` |
+| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
 
 ---
 

@@ -35,6 +35,15 @@ export type {
   MaterializeSummary,
 } from './materialize';
 
+export {
+  FULFILLMENT_TYPES,
+  FULFILLMENT_TYPE_LABELS,
+  inferFulfillmentType,
+  resolveFulfillmentType,
+  isPurchasable,
+  isWorkOrderLine,
+} from './fulfillment';
+
 export { summarizeVariance, sortVarianceQueue } from './variance';
 
 export type {
@@ -61,5 +70,6 @@ export type {
   PricingSummary,
   PricingData,
   PricingMode,
+  FulfillmentType,
   LineSpecMetadata,
 } from '@/lib/types/pricing';

@@ -1592,6 +1592,7 @@ export type Database = {
           description: string
           discount_type: string | null
           discount_value: number | null
+          fulfillment_type: string | null
           id: string
           is_taxable: boolean
           line_number: number
@@ -1624,6 +1625,7 @@ export type Database = {
           description: string
           discount_type?: string | null
           discount_value?: number | null
+          fulfillment_type?: string | null
           id?: string
           is_taxable?: boolean
           line_number: number
@@ -1656,6 +1658,7 @@ export type Database = {
           description?: string
           discount_type?: string | null
           discount_value?: number | null
+          fulfillment_type?: string | null
           id?: string
           is_taxable?: boolean
           line_number?: number

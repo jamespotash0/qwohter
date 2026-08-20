@@ -16,7 +16,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database, Json } from '@/integrations/supabase/types';
-import { round2, sortVarianceQueue } from '@/lib/pricing';
+import {
+  round2,
+  sortVarianceQueue,
+  isPurchasable,
+  type FulfillmentType,
+} from '@/lib/pricing';
 
 type VendorPORow = Database['public']['Tables']['vendor_pos']['Row'];
 type POLineRow = Database['public']['Tables']['po_lines']['Row'];
@@ -50,20 +55,33 @@ export interface FanOutGroup {
   totalCost: number;
 }
 
+export interface FanOutLineRef {
+  orderLineId: string;
+  lineNumber: number;
+  description: string;
+  manufacturerName: string | null;
+  quantity: number;
+}
+
 export interface FanOutPlan {
   groups: FanOutGroup[];
   /**
-   * Lines with quantity still to order but no vendor assigned. These block
-   * ordering and must be surfaced, not silently skipped — they are scope the
-   * customer already bought.
+   * Purchasable lines with no vendor account yet. These genuinely block
+   * ordering and must be surfaced — they are scope the customer already bought.
    */
-  unassignedLines: {
-    orderLineId: string;
-    lineNumber: number;
-    description: string;
-    manufacturerName: string | null;
-    quantity: number;
-  }[];
+  unassignedLines: FanOutLineRef[];
+  /**
+   * Lines whose fulfillment type was never set, so nothing can claim them:
+   * ordering does not know to buy them, scheduling does not know to crew them.
+   * Fixed in the form's section settings, not here.
+   */
+  unroutedLines: FanOutLineRef[];
+  /**
+   * Lines this order will never purchase — the dealer's own labor, and costs
+   * re-billed rather than procured. Reported so the caller can show a complete
+   * picture of the order without implying anything is wrong.
+   */
+  notPurchased: (FanOutLineRef & { fulfillmentType: FulfillmentType })[];
 }
 
 /**
@@ -102,23 +120,44 @@ export async function planFanOut(salesOrderId: string): Promise<FanOutPlan> {
   );
 
   const groups = new Map<string, FanOutGroup>();
-  const unassignedLines: FanOutPlan['unassignedLines'] = [];
+  const unassignedLines: FanOutLineRef[] = [];
+  const unroutedLines: FanOutLineRef[] = [];
+  const notPurchased: FanOutPlan['notPurchased'] = [];
 
   for (const line of lines ?? []) {
     const outstanding = toOrder.get(line.id) ?? Number(line.quantity);
     // Fully ordered already, or reversed past zero by a cancellation.
     if (outstanding <= 0) continue;
 
+    const ref: FanOutLineRef = {
+      orderLineId: line.id,
+      lineNumber: line.line_number,
+      description: line.description,
+      manufacturerName: line.manufacturer_name,
+      quantity: outstanding,
+    };
+
+    const fulfillmentType = line.fulfillment_type as FulfillmentType | null;
+
+    // Nothing decided how this line is delivered. Not a vendor problem, and
+    // telling the user to assign one would send them to the wrong screen.
+    if (!fulfillmentType) {
+      unroutedLines.push(ref);
+      continue;
+    }
+
+    // The dealer's own crew, or a cost re-billed. These are never bought, so
+    // reporting them as needing a vendor would train people to ignore the
+    // warning that actually matters.
+    if (!isPurchasable(fulfillmentType)) {
+      notPurchased.push({ ...ref, fulfillmentType });
+      continue;
+    }
+
     const vendor = (line as { vendors?: { id: string; name: string } | null }).vendors;
 
     if (!vendor) {
-      unassignedLines.push({
-        orderLineId: line.id,
-        lineNumber: line.line_number,
-        description: line.description,
-        manufacturerName: line.manufacturer_name,
-        quantity: outstanding,
-      });
+      unassignedLines.push(ref);
       continue;
     }
 
@@ -146,6 +185,8 @@ export async function planFanOut(salesOrderId: string): Promise<FanOutPlan> {
   return {
     groups: [...groups.values()].sort((a, b) => a.vendorName.localeCompare(b.vendorName)),
     unassignedLines,
+    unroutedLines,
+    notPurchased,
   };
 }
 
