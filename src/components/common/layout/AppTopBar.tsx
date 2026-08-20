@@ -103,7 +103,14 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
               isLogoHovered ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            <QwohterLogo size="sm" />
+            {/*
+              The mark's ink sits left of centre inside its own viewBox: the
+              box is 0..10 wide but the paths only span 0.766..8.429, so the
+              visual centre is 0.4025 units (4% of the width) left of the box
+              centre. Without this nudge the logo reads misaligned against the
+              nav icons below it, which are centred on the same 32px axis.
+            */}
+            <QwohterLogo size="sm" className="translate-x-[4%]" />
           </div>
           <div
             className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${

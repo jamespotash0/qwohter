@@ -103,15 +103,15 @@ export function AppSidebar() {
                         pins every icon to 16px no matter what `size` the Icon
                         is given.
 
-                        [&>svg]:!size-5 is the icon size dial (20px). The left
+                        [&>svg]:!size-[18px] is the icon size dial. The left
                         inset must stay in step with it, since centring in the
                         collapsed rail is:
                           pl = (rail - 2*groupPadding - icon) / 2
-                             = (64 - 16 - 20) / 2 = 14px
+                             = (64 - 16 - 18) / 2 = 15px
                         which also puts the icon centre on 32px — the centre of
                         the rail and of the logo slot above it.
                       */
-                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-[14px] pr-[14px] [&>svg]:!size-5 group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[14px] transition-colors duration-200 ${
+                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-[15px] pr-[15px] [&>svg]:!size-[18px] group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[15px] transition-colors duration-200 ${
                         isActive
                           ? 'text-[var(--sidebar-nav-text-active)] [&:hover]:text-[var(--sidebar-nav-text-active)]'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
@@ -129,7 +129,7 @@ export function AppSidebar() {
                     >
                       {/* Icon sits at a fixed x in both states, so it never moves */}
                       <Icon
-                        size={20}
+                        size={18}
                         weight={isActive ? 'fill' : 'regular'}
                         className={`flex-shrink-0 transition-colors duration-200 ${
                           isActive
