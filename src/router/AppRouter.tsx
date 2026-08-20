@@ -185,6 +185,8 @@ const Contacts = lazy(() => import("@/pages/Contacts"));
 
 // Back office: purchase order acknowledgment variance
 const VarianceQueue = lazy(() => import("@/pages/VarianceQueue"));
+const SalesOrders = lazy(() => import("@/pages/SalesOrders"));
+const SalesOrderDetail = lazy(() => import("@/pages/SalesOrderDetail"));
 
 // Calendar page
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -312,6 +314,8 @@ export const AppRouter = () => (
 
           {/* Back office: acknowledgment variance queue */}
           <Route path="/acknowledgments" element={<VarianceQueue />} />
+          <Route path="/orders" element={<SalesOrders />} />
+          <Route path="/orders/:orderId" element={<SalesOrderDetail />} />
 
           {/* Calendar */}
           <Route path="/calendar" element={<Calendar />} />

@@ -145,6 +145,50 @@ export async function getSalesOrdersForProject(
   return (data || []) as unknown as SalesOrder[];
 }
 
+/**
+ * Every sales order for an organization, newest first, with the project and
+ * company joined for the list view.
+ */
+export async function getSalesOrdersForOrganization(
+  organizationId: string,
+  limit = 100
+): Promise<SalesOrder[]> {
+  const { data, error } = await table('sales_orders')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('[salesOrdersService] getSalesOrdersForOrganization failed:', error);
+    throw new Error(`Failed to load sales orders: ${error.message}`);
+  }
+
+  return (data || []) as unknown as SalesOrder[];
+}
+
+/**
+ * The project a proposal was promoted to when it was won.
+ *
+ * An order hangs off the project, not the document, so a won proposal that was
+ * never sent to the board cannot be ordered yet.
+ */
+export async function getProjectIdForProposal(
+  proposalId: string
+): Promise<string | null> {
+  const { data, error } = await table('projects')
+    .select('id')
+    .eq('proposal_id', proposalId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[salesOrdersService] getProjectIdForProposal failed:', error);
+    throw new Error(`Failed to resolve the project: ${error.message}`);
+  }
+
+  return (data as unknown as { id: string } | null)?.id ?? null;
+}
+
 export async function getSalesOrderById(
   salesOrderId: string
 ): Promise<SalesOrder | null> {

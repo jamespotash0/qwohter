@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug, Bell, Banknote } from "lucide-react";
+import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug, Bell, Banknote, Truck } from "lucide-react";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile } from "@/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { TeamTab } from "@/components/features/settings/TeamTab";
 import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { NotificationsTab } from "@/components/features/settings/NotificationsTab";
 import { PaymentsTab } from "@/components/features/settings/PaymentsTab";
+import { VendorsTab } from "@/components/features/settings/VendorsTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
@@ -148,6 +149,16 @@ const Settings = () => {
         icon: <Users className="w-4 h-4" />,
         component: <TeamTab />,
         requiresPermission: "team",
+        requiresSubscription: true
+      },
+      {
+        // The buy side: who the dealer purchases from, and the discount
+        // agreements that turn a manufacturer list price into dealer cost.
+        id: "vendors",
+        label: "Vendors",
+        icon: <Truck className="w-4 h-4" />,
+        component: <VendorsTab organizationId={organization?.id} />,
+        requiresPermission: "vendors",
         requiresSubscription: true
       },
       {

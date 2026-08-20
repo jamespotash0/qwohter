@@ -5,9 +5,10 @@ Foundation for dealer back-office operations — everything that happens between
 come from the tools dealers already use (CET, Giza, 2020, ProjectMatrix); this
 system owns the order lifecycle those tools do not.
 
-> **Status:** Foundations, the order spine, the PO fan-out with acknowledgment
-> variance, and work orders are implemented. Receiving UI, punch lists, job
-> costing, and specification import are not built yet.
+> **Status:** The chain runs end to end in the UI — set up vendors, turn a won
+> proposal into an order, fan out purchase orders, record what came back, and
+> read the variance queue. Receiving, work-order scheduling UI, job costing, PO
+> transmission, and specification import are not built yet.
 
 ---
 
@@ -26,6 +27,23 @@ spec tool ──SIF──► quote ──► project ──► sales order ─�
 
 The right-hand end (`payment_jobs` → `billing_phases` → invoice) already exists;
 see [BILLING.md](BILLING.md). The middle is what Phase 1 builds.
+
+---
+
+## Screens
+
+| Screen | Where | What it does |
+|--------|-------|--------------|
+| Vendors | Settings › Vendors | Who you buy from, and the discount agreements that turn list price into dealer cost. Flags vendors with no order destination or no discounts — both mean lines cannot proceed. |
+| Orders | `/orders` | Every sold job. Create one from a won proposal; the preview reports unresolved manufacturers before anything is written. |
+| Order detail | `/orders/:id` | Lines with derived fulfillment quantities, the purchasing fan-out, and the issued POs. |
+| Acknowledgments | `/acknowledgments` | The variance queue. |
+
+The acknowledgment dialog lives on the order's Purchase orders tab. Lines
+pre-fill with what was ordered — an unchanged acknowledgment is the common case
+and should not require retyping every figure — and the running variance total
+updates as you type, because the number a dealer wants is not *what did they
+say* but *what is this costing me*.
 
 ---
 
