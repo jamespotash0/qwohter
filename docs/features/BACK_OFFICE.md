@@ -97,10 +97,17 @@ puts `8999.999999999998` on a purchase order.
 ### Spec metadata
 
 Lines that came from a specification export carry provenance through to the
-purchase order: `manufacturerName` / `manufacturerId`, `seriesName` / `seriesId`,
-`optionString`, `area`, `specPhase`, `sourceLineNumber`. These are inert for
-pricing — they exist so an imported line stays traceable to the file it came
-from when a dealer disputes what was specified.
+purchase order: `manufacturerName`, `seriesName`, `optionString`, `area`,
+`specPhase`, `sourceLineNumber`. These are inert for pricing — they exist so an
+imported line stays traceable to the file it came from when a dealer disputes
+what was specified.
+
+**No product catalog.** Manufacturer and series are text, not references. CET,
+Giza, and 2020 already resolve the part number, options, and list price before a
+line reaches us, so maintaining a catalog here would be a permanent cost with
+nothing to show for it. A vendor row *is* the manufacturer identity, and a
+series is matched by name — normalized for case and whitespace, because that
+text is hand-entered upstream.
 
 ### Summary totals
 
@@ -139,6 +146,10 @@ product series and by the contract the sale runs under, and agreements expire.
 
 Rows match **most-specific-first**:
 
+Series is matched by **name**, normalized for case and whitespace. A dealer only
+ever lists the handful of series they hold special pricing on, so there is
+nothing to maintain beyond those rows.
+
 | Tier | Matches |
 |------|---------|
 | `series+contract` | This series, under this contract |
@@ -146,14 +157,14 @@ Rows match **most-specific-first**:
 | `contract` | Any series, under this contract |
 | `blanket` | Any series, any contract |
 
-`NULL` in `series_id` or `contract_vehicle` means "applies to anything", so a
+`NULL` in `series_name` or `contract_vehicle` means "applies to anything", so a
 vendor's blanket rate is one row with both `NULL`. A tie **inside** a tier goes
 to the larger discount, so a dealer is never silently charged more than an
 agreement entitles them to. A more specific but smaller discount still wins over
 a larger blanket one — that is the agreement they actually signed for that
 series.
 
-Contract vehicles are compared case-insensitively (they are hand-entered).
+Both are compared normalized — trimmed and lowercased — because they are hand-entered.
 
 ### null is not zero
 

@@ -1695,7 +1695,6 @@ CREATE TABLE IF NOT EXISTS public.vendors (
   name text NOT NULL,
   vendor_type text NOT NULL DEFAULT 'Manufacturer'
     CHECK (vendor_type IN ('Manufacturer', 'Supplier', 'Subcontractor', 'Freight', 'Other')),
-  manufacturer_id uuid REFERENCES public.product_manufacturers(id) ON DELETE SET NULL,
   account_number text,
   order_method text NOT NULL DEFAULT 'Email'
     CHECK (order_method IN ('Email', 'Portal', 'EDI', 'Fax', 'Phone')),
@@ -1729,15 +1728,13 @@ CREATE TABLE IF NOT EXISTS public.vendors (
 CREATE INDEX IF NOT EXISTS idx_vendors_org ON public.vendors (organization_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_org_active_name
   ON public.vendors (organization_id, is_active, name);
-CREATE INDEX IF NOT EXISTS idx_vendors_manufacturer
-  ON public.vendors (manufacturer_id) WHERE manufacturer_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vendors_org_name_unique
   ON public.vendors (organization_id, lower(name));
 CREATE TABLE IF NOT EXISTS public.vendor_discounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   vendor_id uuid NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
-  series_id uuid REFERENCES public.product_series(id) ON DELETE CASCADE,
+  series_name text,
   contract_vehicle text,
   discount_percent numeric NOT NULL
     CHECK (discount_percent >= 0 AND discount_percent <= 100),
@@ -1751,7 +1748,7 @@ CREATE TABLE IF NOT EXISTS public.vendor_discounts (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_vendor_discounts_lookup
-  ON public.vendor_discounts (vendor_id, series_id, contract_vehicle);
+  ON public.vendor_discounts (vendor_id, lower(series_name), lower(contract_vehicle));
 CREATE INDEX IF NOT EXISTS idx_vendor_discounts_org
   ON public.vendor_discounts (organization_id);
 CREATE TABLE IF NOT EXISTS public.attachments (

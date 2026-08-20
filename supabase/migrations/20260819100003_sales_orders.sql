@@ -137,8 +137,10 @@ CREATE TABLE IF NOT EXISTS public.order_lines (
   -- Who this will be bought from. Null until resolved -- an imported line names
   -- a manufacturer as text before it is matched to a vendor account.
   vendor_id uuid REFERENCES public.vendors(id) ON DELETE SET NULL,
+  -- Manufacturer and series are TEXT, carried verbatim from the specification
+  -- export. There is no product catalog to reference: the spec tool already
+  -- resolved the part number, options, and list price before the line arrived.
   manufacturer_name text,
-  series_id uuid REFERENCES public.product_series(id) ON DELETE SET NULL,
   series_name text,
 
   model_number text,
@@ -394,7 +396,7 @@ BEGIN
 
   INSERT INTO public.order_lines (
     organization_id, sales_order_id, line_number, area, spec_phase,
-    vendor_id, manufacturer_name, series_id, series_name,
+    vendor_id, manufacturer_name, series_name,
     model_number, description, option_string, quantity,
     pricing_mode, list_price, dealer_discount_percent, unit_cost,
     sell_rule, markup_type, markup_value, discount_type, discount_value,
@@ -410,7 +412,6 @@ BEGIN
     NULLIF(l->>'spec_phase', ''),
     NULLIF(l->>'vendor_id', '')::uuid,
     NULLIF(l->>'manufacturer_name', ''),
-    NULLIF(l->>'series_id', '')::uuid,
     NULLIF(l->>'series_name', ''),
     NULLIF(l->>'model_number', ''),
     COALESCE(NULLIF(l->>'description', ''), 'Unnamed line'),

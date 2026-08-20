@@ -1333,8 +1333,8 @@ export interface Database {
       };
       /**
        * Vendors - manufacturers and suppliers you buy from. Purchase orders are
-       * addressed to a vendor; optionally linked to product_manufacturers so the
-       * catalog hierarchy and the purchasing relationship stay in step.
+       * addressed to a vendor. A vendor row is the manufacturer identity; there
+       * is no product catalog to link to.
        */
       vendors: {
         Row: {
@@ -1342,7 +1342,6 @@ export interface Database {
           organization_id: string;
           name: string;
           vendor_type: 'Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other';
-          manufacturer_id: string | null;
           account_number: string | null;
           order_method: 'Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone';
           order_email: string | null;
@@ -1380,7 +1379,6 @@ export interface Database {
           organization_id: string;
           name: string;
           vendor_type?: 'Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other';
-          manufacturer_id?: string | null;
           account_number?: string | null;
           order_method?: 'Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone';
           order_email?: string | null;
@@ -1418,7 +1416,6 @@ export interface Database {
           organization_id?: string;
           name?: string;
           vendor_type?: 'Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other';
-          manufacturer_id?: string | null;
           account_number?: string | null;
           order_method?: 'Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone';
           order_email?: string | null;
@@ -1454,16 +1451,16 @@ export interface Database {
       };
       /**
        * Vendor discounts - discount off manufacturer list, by series and
-       * contract vehicle. NULL series_id or contract_vehicle means "applies to
-       * anything"; rows resolve most-specific-first. Margin data: RLS gates this
-       * table on can_view_cost(), not plain membership.
+       * contract vehicle, both free text. NULL means "applies to anything";
+       * rows resolve most-specific-first. Margin data: RLS gates this table on
+       * can_view_cost(), not plain membership.
        */
       vendor_discounts: {
         Row: {
           id: string;
           organization_id: string;
           vendor_id: string;
-          series_id: string | null;
+          series_name: string | null;
           contract_vehicle: string | null;
           discount_percent: number;
           effective_from: string | null;
@@ -1477,7 +1474,7 @@ export interface Database {
           id?: string;
           organization_id: string;
           vendor_id: string;
-          series_id?: string | null;
+          series_name?: string | null;
           contract_vehicle?: string | null;
           discount_percent: number;
           effective_from?: string | null;
@@ -1491,7 +1488,7 @@ export interface Database {
           id?: string;
           organization_id?: string;
           vendor_id?: string;
-          series_id?: string | null;
+          series_name?: string | null;
           contract_vehicle?: string | null;
           discount_percent?: number;
           effective_from?: string | null;

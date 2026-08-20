@@ -25,16 +25,16 @@ export type PricingMode = 'cost_up' | 'list_down';
  * Specification metadata carried by a line that originated in a spec tool
  * (CET, Giza, 2020, ProjectMatrix). Inert for pricing — it exists so an
  * imported line keeps its provenance through to the purchase order.
+ *
+ * Manufacturer and series are text, not catalog references. The spec tool has
+ * already resolved the part number, options, and list price by the time a line
+ * reaches us, so there is no catalog to maintain or key off.
  */
 export interface LineSpecMetadata {
   /** Manufacturer as named by the source file (e.g. "Steelcase") */
   manufacturerName?: string;
-  /** FK to product_manufacturers once resolved against the catalog */
-  manufacturerId?: string;
   /** Series or product line as named by the source file */
   seriesName?: string;
-  /** FK to product_series once resolved */
-  seriesId?: string;
   /** Raw option / configuration code string from the spec tool */
   optionString?: string;
   /** Room or area the line was specified into */

@@ -43,8 +43,8 @@ export const vendorsQueryKeys = {
   list: (organizationId: string, includeInactive: boolean) =>
     [...vendorsQueryKeys.all, 'list', organizationId, includeInactive] as const,
   detail: (vendorId: string) => [...vendorsQueryKeys.all, 'detail', vendorId] as const,
-  forManufacturer: (organizationId: string, manufacturerId: string) =>
-    [...vendorsQueryKeys.all, 'manufacturer', organizationId, manufacturerId] as const,
+  forManufacturer: (organizationId: string, manufacturerName: string) =>
+    [...vendorsQueryKeys.all, 'manufacturer', organizationId, manufacturerName] as const,
   discounts: (vendorId: string) =>
     [...vendorsQueryKeys.all, 'discounts', vendorId] as const,
   allDiscounts: (organizationId: string) =>
@@ -82,23 +82,24 @@ export function useVendor(vendorId?: string) {
 }
 
 /**
- * The vendor account backing a catalog manufacturer. Used when a specification
- * import names a manufacturer and its lines need somewhere to be ordered from.
+ * The vendor account backing a manufacturer name, as a specification export
+ * spells it. Null means no account exists, so lines from that manufacturer
+ * cannot be put on a purchase order yet.
  */
 export function useVendorForManufacturer(
   organizationId?: string,
-  manufacturerId?: string
+  manufacturerName?: string
 ) {
   return useQuery({
     queryKey: vendorsQueryKeys.forManufacturer(
       organizationId ?? '__pending__',
-      manufacturerId ?? '__pending__'
+      manufacturerName ?? '__pending__'
     ),
-    enabled: !!organizationId && !!manufacturerId,
+    enabled: !!organizationId && !!manufacturerName,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Vendor | null> => {
-      if (!organizationId || !manufacturerId) return null;
-      return getVendorForManufacturer(organizationId, manufacturerId);
+      if (!organizationId || !manufacturerName) return null;
+      return getVendorForManufacturer(organizationId, manufacturerName);
     },
   });
 }
@@ -252,15 +253,15 @@ export function useDeleteVendorDiscount() {
  */
 export function useResolvedDiscount(
   vendorId?: string,
-  options: { seriesId?: string | null; contractVehicle?: string | null; asOf?: string } = {}
+  options: { seriesName?: string | null; contractVehicle?: string | null; asOf?: string } = {}
 ): { discount: ResolvedDiscount | null; isLoading: boolean } {
   const { data: agreements, isLoading } = useVendorDiscounts(vendorId);
-  const { seriesId, contractVehicle, asOf } = options;
+  const { seriesName, contractVehicle, asOf } = options;
 
   const discount = useMemo(() => {
     if (!agreements || agreements.length === 0) return null;
-    return resolveDiscount(agreements, { seriesId, contractVehicle, asOf });
-  }, [agreements, seriesId, contractVehicle, asOf]);
+    return resolveDiscount(agreements, { seriesName, contractVehicle, asOf });
+  }, [agreements, seriesName, contractVehicle, asOf]);
 
   return { discount, isLoading };
 }

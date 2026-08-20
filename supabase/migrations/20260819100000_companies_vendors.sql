@@ -11,8 +11,10 @@
 --
 -- Decisions baked in:
 --   * contacts stay people. A contact optionally belongs to a company.
---   * vendors optionally link to product_manufacturers so the catalog hierarchy
---     and the purchasing relationship stay in step without being the same row.
+--   * A vendor row IS the manufacturer identity. Nothing here references a
+--     product catalog: specification tools already resolve part numbers, options,
+--     and list price, so maintaining catalog hierarchy would be a permanent cost
+--     with nothing to show for it. Manufacturers and series arrive as text.
 --   * Discounts resolve most-specific-first: series + contract beats series
 --     beats contract beats the vendor default. Resolution lives in application
 --     code (src/lib/pricing) so quoting and purchasing agree; this table is
@@ -166,10 +168,6 @@ CREATE TABLE IF NOT EXISTS public.vendors (
   vendor_type text NOT NULL DEFAULT 'Manufacturer'
     CHECK (vendor_type IN ('Manufacturer', 'Supplier', 'Subcontractor', 'Freight', 'Other')),
 
-  -- Optional link to the catalog hierarchy. A manufacturer can exist in the
-  -- catalog without being a vendor you hold an account with, and vice versa.
-  manufacturer_id uuid REFERENCES public.product_manufacturers(id) ON DELETE SET NULL,
-
   -- The dealer's account number with this vendor; goes on every PO.
   account_number text,
 
@@ -221,8 +219,6 @@ CREATE INDEX IF NOT EXISTS idx_vendors_org
   ON public.vendors (organization_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_org_active_name
   ON public.vendors (organization_id, is_active, name);
-CREATE INDEX IF NOT EXISTS idx_vendors_manufacturer
-  ON public.vendors (manufacturer_id) WHERE manufacturer_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vendors_org_name_unique
   ON public.vendors (organization_id, lower(name));
 
@@ -264,17 +260,25 @@ CREATE TRIGGER set_vendors_updated_at
 -- by product series and by the contract the sale runs under (GSA, a purchasing
 -- cooperative, or the dealer's standard agreement), and it changes on renewal.
 --
--- Rows are matched most-specific-first. A NULL in series_id or contract_vehicle
--- means "applies to anything", so a vendor's blanket discount is one row with
--- both NULL.
+-- Rows are matched most-specific-first. A NULL in series_name or
+-- contract_vehicle means "applies to anything", so a vendor's blanket discount
+-- is one row with both NULL.
+--
+-- Neither column references a product catalog. Specification tools (CET, Giza,
+-- 2020) already resolve part numbers and list price, so maintaining a catalog
+-- here would be a permanent cost with nothing to show for it. Series arrive as
+-- text and are matched as text.
 
 CREATE TABLE IF NOT EXISTS public.vendor_discounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   vendor_id uuid NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
 
-  -- NULL = applies to every series from this vendor.
-  series_id uuid REFERENCES public.product_series(id) ON DELETE CASCADE,
+  -- NULL = applies to every series from this vendor. Free text rather than a
+  -- catalog reference: specification exports name a series as text, and a
+  -- dealer only ever lists the handful of series they hold special pricing on.
+  -- Matched case-insensitively.
+  series_name text,
   -- NULL = applies under any contract. Free text: the set of contract vehicles
   -- is dealer-specific and changes faster than a CHECK constraint should.
   contract_vehicle text,
@@ -299,7 +303,7 @@ CREATE TABLE IF NOT EXISTS public.vendor_discounts (
 
 -- The resolution query: everything for a vendor, narrowed by series/contract/date.
 CREATE INDEX IF NOT EXISTS idx_vendor_discounts_lookup
-  ON public.vendor_discounts (vendor_id, series_id, contract_vehicle);
+  ON public.vendor_discounts (vendor_id, lower(series_name), lower(contract_vehicle));
 CREATE INDEX IF NOT EXISTS idx_vendor_discounts_org
   ON public.vendor_discounts (organization_id);
 

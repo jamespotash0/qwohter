@@ -185,7 +185,6 @@ vendors                            (who you buy from)
 ├── organization_id (FK)
 ├── name
 ├── vendor_type ('Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other')
-├── manufacturer_id (FK → product_manufacturers, nullable)
 ├── account_number (the dealer's account with this vendor)
 ├── order_method ('Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone')
 ├── order_email, acknowledgment_email, portal_url
@@ -200,7 +199,7 @@ vendor_discounts                   (what you pay them)
 ├── id (uuid, PK)
 ├── organization_id (FK)
 ├── vendor_id (FK → vendors)
-├── series_id (FK → product_series, NULL = any series)
+├── series_name (text, NULL = any series; matched normalized)
 ├── contract_vehicle (text, NULL = any contract)
 ├── discount_percent (0-100; 55 means "55 off list" = 0.45 multiplier)
 ├── effective_from, effective_to (NULL = unbounded)
@@ -216,6 +215,10 @@ attachments                        (polymorphic file attachments)
 ├── description
 └── uploaded_by, created_at, updated_at
 ```
+
+**No catalog references.** Manufacturer and series are text throughout. Spec
+tools resolve part numbers and list price upstream, so a vendor row *is* the
+manufacturer identity.
 
 **Discount resolution.** A dealer's discount is not one number. Rows match
 most-specific-first: series + contract, then series, then contract, then the

@@ -89,19 +89,21 @@ export async function getVendorById(vendorId: string): Promise<Vendor | null> {
 }
 
 /**
- * The vendor a dealer holds an account with for a given catalog manufacturer.
- * Used when a specification import names a manufacturer and the resulting lines
- * need somewhere to be ordered from.
+ * The vendor account backing a manufacturer name.
+ *
+ * Specification exports name a manufacturer as text, so this matches on the
+ * vendor's own name -- case-insensitively, because that text is hand-entered
+ * upstream and arrives with inconsistent casing.
  */
 export async function getVendorForManufacturer(
   organizationId: string,
-  manufacturerId: string
+  manufacturerName: string
 ): Promise<Vendor | null> {
   const { data, error } = await supabase
     .from('vendors')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('manufacturer_id', manufacturerId)
+    .ilike('name', manufacturerName.trim())
     .eq('is_active', true)
     .limit(1)
     .maybeSingle();

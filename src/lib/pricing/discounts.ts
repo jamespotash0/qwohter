@@ -15,6 +15,11 @@
  *   3. contract            any series, under this contract
  *   4. blanket             any series, any contract
  *
+ * Series is matched by NAME, not by a catalog reference. Specification tools
+ * already resolve part numbers and list price, so there is no product catalog
+ * to key off -- and a dealer only ever lists the handful of series they hold
+ * special pricing on.
+ *
  * A tie inside a tier is broken by the larger discount, so a dealer is never
  * silently charged more than an agreement on file entitles them to.
  */
@@ -26,15 +31,15 @@
  */
 export interface DiscountAgreement {
   discount_percent: number;
-  series_id?: string | null;
+  series_name?: string | null;
   contract_vehicle?: string | null;
   effective_from?: string | null;
   effective_to?: string | null;
 }
 
 export interface DiscountQuery {
-  /** The series being priced, if known. */
-  seriesId?: string | null;
+  /** The series being priced, as named by the specification. */
+  seriesName?: string | null;
   /** The contract the sale runs under, if any. */
   contractVehicle?: string | null;
   /** Date to evaluate against, ISO yyyy-mm-dd. Defaults to today. */
@@ -69,6 +74,13 @@ export const isAgreementEffective = (
   return true;
 };
 
+/** Normalized form for comparing hand-entered text. */
+const norm = (value: string | null | undefined): string | null => {
+  const t = value?.trim().toLowerCase();
+  if (t === undefined || t.length === 0) return null;
+  return t;
+};
+
 /**
  * Rank an agreement against a query. Lower is more specific; -1 means the
  * agreement does not apply at all.
@@ -77,17 +89,18 @@ const specificity = (
   agreement: DiscountAgreement,
   query: DiscountQuery
 ): number => {
-  const wantsSeries = !!agreement.series_id;
+  const wantsSeries = !!agreement.series_name;
   const wantsContract = !!agreement.contract_vehicle;
 
-  // An agreement scoped to a series only applies to that series.
-  if (wantsSeries && agreement.series_id !== query.seriesId) return -1;
-  // Likewise for contract vehicle. Compared case-insensitively because these
-  // are hand-entered ("Omnia" vs "omnia").
+  // Series and contract vehicle are both free text -- there is no product
+  // catalog to key off, and specification exports deliver them with
+  // inconsistent casing and stray whitespace. Compared normalized.
+  if (wantsSeries && norm(agreement.series_name) !== norm(query.seriesName)) {
+    return -1;
+  }
   if (
     wantsContract &&
-    agreement.contract_vehicle?.toLowerCase() !==
-      query.contractVehicle?.toLowerCase()
+    norm(agreement.contract_vehicle) !== norm(query.contractVehicle)
   ) {
     return -1;
   }

@@ -13,8 +13,9 @@ import {
   type DiscountAgreement,
 } from '@/lib/pricing';
 
-const SERIES_A = '11111111-1111-1111-1111-111111111111';
-const SERIES_B = '22222222-2222-2222-2222-222222222222';
+// Series are matched by name, as a specification export spells them.
+const SERIES_A = 'Series 1';
+const SERIES_B = 'Answer';
 
 const agreement = (o: Partial<DiscountAgreement> = {}): DiscountAgreement => ({
   discount_percent: 50,
@@ -54,30 +55,30 @@ describe('resolveDiscount specificity', () => {
   const agreements: DiscountAgreement[] = [
     agreement({ discount_percent: 40 }), // blanket
     agreement({ discount_percent: 45, contract_vehicle: 'Omnia' }), // contract
-    agreement({ discount_percent: 50, series_id: SERIES_A }), // series
-    agreement({ discount_percent: 55, series_id: SERIES_A, contract_vehicle: 'Omnia' }),
+    agreement({ discount_percent: 50, series_name: SERIES_A }), // series
+    agreement({ discount_percent: 55, series_name: SERIES_A, contract_vehicle: 'Omnia' }),
   ];
 
   it('prefers series + contract over everything', () => {
-    const r = resolveDiscount(agreements, { seriesId: SERIES_A, contractVehicle: 'Omnia' });
+    const r = resolveDiscount(agreements, { seriesName: SERIES_A, contractVehicle: 'Omnia' });
     expect(r?.discountPercent).toBe(55);
     expect(r?.matchedOn).toBe('series+contract');
   });
 
   it('falls to series when the contract does not match', () => {
-    const r = resolveDiscount(agreements, { seriesId: SERIES_A, contractVehicle: 'GSA' });
+    const r = resolveDiscount(agreements, { seriesName: SERIES_A, contractVehicle: 'GSA' });
     expect(r?.discountPercent).toBe(50);
     expect(r?.matchedOn).toBe('series');
   });
 
   it('falls to contract when the series does not match', () => {
-    const r = resolveDiscount(agreements, { seriesId: SERIES_B, contractVehicle: 'Omnia' });
+    const r = resolveDiscount(agreements, { seriesName: SERIES_B, contractVehicle: 'Omnia' });
     expect(r?.discountPercent).toBe(45);
     expect(r?.matchedOn).toBe('contract');
   });
 
   it('falls to the blanket agreement when nothing else matches', () => {
-    const r = resolveDiscount(agreements, { seriesId: SERIES_B, contractVehicle: 'GSA' });
+    const r = resolveDiscount(agreements, { seriesName: SERIES_B, contractVehicle: 'GSA' });
     expect(r?.discountPercent).toBe(40);
     expect(r?.matchedOn).toBe('blanket');
   });
@@ -86,8 +87,17 @@ describe('resolveDiscount specificity', () => {
     expect(resolveDiscount(agreements, {})?.discountPercent).toBe(40);
   });
 
+  it('matches series names case-insensitively and ignores stray whitespace', () => {
+    const r = resolveDiscount(
+      [agreement({ discount_percent: 52, series_name: '  series 1 ' })],
+      { seriesName: 'Series 1' }
+    );
+    expect(r?.discountPercent).toBe(52);
+    expect(r?.matchedOn).toBe('series');
+  });
+
   it('matches contract vehicles case-insensitively', () => {
-    const r = resolveDiscount(agreements, { seriesId: SERIES_B, contractVehicle: 'omnia' });
+    const r = resolveDiscount(agreements, { seriesName: SERIES_B, contractVehicle: 'omnia' });
     expect(r?.discountPercent).toBe(45);
   });
 });
@@ -95,9 +105,9 @@ describe('resolveDiscount specificity', () => {
 describe('resolveDiscount tie-breaking', () => {
   it('favours the dealer when two agreements are equally specific', () => {
     const r = resolveDiscount([
-      agreement({ discount_percent: 50, series_id: SERIES_A }),
-      agreement({ discount_percent: 58, series_id: SERIES_A }),
-    ], { seriesId: SERIES_A });
+      agreement({ discount_percent: 50, series_name: SERIES_A }),
+      agreement({ discount_percent: 58, series_name: SERIES_A }),
+    ], { seriesName: SERIES_A });
     expect(r?.discountPercent).toBe(58);
   });
 
@@ -106,8 +116,8 @@ describe('resolveDiscount tie-breaking', () => {
     // actually signed for that series, even if a blanket rate looks better.
     const r = resolveDiscount([
       agreement({ discount_percent: 60 }),
-      agreement({ discount_percent: 50, series_id: SERIES_A }),
-    ], { seriesId: SERIES_A });
+      agreement({ discount_percent: 50, series_name: SERIES_A }),
+    ], { seriesName: SERIES_A });
     expect(r?.discountPercent).toBe(50);
     expect(r?.matchedOn).toBe('series');
   });
@@ -117,8 +127,8 @@ describe('resolveDiscount effectivity', () => {
   it('ignores expired agreements even when more specific', () => {
     const r = resolveDiscount([
       agreement({ discount_percent: 40 }),
-      agreement({ discount_percent: 55, series_id: SERIES_A, effective_to: '2026-01-01' }),
-    ], { seriesId: SERIES_A, asOf: '2026-08-19' });
+      agreement({ discount_percent: 55, series_name: SERIES_A, effective_to: '2026-01-01' }),
+    ], { seriesName: SERIES_A, asOf: '2026-08-19' });
     expect(r?.discountPercent).toBe(40);
   });
 
@@ -134,13 +144,13 @@ describe('resolveDiscount effectivity', () => {
 
 describe('resolveDiscount absence', () => {
   it('returns null when there are no agreements at all', () => {
-    expect(resolveDiscount([], { seriesId: SERIES_A })).toBeNull();
+    expect(resolveDiscount([], { seriesName: SERIES_A })).toBeNull();
   });
 
   it('returns null when no agreement covers the query', () => {
     // Only a series-scoped agreement exists, for a different series.
     expect(
-      resolveDiscount([agreement({ series_id: SERIES_A })], { seriesId: SERIES_B })
+      resolveDiscount([agreement({ series_name: SERIES_A })], { seriesName: SERIES_B })
     ).toBeNull();
   });
 
@@ -153,8 +163,8 @@ describe('resolveDiscount absence', () => {
   });
 
   it('returns every match with its originating agreement attached', () => {
-    const a = agreement({ discount_percent: 55, series_id: SERIES_A, notes: 'FY26 rider' } as DiscountAgreement);
-    expect(resolveDiscount([a], { seriesId: SERIES_A })?.agreement).toBe(a);
+    const a = agreement({ discount_percent: 55, series_name: SERIES_A, notes: 'FY26 rider' } as DiscountAgreement);
+    expect(resolveDiscount([a], { seriesName: SERIES_A })?.agreement).toBe(a);
   });
 });
 

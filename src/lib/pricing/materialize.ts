@@ -24,7 +24,6 @@ export interface MaterializedOrderLine {
   spec_phase: string | null;
   vendor_id: string | null;
   manufacturer_name: string | null;
-  series_id: string | null;
   series_name: string | null;
   model_number: string | null;
   description: string;
@@ -101,7 +100,7 @@ export function materializeOrderLines(
         ? (vendorIdByManufacturer[manufacturer] ??
            vendorIdByManufacturer[manufacturer.toLowerCase()])
         : undefined;
-      const vendorId = mappedVendorId ?? item.manufacturerId ?? null;
+      const vendorId = mappedVendorId ?? null;
 
       lines.push({
         line_number: lineNumber,
@@ -111,7 +110,6 @@ export function materializeOrderLines(
         spec_phase: trimmed(item.specPhase),
         vendor_id: vendorId,
         manufacturer_name: manufacturer,
-        series_id: item.seriesId ?? null,
         series_name: trimmed(item.seriesName),
         model_number: trimmed(item.modelNumber),
         // description is NOT NULL in the database; fall back through the fields
