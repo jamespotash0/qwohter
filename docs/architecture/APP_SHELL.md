@@ -45,9 +45,36 @@ sidebar header. State lives in `SidebarProvider`
 
 ## Navigation
 
-`AppSidebar` renders a single flat group: Dashboard, Proposals, Board (Task /
-Project sub-items), Calendar, Contacts, Forms, Analytics. Items are filtered by
-the user's role.
+`AppSidebar` renders one flat list — no groups, no accordions: Dashboard,
+Proposals, Projects, Tasks, Calendar, Contacts, Forms, Analytics. Items are
+filtered by the user's role. Projects (`/project-board`) and Tasks
+(`/task-board`) are top-level entries rather than sub-items of a "Board" parent.
+
+### Keeping the slide smooth
+
+The open/close animation is easy to break. Three rules hold it together:
+
+1. **The nav icon never moves.** Every row uses the same `pl-[15px]` in both
+   states, which puts the icon centre at 32px — the centre of the 64px collapsed
+   rail. Only the label reveals.
+2. **Labels stay mounted** and fade via opacity/transform. Conditionally
+   rendering them makes the text pop instead of slide.
+3. **No entrance animations on the rows.** Staggered `animate-in` with a
+   per-index `animationDelay` replays on *every* toggle, which reads as jank.
+
+Two upstream gotchas the sidebar overrides:
+
+- `sidebarMenuButtonVariants` applies `!size-8 !p-2` when collapsed, snapping
+  rows to a different shape mid-slide. `AppSidebar` overrides both.
+- The layout spacer was `calc(var(--sidebar-width) - 1rem)` when expanded but
+  exactly `--sidebar-width-icon` when collapsed, so the content edge and the
+  sidebar edge slid at different offsets. Both now use the full width.
+
+Panel width, labels and header share one easing curve
+(`cubic-bezier(0.32, 0.72, 0, 1)`, 300ms) so the whole thing reads as a single
+motion. The header is fixed-height with fixed padding and the logo sits in a
+40px slot that never unmounts — it previously remounted into a different
+subtree on each toggle, which made it appear to drop.
 
 **Settings is not a sidebar item** — it is reached from the profile menu, and
 has its own inner sidebar (see [SETTINGS.md](../features/SETTINGS.md)).

@@ -83,7 +83,7 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-60">
+          <DropdownMenuContent align="end" className="w-72">
             <div className="flex items-center gap-3 px-2 py-2">
               <Avatar className="h-9 w-9 flex-shrink-0">
                 <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">
