@@ -107,7 +107,7 @@ export const Sidebar = React.forwardRef<
       ? railWidth
       : fullWidth;
 
-    const slide = "duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]";
+    const slide = "duration-[180ms] transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]";
 
     return (
       <div

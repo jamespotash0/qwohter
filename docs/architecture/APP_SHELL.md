@@ -60,7 +60,7 @@ to the top bar — hovering it does nothing to the sidebar. Hovering the logo
 swaps it for the mode toggle in place, which is how the toggle stays reachable
 while the sidebar is collapsed, without the two surfaces driving each other.
 
-`setIsHovered(false)` is deferred by 120ms (cancelled by any enter) because the
+`setIsHovered(false)` is deferred by 80ms (cancelled by any enter) because the
 panel animates its own width: its edge moves under a stationary pointer, and
 without the delay a cursor resting near the rail can flicker it open and shut.
 
@@ -102,7 +102,7 @@ Two upstream gotchas the sidebar overrides:
   full-width top bar sit above it.
 
 Panel width, labels and header share one easing curve
-(`cubic-bezier(0.32, 0.72, 0, 1)`, 300ms) so the whole thing reads as a single
+(`cubic-bezier(0.32, 0.72, 0, 1)`, 180ms) so the whole thing reads as a single
 motion. The logo sits in a fixed 40px slot in the top bar — it previously lived
 in the sidebar header and remounted into a different subtree on each toggle,
 which made it appear to drop.

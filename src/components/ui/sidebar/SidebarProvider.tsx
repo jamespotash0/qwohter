@@ -30,7 +30,7 @@ const MODE_CYCLE: SidebarMode[] = ["expanded", "hover"];
  * own width, so its edge moves under a stationary pointer; without a short
  * delay a cursor resting near the rail edge can flicker it open and shut.
  */
-const HOVER_LEAVE_DELAY_MS = 120;
+const HOVER_LEAVE_DELAY_MS = 80;
 
 function readCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;

@@ -55,7 +55,7 @@ const menuItems: MenuItem[] = [
  * Keeping the panel width, the labels and the header on one curve is what
  * makes the slide read as a single motion rather than several.
  */
-const SLIDE = "transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]";
+const SLIDE = "transition-[opacity,transform] duration-[180ms] ease-[cubic-bezier(0.32,0.72,0,1)]";
 
 export function AppSidebar() {
   const user = useUser();
@@ -85,7 +85,7 @@ export function AppSidebar() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <SidebarContent className="px-0 pt-3 pb-6 flex-1">
+      <SidebarContent className="px-0 pt-0 pb-6 flex-1">
         <SidebarGroup className="px-2 py-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
@@ -111,7 +111,7 @@ export function AppSidebar() {
                         which also puts the icon centre on 32px — the centre of
                         the rail and of the logo slot above it.
                       */
-                      className={`group/item h-11 w-full justify-start gap-3.5 overflow-hidden pl-[15px] pr-[15px] [&>svg]:!size-[18px] group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-11 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[15px] transition-colors duration-200 ${
+                      className={`group/item h-11 w-full justify-start gap-3.5 overflow-hidden pl-[15px] pr-[15px] [&>svg]:!size-[18px] group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-11 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[15px] transition-colors duration-[120ms] ${
                         isActive
                           ? 'text-[var(--sidebar-nav-text-active)] [&:hover]:text-[var(--sidebar-nav-text-active)]'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
@@ -131,7 +131,7 @@ export function AppSidebar() {
                       <Icon
                         size={18}
                         weight={isActive ? 'fill' : 'regular'}
-                        className={`flex-shrink-0 transition-colors duration-200 ${
+                        className={`flex-shrink-0 transition-colors duration-[120ms] ${
                           isActive
                             ? 'text-[var(--sidebar-icon-active)]'
                             : 'text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)]'
