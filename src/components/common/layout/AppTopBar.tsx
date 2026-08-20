@@ -69,13 +69,14 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
   const { trialDaysRemaining, inGracePeriod, graceDaysRemaining } = useTrialStatus(organization?.id);
   const canManageBilling = role === "Owner" || role === "Admin";
 
-  // The cluster is part of the sidebar's hover region, so pointing at the
-  // top-left corner opens the sidebar in hover mode.
-  const { state, setIsHovered } = useSidebar();
+  // Only used to keep the cluster's width in step with the sidebar below it.
+  // The cluster belongs to the top bar, not the sidebar, so hovering it must
+  // not open the sidebar — only hovering the sidebar itself does that.
+  const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
   // Hovering the logo reveals the mode toggle in its place, showing whichever
-  // mode is currently selected.
+  // mode is currently selected. This is purely a top-bar affordance.
   const [isLogoHovered, setIsLogoHovered] = useState(false);
 
   return (
@@ -90,18 +91,10 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
         className={`flex items-center h-full flex-shrink-0 overflow-hidden px-3 duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isCollapsed ? 'w-[--sidebar-width-icon]' : 'w-[--sidebar-width]'
         }`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <div
           className="relative h-10 w-10 flex-shrink-0"
-          onMouseEnter={() => {
-            // Set both directly rather than relying on the enter event
-            // reaching the cluster: the slot's children are swapped and
-            // absolutely stacked, so propagation here is fragile.
-            setIsLogoHovered(true);
-            setIsHovered(true);
-          }}
+          onMouseEnter={() => setIsLogoHovered(true)}
           onMouseLeave={() => setIsLogoHovered(false)}
         >
           <div

@@ -111,7 +111,7 @@ export function AppSidebar() {
                         which also puts the icon centre on 32px — the centre of
                         the rail and of the logo slot above it.
                       */
-                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-[15px] pr-[15px] [&>svg]:!size-[18px] group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[15px] transition-colors duration-200 ${
+                      className={`group/item h-11 w-full justify-start gap-3.5 overflow-hidden pl-[15px] pr-[15px] [&>svg]:!size-[18px] group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-11 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[15px] transition-colors duration-200 ${
                         isActive
                           ? 'text-[var(--sidebar-nav-text-active)] [&:hover]:text-[var(--sidebar-nav-text-active)]'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'

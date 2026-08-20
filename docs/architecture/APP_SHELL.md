@@ -54,12 +54,15 @@ sidebar behaves like a normal column and the content resizes around it.
 Verified against the compiled CSS: in hover mode the content stays at x=64 /
 w=1136 whether the panel is at 64px or 220px; pinned, it moves to x=220 / w=980.
 
-**The hover region spans two sibling elements** — the top bar's left cluster and
-the sidebar itself. Moving between them fires a leave before the matching enter,
-so `setIsHovered(false)` is deferred by 120ms (cancelled by any enter) to stop
-the sidebar flickering shut mid-handoff. This is also what makes the toggle
-reachable in hover mode: pointing at the top-left corner opens the sidebar,
-which widens the cluster and reveals the toggle.
+**Only the sidebar itself opens the sidebar.** The top bar's left cluster is
+width-tracked to the sidebar so the logo sits over that column, but it belongs
+to the top bar — hovering it does nothing to the sidebar. Hovering the logo
+swaps it for the mode toggle in place, which is how the toggle stays reachable
+while the sidebar is collapsed, without the two surfaces driving each other.
+
+`setIsHovered(false)` is deferred by 120ms (cancelled by any enter) because the
+panel animates its own width: its edge moves under a stationary pointer, and
+without the delay a cursor resting near the rail can flicker it open and shut.
 
 - Persisted in the `sidebar:mode` cookie (7 days). The legacy `sidebar:state`
   boolean cookie is still written for back-compat and is read as a fallback on

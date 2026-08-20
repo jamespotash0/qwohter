@@ -26,10 +26,9 @@ export interface SidebarProviderProps extends React.ComponentProps<"div"> {
 const MODE_CYCLE: SidebarMode[] = ["expanded", "hover"];
 
 /**
- * Grace period before an un-hover collapses the sidebar. The hover region spans
- * two sibling elements (the top bar cluster and the sidebar), so moving between
- * them fires a leave before the matching enter — without this the sidebar
- * flickers shut in between.
+ * Grace period before an un-hover collapses the sidebar. The panel animates its
+ * own width, so its edge moves under a stationary pointer; without a short
+ * delay a cursor resting near the rail edge can flicker it open and shut.
  */
 const HOVER_LEAVE_DELAY_MS = 120;
 
@@ -77,8 +76,8 @@ export const SidebarProvider = React.forwardRef<HTMLDivElement, SidebarProviderP
     const [isHovered, _setIsHovered] = React.useState(false);
     const hoverLeaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Enter wins immediately; leave is deferred so a hand-off between the two
-    // hover surfaces does not read as a leave.
+    // Enter wins immediately; leave is deferred so a moving panel edge does
+    // not read as an intentional leave.
     const setIsHovered = React.useCallback((hovered: boolean) => {
       if (hoverLeaveTimer.current) {
         clearTimeout(hoverLeaveTimer.current);
