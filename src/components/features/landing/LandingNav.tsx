@@ -105,6 +105,19 @@ export const LandingNav = ({ activeSection, onGetDemo, onRipple }: LandingNavPro
       isActive ? 'text-[#ee6c4d]' : 'text-white'
     }`;
 
+  const signInButton = (className = '') => (
+    <button
+      onClick={() => {
+        setMobileOpen(false);
+        navigate('/sign-in');
+      }}
+      className={`[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-fluid-sm tracking-[0] leading-6 whitespace-nowrap relative group transition-all ${className}`}
+    >
+      Sign In
+      <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#ee6c4d] transition-all duration-300 group-hover:w-full" />
+    </button>
+  );
+
   const demoButton = (className = '') => (
     <Button
       onClick={(e) => {
@@ -223,7 +236,7 @@ export const LandingNav = ({ activeSection, onGetDemo, onRipple }: LandingNavPro
       {isScrolled ? (
         /* ---------- Scrolled: merged pill ---------- */
         <div className="px-5 sm:px-8">
-          <nav className="mx-auto w-full max-w-[640px] min-h-[48px] rounded-full flex items-center justify-between gap-3 pl-4 pr-2 py-1 shadow-lg bg-gradient-to-r from-[#272727] to-[#393939] transition-all duration-500">
+          <nav className="mx-auto w-full max-w-[720px] min-h-[48px] rounded-full flex items-center justify-between gap-3 pl-4 pr-2 py-1 shadow-lg bg-gradient-to-r from-[#272727] to-[#393939] transition-all duration-500">
             <img
               src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
               alt="Qwohter"
@@ -237,7 +250,8 @@ export const LandingNav = ({ activeSection, onGetDemo, onRipple }: LandingNavPro
 
             {inlineNav(false)}
 
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
+              {signInButton('hidden md:inline-block')}
               {demoButton('hidden md:inline-flex h-10 px-[15px]')}
               {mobileTrigger}
             </div>
@@ -259,18 +273,15 @@ export const LandingNav = ({ activeSection, onGetDemo, onRipple }: LandingNavPro
 
           {/* Desktop actions */}
           <div className="hidden xl:flex items-center gap-5 justify-end shrink-0">
-            <button
-              onClick={() => navigate('/sign-in')}
-              className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-fluid-sm tracking-[0] leading-6 whitespace-nowrap relative group transition-all"
-            >
-              Sign In
-              <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#ee6c4d] transition-all duration-300 group-hover:w-full" />
-            </button>
+            {signInButton()}
             {demoButton('h-[48px] px-[30px]')}
           </div>
 
-          {/* Tablet: CTA only, Sign In moves into the sheet */}
-          <div className="hidden md:flex xl:hidden items-center shrink-0">
+          {/* Tablet: Sign In stays beside the CTA. It cannot fall back to the
+              sheet here — mobileTrigger is md:hidden, so between md and xl it
+              would be unreachable. */}
+          <div className="hidden md:flex xl:hidden items-center gap-4 shrink-0">
+            {signInButton()}
             {demoButton('h-[44px] px-5')}
           </div>
 

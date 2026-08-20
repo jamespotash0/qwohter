@@ -33,7 +33,7 @@ interface CalendarMonthViewProps {
   organizationId: string;
 }
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MAX_VISIBLE_EVENTS = 3;
 
 export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
@@ -47,12 +47,12 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
 }) => {
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
 
-  // ── Grid dates (Monday start, 6 fixed rows) ──
+  // ── Grid dates (Sunday start, 6 fixed rows) ──
   const rows = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
     const allDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
     // Ensure exactly 6 rows (42 days)

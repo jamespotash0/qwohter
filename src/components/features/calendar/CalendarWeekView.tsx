@@ -110,7 +110,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
 
   // Week days (Mon start)
   const weekDays = useMemo(() => {
-    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const start = startOfWeek(selectedDate, { weekStartsOn: 0 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [selectedDate]);
 

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CurrencyDollar,
   ChartLineUp,
-  Bell,
   Plus,
   Clock,
   FileText,
@@ -17,8 +16,6 @@ import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useProposals } from "@/hooks/queries/useProposals";
 import { useUser, useProfile } from "@/auth";
 import { formatDistanceToNow } from "date-fns";
-import { useNotifications, useMarkNotificationAsRead } from "@/hooks/useNotifications";
-import type { Notification } from "@/lib/types/notifications";
 import { useUpcomingReminders, type TaskReminder } from "@/hooks/useUpcomingReminders";
 import { toast } from '@/components/ui/sonner';
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
@@ -95,10 +92,6 @@ const Dashboard = () => {
   const { organization: currentOrganization } = useCurrentOrganization(user?.id ?? '', !!user?.id);
   const organizationId = currentOrganization?.id || null;
   const { data: proposals = [], isLoading: proposalsLoading } = useProposals(organizationId || undefined);
-
-  // Notifications hooks
-  const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(user?.id);
-  const markNotificationAsRead = useMarkNotificationAsRead(user?.id || '');
 
   // Upcoming reminders from scheduled_notifications
   const { data: upcomingReminders = [], isLoading: remindersLoading } = useUpcomingReminders(user?.id);
@@ -449,10 +442,8 @@ const Dashboard = () => {
 
       {/* Main Content Grid */}
       <div className="space-y-8">
-        {/* Main Layout: Left Column (Quick Actions + Reminders & Alerts) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[520px_600px] xl:grid-cols-[540px_1fr] gap-8 items-start">
-          {/* Left Column */}
-          <div className="space-y-8 flex flex-col">
+        {/* Main Layout: Quick Actions + Reminders & Alerts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             {/* Quick Actions Card */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
             <CardHeader className="pb-4">
@@ -598,109 +589,6 @@ const Dashboard = () => {
                 })()}
               </CardContent>
             </Card>
-          </div>
-
-          {/* Right Column - Notifications */}
-          <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col self-start" style={{ height: '900px' }}>
-            <CardHeader className="pb-4 flex-shrink-0">
-              <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
-                <Bell className="w-5 h-5" />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="relative pb-4 flex-1 flex flex-col overflow-hidden">
-              {notificationsLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-pulse">
-                      <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-3"></div>
-                      <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded mx-auto"></div>
-                    </div>
-                  </div>
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
-                    <p className="text-[var(--content-muted-text)]">
-                      No notifications
-                    </p>
-                    <p className="text-sm text-[var(--content-muted-text)] mt-1">
-                      Notifications will appear here
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-2">
-                  {notifications.map((notification: Notification) => {
-                    // Notification types that require action (should show "View" button)
-                    const ACTION_REQUIRED_TYPES = ['approval_requested', 'task_assigned'];
-                    const requiresAction = ACTION_REQUIRED_TYPES.includes(notification.type) && notification.link;
-
-                    // Mark as read when clicking on the notification
-                    const handleMarkAsRead = () => {
-                      if (!notification.is_read) {
-                        markNotificationAsRead.mutate(notification.id);
-                      }
-                    };
-
-                    // Navigate to the linked page (separate action)
-                    const handleViewAction = (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      if (notification.link) {
-                        handleMarkAsRead();
-                        navigate(notification.link);
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={notification.id}
-                        onClick={handleMarkAsRead}
-                        className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                          !notification.is_read
-                            ? 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700'
-                            : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Red dot for unread, invisible placeholder for read */}
-                          <div className="flex-shrink-0 mt-1.5">
-                            {!notification.is_read ? (
-                              <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                            ) : (
-                              <div className="w-2 h-2"></div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${!notification.is_read ? 'font-semibold text-gray-900 dark:text-white' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
-                              {notification.title}
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
-                              {notification.message}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-xs text-gray-400 dark:text-gray-500">
-                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                              </p>
-                              {requiresAction && (
-                                <button
-                                  onClick={handleViewAction}
-                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                                >
-                                  View
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
 

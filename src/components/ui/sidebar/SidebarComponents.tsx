@@ -37,7 +37,7 @@ export const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+    const { isMobile, state, mode, openMobile, setOpenMobile } = useSidebar();
 
     if (collapsible === "none") {
       return (
@@ -74,45 +74,69 @@ export const Sidebar = React.forwardRef<
       );
     }
 
+    // Desktop layout depends on the mode:
+    //
+    //  - pinned open ("expanded") -> the sidebar sits in normal flow and the
+    //    content shrinks around it.
+    //  - opens on hover ("hover") -> the layout permanently reserves only the
+    //    rail width, and the panel floats above the content when it expands,
+    //    so nothing reflows as the pointer moves in and out.
+    //
+    // Either way it is one element in flow, not the fixed panel + spacer pair
+    // the upstream component used, whose widths disagreed and which would sit
+    // over a full-width top bar.
+    const isIconCollapsible = collapsible === "icon";
+    const isOffcanvasCollapsed = state === "collapsed" && collapsible === "offcanvas";
+    const overlays = mode === "hover" && isIconCollapsible;
+
+    const railWidth = "w-[--sidebar-width-icon]";
+    const fullWidth = "w-[--sidebar-width]";
+    const expandedNow = state === "expanded";
+
+    // Space the layout gives up. In hover mode this never changes.
+    const flowWidth = isOffcanvasCollapsed
+      ? "w-0"
+      : overlays || (!expandedNow && isIconCollapsible)
+      ? railWidth
+      : fullWidth;
+
+    // Width the visible panel animates to.
+    const panelWidth = isOffcanvasCollapsed
+      ? "w-0"
+      : !expandedNow && isIconCollapsible
+      ? railWidth
+      : fullWidth;
+
+    const slide = "duration-[180ms] transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)]";
+
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className={cn(
+          "group peer relative hidden h-full flex-shrink-0 text-sidebar-foreground md:block",
+          slide,
+          flowWidth,
+          // Lift above the content only while it is actually floating over it
+          overlays && expandedNow && "z-30",
+          className
+        )}
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        {...props}
       >
-        {/* Sidebar gap handler for desktop */}
         <div
+          data-sidebar="sidebar"
           className={cn(
-            "duration-300 relative h-svh w-[calc(var(--sidebar-width)-1rem)] bg-transparent transition-[width] ease-in-out",
-            "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+            "flex h-full flex-col overflow-hidden bg-sidebar",
+            slide,
+            overlays
+              ? cn("absolute inset-y-0 left-0", panelWidth, expandedNow && "shadow-xl")
+              : "w-full"
           )}
-        />
-        <div
-          className={cn(
-            "duration-300 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-in-out md:flex",
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
-            className
-          )}
-          {...props}
         >
-          <div
-            data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-          >
-            {children}
-          </div>
+          {children}
         </div>
       </div>
     );
