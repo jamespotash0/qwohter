@@ -87,7 +87,7 @@ export function AppTopBar({ onLogout }: AppTopBarProps) {
         rail, and the same x as the nav icons below.
       */}
       <div
-        className={`flex items-center h-full flex-shrink-0 overflow-hidden px-4 duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`flex items-center h-full flex-shrink-0 overflow-hidden px-3 duration-300 transition-[width] ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isCollapsed ? 'w-[--sidebar-width-icon]' : 'w-[--sidebar-width]'
         }`}
         onMouseEnter={() => setIsHovered(true)}

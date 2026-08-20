@@ -100,11 +100,12 @@ export function AppSidebar() {
                         size-8/p-2 come from the shared cva as !important when
                         collapsed, which snaps the button to a different shape
                         mid-slide — override both so the row keeps one geometry
-                        and only the label reveals. pl-[17px] puts the 22px
-                        icon's centre at 36px: 8px group padding + 17px + 11px,
-                        the centre of the 72px rail and of the logo slot above.
+                        and only the label reveals. Equal 12px insets keep the
+                        row's fill symmetric, and put the 24px icon's centre at
+                        32px (8px group padding + 12px + 12px) — the centre of
+                        the 64px rail and of the logo slot above it.
                       */
-                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-[17px] pr-3 group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-[17px] transition-colors duration-200 ${
+                      className={`group/item h-12 w-full justify-start gap-3.5 overflow-hidden pl-3 pr-3 group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:!h-12 group-data-[collapsible=icon]:!w-full group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!pl-3 transition-colors duration-200 ${
                         isActive
                           ? 'text-[var(--sidebar-nav-text-active)] [&:hover]:text-[var(--sidebar-nav-text-active)]'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
@@ -122,7 +123,7 @@ export function AppSidebar() {
                     >
                       {/* Icon sits at a fixed x in both states, so it never moves */}
                       <Icon
-                        size={22}
+                        size={24}
                         weight={isActive ? 'fill' : 'regular'}
                         className={`flex-shrink-0 transition-colors duration-200 ${
                           isActive
