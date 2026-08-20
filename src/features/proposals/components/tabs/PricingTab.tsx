@@ -55,6 +55,19 @@ import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder } from '../../context/FormBuilderContext';
 import { getStateOptions, getStateTaxRate, formatTaxRate } from '../../utils/salesTaxRates';
 
+// Pricing shapes and money math now live in @/lib/pricing so order lines,
+// purchase orders, and job costing resolve prices through the same code.
+import {
+  calculateSellPrice,
+  calculateSubtotal,
+  calculateTotalCost,
+  calculatePricing,
+  calculateCostMarkupPercent,
+  formatCurrency,
+  type PricingLineItem,
+  type PricingSection,
+} from '@/lib/pricing';
+
 // Sell rule options
 const SELL_RULES = [
   { value: 'per_hour', label: 'Per Hour' },
@@ -65,90 +78,6 @@ const SELL_RULES = [
   { value: 'flat_rate', label: 'Flat Rate' },
 ];
 
-// Pricing line item interface
-interface PricingLineItem {
-  id: string;
-  name: string;
-  modelNumber?: string; // Model number for display (from product)
-  quantity: number;
-  sellRule: string;
-  unitCost: number;
-  markupValue: number; // Markup value - interpreted based on markupType
-  markupType?: 'percent' | 'dollar'; // Markup type (default: percent)
-  isTaxable?: boolean; // Whether this item has sales tax applied
-  discountValue?: number; // Discount value (applied after markup, before tax)
-  discountType?: 'percent' | 'dollar'; // Discount type
-  sourceProductId?: string; // Optional: links to a product, if any
-  // Calculated fields (stored for reference)
-  sellPrice?: number; // Calculated sell price (after markup/discount, before tax)
-  taxAmount?: number; // Calculated tax amount for this item
-}
-
-// Pricing section interface
-interface PricingSection {
-  id: string;
-  name: string;
-  type: string;
-  collapsed: boolean;
-  lineItems: PricingLineItem[];
-}
-
-// Pricing summary interface (calculated totals)
-interface PricingSummary {
-  totalCost: number;
-  subtotal: number;
-  grossProfit: number;
-  grossProfitPercent: number;
-  totalTax: number;
-  grandTotal: number;
-}
-
-// Calculate sell price (after markup and discount, before tax)
-const calculateSellPrice = (item: PricingLineItem): number => {
-  const baseCost = item.quantity * item.unitCost;
-
-  // Apply markup (percent or flat dollar amount)
-  let priceAfterMarkup: number;
-  if (item.markupType === 'dollar') {
-    // Flat dollar markup
-    priceAfterMarkup = baseCost + (item.markupValue || 0);
-  } else {
-    // Percentage markup (default)
-    const markup = baseCost * (item.markupValue / 100);
-    priceAfterMarkup = baseCost + markup;
-  }
-
-  // Apply discount if present
-  if (item.discountValue && item.discountValue > 0) {
-    if (item.discountType === 'percent') {
-      return priceAfterMarkup * (1 - item.discountValue / 100);
-    } else {
-      // Dollar discount
-      return Math.max(0, priceAfterMarkup - item.discountValue);
-    }
-  }
-
-  return priceAfterMarkup;
-};
-
-// Calculate section subtotal (sell price with markup)
-const calculateSubtotal = (items: PricingLineItem[]): number => {
-  return items.reduce((sum, item) => sum + calculateSellPrice(item), 0);
-};
-
-// Calculate total cost (without markup)
-const calculateTotalCost = (items: PricingLineItem[]): number => {
-  return items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0);
-};
-
-// Format currency
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
-};
 
 // Scientific Calculator Component (inline in table header)
 function CalculatorPopover() {
@@ -762,41 +691,11 @@ export function PricingTab({ mode }: PricingTabProps) {
       return;
     }
 
-    // Helper to round to 2 decimal places
-    const round2 = (num: number) => Math.round(num * 100) / 100;
-
-    // Calculate per-item sellPrice and taxAmount, then create enriched sections
-    const enrichedSections = sections.map(section => ({
-      ...section,
-      lineItems: section.lineItems.map(item => {
-        const sellPrice = round2(calculateSellPrice(item));
-        const taxAmount = item.isTaxable ? round2(sellPrice * (salesTaxPercent / 100)) : 0;
-        return {
-          ...item,
-          sellPrice,
-          taxAmount,
-        };
-      }),
-    }));
-
-    // Calculate summary totals from enriched sections
-    const subtotalValue = round2(enrichedSections.reduce((total, section) =>
-      total + section.lineItems.reduce((sum, item) => sum + (item.sellPrice || 0), 0), 0));
-    const totalCostValue = round2(enrichedSections.reduce((total, section) =>
-      total + section.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0), 0));
-    const totalTaxValue = round2(enrichedSections.reduce((total, section) =>
-      total + section.lineItems.reduce((sum, item) => sum + (item.taxAmount || 0), 0), 0));
-    const grossProfitValue = round2(subtotalValue - totalCostValue);
-    const grossProfitPercentValue = round2(subtotalValue > 0 ? (grossProfitValue / subtotalValue) * 100 : 0);
-
-    const summary: PricingSummary = {
-      totalCost: totalCostValue,
-      subtotal: subtotalValue,
-      grossProfit: grossProfitValue,
-      grossProfitPercent: grossProfitPercentValue,
-      totalTax: totalTaxValue,
-      grandTotal: round2(subtotalValue + totalTaxValue),
-    };
+    // Stamp per-item sellPrice/taxAmount and roll up the summary totals.
+    const { sections: enrichedSections, summary } = calculatePricing(
+      sections,
+      salesTaxPercent
+    );
 
     // Sync to context whenever local state changes (includes calculated summary and per-item values)
     setPricingData({
@@ -894,7 +793,7 @@ export function PricingTab({ mode }: PricingTabProps) {
     const cost = sections.reduce((total, section) => total + calculateTotalCost(section.lineItems), 0);
     const profit = subtotal - cost; // Profit is before tax
     const marginPercent = subtotal > 0 ? (profit / subtotal) * 100 : 0;
-    const markupPercent = cost > 0 ? (profit / cost) * 100 : 0;
+    const markupPercent = calculateCostMarkupPercent(subtotal, cost);
     return {
       totalCost: cost,
       grossProfit: profit,

@@ -17,63 +17,16 @@ import {
 } from '@/lib/types/forms';
 
 // ============ Pricing Tab Data ============
-export interface PricingLineItem {
-  id: string;
-  name: string;
-  /** Model number from product (for display) */
-  modelNumber?: string;
-  quantity: number;
-  sellRule: string;
-  unitCost: number;
-  /** Markup value - interpreted based on markupType (percent or dollar amount) */
-  markupValue: number;
-  /** Markup type: 'percent' or 'dollar' (default: percent) */
-  markupType?: 'percent' | 'dollar';
-  isTaxable?: boolean;
-  /** Source product ID - links to Product.id for cascade delete */
-  sourceProductId?: string;
-  /** Discount value (applied after markup, before tax) */
-  discountValue?: number;
-  /** Discount type: 'percent' or 'dollar' */
-  discountType?: 'percent' | 'dollar';
-  // Calculated fields (stored for reference)
-  /** Calculated sell price for this line item */
-  sellPrice?: number;
-  /** Calculated tax amount for this line item */
-  taxAmount?: number;
-}
-
-export interface PricingSection {
-  id: string;
-  name: string;
-  type: string;
-  collapsed: boolean;
-  lineItems: PricingLineItem[];
-}
-
-/** Calculated pricing summary (stored for reference/reporting) */
-export interface PricingSummary {
-  /** Total cost of goods (before markup) */
-  totalCost: number;
-  /** Subtotal (after markup, before tax) - this is total_value */
-  subtotal: number;
-  /** Gross profit (subtotal - totalCost) */
-  grossProfit: number;
-  /** Gross profit as percentage of subtotal */
-  grossProfitPercent: number;
-  /** Total tax amount */
-  totalTax: number;
-  /** Grand total (subtotal + tax) */
-  grandTotal: number;
-}
-
-export interface PricingData {
-  sections: PricingSection[];
-  salesTaxPercent?: number;
-  taxState?: string; // US state code for auto tax rate lookup
-  /** Calculated summary totals */
-  summary?: PricingSummary;
-}
+// Canonical shapes live in @/lib/types/pricing so the back office (order lines,
+// purchase orders, job costing) can share them. Re-exported here so existing
+// imports from this context keep working.
+export type {
+  PricingLineItem,
+  PricingSection,
+  PricingSummary,
+  PricingData,
+} from '@/lib/types/pricing';
+import type { PricingData } from '@/lib/types/pricing';
 
 // ============ Lead Times Tab Data ============
 export interface LeadTimePhase {
