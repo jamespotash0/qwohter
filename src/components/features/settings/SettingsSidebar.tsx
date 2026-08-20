@@ -11,10 +11,10 @@ import { trackEvent } from "@/lib/analytics";
  * padding.
  *
  * Sections are bold headers with an icon; the entries under them are plain text
- * with the active one filled. Row height, radius, hover and active states reuse
- * the main sidebar's tokens so the two columns read as one surface. There is no
- * back button — the main app sidebar stays visible alongside, so navigating
- * away is always one click.
+ * with the active one filled. Hover and active states reuse the main sidebar's
+ * tokens, but the rows are deliberately smaller and tighter than the main nav —
+ * this is a long list of sections, not a primary destination list. There is no
+ * back button; the main app sidebar stays visible alongside.
  */
 export function SettingsSidebar() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,16 +28,16 @@ export function SettingsSidebar() {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 h-full overflow-y-auto rounded-tl-lg bg-[var(--content-card-bg)] pb-6">
-      <nav className="px-2 pt-4 space-y-6">
+    <aside className="w-56 flex-shrink-0 h-full overflow-y-auto rounded-tl-lg bg-[var(--content-card-bg)] pb-6">
+      <nav className="px-2 pt-3 space-y-4">
         {groups.map((group) => (
           <div key={group.label}>
-            <div className="flex items-center gap-3.5 px-4 pb-1 text-[var(--content-header-text)]">
+            <div className="flex items-center gap-2 px-3 pb-1.5 text-[var(--content-header-text)]">
               <span className="text-[var(--sidebar-icon-default)]">{group.icon}</span>
-              <span className="text-[15px] font-semibold">{group.label}</span>
+              <span className="text-[13px] font-semibold">{group.label}</span>
             </div>
 
-            <div className="space-y-0.5">
+            <div className="space-y-px">
               {group.tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -45,7 +45,7 @@ export function SettingsSidebar() {
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
                     aria-current={isActive ? "page" : undefined}
-                    className={`w-full h-12 flex items-center text-left px-4 text-[15px] tracking-tight transition-colors duration-200 ${
+                    className={`w-full h-8 flex items-center text-left px-3 text-[13px] tracking-tight transition-colors duration-200 ${
                       isActive
                         ? "text-[var(--sidebar-nav-text-active)] font-medium"
                         : "text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]"
