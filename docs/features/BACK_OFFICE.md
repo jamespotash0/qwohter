@@ -359,40 +359,66 @@ program tiers change — a standing schedule is wrong within a quarter, and a
 stale one is worse than none because it silently disagrees with the quote the
 customer signed.
 
-It is also already in the data. Every imported line carries a list price and a
-cost, so the discount gets **read rather than asked for**:
+### Three cost numbers, and only one is evidence
+
+| | Cost | Source | What it is |
+|---|------|--------|-----------|
+| 1 | **Assumed** | list × the multiplier configured in Giza / CET / 2020 | A guess, only as fresh as whoever last maintained that table |
+| 2 | **Actual** | the manufacturer's portal at placement | Real current discount — promos, project pricing, program tier |
+| 3 | **Final** | the acknowledgment, then the invoice | What you actually pay |
+
+The quote is built on **(1)**. Margin is decided by **(3)**.
+
+`observed_vendor_discounts` therefore reads **acknowledged** cost. An earlier
+version inferred the rate from `order_lines.unit_cost ÷ list_price` and was
+**circular**: `unit_cost` is materialized from the proposal, the proposal was
+priced from the specification, and the specification tool computed it by
+applying the dealer's own multiplier to list. The view read back the assumption
+and reported it as an observation — with false authority, and most confidently
+in exactly the case where the assumption had gone stale.
+
+### What that turns the feature into
+
+A per-line curiosity becomes a standing, systemic finding:
+
+> **Your specification tool assumes 55% off Steelcase Series 1. The last 14
+> acknowledged lines came in at 48%. Every quote you write is 7 points
+> optimistic.**
+
+That is drift in the dealer's own configuration, quietly costing margin on every
+job until somebody notices — and the fix is one number in Giza, not a
+renegotiation. Both figures sit on the same row so the gap is a subtraction, not
+a join:
 
 ```sql
--- observed_vendor_discounts, grouped by manufacturer / series / contract
-discount_percent      -- blended rate, weighted by extended list value
-min/max_discount_percent  -- the envelope ever seen
-line_count            -- how much evidence backs it
+discount_percent          -- what manufacturers acknowledged  (evidence)
+assumed_discount_percent  -- what the quote was built on       (assumption)
+drift_percent             -- assumed − acknowledged; positive = optimistic
+min/max_discount_percent  -- the envelope of acknowledged rates
+line_count                -- how much evidence backs it
 ```
 
-Zero data entry, and a rate that cannot go stale because it records what
-actually happened. Weighted by extended list value deliberately: an unweighted
-average would let one $40 accessory count as much as a $12,000 casegoods run.
+Rates are weighted by extended list value deliberately: an unweighted average
+would let one $40 accessory count as much as a $12,000 casegoods run.
 
-### The check it buys
+Lines with no acknowledgment contribute nothing, so a dealer who has recorded no
+acks gets an **empty view** — which correctly reads as *no evidence* rather than
+*no drift*.
 
-The quote-stage version of the acknowledgment check:
+### Two readings of the same data
 
-> *Every Steelcase Series 1 line for two years landed between 54% and 56% off.
-> This one came in at 48%.*
+`findDriftingRates()` surfaces the systemic finding: series whose config has
+drifted, worst first. Its bar is deliberately higher than the per-line check (5
+lines, 2 percentage points) because it asserts something about the dealer's
+setup rather than about one line.
 
-That catches a bad export or a rep quoting off the wrong schedule **before** it
-becomes a signed quote. `detectDiscountAnomaly()` compares against the observed
-**min/max envelope**, not the mean — real pricing varies across a series, and
-flagging every line that differs from average would flag most of them. A line is
-only interesting when it falls outside the whole range history has produced.
-
-Two guards against crying wolf, since a warning that fires constantly gets
-trained away:
-
-- **`tolerancePercent`** (default 1pp) — rounding and freight-inclusive pricing
-  move rates by fractions constantly.
-- **`minLineCount`** (default 3) — one previous order is a coincidence, not a
-  pattern.
+`detectDiscountAnomaly()` checks a single line's **quoted** discount against the
+**acknowledged** envelope — *"is what we are about to promise the customer
+consistent with what this factory actually charges?"* It compares against
+min/max rather than the mean, because real pricing varies across a series and
+flagging every line that differs from average would flag most of them. Two
+guards stop it crying wolf: `tolerancePercent` (default 1pp) and `minLineCount`
+(default 3) — one previous order is a coincidence, not a pattern.
 
 ### Matching
 
@@ -412,10 +438,11 @@ it with inconsistent casing.
 
 ### null is not zero
 
-`lineDiscountPercent()` returns `null` when **no discount can be inferred** —
-a line with no list price (labor, freight, a pass-through cost) has no discount,
+`lineDiscountPercent()` returns `null` when **no discount can be inferred** — a
+line with no list price (labor, freight, a pass-through cost) has no discount,
 which is a different statement from "bought at list". It must never be coerced
-to `0`.
+to `0`. `findDriftingRates()` applies the same rule to a missing assumed rate:
+absent evidence is not evidence of agreement.
 
 Interpretation lives in `src/lib/pricing/observed.ts` as pure functions; the
 view only aggregates.
@@ -488,7 +515,7 @@ Two behavior changes came with the consolidation:
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql` |
+| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql` |
 | Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
 
 ---

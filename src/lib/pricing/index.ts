@@ -56,6 +56,7 @@ export {
   lineDiscountPercent,
   findObservedRate,
   detectDiscountAnomaly,
+  findDriftingRates,
 } from './observed';
 
 export type {
@@ -63,6 +64,8 @@ export type {
   ObservedRateQuery,
   DiscountAnomaly,
   AnomalyOptions,
+  RateDrift,
+  DriftOptions,
 } from './observed';
 
 export type {

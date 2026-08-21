@@ -1,9 +1,10 @@
 /**
  * Observed Discount Rate Tests
  *
- * These replace the hand-entered discount schedule. The rate is now inferred
- * from list price and cost on lines already imported, so the contract that
- * matters is: never invent a rate, never cry wolf off thin evidence, and never
+ * These replace the hand-entered discount schedule. Rates are inferred from
+ * ACKNOWLEDGED cost, not quoted cost -- inferring from the quote would be
+ * circular, reading back the dealer's own configured multiplier. The contracts
+ * that matter: never invent a rate, never cry wolf off thin evidence, and never
  * confuse "no discount inferable" with "bought at list".
  */
 
@@ -12,6 +13,7 @@ import {
   lineDiscountPercent,
   findObservedRate,
   detectDiscountAnomaly,
+  findDriftingRates,
   type ObservedRate,
 } from '@/lib/pricing';
 
@@ -232,5 +234,89 @@ describe('detectDiscountAnomaly', () => {
       { tolerancePercent: 0.5, minLineCount: 1 }
     );
     expect(found?.direction).toBe('worse');
+  });
+});
+
+describe('findDriftingRates', () => {
+  const drifting = (o: Partial<ObservedRate> = {}) =>
+    rate({
+      seriesName: 'Series 1',
+      discountPercent: 48,      // what factories actually acknowledge
+      assumedDiscountPercent: 55, // what the spec tool quotes
+      driftPercent: 7,
+      minDiscountPercent: 47,
+      maxDiscountPercent: 49,
+      lineCount: 14,
+      ...o,
+    });
+
+  it('reports a series whose config has gone stale', () => {
+    const [d] = findDriftingRates([drifting()]);
+    expect(d?.direction).toBe('optimistic');
+    expect(d?.assumedPercent).toBe(55);
+    expect(d?.acknowledgedPercent).toBe(48);
+    expect(d?.driftPercent).toBe(7);
+    expect(d?.lineCount).toBe(14);
+  });
+
+  it('stays quiet when assumption and reality agree', () => {
+    expect(
+      findDriftingRates([
+        drifting({ discountPercent: 55, assumedDiscountPercent: 55, driftPercent: 0 }),
+      ])
+    ).toEqual([]);
+  });
+
+  it('ignores drift too small to act on', () => {
+    // Freight-inclusive pricing and rounding move rates by fractions.
+    expect(
+      findDriftingRates([drifting({ driftPercent: 1.2 })])
+    ).toEqual([]);
+  });
+
+  it('will not claim a systemic pattern from thin evidence', () => {
+    expect(findDriftingRates([drifting({ lineCount: 3 })])).toEqual([]);
+  });
+
+  it('skips rows with no assumed rate rather than calling them zero drift', () => {
+    // Absent evidence is not evidence of agreement.
+    expect(
+      findDriftingRates([
+        drifting({ assumedDiscountPercent: null, driftPercent: null }),
+      ])
+    ).toEqual([]);
+  });
+
+  it('flags conservative drift too, and names it correctly', () => {
+    // Quoting a smaller discount than you get is money left on the table.
+    const [d] = findDriftingRates([
+      drifting({ discountPercent: 60, assumedDiscountPercent: 55, driftPercent: -5 }),
+    ]);
+    expect(d?.direction).toBe('conservative');
+    expect(d?.driftPercent).toBe(-5);
+  });
+
+  it('ranks by magnitude, worst first, credits alongside overcharges', () => {
+    const found = findDriftingRates([
+      drifting({ seriesName: 'A', driftPercent: 3 }),
+      drifting({ seriesName: 'B', driftPercent: -11 }),
+      drifting({ seriesName: 'C', driftPercent: 6 }),
+    ]);
+    expect(found.map(d => d.seriesName)).toEqual(['B', 'C', 'A']);
+  });
+
+  it('derives drift when the view did not supply it', () => {
+    const [d] = findDriftingRates([
+      drifting({ driftPercent: undefined, discountPercent: 45, assumedDiscountPercent: 55 }),
+    ]);
+    expect(d?.driftPercent).toBe(10);
+  });
+
+  it('honours a caller-supplied threshold and sample floor', () => {
+    const found = findDriftingRates([drifting({ driftPercent: 1.5, lineCount: 2 })], {
+      thresholdPercent: 1,
+      minLineCount: 1,
+    });
+    expect(found).toHaveLength(1);
   });
 });

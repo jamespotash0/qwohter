@@ -4369,8 +4369,10 @@ export type Database = {
       }
       observed_vendor_discounts: {
         Row: {
+          assumed_discount_percent: number | null
           contract_vehicle: string | null
           discount_percent: number | null
+          drift_percent: number | null
           last_seen_at: string | null
           line_count: number | null
           manufacturer_name: string | null
@@ -4381,7 +4383,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "order_lines_organization_id_fkey"
+            foreignKeyName: "po_lines_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

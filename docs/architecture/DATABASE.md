@@ -225,14 +225,20 @@ attachments                        (polymorphic file attachments)
 tools resolve part numbers and list price upstream, so the name on the line *is* the
 manufacturer identity.
 
-**Discount rates are observed, not entered.** A dealer's discount is not one
-number and is not reference data anyone should type in — it is negotiated per
-job, and a standing schedule is stale within a quarter. The
-`observed_vendor_discounts` view infers it from `list_price` and `unit_cost` on
-lines already imported, grouped by manufacturer / series / contract, so it needs
-no data entry and cannot go stale. Interpretation lives in
-`src/lib/pricing/observed.ts`. A line with no list price yields `null`, which is
-distinct from a genuine 0% discount and must not be coerced to it.
+**Discount rates are observed from acknowledgments, not entered.** A dealer's
+discount is not one number and is not reference data anyone should type in — it
+is negotiated per job, and a standing schedule is stale within a quarter. The
+`observed_vendor_discounts` view infers it from `po_lines.acked_unit_cost`
+against `list_price`, grouped by manufacturer / series / contract.
+
+Deliberately **not** from `order_lines.unit_cost`: that value is materialized
+from the proposal, which was priced by the specification tool applying the
+dealer's own multiplier — inferring from it would read the assumption back as an
+observation. The view exposes both, so drift between what the quote assumes and
+what factories actually charge is one subtraction (`drift_percent`, positive =
+optimistic). Interpretation lives in `src/lib/pricing/observed.ts`. A line with
+no list price yields `null`, distinct from a genuine 0% discount and never
+coerced to it.
 
 **Cost visibility.** Buy-side numbers on `order_lines` are margin data.
 `can_view_cost()` is the single predicate that decides who may see them; today

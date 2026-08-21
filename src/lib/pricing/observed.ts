@@ -1,24 +1,33 @@
 /**
  * Observed Discount Rates
  *
- * A dealer's discount off a manufacturer's list price is not reference data
- * anyone should be asked to type in. Project pricing is negotiated per job with
- * the rep, promos move quarterly, and program tiers change -- a standing
- * schedule is wrong within a quarter, and a stale one is worse than none
- * because it silently disagrees with the quote the customer signed.
+ * A dealer's discount off list is not reference data anyone should type in.
+ * Project pricing is negotiated per job with the rep, promos move quarterly,
+ * and program tiers change -- a standing schedule is wrong within a quarter,
+ * and a stale one is worse than none because it silently disagrees with the
+ * quote the customer signed.
  *
- * It is also already in the data. Every imported line carries a list price and
- * a cost, and the discount is the gap between them. So it gets READ rather than
- * asked for: zero data entry, and a rate that cannot go stale because it is a
- * record of what actually happened.
+ * There are THREE cost numbers in a furniture job, and only the last is
+ * evidence:
  *
- * What that buys beyond convenience is the quote-stage version of the
- * acknowledgment check: "every Steelcase Series 1 line for two years landed
- * between 54% and 56% off, this one came in at 48%" catches a bad export or a
- * rep quoting off the wrong schedule BEFORE it becomes a signed quote.
+ *   1. ASSUMED   list x the multiplier configured in Giza / CET / 2020.
+ *   2. ACTUAL    what the manufacturer's portal priced it at on placement.
+ *   3. FINAL     what the acknowledgment, then the invoice, says.
  *
- * Pure functions. The aggregation itself happens in the
- * observed_vendor_discounts view; this interprets it.
+ * The quote is built on (1). Margin is decided by (3). So rates are observed
+ * from ACKNOWLEDGED cost -- inferring them from quoted cost would be circular,
+ * reading back the dealer's own configured multiplier and reporting it as an
+ * observation, most confidently in exactly the case where it had gone stale.
+ *
+ * What that buys is a standing, systemic finding rather than a per-line
+ * curiosity:
+ *
+ *   "Your specification tool assumes 55% off Steelcase Series 1. The last 14
+ *    acknowledged lines came in at 48%. Every quote you write is 7 points
+ *    optimistic."
+ *
+ * Pure functions. The aggregation happens in the observed_vendor_discounts
+ * view; this interprets it.
  */
 
 /** One row of public.observed_vendor_discounts. */
@@ -26,9 +35,24 @@ export interface ObservedRate {
   manufacturerName: string;
   seriesName: string | null;
   contractVehicle: string | null;
-  /** Blended rate achieved, weighted by extended list value. */
+  /**
+   * The rate manufacturers actually ACKNOWLEDGED, weighted by extended list
+   * value. This is the evidence.
+   */
   discountPercent: number;
-  /** The envelope of per-line rates seen in this group. */
+  /**
+   * The rate the quote was built on over the same lines -- the specification
+   * tool's configured multiplier. This is the assumption.
+   */
+  assumedDiscountPercent?: number | null;
+  /**
+   * assumed − acknowledged, in percentage points. Positive means the
+   * specification tool is OPTIMISTIC: it assumes a bigger discount than is
+   * actually being given, so quoted cost runs under real cost and margin is
+   * being quoted away on every job.
+   */
+  driftPercent?: number | null;
+  /** The envelope of acknowledged per-line rates in this group. */
   minDiscountPercent: number;
   maxDiscountPercent: number;
   lineCount: number;
@@ -149,13 +173,18 @@ export interface AnomalyOptions {
 }
 
 /**
- * Whether a line's discount falls outside everything previously seen from this
- * manufacturer.
+ * Whether a line's discount falls outside everything a manufacturer has
+ * actually acknowledged for this series.
  *
- * Compared against the observed MIN/MAX envelope rather than the mean: real
- * pricing legitimately varies across a series, and flagging every line that
- * differs from average would flag most of them. A line is only interesting when
- * it is outside the whole range history has ever produced.
+ * The line being checked carries a QUOTED cost; the envelope comes from
+ * ACKNOWLEDGED cost. So this asks the useful question -- "is what we are about
+ * to promise the customer consistent with what this factory actually charges" --
+ * rather than comparing an assumption against itself.
+ *
+ * Compared against the MIN/MAX envelope rather than the mean: real pricing
+ * legitimately varies across a series, and flagging every line that differs
+ * from average would flag most of them. A line is only interesting when it
+ * falls outside the whole range history has ever produced.
  */
 export const detectDiscountAnomaly = (
   rates: ObservedRate[],
@@ -191,4 +220,84 @@ export const detectDiscountAnomaly = (
     // A smaller discount is a higher cost, which is the expensive direction.
     direction: actual < floor ? 'worse' : 'better',
   };
+};
+
+/**
+ * A manufacturer or series whose acknowledged rate has moved away from what the
+ * specification tool assumes.
+ */
+export interface RateDrift {
+  manufacturerName: string;
+  seriesName: string | null;
+  contractVehicle: string | null;
+  /** What the quote assumes. */
+  assumedPercent: number;
+  /** What manufacturers actually acknowledge. */
+  acknowledgedPercent: number;
+  /** assumed − acknowledged. Positive is the expensive direction. */
+  driftPercent: number;
+  lineCount: number;
+  /**
+   * 'optimistic' means every quote against this series under-states cost, which
+   * quietly removes margin from jobs nobody has looked at yet.
+   */
+  direction: 'optimistic' | 'conservative';
+}
+
+export interface DriftOptions {
+  /**
+   * Percentage points of drift before it is worth reporting. Small gaps are
+   * normal -- freight-inclusive pricing and rounding move rates constantly.
+   */
+  thresholdPercent?: number;
+  /**
+   * How many acknowledged lines are needed before claiming a systemic pattern.
+   * Higher than the per-line check on purpose: this asserts something about the
+   * dealer's configuration, not about one line.
+   */
+  minLineCount?: number;
+}
+
+/**
+ * Manufacturers and series where the discount config has drifted from reality,
+ * worst first.
+ *
+ * This is the finding worth surfacing on its own screen. A single line
+ * acknowledged 7 points light is a nuisance; a SERIES that has been running 7
+ * points light for a year means every quote written against it was wrong, and
+ * the fix is one number in Giza rather than a renegotiation.
+ *
+ * Rows with no assumed rate are skipped rather than treated as zero drift --
+ * absent evidence is not evidence of agreement.
+ */
+export const findDriftingRates = (
+  rates: ObservedRate[],
+  options: DriftOptions = {}
+): RateDrift[] => {
+  const { thresholdPercent = 2, minLineCount = 5 } = options;
+
+  return rates
+    .filter(r => {
+      if (r.lineCount < minLineCount) return false;
+      if (r.assumedDiscountPercent === null || r.assumedDiscountPercent === undefined) {
+        return false;
+      }
+      const drift = r.driftPercent ?? r.assumedDiscountPercent - r.discountPercent;
+      return Math.abs(drift) >= thresholdPercent;
+    })
+    .map(r => {
+      const assumed = r.assumedDiscountPercent as number;
+      const drift = r.driftPercent ?? assumed - r.discountPercent;
+      return {
+        manufacturerName: r.manufacturerName,
+        seriesName: r.seriesName,
+        contractVehicle: r.contractVehicle,
+        assumedPercent: assumed,
+        acknowledgedPercent: r.discountPercent,
+        driftPercent: Math.round(drift * 100) / 100,
+        lineCount: r.lineCount,
+        direction: drift > 0 ? ('optimistic' as const) : ('conservative' as const),
+      };
+    })
+    .sort((a, b) => Math.abs(b.driftPercent) - Math.abs(a.driftPercent));
 };
