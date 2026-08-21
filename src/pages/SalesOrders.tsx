@@ -20,7 +20,11 @@ import {
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useProposals } from '@/hooks/queries/useProposals';
-import { useSalesOrders, useProjectIdForProposal } from '@/hooks/queries/useSalesOrders';
+import {
+  useSalesOrders,
+  useProjectIdForProposal,
+  useOrderProgress,
+} from '@/hooks/queries/useSalesOrders';
 import { CreateOrderDialog } from '@/components/features/orders/CreateOrderDialog';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +46,9 @@ export default function SalesOrdersPage() {
   const organizationId = organization?.id;
 
   const { data: orders = [], isLoading } = useSalesOrders(organizationId);
+  // Status is derived from events, not read from the stored column, which is
+  // set once at creation and immediately starts lying.
+  const { data: progress = {} } = useOrderProgress(organizationId);
   const { data: proposals = [] } = useProposals(organizationId, { status: 'Won' });
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -145,10 +152,11 @@ export default function SalesOrdersPage() {
               <span
                 className={cn(
                   'rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
-                  STATUS_STYLES[order.status] ?? STATUS_STYLES.Draft
+                  STATUS_STYLES[progress[order.id]?.derived_status ?? order.status] ??
+                    STATUS_STYLES.Draft
                 )}
               >
-                {order.status}
+                {progress[order.id]?.derived_status ?? order.status}
               </span>
             </button>
           ))}

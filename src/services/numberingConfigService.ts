@@ -428,3 +428,68 @@ export async function getHighestProposalNumber(
 
   return maxNumber;
 }
+
+// ============================================================================
+// Atomic allocation
+// ============================================================================
+
+/**
+ * Document type used for sales order numbering. A named constant because it is
+ * also the key an admin sees in Settings; a typo here silently starts a second
+ * counter.
+ */
+export const SALES_ORDER_DOCUMENT_TYPE = 'Sales Order';
+
+/**
+ * Sensible starting formats per document type, used only when an organization
+ * has never configured one. Nothing is written: an admin configuring the type
+ * in Settings always wins, and the counter works either way.
+ */
+const DEFAULT_CONFIG_BY_TYPE: Record<string, NumberingConfig> = {
+  [SALES_ORDER_DOCUMENT_TYPE]: {
+    ...DEFAULT_NUMBERING_CONFIG,
+    prefix: 'SO',
+    separator1: '-',
+  },
+};
+
+/**
+ * Allocate the next number for a document type, atomically.
+ *
+ * Unlike `getNextProposalNumber`, this does NOT scan existing documents for a
+ * maximum. That read-then-write races: two people creating an order in the same
+ * second both read the same maximum and both get the same number. Here the
+ * database increments a counter under a row lock, so concurrent callers each
+ * get a distinct value.
+ *
+ * The number is consumed whether or not the caller goes on to use it, which is
+ * the correct trade: a gap in a sequence is a curiosity, a duplicate order
+ * number is a dispute.
+ */
+export async function allocateDocumentNumber(
+  organizationId: string,
+  documentType: string
+): Promise<{ number: string; numeric: number; config: NumberingConfig }> {
+  const { data, error } = await supabase.rpc('allocate_document_number' as never, {
+    p_organization_id: organizationId,
+    p_document_type: documentType,
+  } as never);
+
+  if (error) {
+    console.error('[numberingConfigService] allocateDocumentNumber failed:', error);
+    throw new Error(`Could not allocate a ${documentType} number: ${error.message}`);
+  }
+
+  const numeric = data as unknown as number | null;
+  if (numeric === null || numeric === undefined) {
+    throw new Error(`Could not allocate a ${documentType} number.`);
+  }
+
+  const stored = await getNumberingConfig(organizationId, documentType);
+  const config =
+    stored ??
+    DEFAULT_CONFIG_BY_TYPE[documentType] ??
+    DEFAULT_NUMBERING_CONFIG;
+
+  return { number: formatProposalNumber(config, numeric), numeric, config };
+}

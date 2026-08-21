@@ -67,6 +67,58 @@ say* but *what is this costing me*.
 
 ---
 
+## Order numbers
+
+Allocated by `allocate_document_number(org, type)`, which increments a counter
+under a row lock. Deliberately **not** the read-max-and-add-one approach the
+proposal path uses: that races, and two people creating an order in the same
+second get the same number. A gap in a sequence is a curiosity; a duplicate
+order number is a dispute, because that number travels onto purchase orders,
+invoices, and the customer's own paperwork.
+
+The function returns the **number**, not the formatted string — formatting stays
+in `numberingConfigService` so prefixes and padding have one definition rather
+than a SQL copy that can disagree with what the settings screen previews.
+
+`SECURITY DEFINER`, because bumping the counter writes to `organizations`, which
+RLS restricts to Owner/Admin — any active member may create an order, so the
+function checks membership itself. **That check is the entire security boundary
+and must not be removed.**
+
+Allocation failure is non-fatal: an order saves without a number rather than
+losing the work. A caller-supplied number always wins, so an imported order
+keeps the number it arrived with.
+
+---
+
+## Order status is derived
+
+`sales_orders.status` is set once at creation and immediately starts lying — a
+half-received job still reads `Released` because nobody went back to change it,
+and the board a PM scans every morning quietly stops meaning anything.
+
+Read **`sales_order_progress.derived_status`** instead. It is computed from
+`order_line_events`, in the same spirit as the fulfillment quantities: observed,
+never remembered.
+
+A view rather than a trigger, deliberately. A trigger would have to fire on
+every event insert, walk every sibling line, and write back to `sales_orders` —
+turning an append-only insert into a multi-table write and making the fan-out's
+bulk event insertion quadratic. Reading is cheap; writing on every event is not.
+
+Two statuses stay manual and pass through untouched:
+
+| Status | Why it is not derived |
+|--------|----------------------|
+| `Draft` | Nothing has happened yet, so events cannot tell it from `Released` |
+| `Cancelled` | A decision, not an observation. Deriving over it would resurrect a cancelled job |
+
+Only **purchasable** quantity counts toward `Ordered`. The dealer's own labor is
+never bought, so counting it as "not yet ordered" would pin an order at
+`Partially Ordered` forever.
+
+---
+
 ## The order spine
 
 `project → sales_order → order_lines`. A project may have several sales orders;
@@ -515,7 +567,8 @@ Two behavior changes came with the consolidation:
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql` |
+| Attachments UI | `src/components/features/attachments/EntityAttachments.tsx` |
+| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql`, `20260821110000_allocate_document_number.sql`, `20260821110001_order_status_from_events.sql` |
 | Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
 
 ---

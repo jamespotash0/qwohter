@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Storefront, ListChecks } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, Storefront, ListChecks, Paperclip } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,9 +19,11 @@ import {
   useOrderLines,
   useOrderFulfillment,
   useVendorPOs,
+  useOrderProgress,
 } from '@/hooks/queries/useSalesOrders';
 import { FanOutPanel } from '@/components/features/orders/FanOutPanel';
 import { AcknowledgmentDialog } from '@/components/features/orders/AcknowledgmentDialog';
+import { EntityAttachments } from '@/components/features/attachments/EntityAttachments';
 import { cn } from '@/lib/utils';
 
 export default function SalesOrderDetailPage() {
@@ -32,6 +34,7 @@ export default function SalesOrderDetailPage() {
   const { data: lines = [] } = useOrderLines(orderId);
   const { data: fulfillment = {} } = useOrderFulfillment(orderId);
   const { data: pos = [] } = useVendorPOs(orderId);
+  const { data: progress = {} } = useOrderProgress(order?.organization_id);
 
   const [ackPOId, setAckPOId] = useState<string | null>(null);
 
@@ -78,7 +81,7 @@ export default function SalesOrderDetailPage() {
       subtitle={[
         order.customer_po_number && `Customer PO ${order.customer_po_number}`,
         order.contract_vehicle,
-        order.status,
+        progress[order.id]?.derived_status ?? order.status,
       ]
         .filter(Boolean)
         .join(' · ')}
@@ -136,6 +139,10 @@ export default function SalesOrderDetailPage() {
             <TabsTrigger value="pos">
               <ClipboardText className="w-4 h-4 mr-1.5" />
               Orders placed ({pos.length})
+            </TabsTrigger>
+            <TabsTrigger value="files">
+              <Paperclip className="w-4 h-4 mr-1.5" />
+              Files
             </TabsTrigger>
           </TabsList>
 
@@ -279,6 +286,16 @@ export default function SalesOrderDetailPage() {
                 ))}
               </div>
             )}
+          </TabsContent>
+          {/* The customer's contract, the spec file, drawings — and later, the
+              acknowledgment PDFs an extraction was run against. */}
+          <TabsContent value="files" className="mt-4">
+            <EntityAttachments
+              organizationId={order.organization_id}
+              entityType="sales_order"
+              entityId={order.id}
+              title="Order files"
+            />
           </TabsContent>
         </Tabs>
       </div>

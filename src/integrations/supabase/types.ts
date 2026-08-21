@@ -1749,6 +1749,13 @@ export type Database = {
             foreignKeyName: "order_lines_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "order_lines_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
@@ -4148,6 +4155,13 @@ export type Database = {
             foreignKeyName: "vendor_pos_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
@@ -4336,6 +4350,13 @@ export type Database = {
             foreignKeyName: "work_orders_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "work_orders_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
@@ -4417,6 +4438,13 @@ export type Database = {
             foreignKeyName: "order_lines_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "order_lines_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
@@ -4474,6 +4502,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vendor_pos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
           },
           {
             foreignKeyName: "vendor_pos_sales_order_id_fkey"
@@ -4549,6 +4584,29 @@ export type Database = {
           routine_type: string | null
         }
         Relationships: []
+      }
+      sales_order_progress: {
+        Row: {
+          derived_status: string | null
+          line_count: number | null
+          organization_id: string | null
+          qty_installed: number | null
+          qty_ordered: number | null
+          qty_purchasable: number | null
+          qty_received: number | null
+          qty_total: number | null
+          sales_order_id: string | null
+          stored_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_query_stats: {
         Row: {
@@ -4656,6 +4714,13 @@ export type Database = {
             foreignKeyName: "work_orders_sales_order_id_fkey"
             columns: ["sales_order_id"]
             isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "work_orders_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
@@ -4663,6 +4728,10 @@ export type Database = {
       }
     }
     Functions: {
+      allocate_document_number: {
+        Args: { p_document_type: string; p_organization_id: string }
+        Returns: number
+      }
       approve_member: { Args: { member_id: string }; Returns: boolean }
       attempt_org_creation: {
         Args: { p_ip: string; p_profile_id: string }

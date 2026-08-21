@@ -24,6 +24,10 @@ import {
 } from '@/lib/pricing';
 import type { PricingSection } from '@/lib/types/pricing';
 import { fetchProposalById } from '@/services/proposalsService';
+import {
+  allocateDocumentNumber,
+  SALES_ORDER_DOCUMENT_TYPE,
+} from '@/services/numberingConfigService';
 
 // The Database type fails supabase-js's GenericSchema constraint (no
 // `Relationships` key on any table), so reads and writes alike resolve to
@@ -300,7 +304,40 @@ export async function createOrderFromProposal(
 ): Promise<string> {
   const { lines } = await previewOrderFromProposal(proposalId);
 
-  return createSalesOrderWithLines({ ...input, proposal_id: proposalId }, lines);
+  // Allocated only when the caller has not supplied one, so an order imported
+  // with a number from elsewhere keeps it. A blank string counts as absent,
+  // which `??` would not catch.
+  const supplied = input.order_number?.trim();
+  const order_number =
+    supplied && supplied.length > 0
+      ? supplied
+      : await allocateOrderNumber(input.organization_id);
+
+  return createSalesOrderWithLines(
+    { ...input, order_number, proposal_id: proposalId },
+    lines
+  );
+}
+
+/**
+ * The next sales order number, or null if numbering is unavailable.
+ *
+ * Deliberately non-fatal: a dealer who has just won a job should not be blocked
+ * from recording it because a counter could not be read. An order without a
+ * number is visibly a draft and can be numbered later; an order that failed to
+ * save is lost work.
+ */
+async function allocateOrderNumber(organizationId: string): Promise<string | null> {
+  try {
+    const { number } = await allocateDocumentNumber(
+      organizationId,
+      SALES_ORDER_DOCUMENT_TYPE
+    );
+    return number;
+  } catch (error) {
+    console.error('[salesOrdersService] could not allocate an order number:', error);
+    return null;
+  }
 }
 
 /**
@@ -376,6 +413,50 @@ export async function updateOrderLine(
   return data as unknown as OrderLine;
 }
 
+
+// ============================================================================
+// Derived status
+// ============================================================================
+
+export interface SalesOrderProgress {
+  sales_order_id: string;
+  stored_status: string;
+  derived_status: string;
+  line_count: number;
+  qty_total: number;
+  qty_purchasable: number;
+  qty_ordered: number;
+  qty_received: number;
+  qty_installed: number;
+}
+
+/**
+ * Where each order on the board has actually got to, keyed by order id.
+ *
+ * Read this rather than sales_orders.status. The stored column is set once at
+ * creation and immediately starts lying -- a half-received job still reads
+ * 'Released' because nobody went back to change it. The view derives from
+ * order_line_events, so it cannot drift.
+ *
+ * Draft and Cancelled pass through untouched: those are decisions, and no
+ * amount of event history implies them.
+ */
+export async function getOrderProgress(
+  organizationId: string
+): Promise<Record<string, SalesOrderProgress>> {
+  const { data, error } = await supabase
+    .from('sales_order_progress')
+    .select('*')
+    .eq('organization_id', organizationId);
+
+  if (error) {
+    console.error('[salesOrdersService] getOrderProgress failed:', error);
+    throw new Error(`Failed to load order progress: ${error.message}`);
+  }
+
+  const rows = (data || []) as unknown as SalesOrderProgress[];
+  return Object.fromEntries(rows.map(row => [row.sales_order_id, row]));
+}
 
 // ============================================================================
 // Fulfillment events

@@ -19,6 +19,7 @@ import {
   createOrderFromProposal,
   updateSalesOrder,
   getProjectIdForProposal,
+  getOrderProgress,
   type SalesOrder,
   type OrderLine,
   type CreateSalesOrderInput,
@@ -46,6 +47,8 @@ export const salesOrderKeys = {
   fanOut: (salesOrderId: string) => [...salesOrderKeys.all, 'fan-out', salesOrderId] as const,
   pos: (salesOrderId: string) => [...salesOrderKeys.all, 'pos', salesOrderId] as const,
   preview: (proposalId: string) => [...salesOrderKeys.all, 'preview', proposalId] as const,
+  progress: (organizationId: string) =>
+    [...salesOrderKeys.all, 'progress', organizationId] as const,
   projectFor: (proposalId: string) =>
     [...salesOrderKeys.all, 'project-for', proposalId] as const,
 };
@@ -74,6 +77,23 @@ export function useSalesOrders(organizationId?: string) {
     queryFn: async (): Promise<SalesOrder[]> => {
       if (!organizationId) return [];
       return getSalesOrdersForOrganization(organizationId);
+    },
+  });
+}
+
+/**
+ * Where each order has actually got to, derived from events rather than read
+ * from the stored status column. Short stale time: recording anything at all
+ * changes the answer.
+ */
+export function useOrderProgress(organizationId?: string) {
+  return useQuery({
+    queryKey: salesOrderKeys.progress(organizationId ?? '__pending__'),
+    enabled: !!organizationId,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      if (!organizationId) return {};
+      return getOrderProgress(organizationId);
     },
   });
 }
