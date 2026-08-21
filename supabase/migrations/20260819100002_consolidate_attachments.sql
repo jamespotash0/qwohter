@@ -15,7 +15,7 @@
 --
 -- Two behavior changes, both deliberate:
 --   * DELETE tightens from "any active member" to "uploader or Owner/Admin".
---     Deleting evidence in a vendor dispute should not be casual.
+--     Deleting evidence in a manufacturer dispute should not be casual.
 --   * public_url is not carried over. It has stored '' on every row since the
 --     bucket went private; the app overwrites it with a signed URL at read time.
 

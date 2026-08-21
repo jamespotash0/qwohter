@@ -23,7 +23,6 @@ export type AttachmentEntityType =
   | 'project'
   | 'proposal'
   | 'company'
-  | 'vendor'
   | 'sales_order'
   | 'order_line'
   | 'vendor_po'

@@ -43,7 +43,6 @@ const ALL_TABS: SettingsTab[] = [
   { id: "team", label: "Team", group: GROUP_ORGANIZATION, requiresPermission: "team", requiresSubscription: true },
   { id: "security", label: "Permissions", group: GROUP_ORGANIZATION, requiresPermission: "security", requiresSubscription: true },
   { id: "integrations", label: "Integrations", group: GROUP_ORGANIZATION, requiresPermission: "organization", requiresSubscription: true },
-  { id: "vendors", label: "Vendors", group: GROUP_ORGANIZATION, requiresPermission: "vendors", requiresSubscription: true },
   { id: "payments", label: "Payments", group: GROUP_ORGANIZATION, requiresPermission: "payments", requiresSubscription: true },
   { id: "billing", label: "Plan & Billing", group: GROUP_ORGANIZATION, requiresPermission: "billing" },
 ];

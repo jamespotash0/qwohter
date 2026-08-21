@@ -13,7 +13,6 @@ import { TeamTab } from "@/components/features/settings/TeamTab";
 import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { NotificationsTab } from "@/components/features/settings/NotificationsTab";
 import { PaymentsTab } from "@/components/features/settings/PaymentsTab";
-import { VendorsTab } from "@/components/features/settings/VendorsTab";
 import { useAvailableSettingsTabs } from "@/components/features/settings/settingsTabs";
 
 /**
@@ -94,10 +93,6 @@ const Settings = () => {
             onOrganizationUpdate={refetchOrganization}
           />
         );
-      case 'vendors':
-        // The buy side: who the dealer purchases from, and the discount
-        // agreements that turn a manufacturer list price into dealer cost.
-        return <VendorsTab organizationId={organization?.id} />;
       case 'payments':
         return (
           <PaymentsTab

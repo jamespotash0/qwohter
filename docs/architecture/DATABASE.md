@@ -185,11 +185,16 @@ data and tracking quarterly price books across dozens of manufacturers.
 `products` is what remains: a flat, org-scoped list a dealer curates for what no
 spec tool provides — labor, freight, delivery, install, and ancillary items.
 
-### Back Office (Companies, Vendors, Attachments)
+### Back Office (Companies, Attachments)
 
 Foundation tables for dealer back-office operations. `contacts` model people;
-`companies` and `vendors` are the accounts a dealer transacts with, because a
-purchase order or invoice cannot be addressed to a person's name alone.
+`companies` is the account a dealer sells to, because an invoice cannot be
+addressed to a person's name alone.
+
+There is deliberately **no matching table for who you buy from**. Dealers place
+orders in each manufacturer's own portal, so this system never composes a
+document that needs an address — an address book would be pure setup cost.
+Manufacturers travel as text on the order line.
 
 ```
 companies                          (who you sell to)
@@ -205,31 +210,6 @@ companies                          (who you sell to)
 ├── is_active (boolean - deactivate rather than delete)
 └── created_by, created_at, updated_at
 
-vendors                            (who you buy from)
-├── id (uuid, PK)
-├── organization_id (FK)
-├── name
-├── vendor_type ('Manufacturer' | 'Supplier' | 'Subcontractor' | 'Freight' | 'Other')
-├── account_number (the dealer's account with this vendor)
-├── order_method ('Email' | 'Portal' | 'EDI' | 'Fax' | 'Phone')
-├── order_email, acknowledgment_email, portal_url
-├── remit_to_* (payment address; often not the plant)
-├── payment_terms, freight_terms, standard_lead_time_days
-├── rep_name, rep_email, rep_phone
-├── external_accounting_id (vendor id in QuickBooks)
-├── is_active (boolean)
-└── created_by, created_at, updated_at
-
-vendor_discounts                   (what you pay them)
-├── id (uuid, PK)
-├── organization_id (FK)
-├── vendor_id (FK → vendors)
-├── series_name (text, NULL = any series; matched normalized)
-├── contract_vehicle (text, NULL = any contract)
-├── discount_percent (0-100; 55 means "55 off list" = 0.45 multiplier)
-├── effective_from, effective_to (NULL = unbounded)
-└── created_by, created_at, updated_at
-
 attachments                        (polymorphic file attachments)
 ├── id (uuid, PK)
 ├── organization_id (FK)
@@ -242,18 +222,23 @@ attachments                        (polymorphic file attachments)
 ```
 
 **No catalog references.** Manufacturer and series are text throughout. Spec
-tools resolve part numbers and list price upstream, so a vendor row *is* the
+tools resolve part numbers and list price upstream, so the name on the line *is* the
 manufacturer identity.
 
-**Discount resolution.** A dealer's discount is not one number. Rows match
-most-specific-first: series + contract, then series, then contract, then the
-blanket agreement; ties inside a tier go to the larger discount. Resolution
-lives in `src/lib/pricing/discounts.ts` so quoting and purchasing arrive at the
-same dealer cost. "No agreement on file" returns `null`, which is distinct from
-a genuine 0% discount and must not be coerced to it.
+**Discount rates are observed, not entered.** A dealer's discount is not one
+number and is not reference data anyone should type in — it is negotiated per
+job, and a standing schedule is stale within a quarter. The
+`observed_vendor_discounts` view infers it from `list_price` and `unit_cost` on
+lines already imported, grouped by manufacturer / series / contract, so it needs
+no data entry and cannot go stale. Interpretation lives in
+`src/lib/pricing/observed.ts`. A line with no list price yields `null`, which is
+distinct from a genuine 0% discount and must not be coerced to it.
 
-**Cost visibility.** `vendor_discounts` is margin data and is gated on
-`can_view_cost()`, not plain membership. See [SECURITY.md](SECURITY.md).
+**Cost visibility.** Buy-side numbers on `order_lines` are margin data.
+`can_view_cost()` is the single predicate that decides who may see them; today
+the application hides the columns and splitting the buy side into its own table
+is the follow-up that would enforce it in the database. See
+[SECURITY.md](SECURITY.md).
 
 **Attachment caveat.** `entity_id` carries no foreign key — that is the cost of
 a polymorphic table. Deleting a parent row must clean up here explicitly via

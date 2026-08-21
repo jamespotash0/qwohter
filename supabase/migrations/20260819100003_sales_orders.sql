@@ -27,7 +27,7 @@
 --     list_down mode; unit_cost is the stamped cache, restamped on write.
 --
 --   * contract_vehicle lives on the order because it is a property of the
---     sale, and it is what vendor_discounts resolution keys off.
+--     sale, and it is what contract pricing keys off.
 
 -- ============================================================================
 -- sales_orders
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.sales_orders (
   ship_to_postal_code text,
   ship_to_country text DEFAULT 'US',
 
-  -- Drives discount resolution against vendor_discounts.
+  -- Drives contract pricing, and is carried onto every order placed.
   contract_vehicle text,
 
   status text NOT NULL DEFAULT 'Draft'
@@ -134,9 +134,6 @@ CREATE TABLE IF NOT EXISTS public.order_lines (
   area text,
   spec_phase text,
 
-  -- Who this will be bought from. Null until resolved -- an imported line names
-  -- a manufacturer as text before it is matched to a vendor account.
-  vendor_id uuid REFERENCES public.vendors(id) ON DELETE SET NULL,
   -- Manufacturer and series are TEXT, carried verbatim from the specification
   -- export. There is no product catalog to reference: the spec tool already
   -- resolved the part number, options, and list price before the line arrived.
@@ -191,9 +188,10 @@ CREATE INDEX IF NOT EXISTS idx_order_lines_order
   ON public.order_lines (sales_order_id, line_number);
 CREATE INDEX IF NOT EXISTS idx_order_lines_org
   ON public.order_lines (organization_id);
--- Supports the PO fan-out: group an order's open lines by vendor.
-CREATE INDEX IF NOT EXISTS idx_order_lines_vendor
-  ON public.order_lines (vendor_id, status) WHERE vendor_id IS NOT NULL;
+-- Supports the fan-out: group an order's open lines by who supplies them.
+CREATE INDEX IF NOT EXISTS idx_order_lines_manufacturer
+  ON public.order_lines (manufacturer_name, status)
+  WHERE manufacturer_name IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_order_lines_number_unique
   ON public.order_lines (sales_order_id, line_number);
 
@@ -396,7 +394,7 @@ BEGIN
 
   INSERT INTO public.order_lines (
     organization_id, sales_order_id, line_number, area, spec_phase,
-    vendor_id, manufacturer_name, series_name,
+    manufacturer_name, series_name,
     model_number, description, option_string, quantity,
     pricing_mode, list_price, dealer_discount_percent, unit_cost,
     sell_rule, markup_type, markup_value, discount_type, discount_value,
@@ -410,7 +408,6 @@ BEGIN
     COALESCE((l->>'line_number')::integer, (ordinality)::integer),
     NULLIF(l->>'area', ''),
     NULLIF(l->>'spec_phase', ''),
-    NULLIF(l->>'vendor_id', '')::uuid,
     NULLIF(l->>'manufacturer_name', ''),
     NULLIF(l->>'series_name', ''),
     NULLIF(l->>'model_number', ''),

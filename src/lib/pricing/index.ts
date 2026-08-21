@@ -44,7 +44,7 @@ export {
   isWorkOrderLine,
 } from './fulfillment';
 
-export { summarizeVariance, sortVarianceQueue } from './variance';
+export { summarizeVariance, sortVarianceQueue, varianceAmount } from './variance';
 
 export type {
   VarianceStatus,
@@ -53,16 +53,17 @@ export type {
 } from './variance';
 
 export {
-  resolveDiscount,
-  resolveDiscountPercent,
-  isAgreementEffective,
-} from './discounts';
+  lineDiscountPercent,
+  findObservedRate,
+  detectDiscountAnomaly,
+} from './observed';
 
 export type {
-  DiscountAgreement,
-  DiscountQuery,
-  ResolvedDiscount,
-} from './discounts';
+  ObservedRate,
+  ObservedRateQuery,
+  DiscountAnomaly,
+  AnomalyOptions,
+} from './observed';
 
 export type {
   PricingLineItem,

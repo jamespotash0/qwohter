@@ -31,7 +31,7 @@ interface AcknowledgmentDialogProps {
   onOpenChange: (open: boolean) => void;
   vendorPOId: string | null;
   poNumber?: string | null;
-  vendorName?: string | null;
+  manufacturerName?: string | null;
   requestedShipDate?: string | null;
   /** Line id → description, so the dialog can label rows. */
   lineLabels?: Record<string, string>;
@@ -47,7 +47,7 @@ export function AcknowledgmentDialog({
   onOpenChange,
   vendorPOId,
   poNumber,
-  vendorName,
+  manufacturerName,
   requestedShipDate,
   lineLabels = {},
 }: AcknowledgmentDialogProps) {
@@ -136,7 +136,7 @@ export function AcknowledgmentDialog({
         <DialogHeader>
           <DialogTitle>
             Record acknowledgment — {poNumber ?? 'Draft PO'}
-            {vendorName ? ` · ${vendorName}` : ''}
+            {manufacturerName ? ` · ${manufacturerName}` : ''}
           </DialogTitle>
           <DialogDescription>
             What the manufacturer confirmed. Lines start at what you ordered;
@@ -147,7 +147,7 @@ export function AcknowledgmentDialog({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="ack-number">Vendor acknowledgment number</Label>
+              <Label htmlFor="ack-number">Their acknowledgment number</Label>
               <Input
                 id="ack-number"
                 value={ackNumber}

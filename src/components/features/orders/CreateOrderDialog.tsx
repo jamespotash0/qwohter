@@ -65,7 +65,7 @@ export function CreateOrderDialog({
     data: preview,
     isLoading: previewLoading,
     error: previewError,
-  } = useOrderPreview(open ? (proposalId ?? undefined) : undefined, organizationId);
+  } = useOrderPreview(open ? (proposalId ?? undefined) : undefined);
   const createOrder = useCreateOrderFromProposal();
 
   useEffect(() => {
@@ -81,10 +81,9 @@ export function CreateOrderDialog({
   const blockers = useMemo(() => {
     if (!summary) return [];
     const items: string[] = [];
-    if (summary.unassignedLineCount > 0) {
-      items.push(
-        `${summary.unassignedLineCount} line${summary.unassignedLineCount === 1 ? '' : 's'} from ${summary.unresolvedManufacturers.length} manufacturer${summary.unresolvedManufacturers.length === 1 ? '' : 's'} with no vendor account`
-      );
+    if (summary.unnamedManufacturerLineCount > 0) {
+      const n = summary.unnamedManufacturerLineCount;
+      items.push(`${n} line${n === 1 ? '' : 's'} name no manufacturer`);
     }
     return items;
   }, [summary]);
@@ -170,13 +169,10 @@ export function CreateOrderDialog({
                     <p className="font-medium text-amber-800 dark:text-amber-300">
                       {blockers.join(', ')}
                     </p>
-                    <p className="mt-1 text-amber-700 dark:text-amber-400">
-                      {summary.unresolvedManufacturers.join(', ')}
-                    </p>
                     <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
                       The order is still created — this is scope the customer bought.
-                      Those lines just cannot go on a purchase order until you add
-                      the vendor under Settings &rsaquo; Vendors.
+                      Those lines just cannot be grouped into an order with anyone
+                      until the specification names who supplies them.
                     </p>
                   </div>
                 </div>
@@ -184,7 +180,9 @@ export function CreateOrderDialog({
             ) : (
               <div className="flex items-center gap-2 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 text-sm text-emerald-800 dark:text-emerald-300">
                 <CheckCircle className="w-4 h-4" />
-                Every line resolves to a vendor and is ready to order.
+                {summary.manufacturers.length === 1
+                  ? 'Every line names a manufacturer and is ready to order.'
+                  : `Every line names a manufacturer — ${summary.manufacturers.length} in total.`}
               </div>
             )}
 

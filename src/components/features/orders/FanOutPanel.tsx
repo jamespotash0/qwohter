@@ -1,16 +1,21 @@
 /**
  * Fan-Out Panel
  *
- * One customer order becomes a purchase order per manufacturer. This shows the
+ * One customer order splits into an order per manufacturer. This shows the
  * split before it is committed, and reports the three things that are *not*
  * ready to order — each for a different reason, and each fixed somewhere else.
  *
- * That separation matters: telling a dealer their own install crew is "missing a
- * vendor" trains them to ignore the warning that actually costs money.
+ * That separation matters: telling a dealer their own install crew is "missing
+ * a supplier" trains them to ignore the warning that actually costs money.
+ *
+ * Nothing here transmits anything. Dealers place orders in the manufacturer's
+ * own portal, so what this records is the split and the order number that came
+ * back — which is what later lets an acknowledgment be checked against the cost
+ * the quote was built on.
  */
 
 import { useState } from 'react';
-import { Warning, Info, PaperPlaneTilt, Storefront } from '@phosphor-icons/react';
+import { Warning, Info, Check, Storefront } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +34,8 @@ export function FanOutPanel({ order }: FanOutPanelProps) {
   const { data: plan, isLoading } = useFanOutPlan(order.id);
   const fanOut = useFanOutPurchaseOrders();
   const [requestedShipDate, setRequestedShipDate] = useState('');
+  // The order number the manufacturer's portal assigned, keyed by manufacturer.
+  const [poNumbers, setPONumbers] = useState<Record<string, string>>({});
 
   if (isLoading) {
     return (
@@ -41,9 +48,10 @@ export function FanOutPanel({ order }: FanOutPanelProps) {
   const totalToOrder = plan.groups.reduce((sum, g) => sum + g.totalCost, 0);
   const hasSomethingToOrder = plan.groups.length > 0;
 
-  const handleIssue = () => {
+  const handleRecord = () => {
     fanOut.mutate({
       plan,
+      poNumbers,
       base: {
         organization_id: order.organization_id,
         sales_order_id: order.id,
@@ -64,27 +72,47 @@ export function FanOutPanel({ order }: FanOutPanelProps) {
     <div className="space-y-4">
       {hasSomethingToOrder ? (
         <>
+          <p className="text-sm text-gray-500">
+            Place these in each manufacturer&rsquo;s portal, then record the order
+            number they gave you. That is what lets the acknowledgment be checked
+            against the cost you quoted.
+          </p>
+
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {plan.groups.map((group, index) => (
               <div
-                key={group.vendorId}
+                key={group.manufacturerName}
                 className={
                   index > 0 ? 'border-t border-gray-100 dark:border-gray-700/50' : ''
                 }
               >
-                <div className="flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5">
                   <div className="flex items-center gap-2">
                     <Storefront className="w-4 h-4 text-gray-400" />
                     <span className="font-medium text-gray-900 dark:text-gray-100">
-                      {group.vendorName}
+                      {group.manufacturerName}
                     </span>
                     <span className="text-xs text-gray-500">
                       {group.lines.length} line{group.lines.length === 1 ? '' : 's'}
                     </span>
                   </div>
-                  <span className="tabular-nums font-medium text-gray-900 dark:text-gray-100">
-                    {formatCurrency(group.totalCost)}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      value={poNumbers[group.manufacturerName] ?? ''}
+                      onChange={e =>
+                        setPONumbers(prev => ({
+                          ...prev,
+                          [group.manufacturerName]: e.target.value,
+                        }))
+                      }
+                      placeholder="Their order #"
+                      aria-label={`Order number from ${group.manufacturerName}`}
+                      className="h-8 w-40"
+                    />
+                    <span className="tabular-nums font-medium text-gray-900 dark:text-gray-100">
+                      {formatCurrency(group.totalCost)}
+                    </span>
+                  </div>
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
@@ -136,15 +164,15 @@ export function FanOutPanel({ order }: FanOutPanelProps) {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500">
-                {plan.groups.length} purchase order
+                {plan.groups.length} manufacturer
                 {plan.groups.length === 1 ? '' : 's'} ·{' '}
                 <span className="tabular-nums font-medium text-gray-900 dark:text-gray-100">
                   {formatCurrency(totalToOrder)}
                 </span>
               </span>
-              <Button onClick={handleIssue} disabled={fanOut.isPending}>
-                <PaperPlaneTilt className="w-4 h-4 mr-1.5" />
-                {fanOut.isPending ? 'Creating…' : 'Create purchase orders'}
+              <Button onClick={handleRecord} disabled={fanOut.isPending}>
+                <Check className="w-4 h-4 mr-1.5" />
+                {fanOut.isPending ? 'Recording…' : 'Record orders'}
               </Button>
             </div>
           </div>
@@ -155,12 +183,13 @@ export function FanOutPanel({ order }: FanOutPanelProps) {
             Nothing left to order
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            Every purchasable line on this order is already on a purchase order.
+            Every purchasable line on this order is already recorded against a
+            manufacturer.
           </p>
         </div>
       )}
 
-      {/* Blocked: real product, no vendor account. Fixed in Settings. */}
+      {/* Blocked: real product, but nothing says who supplies it. */}
       {plan.unassignedLines.length > 0 && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
           <div className="flex items-start gap-2">
@@ -168,11 +197,12 @@ export function FanOutPanel({ order }: FanOutPanelProps) {
             <div className="text-sm">
               <p className="font-medium text-amber-800 dark:text-amber-300">
                 {plan.unassignedLines.length} line
-                {plan.unassignedLines.length === 1 ? '' : 's'} have no vendor account
+                {plan.unassignedLines.length === 1 ? '' : 's'} name no manufacturer
               </p>
               <p className="mt-0.5 text-amber-700 dark:text-amber-400">
-                {[...new Set(plan.unassignedLines.map(l => l.manufacturerName ?? 'Unnamed'))].join(', ')}
-                {' — '}add them under Settings &rsaquo; Vendors, then reload this page.
+                There is nobody to group these with, so they cannot be ordered.
+                Set the manufacturer on the line in the proposal&rsquo;s pricing
+                section.
               </p>
             </div>
           </div>

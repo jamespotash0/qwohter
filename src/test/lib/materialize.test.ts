@@ -3,7 +3,7 @@
  *
  * Turning a proposal's JSONB pricing sections into durable order lines is the
  * hinge the whole back office swings on. Line numbering, cost resolution, and
- * vendor assignment are contractual here.
+ * supplier attribution are contractual here.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -14,8 +14,6 @@ import {
   type PricingSection,
 } from '@/lib/pricing';
 
-const VENDOR_STEELCASE = 'aaaaaaaa-1111-1111-1111-111111111111';
-const VENDOR_HAWORTH = 'bbbbbbbb-2222-2222-2222-222222222222';
 
 const line = (o: Partial<PricingLineItem> = {}): PricingLineItem => ({
   id: 'p-1',
@@ -122,37 +120,35 @@ describe('materializeOrderLines cost resolution', () => {
   });
 });
 
-describe('materializeOrderLines vendor resolution', () => {
+describe('materializeOrderLines supplier attribution', () => {
   const sections = [
     section([
       line({ id: 'a', manufacturerName: 'Steelcase' }),
       line({ id: 'b', manufacturerName: 'Haworth' }),
-      line({ id: 'c', manufacturerName: 'Obscure Co' }),
+      line({ id: 'c', manufacturerName: '  ' }),
     ]),
   ];
 
-  it('maps manufacturer names to vendor ids', () => {
-    const result = materializeOrderLines(sections, {
-      vendorIdByManufacturer: { Steelcase: VENDOR_STEELCASE, Haworth: VENDOR_HAWORTH },
-    });
-    expect(result[0]!.vendor_id).toBe(VENDOR_STEELCASE);
-    expect(result[1]!.vendor_id).toBe(VENDOR_HAWORTH);
+  it('carries the manufacturer through verbatim', () => {
+    const result = materializeOrderLines(sections);
+    expect(result[0]!.manufacturer_name).toBe('Steelcase');
+    expect(result[1]!.manufacturer_name).toBe('Haworth');
   });
 
-  it('leaves vendor_id null when no account exists, rather than guessing', () => {
-    const result = materializeOrderLines(sections, {
-      vendorIdByManufacturer: { Steelcase: VENDOR_STEELCASE },
-    });
-    expect(result[2]!.vendor_id).toBeNull();
-    expect(result[2]!.manufacturer_name).toBe('Obscure Co');
+  it('nulls a blank manufacturer rather than storing an empty string', () => {
+    // A line naming nobody cannot be grouped into an order with anyone, and
+    // '' would read as a real supplier when the fan-out groups by name.
+    const result = materializeOrderLines(sections);
+    expect(result[2]!.manufacturer_name).toBeNull();
   });
 
-  it('matches manufacturer names case-insensitively', () => {
-    const result = materializeOrderLines(
-      [section([line({ manufacturerName: 'STEELCASE' })])],
-      { vendorIdByManufacturer: { steelcase: VENDOR_STEELCASE } }
-    );
-    expect(result[0]!.vendor_id).toBe(VENDOR_STEELCASE);
+  it('preserves the specification\'s own casing', () => {
+    // Grouping is by name, so normalizing here would silently merge two
+    // manufacturers a spec file spelled differently on purpose.
+    const result = materializeOrderLines([
+      section([line({ manufacturerName: 'STEELCASE' })]),
+    ]);
+    expect(result[0]!.manufacturer_name).toBe('STEELCASE');
   });
 });
 
@@ -204,30 +200,39 @@ describe('summarizeMaterialization', () => {
     expect(summary.totalSell).toBe(1450);
   });
 
-  it('reports manufacturers with no vendor account, without duplicates', () => {
-    const lines = materializeOrderLines(
-      [
-        section([
-          line({ id: 'a', manufacturerName: 'Obscure Co' }),
-          line({ id: 'b', manufacturerName: 'Obscure Co' }),
-          line({ id: 'c', manufacturerName: 'Steelcase' }),
-        ]),
-      ],
-      { vendorIdByManufacturer: { Steelcase: VENDOR_STEELCASE } }
-    );
+  it('lists distinct manufacturers without duplicates', () => {
+    const lines = materializeOrderLines([
+      section([
+        line({ id: 'a', manufacturerName: 'Obscure Co' }),
+        line({ id: 'b', manufacturerName: 'Obscure Co' }),
+        line({ id: 'c', manufacturerName: 'Steelcase' }),
+      ]),
+    ]);
     const summary = summarizeMaterialization(lines);
-    expect(summary.unresolvedManufacturers).toEqual(['Obscure Co']);
-    expect(summary.unassignedLineCount).toBe(2);
+    expect(summary.manufacturers).toEqual(['Obscure Co', 'Steelcase']);
+    expect(summary.unnamedManufacturerLineCount).toBe(0);
   });
 
-  it('is clean when every line resolves', () => {
-    const lines = materializeOrderLines(
-      [section([line({ manufacturerName: 'Steelcase' })])],
-      { vendorIdByManufacturer: { Steelcase: VENDOR_STEELCASE } }
-    );
+  it('counts lines naming nobody, and keeps them out of the list', () => {
+    const lines = materializeOrderLines([
+      section([
+        line({ id: 'a', manufacturerName: 'Steelcase' }),
+        line({ id: 'b', manufacturerName: '' }),
+        line({ id: 'c', manufacturerName: '   ' }),
+      ]),
+    ]);
     const summary = summarizeMaterialization(lines);
-    expect(summary.unassignedLineCount).toBe(0);
-    expect(summary.unresolvedManufacturers).toEqual([]);
+    expect(summary.unnamedManufacturerLineCount).toBe(2);
+    expect(summary.manufacturers).toEqual(['Steelcase']);
+  });
+
+  it('is clean when every line names a manufacturer', () => {
+    const lines = materializeOrderLines([
+      section([line({ manufacturerName: 'Steelcase' })]),
+    ]);
+    const summary = summarizeMaterialization(lines);
+    expect(summary.unnamedManufacturerLineCount).toBe(0);
+    expect(summary.manufacturers).toEqual(['Steelcase']);
   });
 });
 
@@ -240,7 +245,7 @@ describe('materializeOrderLines fulfillment routing', () => {
   });
 
   it('keeps install labor off the purchase path', () => {
-    // The bug this prevents: install labor reported as "assign a vendor before
+    // The bug this prevents: install labor reported as "name a supplier before
     // you can order", when the dealer's own crew is doing the work.
     const result = materializeOrderLines([
       section([line({ name: 'Install labor', sellRule: 'per_hour', quantity: 40 })], {
@@ -250,7 +255,6 @@ describe('materializeOrderLines fulfillment routing', () => {
       }),
     ]);
     expect(result[0]!.fulfillment_type).toBe('self_perform');
-    expect(result[0]!.vendor_id).toBeNull();
   });
 
   it('lets a single line be subcontracted out of a self-performed section', () => {

@@ -46,7 +46,7 @@ export interface VarianceQueueResult {
 /**
  * The variance queue for an organization, with its headline figures.
  *
- * `includeMatched` shows lines the vendor confirmed exactly as ordered. Off by
+ * `includeMatched` shows lines confirmed at exactly the quoted cost. Off by
  * default — they are the healthy majority and including them buries the
  * exceptions, which is the entire reason this screen exists.
  */

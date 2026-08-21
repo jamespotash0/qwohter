@@ -209,7 +209,7 @@ export interface CreateWorkOrderInput {
   work_type?: WorkType;
   status?: WorkOrderStatus;
   crew_id?: string | null;
-  subcontractor_vendor_id?: string | null;
+  subcontractor_name?: string | null;
   scheduled_start?: string | null;
   scheduled_end?: string | null;
   site_name?: string | null;
@@ -250,7 +250,7 @@ export async function createWorkOrder(
   workOrder: CreateWorkOrderInput,
   lines: WorkOrderLineInput[]
 ): Promise<string> {
-  if (workOrder.crew_id && workOrder.subcontractor_vendor_id) {
+  if (workOrder.crew_id && workOrder.subcontractor_name) {
     throw new Error('A work order is performed by a crew or a subcontractor, not both.');
   }
 

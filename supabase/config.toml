@@ -73,8 +73,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.send-notification-email]
 verify_jwt = false
-[functions.send-purchase-order]
-verify_jwt = false
 [functions.send-signup-invite]
 verify_jwt = false
 # Invoked hourly by pg_cron via pg_net, which sends no user JWT.

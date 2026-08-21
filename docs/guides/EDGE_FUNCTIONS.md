@@ -41,7 +41,6 @@ supabase/functions/
 | Function | Purpose | Auth |
 |----------|---------|------|
 | `send-notification-email` | Send email via Resend | JWT required |
-| `send-purchase-order` | Email a purchase order PDF to a vendor and mark it Sent | JWT required |
 | `process-notification-retry` | Retry failed emails | Service role (cron) |
 
 ### Google Integration

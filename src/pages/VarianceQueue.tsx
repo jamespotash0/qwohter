@@ -34,7 +34,7 @@ export default function VarianceQueuePage() {
     <PageContent
       showPageHeader
       title="Acknowledgments"
-      subtitle="Purchase order lines awaiting a vendor reply, or answered at a different price or date"
+      subtitle="Ordered lines awaiting a reply, or acknowledged at a different cost than you quoted"
       headerActions={
         <div className="flex items-center gap-2">
           <Button

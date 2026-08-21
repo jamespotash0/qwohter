@@ -1,13 +1,18 @@
 /**
- * Vendor Purchase Order Service
+ * Vendor Order Service
  *
- * The fan-out: one customer order becomes N purchase orders, one per
- * manufacturer. A 1,200-line job might be six POs to six factories, each
- * acknowledged, shipped, and invoiced on its own schedule.
+ * The fan-out: one customer order splits into N manufacturer orders. A
+ * 1,200-line job might be six orders to six factories, each acknowledged,
+ * shipped, and invoiced on its own schedule.
  *
- * Issuing a PO goes through the create_vendor_po_with_lines RPC so the header,
- * its lines, and the 'ordered' fulfillment events land together. A PO whose
- * lines exist but whose events do not would leave those quantities looking
+ * This application does NOT compose or transmit purchase orders -- dealers
+ * place them in the manufacturer's own portal. What is recorded here is the
+ * split and the result: who each group of lines went to, under what order
+ * number, and what came back on the acknowledgment.
+ *
+ * Recording an order goes through the create_vendor_po_with_lines RPC so the
+ * header, its lines, and the 'ordered' fulfillment events land together. Lines
+ * that exist without their events would leave those quantities looking
  * unordered, and the next fan-out would buy the same product twice.
  *
  * Quantities are never stored on order lines. Read them from
@@ -39,10 +44,9 @@ export { summarizeVariance } from '@/lib/pricing';
 // Fan-out planning
 // ============================================================================
 
-/** One vendor's share of an order, before anything is written. */
+/** One manufacturer's share of an order, before anything is written. */
 export interface FanOutGroup {
-  vendorId: string;
-  vendorName: string;
+  manufacturerName: string;
   lines: {
     orderLineId: string;
     lineNumber: number;
@@ -66,8 +70,9 @@ export interface FanOutLineRef {
 export interface FanOutPlan {
   groups: FanOutGroup[];
   /**
-   * Purchasable lines with no vendor account yet. These genuinely block
-   * ordering and must be surfaced — they are scope the customer already bought.
+   * Purchasable lines naming no manufacturer, so there is nobody to group them
+   * with. These genuinely block ordering and must be surfaced — they are scope
+   * the customer already bought.
    */
   unassignedLines: FanOutLineRef[];
   /**
@@ -96,7 +101,7 @@ export async function planFanOut(salesOrderId: string): Promise<FanOutPlan> {
     await Promise.all([
       supabase
         .from('order_lines')
-        .select('*, vendors(id, name)')
+        .select('*')
         .eq('sales_order_id', salesOrderId)
         .neq('status', 'Cancelled')
         .order('line_number', { ascending: true }),
@@ -139,32 +144,33 @@ export async function planFanOut(salesOrderId: string): Promise<FanOutPlan> {
 
     const fulfillmentType = line.fulfillment_type as FulfillmentType | null;
 
-    // Nothing decided how this line is delivered. Not a vendor problem, and
-    // telling the user to assign one would send them to the wrong screen.
+    // Nothing decided how this line is delivered. Not a supplier problem, and
+    // telling the user to name one would send them to the wrong screen.
     if (!fulfillmentType) {
       unroutedLines.push(ref);
       continue;
     }
 
     // The dealer's own crew, or a cost re-billed. These are never bought, so
-    // reporting them as needing a vendor would train people to ignore the
+    // reporting them as needing a supplier would train people to ignore the
     // warning that actually matters.
     if (!isPurchasable(fulfillmentType)) {
       notPurchased.push({ ...ref, fulfillmentType });
       continue;
     }
 
-    const vendor = (line as { vendors?: { id: string; name: string } | null }).vendors;
+    // Who supplies it is what groups the split. A line naming nobody cannot be
+    // grouped with anyone, which is a specification gap rather than a setup one.
+    const manufacturer = line.manufacturer_name?.trim();
 
-    if (!vendor) {
+    if (!manufacturer) {
       unassignedLines.push(ref);
       continue;
     }
 
     const unitCost = Number(line.unit_cost);
-    const entry = groups.get(vendor.id) ?? {
-      vendorId: vendor.id,
-      vendorName: vendor.name,
+    const entry = groups.get(manufacturer) ?? {
+      manufacturerName: manufacturer,
       lines: [],
       totalCost: 0,
     };
@@ -179,11 +185,13 @@ export async function planFanOut(salesOrderId: string): Promise<FanOutPlan> {
       extendedCost: round2(outstanding * unitCost),
     });
     entry.totalCost = round2(entry.totalCost + outstanding * unitCost);
-    groups.set(vendor.id, entry);
+    groups.set(manufacturer, entry);
   }
 
   return {
-    groups: [...groups.values()].sort((a, b) => a.vendorName.localeCompare(b.vendorName)),
+    groups: [...groups.values()].sort((a, b) =>
+      a.manufacturerName.localeCompare(b.manufacturerName)
+    ),
     unassignedLines,
     unroutedLines,
     notPurchased,
@@ -197,7 +205,7 @@ export async function planFanOut(salesOrderId: string): Promise<FanOutPlan> {
 export interface CreateVendorPOInput {
   organization_id: string;
   sales_order_id: string;
-  vendor_id: string;
+  manufacturer_name: string;
   po_number?: string | null;
   status?: VendorPOStatus;
   payment_terms?: string | null;
@@ -254,37 +262,55 @@ export async function createVendorPO(
 }
 
 /**
- * Issue a purchase order for every vendor group in a plan.
+ * Trimmed value, or null when absent or blank. `??` would keep an empty string,
+ * and a blank order number stored as '' reads as a real one.
+ */
+const trimmedOrNull = (value: string | undefined): string | null => {
+  const t = value?.trim();
+  return t === undefined || t.length === 0 ? null : t;
+};
+
+export interface FanOutResult {
+  created: { manufacturerName: string; purchaseOrderId: string }[];
+  failed: { manufacturerName: string; error: string }[];
+}
+
+/**
+ * Record an order for every manufacturer group in a plan.
  *
- * Each PO is created independently: if one vendor fails, the others still land
- * rather than the whole release rolling back. Failures come back with the plan
- * so the caller can report exactly which vendors did not get an order.
+ * Each is written independently: if one fails, the others still land rather
+ * than the whole release rolling back. Failures come back with the plan so the
+ * caller can report exactly which manufacturers were not recorded.
+ *
+ * `poNumberByManufacturer` carries the order number the manufacturer's portal
+ * assigned, keyed by manufacturer name. It is optional because a dealer may
+ * record the split before placing, then fill the numbers in afterwards.
  */
 export async function fanOutPurchaseOrders(
   plan: FanOutPlan,
-  base: Omit<CreateVendorPOInput, 'vendor_id' | 'po_number'>,
-  poNumberFor?: (group: FanOutGroup, index: number) => string | undefined
-): Promise<{
-  created: { vendorId: string; vendorName: string; purchaseOrderId: string }[];
-  failed: { vendorId: string; vendorName: string; error: string }[];
-}> {
-  const created: { vendorId: string; vendorName: string; purchaseOrderId: string }[] = [];
-  const failed: { vendorId: string; vendorName: string; error: string }[] = [];
+  base: Omit<CreateVendorPOInput, 'manufacturer_name' | 'po_number'>,
+  poNumberByManufacturer: Record<string, string> = {}
+): Promise<FanOutResult> {
+  const created: FanOutResult['created'] = [];
+  const failed: FanOutResult['failed'] = [];
 
-  for (const [index, group] of plan.groups.entries()) {
+  for (const group of plan.groups) {
     try {
       const purchaseOrderId = await createVendorPO(
-        { ...base, vendor_id: group.vendorId, po_number: poNumberFor?.(group, index) ?? null },
+        {
+          ...base,
+          manufacturer_name: group.manufacturerName,
+          po_number: trimmedOrNull(poNumberByManufacturer[group.manufacturerName]),
+        },
         group.lines.map(line => ({
           order_line_id: line.orderLineId,
           quantity: line.quantity,
         }))
       );
-      created.push({ vendorId: group.vendorId, vendorName: group.vendorName, purchaseOrderId });
+      created.push({ manufacturerName: group.manufacturerName, purchaseOrderId });
     } catch (error) {
       failed.push({
-        vendorId: group.vendorId,
-        vendorName: group.vendorName,
+        manufacturerName: group.manufacturerName,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }

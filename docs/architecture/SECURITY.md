@@ -47,19 +47,22 @@ back-office roles land (PM, warehouse, installer, AP) this function is the only
 place that changes.
 
 ```sql
--- vendor_discounts is margin data: gated on cost visibility, not membership
-CREATE POLICY "Cost viewers can view vendor discounts"
-  ON public.vendor_discounts FOR SELECT TO authenticated
+-- The intended shape for any table that exposes buy-side numbers:
+-- gated on cost visibility, not plain membership.
+CREATE POLICY "Cost viewers can view <table>"
+  ON public.<table> FOR SELECT TO authenticated
   USING (public.can_view_cost((SELECT auth.uid()), organization_id));
 ```
 
-The client mirror is `useCanViewCost(userId, organizationId)`, so the UI hides
-cost columns rather than rendering empty ones. It **fails closed**: a failed
-permission check returns `false`.
+**Not yet applied to `order_lines`.** Cost columns live on that table and it is
+readable by any active member, with the application hiding cost rather than the
+database enforcing it. Splitting the buy side into its own table would close
+that properly; it is a deliberate follow-up, because every role that can read an
+order can already read a proposal's costs.
 
-Note that RLS *filters* rather than rejects, so a user without cost visibility
-receives an empty discount list, not an error. Callers must treat "no discounts"
-as "cannot price" — never as "zero discount".
+Where RLS *does* gate on cost visibility it **filters** rather than rejects, so
+a user without it receives an empty list, not an error. Callers must treat an
+empty result as "cannot price" — never as "zero".
 
 ### Current User Helpers (uses `auth.uid()`)
 

@@ -4,11 +4,11 @@
 -- Steelcase; installation is performed by the dealer's own crew; a tariff is
 -- re-billed at cost. Only some of those are things you buy.
 --
--- Without this, the purchase order fan-out grouped lines by vendor and reported
--- everything vendorless as "assign a vendor before you can order" -- which meant
+-- Without this, the fan-out grouped lines by manufacturer and reported
+-- everything without one as "name a supplier before you can order" -- which meant
 -- a job with delivery and installation on it told the dealer their own crew's
 -- labor was blocking the order. Nonsense, and it would have trained people to
--- ignore the warning that actually matters: real product with no vendor account.
+-- ignore the warning that actually matters: real product naming no supplier.
 --
 --   purchase      bought from a manufacturer      -> purchase order
 --   subcontract   work someone else performs      -> purchase order
@@ -38,13 +38,13 @@ CREATE INDEX IF NOT EXISTS idx_order_lines_fulfillment
 -- Backfill
 -- ============================================================================
 -- Existing lines predate the column. Route what can be inferred from the
--- manufacturer/vendor evidence already on the row, and leave the rest NULL for
+-- manufacturer evidence already on the row, and leave the rest NULL for
 -- a human rather than inventing an answer.
 
 UPDATE public.order_lines
    SET fulfillment_type = 'purchase'
  WHERE fulfillment_type IS NULL
-   AND (vendor_id IS NOT NULL OR manufacturer_name IS NOT NULL);
+   AND manufacturer_name IS NOT NULL;
 
 -- ============================================================================
 -- create_sales_order_with_lines: carry fulfillment_type through
@@ -100,7 +100,7 @@ BEGIN
 
   INSERT INTO public.order_lines (
     organization_id, sales_order_id, line_number, area, spec_phase,
-    vendor_id, manufacturer_name, series_name,
+    manufacturer_name, series_name,
     model_number, description, option_string, quantity,
     pricing_mode, fulfillment_type, list_price, dealer_discount_percent, unit_cost,
     sell_rule, markup_type, markup_value, discount_type, discount_value,
@@ -112,7 +112,6 @@ BEGIN
     COALESCE((l->>'line_number')::integer, (ordinality)::integer),
     NULLIF(l->>'area', ''),
     NULLIF(l->>'spec_phase', ''),
-    NULLIF(l->>'vendor_id', '')::uuid,
     NULLIF(l->>'manufacturer_name', ''),
     NULLIF(l->>'series_name', ''),
     NULLIF(l->>'model_number', ''),

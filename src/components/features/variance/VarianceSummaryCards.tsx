@@ -6,7 +6,7 @@
  * changes cost.
  *
  * Exposure is the number that matters, so it gets the emphasis and a colour
- * that means something — red when a vendor is charging more than was ordered,
+ * that means something — red when a manufacturer is charging more than quoted,
  * green when the net is in the dealer's favour.
  */
 
@@ -82,7 +82,7 @@ export function VarianceSummaryCards({
       <Tile
         label="Awaiting ack"
         value={`${summary.awaitingAck}`}
-        hint={summary.awaitingAck === 0 ? 'All answered' : 'Vendor has not replied'}
+        hint={summary.awaitingAck === 0 ? 'All answered' : 'No reply yet'}
         icon={Clock}
         tone={summary.awaitingAck > 0 ? 'warning' : 'neutral'}
       />
@@ -98,7 +98,7 @@ export function VarianceSummaryCards({
         value={formatCurrency(summary.totalExposure)}
         hint={
           summary.totalExposure > 0
-            ? 'More than you ordered at'
+            ? 'More than you quoted'
             : summary.totalExposure < 0
               ? 'In your favour'
               : 'No cost impact'

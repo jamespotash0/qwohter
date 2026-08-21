@@ -27,7 +27,11 @@ export interface MaterializedOrderLine {
   line_number: number;
   area: string | null;
   spec_phase: string | null;
-  vendor_id: string | null;
+  /**
+   * Who supplies the line, as the specification names them. Text, not a
+   * reference: there is no vendor account to maintain, and purchase orders are
+   * placed in the manufacturer's own portal rather than composed here.
+   */
   manufacturer_name: string | null;
   series_name: string | null;
   model_number: string | null;
@@ -55,12 +59,6 @@ export interface MaterializedOrderLine {
 }
 
 export interface MaterializeOptions {
-  /**
-   * Maps a manufacturer name to a vendor id. Lines whose manufacturer has no
-   * vendor account get a null vendor_id and cannot be put on a purchase order
-   * until one is assigned — which is correct, and visible.
-   */
-  vendorIdByManufacturer?: Record<string, string>;
   /** Treat a section's name as the area label. On by default. */
   useSectionNameAsArea?: boolean;
 }
@@ -92,7 +90,7 @@ export function materializeOrderLines(
   sections: PricingSection[],
   options: MaterializeOptions = {}
 ): MaterializedOrderLine[] {
-  const { vendorIdByManufacturer = {}, useSectionNameAsArea = true } = options;
+  const { useSectionNameAsArea = true } = options;
 
   const lines: MaterializedOrderLine[] = [];
   let lineNumber = 0;
@@ -104,13 +102,6 @@ export function materializeOrderLines(
       lineNumber += 1;
 
       const manufacturer = trimmed(item.manufacturerName);
-      // Manufacturer names are hand-entered and arrive from spec files with
-      // inconsistent casing, so resolution is case-insensitive.
-      const mappedVendorId = manufacturer
-        ? (vendorIdByManufacturer[manufacturer] ??
-           vendorIdByManufacturer[manufacturer.toLowerCase()])
-        : undefined;
-      const vendorId = mappedVendorId ?? null;
 
       lines.push({
         line_number: lineNumber,
@@ -118,7 +109,6 @@ export function materializeOrderLines(
           trimmed(item.area) ??
           (useSectionNameAsArea ? trimmed(section.name) : null),
         spec_phase: trimmed(item.specPhase),
-        vendor_id: vendorId,
         manufacturer_name: manufacturer,
         series_name: trimmed(item.seriesName),
         model_number: trimmed(item.modelNumber),
@@ -158,29 +148,33 @@ export interface MaterializeSummary {
   totalQuantity: number;
   totalCost: number;
   totalSell: number;
-  /** Manufacturer names with no vendor account, in first-seen order. */
-  unresolvedManufacturers: string[];
-  /** Lines that cannot be ordered because no vendor could be resolved. */
-  unassignedLineCount: number;
+  /** Distinct manufacturers on the order, in first-seen order. */
+  manufacturers: string[];
+  /**
+   * Lines naming no manufacturer at all. These cannot be grouped into an order
+   * with anyone, so they are the ones worth surfacing before the order exists.
+   */
+  unnamedManufacturerLineCount: number;
 }
 
 /**
  * What materialization would produce, without writing anything. Intended for a
- * confirmation step: a dealer should see "3 manufacturers have no vendor
- * account" before an order is created, not after.
+ * confirmation step: a dealer should see what an order contains, and which
+ * lines name nobody to buy from, before it is created rather than after.
  */
 export function summarizeMaterialization(
   lines: MaterializedOrderLine[]
 ): MaterializeSummary {
-  const unresolved: string[] = [];
-  let unassigned = 0;
+  const manufacturers: string[] = [];
+  let unnamed = 0;
 
   for (const line of lines) {
-    if (!line.vendor_id) {
-      unassigned += 1;
-      const name = line.manufacturer_name;
-      if (name && !unresolved.includes(name)) unresolved.push(name);
+    const name = line.manufacturer_name;
+    if (!name) {
+      unnamed += 1;
+      continue;
     }
+    if (!manufacturers.includes(name)) manufacturers.push(name);
   }
 
   return {
@@ -190,7 +184,7 @@ export function summarizeMaterialization(
       lines.reduce((sum, l) => sum + l.quantity * l.unit_cost, 0)
     ),
     totalSell: round2(lines.reduce((sum, l) => sum + l.sell_price, 0)),
-    unresolvedManufacturers: unresolved,
-    unassignedLineCount: unassigned,
+    manufacturers,
+    unnamedManufacturerLineCount: unnamed,
   };
 }

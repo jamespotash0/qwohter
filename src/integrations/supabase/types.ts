@@ -1672,7 +1672,6 @@ export type Database = {
           status: string
           unit_cost: number
           updated_at: string
-          vendor_id: string | null
         }
         Insert: {
           area?: string | null
@@ -1705,7 +1704,6 @@ export type Database = {
           status?: string
           unit_cost?: number
           updated_at?: string
-          vendor_id?: string | null
         }
         Update: {
           area?: string | null
@@ -1738,7 +1736,6 @@ export type Database = {
           status?: string
           unit_cost?: number
           updated_at?: string
-          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -1753,13 +1750,6 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_lines_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -4067,66 +4057,6 @@ export type Database = {
         }
         Relationships: []
       }
-      vendor_discounts: {
-        Row: {
-          contract_vehicle: string | null
-          created_at: string
-          created_by: string | null
-          discount_percent: number
-          effective_from: string | null
-          effective_to: string | null
-          id: string
-          notes: string | null
-          organization_id: string
-          series_name: string | null
-          updated_at: string
-          vendor_id: string
-        }
-        Insert: {
-          contract_vehicle?: string | null
-          created_at?: string
-          created_by?: string | null
-          discount_percent: number
-          effective_from?: string | null
-          effective_to?: string | null
-          id?: string
-          notes?: string | null
-          organization_id: string
-          series_name?: string | null
-          updated_at?: string
-          vendor_id: string
-        }
-        Update: {
-          contract_vehicle?: string | null
-          created_at?: string
-          created_by?: string | null
-          discount_percent?: number
-          effective_from?: string | null
-          effective_to?: string | null
-          id?: string
-          notes?: string | null
-          organization_id?: string
-          series_name?: string | null
-          updated_at?: string
-          vendor_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendor_discounts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_discounts_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       vendor_pos: {
         Row: {
           acknowledged_at: string | null
@@ -4135,15 +4065,14 @@ export type Database = {
           created_by: string | null
           freight_terms: string | null
           id: string
+          manufacturer_name: string
           notes: string | null
           organization_id: string
           payment_terms: string | null
+          placed_at: string | null
           po_number: string | null
           requested_ship_date: string | null
           sales_order_id: string
-          sent_at: string | null
-          sent_by: string | null
-          sent_to_email: string | null
           ship_to_address_line1: string | null
           ship_to_address_line2: string | null
           ship_to_city: string | null
@@ -4154,7 +4083,6 @@ export type Database = {
           status: string
           updated_at: string
           vendor_ack_number: string | null
-          vendor_id: string
         }
         Insert: {
           acknowledged_at?: string | null
@@ -4163,15 +4091,14 @@ export type Database = {
           created_by?: string | null
           freight_terms?: string | null
           id?: string
+          manufacturer_name: string
           notes?: string | null
           organization_id: string
           payment_terms?: string | null
+          placed_at?: string | null
           po_number?: string | null
           requested_ship_date?: string | null
           sales_order_id: string
-          sent_at?: string | null
-          sent_by?: string | null
-          sent_to_email?: string | null
           ship_to_address_line1?: string | null
           ship_to_address_line2?: string | null
           ship_to_city?: string | null
@@ -4182,7 +4109,6 @@ export type Database = {
           status?: string
           updated_at?: string
           vendor_ack_number?: string | null
-          vendor_id: string
         }
         Update: {
           acknowledged_at?: string | null
@@ -4191,15 +4117,14 @@ export type Database = {
           created_by?: string | null
           freight_terms?: string | null
           id?: string
+          manufacturer_name?: string
           notes?: string | null
           organization_id?: string
           payment_terms?: string | null
+          placed_at?: string | null
           po_number?: string | null
           requested_ship_date?: string | null
           sales_order_id?: string
-          sent_at?: string | null
-          sent_by?: string | null
-          sent_to_email?: string | null
           ship_to_address_line1?: string | null
           ship_to_address_line2?: string | null
           ship_to_city?: string | null
@@ -4210,7 +4135,6 @@ export type Database = {
           status?: string
           updated_at?: string
           vendor_ack_number?: string | null
-          vendor_id?: string
         }
         Relationships: [
           {
@@ -4225,117 +4149,6 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_pos_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendors: {
-        Row: {
-          account_number: string | null
-          acknowledgment_email: string | null
-          created_at: string
-          created_by: string | null
-          external_accounting_id: string | null
-          freight_terms: string | null
-          id: string
-          is_active: boolean
-          name: string
-          notes: string | null
-          order_email: string | null
-          order_method: string
-          organization_id: string
-          payment_terms: string | null
-          phone: string | null
-          portal_url: string | null
-          remit_to_address_line1: string | null
-          remit_to_address_line2: string | null
-          remit_to_city: string | null
-          remit_to_country: string | null
-          remit_to_name: string | null
-          remit_to_postal_code: string | null
-          remit_to_state: string | null
-          rep_email: string | null
-          rep_name: string | null
-          rep_phone: string | null
-          standard_lead_time_days: number | null
-          updated_at: string
-          vendor_type: string
-        }
-        Insert: {
-          account_number?: string | null
-          acknowledgment_email?: string | null
-          created_at?: string
-          created_by?: string | null
-          external_accounting_id?: string | null
-          freight_terms?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          notes?: string | null
-          order_email?: string | null
-          order_method?: string
-          organization_id: string
-          payment_terms?: string | null
-          phone?: string | null
-          portal_url?: string | null
-          remit_to_address_line1?: string | null
-          remit_to_address_line2?: string | null
-          remit_to_city?: string | null
-          remit_to_country?: string | null
-          remit_to_name?: string | null
-          remit_to_postal_code?: string | null
-          remit_to_state?: string | null
-          rep_email?: string | null
-          rep_name?: string | null
-          rep_phone?: string | null
-          standard_lead_time_days?: number | null
-          updated_at?: string
-          vendor_type?: string
-        }
-        Update: {
-          account_number?: string | null
-          acknowledgment_email?: string | null
-          created_at?: string
-          created_by?: string | null
-          external_accounting_id?: string | null
-          freight_terms?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          notes?: string | null
-          order_email?: string | null
-          order_method?: string
-          organization_id?: string
-          payment_terms?: string | null
-          phone?: string | null
-          portal_url?: string | null
-          remit_to_address_line1?: string | null
-          remit_to_address_line2?: string | null
-          remit_to_city?: string | null
-          remit_to_country?: string | null
-          remit_to_name?: string | null
-          remit_to_postal_code?: string | null
-          remit_to_state?: string | null
-          rep_email?: string | null
-          rep_name?: string | null
-          rep_phone?: string | null
-          standard_lead_time_days?: number | null
-          updated_at?: string
-          vendor_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendors_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -4436,7 +4249,7 @@ export type Database = {
           site_postal_code: string | null
           site_state: string | null
           status: string
-          subcontractor_vendor_id: string | null
+          subcontractor_name: string | null
           updated_at: string
           work_order_number: string | null
           work_type: string
@@ -4464,7 +4277,7 @@ export type Database = {
           site_postal_code?: string | null
           site_state?: string | null
           status?: string
-          subcontractor_vendor_id?: string | null
+          subcontractor_name?: string | null
           updated_at?: string
           work_order_number?: string | null
           work_type?: string
@@ -4492,7 +4305,7 @@ export type Database = {
           site_postal_code?: string | null
           site_state?: string | null
           status?: string
-          subcontractor_vendor_id?: string | null
+          subcontractor_name?: string | null
           updated_at?: string
           work_order_number?: string | null
           work_type?: string
@@ -4526,13 +4339,6 @@ export type Database = {
             referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "work_orders_subcontractor_vendor_id_fkey"
-            columns: ["subcontractor_vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
@@ -4554,6 +4360,28 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_user_feedback_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      observed_vendor_discounts: {
+        Row: {
+          contract_vehicle: string | null
+          discount_percent: number | null
+          last_seen_at: string | null
+          line_count: number | null
+          manufacturer_name: string | null
+          max_discount_percent: number | null
+          min_discount_percent: number | null
+          organization_id: string | null
+          series_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_lines_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -4600,6 +4428,7 @@ export type Database = {
           acknowledged_at: string | null
           cost_variance: number | null
           description: string | null
+          manufacturer_name: string | null
           model_number: string | null
           order_line_id: string | null
           ordered_quantity: number | null
@@ -4607,11 +4436,12 @@ export type Database = {
           organization_id: string | null
           po_line_id: string | null
           po_number: string | null
+          quoted_cost_variance: number | null
+          quoted_unit_cost: number | null
           requested_ship_date: string | null
           sales_order_id: string | null
           ship_date_slip_days: number | null
           variance_status: string | null
-          vendor_id: string | null
           vendor_po_id: string | null
         }
         Relationships: [
@@ -4648,13 +4478,6 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_pos_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -4801,7 +4624,6 @@ export type Database = {
           site_state: string | null
           status: string | null
           subcontractor_name: string | null
-          subcontractor_vendor_id: string | null
           work_order_id: string | null
           work_order_number: string | null
           work_type: string | null
@@ -4833,13 +4655,6 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_orders_subcontractor_vendor_id_fkey"
-            columns: ["subcontractor_vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

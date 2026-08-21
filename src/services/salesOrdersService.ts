@@ -23,7 +23,6 @@ import {
   type MaterializeSummary,
 } from '@/lib/pricing';
 import type { PricingSection } from '@/lib/types/pricing';
-import { getVendors } from '@/services/vendorsService';
 import { fetchProposalById } from '@/services/proposalsService';
 
 // The Database type fails supabase-js's GenericSchema constraint (no
@@ -253,24 +252,6 @@ function readPricingSections(formData: unknown): PricingSection[] {
   return pricing?.sections ?? [];
 }
 
-/**
- * Manufacturer name → vendor id for an organization, indexed case-insensitively
- * so spec files with inconsistent casing still resolve.
- */
-async function buildVendorIndex(
-  organizationId: string
-): Promise<Record<string, string>> {
-  const vendors = await getVendors(organizationId);
-  const index: Record<string, string> = {};
-
-  for (const vendor of vendors) {
-    index[vendor.name] = vendor.id;
-    index[vendor.name.toLowerCase()] = vendor.id;
-  }
-
-  return index;
-}
-
 export interface MaterializePreview {
   lines: MaterializedOrderLine[];
   summary: MaterializeSummary;
@@ -280,12 +261,11 @@ export interface MaterializePreview {
  * What creating an order from this proposal would produce, without writing.
  *
  * Call this before createOrderFromProposal and show the summary: a dealer needs
- * to see "3 manufacturers have no vendor account, 47 lines cannot be ordered"
- * before the order exists, not after.
+ * to see what the order contains, and which lines name nobody to buy from,
+ * before the order exists rather than after.
  */
 export async function previewOrderFromProposal(
-  proposalId: string,
-  organizationId: string
+  proposalId: string
 ): Promise<MaterializePreview> {
   const proposal = await fetchProposalById(proposalId);
   if (!proposal) {
@@ -297,8 +277,7 @@ export async function previewOrderFromProposal(
     throw new Error('This proposal has no priced line items to order.');
   }
 
-  const vendorIdByManufacturer = await buildVendorIndex(organizationId);
-  const lines = materializeOrderLines(sections, { vendorIdByManufacturer });
+  const lines = materializeOrderLines(sections);
 
   if (lines.length === 0) {
     throw new Error('This proposal has no orderable line items.');
@@ -310,18 +289,16 @@ export async function previewOrderFromProposal(
 /**
  * Create a sales order and its lines from a proposal, atomically.
  *
- * Returns the new order's id. Lines with an unresolved vendor are created — they
- * are real scope that has been sold — but cannot be put on a purchase order
- * until a vendor is assigned. Dropping them would hide sold work.
+ * Returns the new order's id. Lines naming no manufacturer are still created —
+ * they are real scope that has been sold — but cannot be grouped into an order
+ * with anyone until the specification names one. Dropping them would hide sold
+ * work.
  */
 export async function createOrderFromProposal(
   proposalId: string,
   input: Omit<CreateSalesOrderInput, 'proposal_id'>
 ): Promise<string> {
-  const { lines } = await previewOrderFromProposal(
-    proposalId,
-    input.organization_id
-  );
+  const { lines } = await previewOrderFromProposal(proposalId);
 
   return createSalesOrderWithLines({ ...input, proposal_id: proposalId }, lines);
 }
@@ -399,29 +376,6 @@ export async function updateOrderLine(
   return data as unknown as OrderLine;
 }
 
-/**
- * Assign a vendor to every line naming a manufacturer, after the vendor account
- * is created. The common fix for a preview that reported unresolved lines.
- */
-export async function assignVendorToLines(
-  salesOrderId: string,
-  manufacturerName: string,
-  vendorId: string
-): Promise<number> {
-  const { data, error } = await table('order_lines')
-    .update({ vendor_id: vendorId } as never)
-    .eq('sales_order_id', salesOrderId)
-    .ilike('manufacturer_name', manufacturerName)
-    .is('vendor_id', null)
-    .select('id');
-
-  if (error) {
-    console.error('[salesOrdersService] assignVendorToLines failed:', error);
-    throw new Error(`Failed to assign vendor: ${error.message}`);
-  }
-
-  return ((data || []) as unknown as { id: string }[]).length;
-}
 
 // ============================================================================
 // Fulfillment events

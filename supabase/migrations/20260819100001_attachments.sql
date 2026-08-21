@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS public.attachments (
       'project',
       'proposal',
       'company',
-      'vendor',
       'sales_order',
       'order_line',
       'vendor_po',
@@ -109,7 +108,7 @@ CREATE POLICY "Uploader or admin can update attachments"
     OR public.has_org_role((SELECT auth.uid()), organization_id, ARRAY['Owner'::text, 'Admin'::text])
   );
 
--- Deleting evidence in a vendor dispute is consequential. Same rule as update.
+-- Deleting evidence in a manufacturer dispute is consequential. Same rule as update.
 DROP POLICY IF EXISTS "Uploader or admin can delete attachments" ON public.attachments;
 CREATE POLICY "Uploader or admin can delete attachments"
   ON public.attachments FOR DELETE TO authenticated

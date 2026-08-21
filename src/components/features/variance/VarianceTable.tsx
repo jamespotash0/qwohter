@@ -1,9 +1,13 @@
 /**
  * Variance Table
  *
- * One row per purchase order line that needs a look. State is encoded in form
- * as well as in number — a severity stripe down the left and a status pill — so
- * the rows that matter are findable without reading every figure.
+ * One row per ordered line that needs a look. State is encoded in form as well
+ * as in number — a severity stripe down the left and a status pill — so the
+ * rows that matter are findable without reading every figure.
+ *
+ * The figure shown is the variance against the cost the QUOTE was built on, not
+ * against what was recorded as placed. That is the number that decides whether
+ * the job is still profitable, and it is what the queue's ranking uses.
  *
  * Ordering comes from the service (awaiting acknowledgment first, then by
  * exposure) and is deliberately not re-sorted here; the queue's ranking is part
@@ -11,7 +15,7 @@
  */
 
 import { ArrowRight } from '@phosphor-icons/react';
-import { formatCurrency } from '@/lib/pricing';
+import { formatCurrency, varianceAmount } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 import type { POLineVariance } from '@/hooks/queries/useVarianceQueue';
 
@@ -102,10 +106,10 @@ export function VarianceTable({ lines, isLoading, onSelect }: VarianceTableProps
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             <th className="w-1" />
-            <th className="px-3 py-2.5">PO</th>
+            <th className="px-3 py-2.5">Order</th>
             <th className="px-3 py-2.5">Item</th>
             <th className="px-3 py-2.5 text-right">Qty</th>
-            <th className="px-3 py-2.5 text-right">Ordered</th>
+            <th className="px-3 py-2.5 text-right">Quoted</th>
             <th className="px-3 py-2.5 text-right">Acknowledged</th>
             <th className="px-3 py-2.5 text-right">Variance</th>
             <th className="px-3 py-2.5 text-right">Slip</th>
@@ -116,7 +120,7 @@ export function VarianceTable({ lines, isLoading, onSelect }: VarianceTableProps
         <tbody>
           {lines.map(line => {
             const status = meta(line.variance_status);
-            const variance = Number(line.cost_variance ?? 0);
+            const variance = varianceAmount(line);
             const slip = formatSlip(
               line.ship_date_slip_days === null ? null : Number(line.ship_date_slip_days)
             );
@@ -138,7 +142,7 @@ export function VarianceTable({ lines, isLoading, onSelect }: VarianceTableProps
                 */}
                 <td className={cn('w-1 p-0', status.stripe)} />
                 <td className="px-3 py-3 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                  {line.po_number ?? 'Draft'}
+                  {line.po_number ?? 'Not placed'}
                 </td>
                 <td className="px-3 py-3 max-w-[260px]">
                   <p className="truncate text-gray-900 dark:text-gray-100">
@@ -152,7 +156,9 @@ export function VarianceTable({ lines, isLoading, onSelect }: VarianceTableProps
                   {Number(line.ordered_quantity ?? 0)}
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums text-gray-600 dark:text-gray-300">
-                  {formatCurrency(Number(line.ordered_unit_cost ?? 0))}
+                  {formatCurrency(
+                    Number(line.quoted_unit_cost ?? line.ordered_unit_cost ?? 0)
+                  )}
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums">
                   {awaiting ? (

@@ -7,7 +7,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { summarizeVariance, sortVarianceQueue, type VarianceLine } from '@/lib/pricing';
+import {
+  summarizeVariance,
+  sortVarianceQueue,
+  varianceAmount,
+  type VarianceLine,
+} from '@/lib/pricing';
 
 const row = (o: Partial<VarianceLine> = {}): VarianceLine =>
   ({
@@ -15,7 +20,7 @@ const row = (o: Partial<VarianceLine> = {}): VarianceLine =>
     organization_id: 'org',
     vendor_po_id: 'po1',
     po_number: 'PO-1001',
-    vendor_id: 'v1',
+    manufacturer_name: 'Steelcase',
     sales_order_id: 'so1',
     order_line_id: 'ol1',
     description: 'Task chair',
@@ -59,7 +64,8 @@ describe('summarizeVariance', () => {
   });
 
   it('nets a credit against an overcharge rather than counting its magnitude', () => {
-    // A vendor honouring a lower price is real money back; exposure is the net.
+    // A manufacturer honouring a lower price is real money back; exposure is
+    // the net.
     const s = summarizeVariance([
       row({ variance_status: 'price', cost_variance: 500 }),
       row({ variance_status: 'price', cost_variance: -200 }),
@@ -136,5 +142,52 @@ describe('sortVarianceQueue', () => {
     ];
     sortVarianceQueue(input);
     expect(input[0]!.cost_variance).toBe(1);
+  });
+});
+
+describe('varianceAmount', () => {
+  // The queue reports margin, so the comparison that counts is against the cost
+  // the quote was built on -- not against whatever was recorded as placed.
+  it('prefers the quoted comparison over the recorded one', () => {
+    expect(
+      varianceAmount(row({ quoted_cost_variance: 900, cost_variance: 100 }))
+    ).toBe(900);
+  });
+
+  it('falls back to the recorded comparison when the quoted one is absent', () => {
+    // Rows written before the two were distinguished must still summarize,
+    // rather than silently reporting no exposure at all.
+    expect(varianceAmount(row({ cost_variance: 250 }))).toBe(250);
+  });
+
+  it('is zero when neither is known, not NaN', () => {
+    expect(
+      varianceAmount(row({ quoted_cost_variance: null, cost_variance: null }))
+    ).toBe(0);
+  });
+
+  it('keeps a real zero distinct from an absent value', () => {
+    // A line acknowledged at exactly the quoted cost is a genuine 0 and must
+    // not fall through to the recorded figure.
+    expect(
+      varianceAmount(row({ quoted_cost_variance: 0, cost_variance: 750 }))
+    ).toBe(0);
+  });
+
+  it('drives exposure totals off the quoted figure', () => {
+    const summary = summarizeVariance([
+      row({ variance_status: 'price', quoted_cost_variance: 8400, cost_variance: 0 }),
+      row({ variance_status: 'price', quoted_cost_variance: -1800, cost_variance: 0 }),
+    ]);
+    expect(summary.totalExposure).toBe(6600);
+  });
+
+  it('sorts the queue by the quoted figure, credits alongside overcharges', () => {
+    const sorted = sortVarianceQueue([
+      row({ variance_status: 'price', quoted_cost_variance: 100 }),
+      row({ variance_status: 'price', quoted_cost_variance: -9000 }),
+      row({ variance_status: 'price', quoted_cost_variance: 400 }),
+    ]);
+    expect(sorted.map(l => l.quoted_cost_variance)).toEqual([-9000, 400, 100]);
   });
 });

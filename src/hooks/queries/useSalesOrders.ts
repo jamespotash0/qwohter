@@ -1,6 +1,6 @@
 /**
- * React Query hooks for sales orders, their lines, and the purchase order
- * fan-out.
+ * React Query hooks for sales orders, their lines, and the manufacturer
+ * order fan-out.
  *
  * Fulfillment quantities come from the order_line_fulfillment view, never from a
  * column, so anything that records an event invalidates the whole namespace
@@ -19,7 +19,6 @@ import {
   createOrderFromProposal,
   updateSalesOrder,
   getProjectIdForProposal,
-  assignVendorToLines,
   type SalesOrder,
   type OrderLine,
   type CreateSalesOrderInput,
@@ -129,10 +128,10 @@ export function useOrderFulfillment(salesOrderId?: string) {
 }
 
 /**
- * What purchase orders this order still needs, grouped by vendor.
+ * What this order still needs to buy, grouped by manufacturer.
  *
- * Short stale time: issuing a PO changes the answer, and a stale plan would
- * offer to buy product that was just bought.
+ * Short stale time: recording an order changes the answer, and a stale plan
+ * would offer to buy product that was just bought.
  */
 export function useFanOutPlan(salesOrderId?: string) {
   return useQuery({
@@ -164,18 +163,17 @@ export function useVendorPOs(salesOrderId?: string) {
  * What creating an order from this proposal would produce, without writing.
  *
  * Deliberately a query rather than something the create path does silently: a
- * dealer should see "3 manufacturers have no vendor account" before the order
- * exists, not after.
+ * dealer should see what the order contains before it exists, not after.
  */
-export function useOrderPreview(proposalId?: string, organizationId?: string) {
+export function useOrderPreview(proposalId?: string) {
   return useQuery({
     queryKey: salesOrderKeys.preview(proposalId ?? '__pending__'),
-    enabled: !!proposalId && !!organizationId,
+    enabled: !!proposalId,
     staleTime: 0,
     retry: false,
     queryFn: async () => {
-      if (!proposalId || !organizationId) return null;
-      return previewOrderFromProposal(proposalId, organizationId);
+      if (!proposalId) return null;
+      return previewOrderFromProposal(proposalId);
     },
   });
 }
@@ -225,10 +223,10 @@ export function useUpdateSalesOrder() {
 }
 
 /**
- * Issue a purchase order for every vendor group in a plan.
+ * Record an order for every manufacturer group in a plan.
  *
- * Each vendor is independent, so a partial result is normal and is reported
- * rather than hidden — the toast names any vendor that did not get an order.
+ * Each manufacturer is independent, so a partial result is normal and is
+ * reported rather than hidden — the toast names any that was not recorded.
  */
 export function useFanOutPurchaseOrders() {
   const queryClient = useQueryClient();
@@ -237,55 +235,37 @@ export function useFanOutPurchaseOrders() {
     mutationFn: ({
       plan,
       base,
+      poNumbers,
     }: {
       plan: FanOutPlan;
-      base: Omit<CreateVendorPOInput, 'vendor_id' | 'po_number'>;
-    }) => fanOutPurchaseOrders(plan, base),
+      base: Omit<CreateVendorPOInput, 'manufacturer_name' | 'po_number'>;
+      poNumbers?: Record<string, string>;
+    }) => fanOutPurchaseOrders(plan, base, poNumbers),
     onSuccess: result => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: varianceQueryKeys.all });
 
       if (result.created.length > 0) {
         toast.success(
-          `${result.created.length} purchase order${result.created.length === 1 ? '' : 's'} created`,
-          { description: result.created.map(c => c.vendorName).join(', ') }
+          `${result.created.length} order${result.created.length === 1 ? '' : 's'} recorded`,
+          { description: result.created.map(c => c.manufacturerName).join(', ') }
         );
       }
       if (result.failed.length > 0) {
         toast.error(
-          `${result.failed.length} vendor${result.failed.length === 1 ? '' : 's'} could not be ordered`,
-          { description: result.failed.map(f => `${f.vendorName}: ${f.error}`).join(' · ') }
+          `${result.failed.length} order${result.failed.length === 1 ? '' : 's'} could not be recorded`,
+          {
+            description: result.failed
+              .map(f => `${f.manufacturerName}: ${f.error}`)
+              .join(' · '),
+          }
         );
       }
     },
     onError: (error: unknown) =>
-      toast.error('Could not issue purchase orders', {
+      toast.error('Could not record the orders', {
         description: error instanceof Error ? error.message : 'Unknown error',
       }),
   });
 }
 
-/** Attach a newly created vendor to the lines that were waiting for one. */
-export function useAssignVendorToLines() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      salesOrderId,
-      manufacturerName,
-      vendorId,
-    }: {
-      salesOrderId: string;
-      manufacturerName: string;
-      vendorId: string;
-    }) => assignVendorToLines(salesOrderId, manufacturerName, vendorId),
-    onSuccess: count => {
-      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
-      toast.success(`${count} line${count === 1 ? '' : 's'} assigned`);
-    },
-    onError: (error: unknown) =>
-      toast.error('Could not assign the vendor', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
-  });
-}

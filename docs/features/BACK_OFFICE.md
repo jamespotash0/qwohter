@@ -5,10 +5,15 @@ Foundation for dealer back-office operations — everything that happens between
 come from the tools dealers already use (CET, Giza, 2020, ProjectMatrix); this
 system owns the order lifecycle those tools do not.
 
-> **Status:** The chain runs end to end in the UI — set up vendors, turn a won
-> proposal into an order, fan out purchase orders, record what came back, and
-> read the variance queue. Receiving, work-order scheduling UI, job costing, PO
-> transmission, and specification import are not built yet.
+> **Status:** The chain runs end to end in the UI — turn a won proposal into an
+> order, split it across manufacturers, record what came back, and read the
+> variance queue. Receiving, work-order scheduling UI, job costing, and
+> specification import are not built yet.
+>
+> **This system does not compose or transmit purchase orders.** Dealers place
+> orders in each manufacturer's own portal, the same way specification lives in
+> Giza or CET rather than here. What gets recorded is the split and the result.
+> Until acknowledgment ingestion exists, that recording is manual.
 
 ---
 
@@ -17,7 +22,7 @@ system owns the order lifecycle those tools do not.
 ```
 spec tool ──SIF──► quote ──► project ──► sales order ──► order lines
                                               │
-                                              ├──► vendor POs ──► ACK ──► variance
+                                              ├──► manufacturer orders ──► ACK ──► variance
                                               ├──► receipts
                                               ├──► work orders ──► punch
                                               └──► job cost
@@ -34,44 +39,31 @@ see [BILLING.md](BILLING.md). The middle is what Phase 1 builds.
 
 | Screen | Where | What it does |
 |--------|-------|--------------|
-| Vendors | Settings › Vendors | Who you buy from, and the discount agreements that turn list price into dealer cost. Flags vendors with no order destination or no discounts — both mean lines cannot proceed. |
-| Orders | `/orders` | Every sold job. Create one from a won proposal; the preview reports unresolved manufacturers before anything is written. |
-| Order detail | `/orders/:id` | Lines with derived fulfillment quantities, the purchasing fan-out, and the issued POs. |
+| Orders | `/orders` | Every sold job. Create one from a won proposal; the preview reports lines naming no manufacturer before anything is written. |
+| Order detail | `/orders/:id` | Lines with derived fulfillment quantities, the purchasing fan-out, and the orders placed. |
 | Acknowledgments | `/acknowledgments` | The variance queue. |
 
-### Sending a purchase order
+### Recording an order placed in the portal
 
-The PDF is drawn as vector text and tables (`src/lib/pdf/purchaseOrder.ts`),
-not screenshotted from the DOM the way the proposal exporter works. A PO is a
-tabular document a factory's order-entry clerk keys from: it has to stay crisp,
-be selectable, and print small. A 60-line order comes out under 20 KB; the
-rasterised equivalent would be megabytes.
+There is deliberately no PO document and no send path. A dealer places the order
+in the manufacturer's portal — often straight from the specification tool — and
+records the order number that came back. Building a PDF and emailing it would
+duplicate a system the manufacturer already runs, and most dealers would never
+use it.
 
-Option strings sit on their own row beneath each description rather than being
-truncated into a column — that string is what the clerk keys to build the
-product, so losing characters produces the wrong item.
+What that recording buys is the acknowledgment check, which is the point of the
+whole back office. It needs to know *what was ordered, from whom, at what cost*
+— and none of that requires this application to have sent anything.
 
-Rendering happens on the client and the base64 is passed to the
-`send-purchase-order` edge function, which attaches it and sends via Resend.
-One renderer, deliberately: a Deno reimplementation would drift from the one a
-dealer previews, and the document a manufacturer receives must be the one that
-was reviewed.
-
-Two ordering decisions in that flow:
-
-- The PDF is **filed as an attachment before the email is sent**. An orphaned
-  attachment is recoverable; a sent document nobody kept a copy of is not, and
-  "what exactly did we order" is the whole question in a vendor dispute.
-- The PO is marked `Sent` **only after Resend accepts it**. A PO recorded as
-  sent that never left is worse than one that failed loudly — the dealer would
-  wait weeks for an acknowledgment that was never coming. If the email lands but
-  the status update fails, the response says so and warns against resending.
-
-The acknowledgment dialog lives on the order's Purchase orders tab. Lines
+The acknowledgment dialog lives on the order's **Orders placed** tab. Lines
 pre-fill with what was ordered — an unchanged acknowledgment is the common case
 and should not require retyping every figure — and the running variance total
 updates as you type, because the number a dealer wants is not *what did they
 say* but *what is this costing me*.
+
+> **The gap:** every path into this today is manual entry, which is exactly what
+> dealers will not do. Parsing a forwarded acknowledgment email is what turns
+> the feature on; everything upstream exists to make that possible.
 
 ---
 
@@ -109,12 +101,11 @@ purchase order references "line 47 of the order". Section names become the
 Cost is **resolved**, not copied — in `list_down` mode the stored `unitCost` is a
 cache that may lag list price and discount.
 
-Lines whose manufacturer has no vendor account get `vendor_id = null`. They are
-still created — that is real scope the customer bought — but cannot go on a
-purchase order until a vendor is assigned. Call `previewOrderFromProposal()`
-first and show `summarizeMaterialization()`: a dealer should see *"3
-manufacturers have no vendor account, 47 lines cannot be ordered"* before the
-order exists, not after. `assignVendorToLines()` is the fix.
+Lines naming no manufacturer are still created — that is real scope the customer
+bought — but cannot be grouped into an order with anyone until the specification
+names who supplies them. Call `previewOrderFromProposal()` first and show
+`summarizeMaterialization()`: a dealer should see what the order contains, and
+which lines name nobody, before it exists rather than after.
 
 ---
 
@@ -144,26 +135,32 @@ way to change it — stays `NULL` rather than being guessed. A wrong guess eithe
 raises a purchase order for the dealer's own labor or silently drops product
 that needed buying; unrouted is recoverable and visible.
 
-`planFanOut()` reports four buckets accordingly: vendor groups ready to order,
-`unassignedLines` (purchasable, no vendor account — a real blocker),
-`unroutedLines` (fixed in the form's section settings, not the vendor screen),
-and `notPurchased` (own labor and pass-throughs, shown so the picture is
-complete without implying a problem).
+`planFanOut()` reports four buckets accordingly: manufacturer groups ready to
+order, `unassignedLines` (purchasable but naming nobody — a real blocker),
+`unroutedLines` (fixed in the form's section settings), and `notPurchased` (own
+labor and pass-throughs, shown so the picture is complete without implying a
+problem).
 
 ---
 
-## Purchase orders and the fan-out
+## Manufacturer orders and the fan-out
 
-One customer order becomes N purchase orders, one per manufacturer — a 1,200-line
-job might be six POs to six factories, each acknowledged, shipped, and invoiced
-on its own schedule.
+One customer order splits into N manufacturer orders — a 1,200-line job might be
+six orders to six factories, each acknowledged, shipped, and invoiced on its own
+schedule.
+
+Lines group by `manufacturer_name`, which is **text carried from the
+specification**. There is no vendor account to look up, because nothing here
+needs an address to send to. A line naming no manufacturer cannot be grouped
+with anyone, and that is reported as a specification gap rather than a setup
+one.
 
 `po_lines` **reference** order lines rather than duplicating them. An order line
 is what was sold; a PO line is a claim on some of its quantity. Partial ordering
 is normal, so `planFanOut()` reads outstanding quantity from
 `order_line_fulfillment` and is safe to re-run as a job is released in phases.
 
-A line only flips to `Ordered` once its **full** quantity is on a PO. Releasing
+A line only flips to `Ordered` once its **full** quantity is on an order. Releasing
 12 of 20 leaves it `Open`, because the remaining 8 still have to be bought —
 flagging it early would hide them from the next fan-out.
 
@@ -172,9 +169,11 @@ lines, and one `ordered` event per line together. Unit cost is read from the
 order line **inside** the function — what the dealer commits to buy at is not the
 client's to assert.
 
-`fanOutPurchaseOrders()` issues each vendor's PO independently: one vendor
+`fanOutPurchaseOrders()` records each manufacturer's order independently: one
 failing does not roll back the rest, and failures come back named so the caller
-can say exactly which vendor did not get an order.
+can say exactly which was not recorded. The portal's own order number is passed
+per manufacturer, and may be filled in later — a dealer can record the split
+before placing.
 
 ### The variance queue
 
@@ -186,23 +185,39 @@ and showing them buries the exceptions.
 
 State is encoded in form as well as number: a severity stripe down the left edge
 and a status pill, so the rows that matter are findable without reading every
-figure. Overcharges are red, credits green — a vendor honouring a lower price is
-good news and should not be painted as a problem.
+figure. Overcharges are red, credits green — a manufacturer honouring a lower
+price is good news and should not be painted as a problem.
 
 
 `po_lines` carries both the price ordered at and the price acknowledged. The
 acknowledged columns stay `NULL` until an acknowledgment arrives, which is what
 separates *not yet acknowledged* from *acknowledged unchanged*.
 
-`cost_variance` is a **generated column**, so it cannot drift from its inputs.
-The `po_line_variance` view classifies each line as `awaiting_ack`, `match`,
-`price`, `date`, or `price_and_date`, and `summarizeVariance()` produces the
-headline: *"12 awaiting acknowledgment, 4 with variances totalling $8,400, worst
-slip 21 days."*
+**The comparison is against the cost the quote was built on**, not against what
+was recorded as placed. Since orders go out through the manufacturer's portal,
+*"did the factory honour our paperwork"* is not a question this application is
+entitled to ask — but *"did the cost I quoted survive contact with the real
+order"* is, and it is the one that costs a dealer money. `po_line_variance`
+exposes both:
 
-Credits net against overcharges in the exposure figure — a vendor honouring a
-lower price is real money back. But the queue *sorts* by magnitude, so a large
-credit is as visible as a large overcharge; both warrant a look.
+| Column | Compares acknowledged cost against | Answers |
+|--------|-----------------------------------|---------|
+| `cost_variance` | what was recorded as placed | did I record this correctly |
+| `quoted_cost_variance` | the cost the quote was built on | **is this job still profitable** |
+
+They are equal until an order line is re-priced after placement, which is
+exactly when the difference starts to matter. `varianceAmount()` prefers the
+quoted figure and falls back to the recorded one, so older rows still summarize
+rather than silently reporting no exposure.
+
+`cost_variance` is a **generated column**, so it cannot drift from its inputs.
+The view classifies each line as `awaiting_ack`, `match`, `price`, `date`, or
+`price_and_date`, and `summarizeVariance()` produces the headline: *"12 awaiting
+acknowledgment, 4 with variances totalling $8,400, worst slip 21 days."*
+
+Credits net against overcharges in the exposure figure — a manufacturer
+honouring a lower price is real money back. But the queue *sorts* by magnitude,
+so a large credit is as visible as a large overcharge; both warrant a look.
 
 ---
 
@@ -295,8 +310,8 @@ what was specified.
 **No product catalog.** Manufacturer and series are text, not references. CET,
 Giza, and 2020 already resolve the part number, options, and list price before a
 line reaches us, so maintaining a catalog here would be a permanent cost with
-nothing to show for it. A vendor row *is* the manufacturer identity, and a
-series is matched by name — normalized for case and whitespace, because that
+nothing to show for it. The manufacturer name on the line *is* the identity, and
+a series is matched by name — normalized for case and whitespace, because that
 text is hand-entered upstream.
 
 The catalog hierarchy that used to exist (domains, manufacturers, lines, series,
@@ -321,68 +336,104 @@ because a purchase order or invoice is addressed to an organization.
 - **`companies`** — who you sell to. Bill-to and ship-to addresses, payment
   terms, tax exemption, and the QuickBooks customer id. Ship-to falls back to
   the billing address when unset, which is the common case for office accounts.
-- **`vendors`** — who you buy from. Where a PO goes and how (`order_method`),
-  where acknowledgments come back to, remit-to for payment, freight terms, and
-  the manufacturer's rep. Optionally linked to `product_manufacturers`.
-- **`vendor_discounts`** — what you pay them.
+There is deliberately **no matching table for who you buy from**. An address
+book exists to address a document, and this system sends none — so it would be
+pure setup cost, wrong within a quarter, and a wall in front of the door on day
+one. Manufacturers travel as text on the line, exactly as the specification tool
+spelled them.
 
 `contacts.company_id` links a person to a company. It supersedes the free-text
 `contacts.company_name`, which is retained as the pre-migration value and as the
 fallback label for unlinked contacts.
 
-Both companies and vendors **deactivate rather than delete** by default — order
-history references them. Deletion is an Owner/Admin action.
+Companies **deactivate rather than delete** by default — order history
+references them. Deletion is an Owner/Admin action.
 
 ---
 
-## Discount resolution
+## Observed discount rates
 
-A dealer's discount from one manufacturer is never a single number. It varies by
-product series and by the contract the sale runs under, and agreements expire.
+A dealer's discount off list is **not reference data anyone should type in**.
+Project pricing is negotiated per job with the rep, promos move quarterly, and
+program tiers change — a standing schedule is wrong within a quarter, and a
+stale one is worse than none because it silently disagrees with the quote the
+customer signed.
 
-Rows match **most-specific-first**:
+It is also already in the data. Every imported line carries a list price and a
+cost, so the discount gets **read rather than asked for**:
 
-Series is matched by **name**, normalized for case and whitespace. A dealer only
-ever lists the handful of series they hold special pricing on, so there is
-nothing to maintain beyond those rows.
+```sql
+-- observed_vendor_discounts, grouped by manufacturer / series / contract
+discount_percent      -- blended rate, weighted by extended list value
+min/max_discount_percent  -- the envelope ever seen
+line_count            -- how much evidence backs it
+```
+
+Zero data entry, and a rate that cannot go stale because it records what
+actually happened. Weighted by extended list value deliberately: an unweighted
+average would let one $40 accessory count as much as a $12,000 casegoods run.
+
+### The check it buys
+
+The quote-stage version of the acknowledgment check:
+
+> *Every Steelcase Series 1 line for two years landed between 54% and 56% off.
+> This one came in at 48%.*
+
+That catches a bad export or a rep quoting off the wrong schedule **before** it
+becomes a signed quote. `detectDiscountAnomaly()` compares against the observed
+**min/max envelope**, not the mean — real pricing varies across a series, and
+flagging every line that differs from average would flag most of them. A line is
+only interesting when it falls outside the whole range history has produced.
+
+Two guards against crying wolf, since a warning that fires constantly gets
+trained away:
+
+- **`tolerancePercent`** (default 1pp) — rounding and freight-inclusive pricing
+  move rates by fractions constantly.
+- **`minLineCount`** (default 3) — one previous order is a coincidence, not a
+  pattern.
+
+### Matching
+
+`findObservedRate()` resolves most-specific-first, and the **manufacturer must
+always match** — an observation about Steelcase says nothing about Haworth, so
+unlike a hand-entered agreement there is no "any manufacturer" tier.
 
 | Tier | Matches |
 |------|---------|
-| `series+contract` | This series, under this contract |
+| `series + contract` | This series, under this contract |
 | `series` | This series, any contract |
 | `contract` | Any series, under this contract |
-| `blanket` | Any series, any contract |
+| `manufacturer` | Anything from them |
 
-`NULL` in `series_name` or `contract_vehicle` means "applies to anything", so a
-vendor's blanket rate is one row with both `NULL`. A tie **inside** a tier goes
-to the larger discount, so a dealer is never silently charged more than an
-agreement entitles them to. A more specific but smaller discount still wins over
-a larger blanket one — that is the agreement they actually signed for that
-series.
-
-Both are compared normalized — trimmed and lowercased — because they are hand-entered.
+Text is compared trimmed and lowercased, because specification exports deliver
+it with inconsistent casing.
 
 ### null is not zero
 
-`resolveDiscount()` returns `null` when **no agreement on file covers the line**.
-That is a different state from a genuine 0% discount, and must be surfaced as
-"cannot price", never coerced to list price. `resolveDiscountPercent()` takes an
-explicit fallback for callers that have already decided what absence means.
+`lineDiscountPercent()` returns `null` when **no discount can be inferred** —
+a line with no list price (labor, freight, a pass-through cost) has no discount,
+which is a different statement from "bought at list". It must never be coerced
+to `0`.
 
-Resolution lives in `src/lib/pricing/discounts.ts` as pure functions, so quoting
-and purchasing arrive at the same dealer cost. That is the only way to guarantee
-they agree.
+Interpretation lives in `src/lib/pricing/observed.ts` as pure functions; the
+view only aggregates.
 
 ---
 
 ## Cost visibility
 
-`vendor_discounts` is margin data, gated on `can_view_cost()` rather than plain
-membership. See [SECURITY.md](../architecture/SECURITY.md#cost--margin-visibility).
+Buy-side numbers live on `order_lines`, and an installer with an account must
+never read them. `can_view_cost()` is the single predicate that decides, and it
+resolves to Owner/Admin against today's role vocabulary — when back-office roles
+land (PM, warehouse, installer, AP) that function is the only place that
+changes. See [SECURITY.md](../architecture/SECURITY.md#cost--margin-visibility).
 
-RLS **filters** rather than rejects, so a user without cost visibility gets an
-empty discount list, not an error. Treat "no discounts returned" as "cannot
-price".
+Today `order_lines` is readable by any active member, and the **application**
+hides cost columns rather than the database enforcing it. Splitting the buy side
+into its own table would enforce it properly; that is a deliberate follow-up,
+because every role that can read an order can already read a proposal's costs.
 
 ---
 
@@ -412,7 +463,7 @@ path segment against org membership.
 Two behavior changes came with the consolidation:
 
 - **Delete tightened** from "any active member" to "uploader or Owner/Admin".
-  Deleting evidence in a vendor dispute should not be casual.
+  Deleting evidence in a manufacturer dispute should not be casual.
 - **`public_url` is gone.** It had stored `''` on every row since the bucket went
   private; reads always overwrote it with a signed URL. The field is now
   `signed_url`, and it is nullable — a file that fails to sign renders as
@@ -427,20 +478,18 @@ Two behavior changes came with the consolidation:
 | Pricing math | `src/lib/pricing/calculate.ts` |
 | Materialization | `src/lib/pricing/materialize.ts` |
 | Sales orders | `src/services/salesOrdersService.ts` |
-| Purchase orders | `src/services/vendorPOService.ts` |
+| Manufacturer orders | `src/services/vendorPOService.ts` |
 | Variance logic | `src/lib/pricing/variance.ts` |
 | Fulfillment routing | `src/lib/pricing/fulfillment.ts` |
 | Work orders | `src/services/workOrdersService.ts` |
 | Variance queue UI | `src/pages/VarianceQueue.tsx`, `src/components/features/variance/` |
-| PO document | `src/lib/pdf/purchaseOrder.ts`, `src/services/purchaseOrderDocumentService.ts` |
-| Discount resolution | `src/lib/pricing/discounts.ts` |
+| Observed discount rates | `src/lib/pricing/observed.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
-| Vendors & discounts | `src/services/vendorsService.ts`, `src/hooks/queries/useVendors.ts` |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
-| Migrations | `supabase/migrations/20260819100000_companies_vendors.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql` |
-| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/discounts.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
+| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql` |
+| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
 
 ---
 
@@ -455,12 +504,12 @@ after every migration.
 The `as never` casts left in the older back-office services are no longer
 load-bearing and can be removed.
 
-**Migration drift.** Regenerating from local revealed three tables the app code
-uses that exist in neither the local database nor the migrations:
-`form_document_templates`, `quickbooks_online_invoice_sync`, and
-`quickbooks_online_connections`. They appear to have been created directly
-against the remote project, so `supabase/migrations` does not fully describe
-production. Worth reconciling before the next environment is stood up.
+**Migration drift.** Regenerating from local revealed tables the app code uses
+that exist in neither the local database nor the migrations
+(`quickbooks_online_invoice_sync`, `quickbooks_online_connections`). They appear
+to have been created directly against the remote project, so
+`supabase/migrations` does not fully describe production. Worth reconciling
+before the next environment is stood up.
 
 **Role vocabulary.** Roles are still Owner / Admin / Member. The back office
 needs designer, PM, sales, warehouse, installer, and AP. Expanding the set
@@ -468,6 +517,15 @@ touches invitations (`invite_tokens.role` has a CHECK constraint), seat billing,
 and RLS across the app — a product decision, not a mechanical one.
 `can_view_cost()` is written so that only it changes when the roles land.
 
-**Migrations unexecuted.** Both migrations were written and statically verified
-(FK targets, helper functions, and trigger functions all confirmed to exist) but
-not run — Docker was unavailable. Run `supabase db reset` before relying on them.
+**The vendor address book was removed by rewriting history, not reversing it.**
+The migrations that created `vendors` and `vendor_discounts` were edited in
+place, because in the environments that matter those tables were never created —
+reversing something that never existed is archaeology, and a hard `DROP` would
+fail outright. `20260820100000_observed_discounts.sql` carries a fully guarded
+cleanup block for any database that *did* get them; it is a no-op everywhere
+else. Every migration has been run from scratch via `supabase db reset`.
+
+**Acknowledgment ingestion is the missing piece.** Everything in the order spine
+exists to make it possible, but until a forwarded acknowledgment can be parsed,
+the variance queue depends on manual entry — which is the one thing dealers
+reliably will not do. This is the highest-value unbuilt feature here.

@@ -3,12 +3,13 @@
  *
  * One job, from what was sold through to what has been bought, received, and
  * installed. Three tabs because those are three different jobs a person sits
- * down to do: check the scope, raise the purchase orders, chase the vendors.
+ * down to do: check the scope, split it across manufacturers, chase the
+ * acknowledgments.
  */
 
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Storefront, ListChecks, PaperPlaneTilt } from '@phosphor-icons/react';
+import { ArrowLeft, ClipboardText, Storefront, ListChecks } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,12 +20,8 @@ import {
   useOrderFulfillment,
   useVendorPOs,
 } from '@/hooks/queries/useSalesOrders';
-import { useVendors } from '@/hooks/queries/useVendors';
-import { useUser } from '@/auth';
-import { useCurrentOrganization } from '@/hooks/queries';
 import { FanOutPanel } from '@/components/features/orders/FanOutPanel';
 import { AcknowledgmentDialog } from '@/components/features/orders/AcknowledgmentDialog';
-import { SendPurchaseOrderDialog } from '@/components/features/orders/SendPurchaseOrderDialog';
 import { cn } from '@/lib/utils';
 
 export default function SalesOrderDetailPage() {
@@ -35,24 +32,9 @@ export default function SalesOrderDetailPage() {
   const { data: lines = [] } = useOrderLines(orderId);
   const { data: fulfillment = {} } = useOrderFulfillment(orderId);
   const { data: pos = [] } = useVendorPOs(orderId);
-  const { data: vendors = [] } = useVendors(order?.organization_id);
-
-  // The dealer's own name goes on the purchase order letterhead.
-  const user = useUser();
-  const { organization } = useCurrentOrganization(user?.id ?? '');
-  const organizationName = organization?.name ?? 'Your organization';
 
   const [ackPOId, setAckPOId] = useState<string | null>(null);
-  const [sendPOId, setSendPOId] = useState<string | null>(null);
 
-  const vendorById = useMemo(
-    () => Object.fromEntries(vendors.map(v => [v.id, v])),
-    [vendors]
-  );
-  const vendorName = useMemo(
-    () => Object.fromEntries(vendors.map(v => [v.id, v.name])),
-    [vendors]
-  );
   const lineLabels = useMemo(
     () => Object.fromEntries(lines.map(l => [l.id, l.description])),
     [lines]
@@ -69,7 +51,6 @@ export default function SalesOrderDetailPage() {
   }, [lines]);
 
   const activePO = pos.find(p => p.id === ackPOId);
-  const sendingPO = pos.find(p => p.id === sendPOId);
 
   if (isLoading) {
     return (
@@ -154,7 +135,7 @@ export default function SalesOrderDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="pos">
               <ClipboardText className="w-4 h-4 mr-1.5" />
-              Purchase orders ({pos.length})
+              Orders placed ({pos.length})
             </TabsTrigger>
           </TabsList>
 
@@ -241,15 +222,16 @@ export default function SalesOrderDetailPage() {
             <FanOutPanel order={order} />
           </TabsContent>
 
-          {/* Issued POs, and where to record what came back */}
+          {/* Orders placed with each manufacturer, and what came back */}
           <TabsContent value="pos" className="mt-4">
             {pos.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-12 text-center">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  No purchase orders yet
+                  Nothing placed yet
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
-                  Use the Purchasing tab to split this order across its vendors.
+                  Use the Purchasing tab to split this order across its
+                  manufacturers.
                 </p>
               </div>
             ) : (
@@ -264,17 +246,16 @@ export default function SalesOrderDetailPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {po.po_number ?? 'Draft'}
+                        {po.po_number ?? 'No order number yet'}
                         <span className="ml-2 text-sm font-normal text-gray-500">
-                          {vendorName[po.vendor_id] ?? 'Unknown vendor'}
+                          {po.manufacturer_name}
                         </span>
                       </p>
                       <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500">
                         <span>{po.status}</span>
-                        {po.sent_at && (
+                        {po.placed_at && (
                           <span>
-                            Sent {new Date(po.sent_at).toLocaleDateString()}
-                            {po.sent_to_email ? ` to ${po.sent_to_email}` : ''}
+                            Placed {new Date(po.placed_at).toLocaleDateString()}
                           </span>
                         )}
                         {po.requested_ship_date && (
@@ -287,15 +268,7 @@ export default function SalesOrderDetailPage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Button
-                        variant={po.sent_at ? 'ghost' : 'default'}
-                        size="sm"
-                        onClick={() => setSendPOId(po.id)}
-                      >
-                        <PaperPlaneTilt className="w-4 h-4 mr-1.5" />
-                        {po.sent_at ? 'Resend' : 'Send'}
-                      </Button>
-                      <Button
-                        variant={po.acknowledged_at ? 'ghost' : 'outline'}
+                        variant={po.acknowledged_at ? 'ghost' : 'default'}
                         size="sm"
                         onClick={() => setAckPOId(po.id)}
                       >
@@ -310,26 +283,12 @@ export default function SalesOrderDetailPage() {
         </Tabs>
       </div>
 
-      <SendPurchaseOrderDialog
-        open={!!sendPOId}
-        onOpenChange={open => !open && setSendPOId(null)}
-        vendorPOId={sendPOId}
-        organizationId={order.organization_id}
-        dealerName={organizationName}
-        poNumber={sendingPO?.po_number}
-        vendorName={sendingPO ? vendorName[sendingPO.vendor_id] : null}
-        defaultEmail={
-          sendingPO ? vendorById[sendingPO.vendor_id]?.order_email : null
-        }
-        alreadySent={!!sendingPO?.sent_at}
-      />
-
       <AcknowledgmentDialog
         open={!!ackPOId}
         onOpenChange={open => !open && setAckPOId(null)}
         vendorPOId={ackPOId}
         poNumber={activePO?.po_number}
-        vendorName={activePO ? vendorName[activePO.vendor_id] : null}
+        manufacturerName={activePO?.manufacturer_name}
         requestedShipDate={activePO?.requested_ship_date}
         lineLabels={lineLabels}
       />

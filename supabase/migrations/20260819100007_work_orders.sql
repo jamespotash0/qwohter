@@ -123,7 +123,9 @@ CREATE TABLE IF NOT EXISTS public.work_orders (
 
   -- Exactly one of these performs the work.
   crew_id uuid REFERENCES public.crews(id) ON DELETE SET NULL,
-  subcontractor_vendor_id uuid REFERENCES public.vendors(id) ON DELETE SET NULL,
+  -- Text, not a reference. There is no vendor account to maintain: a
+  -- subcontractor is a name on the work order the crew lead reads.
+  subcontractor_name text,
 
   scheduled_start timestamptz,
   scheduled_end timestamptz,
@@ -155,7 +157,7 @@ CREATE TABLE IF NOT EXISTS public.work_orders (
 
   -- Own crew or a subcontractor, never both.
   CONSTRAINT work_orders_one_performer
-    CHECK (crew_id IS NULL OR subcontractor_vendor_id IS NULL),
+    CHECK (crew_id IS NULL OR subcontractor_name IS NULL),
 
   -- A scheduled work order has a time and someone to do it. Draft is where an
   -- incomplete one lives.
@@ -164,7 +166,7 @@ CREATE TABLE IF NOT EXISTS public.work_orders (
       status <> 'Scheduled'
       OR (scheduled_start IS NOT NULL
           AND scheduled_end IS NOT NULL
-          AND (crew_id IS NOT NULL OR subcontractor_vendor_id IS NOT NULL))
+          AND (crew_id IS NOT NULL OR subcontractor_name IS NOT NULL))
     )
 );
 
@@ -317,7 +319,7 @@ BEGIN
 
   INSERT INTO public.work_orders (
     organization_id, project_id, sales_order_id, work_order_number, work_type,
-    status, crew_id, subcontractor_vendor_id, scheduled_start, scheduled_end,
+    status, crew_id, subcontractor_name, scheduled_start, scheduled_end,
     site_name, site_address_line1, site_address_line2, site_city, site_state,
     site_postal_code, site_contact_name, site_contact_phone, access_notes,
     notes, created_by
@@ -330,7 +332,7 @@ BEGIN
     COALESCE(NULLIF(p_work_order->>'work_type', ''), 'Installation'),
     COALESCE(NULLIF(p_work_order->>'status', ''), 'Draft'),
     NULLIF(p_work_order->>'crew_id', '')::uuid,
-    NULLIF(p_work_order->>'subcontractor_vendor_id', '')::uuid,
+    NULLIF(p_work_order->>'subcontractor_name', ''),
     NULLIF(p_work_order->>'scheduled_start', '')::timestamptz,
     NULLIF(p_work_order->>'scheduled_end', '')::timestamptz,
     NULLIF(p_work_order->>'site_name', ''),
@@ -464,8 +466,7 @@ SELECT
   wo.crew_id,
   c.name AS crew_name,
   c.size AS crew_size,
-  wo.subcontractor_vendor_id,
-  v.name AS subcontractor_name,
+  wo.subcontractor_name,
   wo.site_name,
   wo.site_city,
   wo.site_state,
@@ -478,7 +479,7 @@ SELECT
   END AS crew_hours
 FROM public.work_orders wo
 LEFT JOIN public.crews c ON c.id = wo.crew_id
-LEFT JOIN public.vendors v ON v.id = wo.subcontractor_vendor_id;
+;
 
 COMMENT ON VIEW public.work_order_schedule IS
   'Work orders with their performer and duration resolved, for the scheduling board.';
