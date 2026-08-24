@@ -273,6 +273,66 @@ so a large credit is as visible as a large overcharge; both warrant a look.
 
 ---
 
+## Receiving
+
+`vendor_po → receipt → receipt_lines → order_line_events ('received')`
+
+A receipt is a real event in the world — a truck, on a date, with a bill of
+lading — so it gets a header rather than being a loose pile of events. That
+header is what a freight claim is filed against and what the packing slip
+attaches to.
+
+### Damaged product is not received
+
+The distinction the whole feature turns on:
+
+> **`quantity_received` means USABLE product.** Damage is recorded beside it and
+> deliberately does **not** count as received, because the line still needs that
+> quantity delivered.
+
+Recording 10 received with 2 damaged would report the line complete while a crew
+stands in front of two broken chairs. Verified: receiving 380 of 400 with 20
+damaged leaves `qty_to_receive` at 20.
+
+There is deliberately **no `damaged` event type**. Quantities in the event log
+answer "how much good product exists"; damage is a property of the delivery that
+produced it. Damage discovered *later*, after a clean receipt, is recorded the
+way every other correction is — a negative `received` event, which the
+append-only design already supports.
+
+Over-receiving is allowed. Manufacturers ship overages, and a clerk must be able
+to record what is physically on the dock rather than what the paperwork
+expected. `qty_to_receive` floors at zero so an overage never becomes negative
+outstanding work.
+
+### Scoping is automatic, not the caller's job
+
+`ReceiveDialog` scopes its lines to the manufacturer order being received
+against, derived from `po_lines` rather than passed in. Showing every
+outstanding line let a clerk record Steelcase product against a Haworth
+delivery — which saved cleanly, read as progress, and left the Steelcase order
+looking untouched while its product sat in the warehouse. That bug was found in
+browser testing and is why the scoping lives inside the component.
+
+Totals follow the **visible** lines, never the accumulated entry map: the scope
+narrows once the order's lines load, and seeding only ever adds keys. See
+`src/lib/pricing/receiving.ts`, extracted specifically so that rule is testable.
+
+### Derived receiving status
+
+`vendor_po_progress.derived_status` — from the portal number, acknowledgments,
+and receipts.
+
+One rule does **not** transfer from `sales_order_progress`, and copying it was a
+bug. A sales order is genuinely a draft until released, so `Draft` passes
+through there as a decision. A manufacturer order is different: the fan-out
+creates every one as `Draft` and no screen moves them on, so passing it through
+meant an order placed, acknowledged, and fully received still read `Draft`.
+Here `Draft` means no portal number and nothing recorded; evidence outranks it
+everywhere else, and only `Cancelled` is absolute.
+
+---
+
 ## Work orders
 
 The service half of the job. Product is bought through purchase orders; delivery
@@ -568,7 +628,8 @@ Two behavior changes came with the consolidation:
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
 | Attachments UI | `src/components/features/attachments/EntityAttachments.tsx` |
-| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql`, `20260821110000_allocate_document_number.sql`, `20260821110001_order_status_from_events.sql` |
+| Receiving | `src/services/receiptsService.ts`, `src/hooks/queries/useReceipts.ts`, `src/lib/pricing/receiving.ts` |
+| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql`, `20260821110000_allocate_document_number.sql`, `20260821110001_order_status_from_events.sql`, `20260824100000_receipts.sql` |
 | Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
 
 ---

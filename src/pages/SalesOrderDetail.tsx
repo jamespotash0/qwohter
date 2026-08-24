@@ -9,7 +9,14 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardText, Storefront, ListChecks, Paperclip } from '@phosphor-icons/react';
+import {
+  ArrowLeft,
+  ClipboardText,
+  Storefront,
+  ListChecks,
+  Paperclip,
+  Package,
+} from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +31,8 @@ import {
 import { FanOutPanel } from '@/components/features/orders/FanOutPanel';
 import { AcknowledgmentDialog } from '@/components/features/orders/AcknowledgmentDialog';
 import { EntityAttachments } from '@/components/features/attachments/EntityAttachments';
+import { ReceiveDialog } from '@/components/features/orders/ReceiveDialog';
+import { usePOProgress } from '@/hooks/queries/useReceipts';
 import { cn } from '@/lib/utils';
 
 export default function SalesOrderDetailPage() {
@@ -35,8 +44,11 @@ export default function SalesOrderDetailPage() {
   const { data: fulfillment = {} } = useOrderFulfillment(orderId);
   const { data: pos = [] } = useVendorPOs(orderId);
   const { data: progress = {} } = useOrderProgress(order?.organization_id);
+  // Receiving status per manufacturer order, derived the same way.
+  const { data: poProgress = {} } = usePOProgress(orderId);
 
   const [ackPOId, setAckPOId] = useState<string | null>(null);
+  const [receivePOId, setReceivePOId] = useState<string | null>(null);
 
   const lineLabels = useMemo(
     () => Object.fromEntries(lines.map(l => [l.id, l.description])),
@@ -54,6 +66,7 @@ export default function SalesOrderDetailPage() {
   }, [lines]);
 
   const activePO = pos.find(p => p.id === ackPOId);
+  const receivingPO = pos.find(p => p.id === receivePOId);
 
   if (isLoading) {
     return (
@@ -259,7 +272,13 @@ export default function SalesOrderDetailPage() {
                         </span>
                       </p>
                       <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500">
-                        <span>{po.status}</span>
+                        <span>{poProgress[po.id]?.derived_status ?? po.status}</span>
+                        {Number(poProgress[po.id]?.qty_received ?? 0) > 0 && (
+                          <span>
+                            {Number(poProgress[po.id]?.qty_received)} of{' '}
+                            {Number(poProgress[po.id]?.qty_ordered)} received
+                          </span>
+                        )}
                         {po.placed_at && (
                           <span>
                             Placed {new Date(po.placed_at).toLocaleDateString()}
@@ -281,6 +300,14 @@ export default function SalesOrderDetailPage() {
                       >
                         {po.acknowledged_at ? 'Update ack' : 'Record ack'}
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReceivePOId(po.id)}
+                      >
+                        <Package className="w-4 h-4 mr-1.5" />
+                        Receive
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -299,6 +326,16 @@ export default function SalesOrderDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ReceiveDialog
+        open={!!receivePOId}
+        onOpenChange={open => !open && setReceivePOId(null)}
+        organizationId={order.organization_id}
+        salesOrderId={order.id}
+        vendorPOId={receivePOId}
+        poNumber={receivingPO?.po_number}
+        manufacturerName={receivingPO?.manufacturer_name}
+      />
 
       <AcknowledgmentDialog
         open={!!ackPOId}

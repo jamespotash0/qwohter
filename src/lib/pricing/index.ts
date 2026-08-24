@@ -46,6 +46,14 @@ export {
 
 export { summarizeVariance, sortVarianceQueue, varianceAmount } from './variance';
 
+export { summarizeReceipt, buildReceiptLines } from './receiving';
+
+export type {
+  ReceiptEntry,
+  ReceiptTotals,
+  ReceiptLinePayload,
+} from './receiving';
+
 export type {
   VarianceStatus,
   VarianceLine,

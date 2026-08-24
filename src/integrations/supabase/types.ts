@@ -2037,6 +2037,13 @@ export type Database = {
             foreignKeyName: "po_lines_vendor_po_id_fkey"
             columns: ["vendor_po_id"]
             isOneToOne: false
+            referencedRelation: "vendor_po_progress"
+            referencedColumns: ["vendor_po_id"]
+          },
+          {
+            foreignKeyName: "po_lines_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
             referencedRelation: "vendor_pos"
             referencedColumns: ["id"]
           },
@@ -3336,6 +3343,155 @@ export type Database = {
           },
         ]
       }
+      receipt_lines: {
+        Row: {
+          created_at: string
+          damage_notes: string | null
+          id: string
+          notes: string | null
+          order_line_id: string
+          organization_id: string
+          quantity_damaged: number
+          quantity_received: number
+          receipt_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          damage_notes?: string | null
+          id?: string
+          notes?: string | null
+          order_line_id: string
+          organization_id: string
+          quantity_damaged?: number
+          quantity_received?: number
+          receipt_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          damage_notes?: string | null
+          id?: string
+          notes?: string | null
+          order_line_id?: string
+          organization_id?: string
+          quantity_damaged?: number
+          quantity_received?: number
+          receipt_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_line_fulfillment"
+            referencedColumns: ["order_line_id"]
+          },
+          {
+            foreignKeyName: "receipt_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_lines_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipts: {
+        Row: {
+          bill_of_lading: string | null
+          carrier: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          received_by: string | null
+          received_date: string
+          sales_order_id: string
+          tracking_number: string | null
+          updated_at: string
+          vendor_po_id: string | null
+        }
+        Insert: {
+          bill_of_lading?: string | null
+          carrier?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          received_by?: string | null
+          received_date?: string
+          sales_order_id: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_po_id?: string | null
+        }
+        Update: {
+          bill_of_lading?: string | null
+          carrier?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          received_by?: string | null
+          received_date?: string
+          sales_order_id?: string
+          tracking_number?: string | null
+          updated_at?: string
+          vendor_po_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "receipts_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_po_progress"
+            referencedColumns: ["vendor_po_id"]
+          },
+          {
+            foreignKeyName: "receipts_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_orders: {
         Row: {
           company_id: string | null
@@ -4423,6 +4579,7 @@ export type Database = {
           qty_received: number | null
           qty_shipped: number | null
           qty_to_order: number | null
+          qty_to_receive: number | null
           quantity_ordered_total: number | null
           sales_order_id: string | null
         }
@@ -4495,6 +4652,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_lines_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_po_progress"
+            referencedColumns: ["vendor_po_id"]
           },
           {
             foreignKeyName: "po_lines_vendor_po_id_fkey"
@@ -4664,6 +4828,42 @@ export type Database = {
           status: string | null
         }
         Relationships: []
+      }
+      vendor_po_progress: {
+        Row: {
+          derived_status: string | null
+          line_count: number | null
+          lines_acknowledged: number | null
+          organization_id: string | null
+          qty_ordered: number | null
+          qty_received: number | null
+          sales_order_id: string | null
+          stored_status: string | null
+          vendor_po_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_pos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "vendor_pos_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_order_schedule: {
         Row: {
@@ -4864,6 +5064,10 @@ export type Database = {
         Returns: {
           org_id: string
         }[]
+      }
+      create_receipt_with_lines: {
+        Args: { p_lines: Json; p_receipt: Json }
+        Returns: string
       }
       create_sales_order_with_lines: {
         Args: { p_lines: Json; p_order: Json }

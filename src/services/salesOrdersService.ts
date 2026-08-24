@@ -106,6 +106,8 @@ export interface OrderLineFulfillment {
   qty_installed: number;
   qty_invoiced: number;
   qty_to_order: number;
+  /** Ordered minus received. Never negative, so an overage is not owed work. */
+  qty_to_receive: number;
 }
 
 export interface CreateSalesOrderInput {
