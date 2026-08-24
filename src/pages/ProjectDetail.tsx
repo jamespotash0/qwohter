@@ -13,6 +13,7 @@
  * somebody has stopped looking at.
  */
 
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -23,6 +24,8 @@ import {
   ArrowsClockwise,
   Paperclip,
   Warning,
+  Wrench,
+  Plus,
 } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
@@ -31,8 +34,10 @@ import { formatCurrency } from '@/lib/pricing';
 import { fetchBoardItemById } from '@/services/boardService';
 import { useProjectProgress } from '@/hooks/queries/useProjectHub';
 import { useSalesOrdersForProject } from '@/hooks/queries/useSalesOrders';
+import { useWorkOrdersForProject } from '@/hooks/queries/useWorkOrders';
 import { ProjectActivityFeed } from '@/components/features/projects/ProjectActivityFeed';
 import { ChangeOrdersPanel } from '@/components/features/projects/ChangeOrdersPanel';
+import { WorkOrderDialog } from '@/components/features/projects/WorkOrderDialog';
 import { EntityAttachments } from '@/components/features/attachments/EntityAttachments';
 import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { cn } from '@/lib/utils';
@@ -61,6 +66,8 @@ export default function ProjectDetailPage() {
 
   const { data: progress } = useProjectProgress(projectId);
   const { data: orders = [] } = useSalesOrdersForProject(projectId);
+  const { data: workOrders = [] } = useWorkOrdersForProject(projectId);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const organizationId = project?.organization_id;
   const proposal = (project as { proposal?: Record<string, unknown> } | undefined)
@@ -240,6 +247,10 @@ export default function ProjectDetailPage() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="sitework">
+              <Wrench className="w-4 h-4 mr-1.5" />
+              Site work ({workOrders.length})
+            </TabsTrigger>
             <TabsTrigger value="files">
               <Paperclip className="w-4 h-4 mr-1.5" />
               Files
@@ -307,6 +318,76 @@ export default function ProjectDetailPage() {
             />
           </TabsContent>
 
+          {/* The labor half of the job: who is going, when, and whether the
+              building will let them in. */}
+          <TabsContent value="sitework" className="mt-4">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Site work
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Self-performed and subcontracted lines, crewed onto days.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setScheduleOpen(true)}
+                  disabled={orders.length === 0}
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Schedule work
+                </Button>
+              </div>
+
+              {workOrders.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-10 text-center text-sm text-gray-500">
+                  {orders.length === 0
+                    ? 'Nothing sold on this project needs crewing yet.'
+                    : 'No site work scheduled. Only self-performed and subcontracted lines can be crewed.'}
+                </p>
+              ) : (
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  {workOrders.map((wo, index) => (
+                    <div
+                      key={wo.id}
+                      className={cn(
+                        'flex flex-wrap items-center gap-4 px-4 py-3',
+                        index > 0 && 'border-t border-gray-100 dark:border-gray-700/50'
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {wo.work_order_number ?? wo.work_type}
+                          <span className="ml-2 text-sm font-normal text-gray-500">
+                            {wo.status}
+                          </span>
+                        </p>
+                        <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500">
+                          {wo.scheduled_start && (
+                            <span>
+                              {new Date(wo.scheduled_start).toLocaleString()}
+                            </span>
+                          )}
+                          {wo.site_name && <span>{wo.site_name}</span>}
+                          {wo.subcontractor_name && (
+                            <span>{wo.subcontractor_name}</span>
+                          )}
+                          {!wo.access_notes && (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              No access notes
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
           <TabsContent value="files" className="mt-4">
             <EntityAttachments
               organizationId={organizationId}
@@ -317,6 +398,19 @@ export default function ProjectDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <WorkOrderDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        organizationId={organizationId}
+        projectId={projectId}
+        salesOrderId={orders[0]?.id ?? null}
+        defaultSite={{
+          name: orders[0]?.ship_to_name,
+          city: orders[0]?.ship_to_city,
+          state: orders[0]?.ship_to_state,
+        }}
+      />
     </PageContent>
   );
 }

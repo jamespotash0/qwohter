@@ -9,6 +9,7 @@ import {
   CalendarBlankIcon,
   Package,
   ClipboardText,
+  Wrench,
 } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -49,6 +50,8 @@ const menuItems: MenuItem[] = [
   { title: "Orders", icon: Package, path: "/orders", roles: ALL_ROLES },
   // PO lines a vendor has not answered, or answered at a different price or date.
   { title: "Acknowledgments", icon: ClipboardText, path: "/acknowledgments", roles: ALL_ROLES },
+  // A week of site work by crew. Double-booking is refused by the database.
+  { title: "Schedule", icon: Wrench, path: "/schedule", roles: ALL_ROLES },
   { title: "Forms", icon: SquaresFour, path: "/forms", roles: ALL_ROLES },
   { title: "Analytics", icon: ChartBar, path: "/analytics", roles: ALL_ROLES },
   // Products - HIDDEN for now

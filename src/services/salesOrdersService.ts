@@ -533,3 +533,44 @@ export async function recordOrderLineEvents(
     throw new Error(`Failed to record events: ${error.message}`);
   }
 }
+
+// ============================================================================
+// Observed discount rates
+// ============================================================================
+
+export interface ObservedRateRow {
+  organization_id: string;
+  manufacturer_name: string | null;
+  series_name: string | null;
+  contract_vehicle: string | null;
+  line_count: number;
+  discount_percent: number;
+  assumed_discount_percent: number | null;
+  drift_percent: number | null;
+  min_discount_percent: number;
+  max_discount_percent: number;
+  last_seen_at: string | null;
+}
+
+/**
+ * Discount rates as manufacturers have actually acknowledged them, beside the
+ * rate the quote assumed.
+ *
+ * Empty is a meaningful answer: a dealer who has recorded no acknowledgments
+ * has no evidence, which is different from having no drift.
+ */
+export async function getObservedRates(
+  organizationId: string
+): Promise<ObservedRateRow[]> {
+  const { data, error } = await supabase
+    .from('observed_vendor_discounts')
+    .select('*')
+    .eq('organization_id', organizationId);
+
+  if (error) {
+    console.error('[salesOrdersService] getObservedRates failed:', error);
+    throw new Error(`Failed to load discount rates: ${error.message}`);
+  }
+
+  return (data || []) as unknown as ObservedRateRow[];
+}

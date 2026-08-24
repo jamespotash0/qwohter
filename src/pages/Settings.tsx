@@ -12,6 +12,7 @@ import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
 import { TeamTab } from "@/components/features/settings/TeamTab";
 import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { NotificationsTab } from "@/components/features/settings/NotificationsTab";
+import { CrewsTab } from "@/components/features/settings/CrewsTab";
 import { PaymentsTab } from "@/components/features/settings/PaymentsTab";
 import { useAvailableSettingsTabs } from "@/components/features/settings/settingsTabs";
 
@@ -93,6 +94,10 @@ const Settings = () => {
             onOrganizationUpdate={refetchOrganization}
           />
         );
+      case 'crews':
+        // The dealer's own install crews — the cost side of self-performed work,
+        // and a prerequisite for scheduling anything.
+        return <CrewsTab organizationId={organization?.id} />;
       case 'payments':
         return (
           <PaymentsTab

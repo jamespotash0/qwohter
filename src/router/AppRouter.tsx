@@ -179,6 +179,7 @@ const ProposalFiller = lazy(() => import("@/pages/ProposalFiller"));
 // Board pages
 const Board = lazy(() => import("@/pages/Board"));
 const ProjectDetail = lazy(() => import("@/pages/ProjectDetail"));
+const Schedule = lazy(() => import("@/pages/Schedule"));
 const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 
 // Contacts page
@@ -312,6 +313,7 @@ export const AppRouter = () => (
           {/* Board workflow */}
           <Route path="/project-board" element={<Board />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
+          <Route path="/schedule" element={<Schedule />} />
           <Route path="/task-board" element={<TaskBoard />} />
 
           {/* Contacts CRM */}

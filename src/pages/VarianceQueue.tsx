@@ -19,6 +19,7 @@ import { useCurrentOrganization } from '@/hooks/queries';
 import { useVarianceQueue } from '@/hooks/queries/useVarianceQueue';
 import { VarianceSummaryCards } from '@/components/features/variance/VarianceSummaryCards';
 import { VarianceTable } from '@/components/features/variance/VarianceTable';
+import { RateDriftPanel } from '@/components/features/variance/RateDriftPanel';
 
 export default function VarianceQueuePage() {
   const user = useUser();
@@ -74,6 +75,13 @@ export default function VarianceQueuePage() {
             ranks alongside an overcharge — both are money moving unexpectedly.
           </p>
         )}
+
+        {/* The systemic reading of the same data: not "this line is off" but
+            "this series has been off all year, and every quote against it was
+            wrong by the same amount". */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-5">
+          <RateDriftPanel organizationId={organization?.id} />
+        </div>
       </div>
     </PageContent>
   );

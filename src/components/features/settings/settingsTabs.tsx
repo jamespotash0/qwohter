@@ -40,6 +40,7 @@ const ALL_TABS: SettingsTab[] = [
   { id: "notifications", label: "Notifications", group: GROUP_MY_ACCOUNT },
   { id: "appearance", label: "Appearance", group: GROUP_MY_ACCOUNT },
   { id: "organization", label: "Organization", group: GROUP_ORGANIZATION, requiresPermission: "organization", requiresSubscription: true },
+  { id: "crews", label: "Crews", group: GROUP_ORGANIZATION, requiresPermission: "crews", requiresSubscription: true },
   { id: "team", label: "Team", group: GROUP_ORGANIZATION, requiresPermission: "team", requiresSubscription: true },
   { id: "security", label: "Permissions", group: GROUP_ORGANIZATION, requiresPermission: "security", requiresSubscription: true },
   { id: "integrations", label: "Integrations", group: GROUP_ORGANIZATION, requiresPermission: "organization", requiresSubscription: true },

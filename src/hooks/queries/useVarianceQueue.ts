@@ -11,6 +11,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getObservedRates, type ObservedRateRow } from '@/services/salesOrdersService';
 import { toast } from '@/components/ui/sonner';
 import {
   getVarianceQueue,
@@ -20,12 +21,19 @@ import {
   type POLineVariance,
   type AcknowledgeLineInput,
 } from '@/services/vendorPOService';
-import { summarizeVariance, type VarianceSummary } from '@/lib/pricing';
+import {
+  summarizeVariance,
+  findDriftingRates,
+  type VarianceSummary,
+  type ObservedRate,
+} from '@/lib/pricing';
 
 export type { POLineVariance } from '@/services/vendorPOService';
 export type { VarianceSummary } from '@/lib/pricing';
 
 export const varianceQueryKeys = {
+  observedRates: (organizationId: string) =>
+    ['variance', 'observed-rates', organizationId] as const,
   all: ['variance'] as const,
   queue: (organizationId: string, includeMatched: boolean) =>
     [...varianceQueryKeys.all, 'queue', organizationId, includeMatched] as const,
@@ -132,4 +140,43 @@ export function useAcknowledgePOLines() {
         description: error instanceof Error ? error.message : 'Unknown error',
       }),
   });
+}
+
+/**
+ * Series whose configured discount has drifted from what manufacturers actually
+ * acknowledge, worst first.
+ *
+ * A single line acknowledged light is a nuisance; a SERIES running light for a
+ * year means every quote written against it was wrong, and the fix is one
+ * number in the specification tool rather than a renegotiation.
+ */
+export function useRateDrift(organizationId?: string) {
+  const query = useQuery({
+    queryKey: varianceQueryKeys.observedRates(organizationId ?? '__pending__'),
+    enabled: !!organizationId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<ObservedRateRow[]> => {
+      if (!organizationId) return [];
+      return getObservedRates(organizationId);
+    },
+  });
+
+  const drift = useMemo(() => {
+    const rates: ObservedRate[] = (query.data ?? []).map(row => ({
+      manufacturerName: row.manufacturer_name ?? '',
+      seriesName: row.series_name,
+      contractVehicle: row.contract_vehicle,
+      discountPercent: Number(row.discount_percent),
+      assumedDiscountPercent:
+        row.assumed_discount_percent === null ? null : Number(row.assumed_discount_percent),
+      driftPercent: row.drift_percent === null ? null : Number(row.drift_percent),
+      minDiscountPercent: Number(row.min_discount_percent),
+      maxDiscountPercent: Number(row.max_discount_percent),
+      lineCount: Number(row.line_count),
+      lastSeenAt: row.last_seen_at,
+    }));
+    return findDriftingRates(rates);
+  }, [query.data]);
+
+  return { drift, rateCount: query.data?.length ?? 0, isLoading: query.isLoading };
 }

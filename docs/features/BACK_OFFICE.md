@@ -273,6 +273,122 @@ so a large credit is as visible as a large overcharge; both warrant a look.
 
 ---
 
+## Shipments and carrier tracking
+
+`vendor_po → shipment → shipment_lines → order_line_events ('shipped')`
+
+Between "the factory acknowledged it" and "it is on our dock" there is a three-
+to-six week hole. A dealer closes it by phone: call the factory, get a PRO
+number, call the freight line, read a website, write the date on a sticky note.
+Shipments close that hole.
+
+### A shipment is not a receipt
+
+The rule the whole feature turns on, and the sibling of the damage rule above:
+
+> **A carrier saying "Delivered" means the truck stopped at the address.** It
+> does not mean anyone counted what came off it, and it does not mean the
+> product is usable.
+
+So a `delivered` tracking status writes **no** `received` events. It raises
+`shipment_progress.awaiting_receipt` and waits for a human. A job that reads
+complete before anyone opened a box is exactly what this spine exists to
+prevent.
+
+### Observed vs. entered
+
+Two kinds of field live on a shipment, written by different people:
+
+| Written by a human | Written only by the tracking functions |
+|--------------------|----------------------------------------|
+| `vendor_po_id`, `carrier_code`, `carrier_name` | `tracking_status`, `tracking_status_detail` |
+| `tracking_number`, `pro_number`, `bill_of_lading` | `tracking_location`, `estimated_delivery_date` |
+| `ship_date`, `piece_count`, `weight_lbs`, `notes` | `delivered_at`, `last_checked_at`, `tracking_error` |
+
+`apply_tracking_update` is `SECURITY DEFINER` and granted to `service_role`
+only — explicitly revoked from `authenticated`. The moment a person can type
+`Delivered`, "delivered" stops meaning "the carrier scanned it" and the record
+is worthless in a freight claim. `shipment_tracking_events` has a SELECT policy
+and no others, for the same reason.
+
+`updateShipment()` in the service accepts only the left-hand column. The type is
+a `Pick`, not a `Partial<Shipment>`.
+
+### Freight identity is two numbers
+
+Parcel has a tracking number. LTL has a **PRO number** and a bill of lading, and
+the PRO is what the freight line's API actually answers to. Storing one text
+field could not track a single pallet. Both are stored, and the lookup prefers
+the PRO.
+
+### Carriers with nobody to ask
+
+An own truck, an installer, a white-glove delivery agent — `carrier_code` is
+`own-truck` or `delivery-agent`, `tracking_provider` is `manual`, and the status
+is moved by hand. The `shipments_identifiable` CHECK exempts manual carriers
+from needing a number, because demanding one is how `N/A` ends up in a tracking
+field. The poller skips them and the UI never shows them as stale.
+
+### The provider is pluggable
+
+`TRACKING_PROVIDER` selects it; the adapters live in
+`supabase/functions/_shared/tracking/`. AfterShip is the default because it is
+tracking-*only* and covers the LTL freight lines most contract furniture
+actually moves on. EasyPost is the alternate, priced per tracker. Provider
+statuses are normalized in the adapter and never reach the client.
+
+The provider's identifiers are stored per shipment (`tracking_provider`,
+`provider_tracking_id`), so switching vendors is a secret change, not a
+migration.
+
+### Polling cadence
+
+`shipments_due_for_tracking()` is the work queue, and the cadence varies by
+status because the information does:
+
+| Status | Re-checked after |
+|--------|------------------|
+| `out_for_delivery` | 1 hour |
+| `attempt_failed` | 2 hours |
+| `in_transit`, `available_for_pickup` | 4 hours |
+| `exception` | 6 hours |
+| `pending`, `info_received` | 12 hours |
+| `delivered` | 24 hours, for 14 days |
+
+Delivered shipments keep getting checked for a fortnight: damage exceptions and
+re-deliveries land *after* the delivery scan, and that late exception is the
+most expensive thing a dealer can miss. Polling stops entirely once
+`qty_uncounted` reaches zero, or when the carrier reports `expired`.
+
+`refresh-shipment-tracking` runs hourly via pg_cron; the queue function, not the
+schedule, is what keeps the quota from being spent on freight nobody is waiting
+for.
+
+### What needs a human
+
+`describeTracking()` in `src/lib/tracking/status.ts` ranks shipments by what
+costs the most to miss, not by date:
+
+1. `exception` — the carrier flagged it, or a delivery attempt failed
+2. `uncounted` — delivered, and no receipt recorded against it
+3. `late` — past its ETA and not delivered
+4. `unreachable` — the last lookup failed, so this is the *absence* of news
+
+Staleness is separate: a non-manual shipment unchecked for over 24 hours is
+marked stale rather than presented as current.
+
+### Receiving against a shipment
+
+`receipts.shipment_id` closes the loop. When receiving is opened from a tracked
+shipment, `ReceiveDialog` scopes its lines to that shipment's manifest — the
+tightest scope there is, narrower than everything the manufacturer still owes.
+
+The manifest itself is optional throughout. A tracking number that arrived by
+email with no line list is still worth watching, and refusing to save one until
+someone types quantities is how tracking numbers end up in a spreadsheet.
+
+---
+
 ## Receiving
 
 `vendor_po → receipt → receipt_lines → order_line_events ('received')`
@@ -330,6 +446,42 @@ creates every one as `Draft` and no screen moves them on, so passing it through
 meant an order placed, acknowledged, and fully received still read `Draft`.
 Here `Draft` means no portal number and nothing recorded; evidence outranks it
 everywhere else, and only `Cancelled` is absolute.
+
+---
+
+## Scheduling
+
+**Screen:** `/schedule` — a week of site work by crew.
+
+This is the screen that decides whether an install day happens. The two most
+expensive routine mistakes a dealer makes are sending a crew to a building that
+is not ready, and sending two crews to the same place because a spreadsheet was
+out of date.
+
+**The second one is impossible, not discouraged.** Crews are held against
+overlapping bookings by a Postgres exclusion constraint, so the UI cannot create
+one even if it tries. Verified: a second booking overlapping the same crew is
+refused by `work_orders_no_crew_double_booking`, while a next-day booking on the
+same crew is accepted. The service translates that rejection into
+`CrewDoubleBookedError` so the dialog names the crew rather than a constraint.
+
+**Site access is on the card, not behind a click.** Dock hours, elevator
+reservations, and COI requirements are why a crew gets turned away at the door,
+and a work order missing them is flagged in amber on the board. A detail a
+dispatcher has to go looking for is one they will not check.
+
+Subcontracted work gets its own lane rather than being dropped — it has no
+`crew_id`, but it still occupies a day on site and still needs the dock.
+
+Crews live in **Settings › Crews**. `hourly_cost` is the *burdened* rate —
+wages, truck, insurance, overhead — because it is the cost side of every
+self-performed line and job costing is wrong by whatever it is understated by.
+An unset rate renders as "Not set", never as $0.00.
+
+`WORK_TYPES` in the scheduling dialog is typed as `WorkType`, so the compiler
+holds it against the database CHECK constraint. An earlier hand-written version
+had `'Install'`, which is not a valid value — every save would have been
+rejected at runtime.
 
 ---
 
@@ -517,6 +669,23 @@ Lines with no acknowledgment contribute nothing, so a dealer who has recorded no
 acks gets an **empty view** — which correctly reads as *no evidence* rather than
 *no drift*.
 
+### The drift screen
+
+`findDriftingRates()` is surfaced at the bottom of `/acknowledgments`. It reads
+*"you quote 55%, they give 48%, 7 points across 7 lines"* per manufacturer and
+series.
+
+Three states, deliberately distinct:
+
+| State | What it says |
+|-------|--------------|
+| No acknowledged costs | "Nothing to measure against" — **not** "no drift" |
+| Rates agree | Confirms across N combinations |
+| Drift found | The table, worst first, severity down the edge |
+
+The first is the one that matters: saying everything is fine when there is no
+evidence would be the most expensive kind of wrong.
+
 ### Two readings of the same data
 
 `findDriftingRates()` surfaces the systemic finding: series whose config has
@@ -629,8 +798,12 @@ Two behavior changes came with the consolidation:
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
 | Attachments UI | `src/components/features/attachments/EntityAttachments.tsx` |
 | Receiving | `src/services/receiptsService.ts`, `src/hooks/queries/useReceipts.ts`, `src/lib/pricing/receiving.ts` |
-| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql`, `20260821110000_allocate_document_number.sql`, `20260821110001_order_status_from_events.sql`, `20260824100000_receipts.sql` |
-| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts` |
+| Shipments | `src/services/shipmentsService.ts`, `src/hooks/queries/useShipments.ts`, `src/lib/tracking/` |
+| Shipment UI | `src/components/features/orders/ShipmentDialog.tsx`, `ShipmentsPanel.tsx`, `TrackingTimeline.tsx` |
+| Tracking adapters | `supabase/functions/_shared/tracking/` (`provider.ts`, `aftership.ts`, `easypost.ts`, `carriers.ts`) |
+| Tracking functions | `supabase/functions/track-shipment/`, `refresh-shipment-tracking/`, `tracking-webhook/` |
+| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql`, `20260821110000_allocate_document_number.sql`, `20260821110001_order_status_from_events.sql`, `20260824100000_receipts.sql`, `20260824120000_shipments.sql` |
+| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts`, `src/test/lib/tracking.test.ts` |
 
 ---
 
