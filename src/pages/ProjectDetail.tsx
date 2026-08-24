@@ -38,6 +38,7 @@ import { useWorkOrdersForProject } from '@/hooks/queries/useWorkOrders';
 import { ProjectActivityFeed } from '@/components/features/projects/ProjectActivityFeed';
 import { ChangeOrdersPanel } from '@/components/features/projects/ChangeOrdersPanel';
 import { WorkOrderDialog } from '@/components/features/projects/WorkOrderDialog';
+import { CompleteWorkOrderDialog } from '@/components/features/projects/CompleteWorkOrderDialog';
 import { EntityAttachments } from '@/components/features/attachments/EntityAttachments';
 import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,7 @@ export default function ProjectDetailPage() {
   const { data: orders = [] } = useSalesOrdersForProject(projectId);
   const { data: workOrders = [] } = useWorkOrdersForProject(projectId);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [completing, setCompleting] = useState<string | null>(null);
 
   const organizationId = project?.organization_id;
   const proposal = (project as { proposal?: Record<string, unknown> } | undefined)
@@ -381,6 +383,19 @@ export default function ProjectDetailPage() {
                           )}
                         </div>
                       </div>
+                      {/* Completing writes the 'installed' events that move the
+                          job to Ready to bill. Without it a job can be
+                          scheduled but never finished. */}
+                      {wo.status !== 'Complete' && wo.status !== 'Cancelled' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => setCompleting(wo.id)}
+                        >
+                          Close out
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -398,6 +413,15 @@ export default function ProjectDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <CompleteWorkOrderDialog
+        open={!!completing}
+        onOpenChange={open => !open && setCompleting(null)}
+        workOrder={workOrders.find(w => w.id === completing) ?? null}
+        salesOrderId={
+          workOrders.find(w => w.id === completing)?.sales_order_id ?? orders[0]?.id ?? null
+        }
+      />
 
       <WorkOrderDialog
         open={scheduleOpen}

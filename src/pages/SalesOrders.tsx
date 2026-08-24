@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Package } from '@phosphor-icons/react';
+import { Plus, Package, UploadSimple } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +26,9 @@ import {
   useOrderProgress,
 } from '@/hooks/queries/useSalesOrders';
 import { CreateOrderDialog } from '@/components/features/orders/CreateOrderDialog';
+import { ImportSpecDialog } from '@/components/features/orders/ImportSpecDialog';
+import { createSalesOrderWithLines } from '@/services/salesOrdersService';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -52,6 +55,8 @@ export default function SalesOrdersPage() {
   const { data: proposals = [] } = useProposals(organizationId, { status: 'Won' });
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState('');
 
   // Only won proposals can become an order, and only those that have a project
@@ -92,6 +97,19 @@ export default function SalesOrdersPage() {
               )}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            disabled={!selectedProposalId}
+            title={
+              selectedProposalId
+                ? undefined
+                : 'Pick the won proposal this specification belongs to'
+            }
+          >
+            <UploadSimple className="w-4 h-4 mr-1.5" />
+            Import spec
+          </Button>
           <Button
             onClick={() => setCreateOpen(true)}
             disabled={!selectedProposalId}
@@ -164,6 +182,41 @@ export default function SalesOrdersPage() {
       )}
 
       {organizationId && (
+        <>
+        <ImportSpecDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          isImporting={importing}
+          onImport={async (lines, fileName) => {
+            if (!organizationId || !projectId) return;
+            setImporting(true);
+            try {
+              const orderId = await createSalesOrderWithLines(
+                {
+                  organization_id: organizationId,
+                  project_id: projectId,
+                  proposal_id: selectedProposalId || null,
+                  status: 'Draft',
+                  notes: `Imported from ${fileName}`,
+                },
+                lines
+              );
+              toast.success('Specification imported', {
+                description: `${lines.length} lines`,
+              });
+              setImportOpen(false);
+              navigate(`/orders/${orderId}`);
+            } catch (error) {
+              toast.error('Could not import the specification', {
+                description:
+                  error instanceof Error ? error.message : 'Unknown error',
+              });
+            } finally {
+              setImporting(false);
+            }
+          }}
+        />
+
         <CreateOrderDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
@@ -176,6 +229,7 @@ export default function SalesOrdersPage() {
             navigate(`/orders/${id}`);
           }}
         />
+        </>
       )}
     </PageContent>
   );

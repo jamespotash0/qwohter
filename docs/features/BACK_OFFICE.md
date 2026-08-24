@@ -67,6 +67,59 @@ say* but *what is this costing me*.
 
 ---
 
+## Specification import
+
+**Screen:** Orders › Import spec. `src/lib/sif/`
+
+Deliberately **tolerant rather than a parser for one dialect.** SIF is a family
+of formats, not a single one — it varies by tool, by version, and by which
+catalog produced it — so a parser hard-coded to one layout silently mis-reads
+every other. The importer detects the shape, shows what it found, and asks a
+person to confirm the column mapping.
+
+That mapping step is not a fallback. A dealer's first import is also how they
+discover their tool exports something unexpected, and finding out then is far
+cheaper than finding out after 500 lines have landed wrong.
+
+### What it gets right, and why it matters
+
+| Behaviour | Why |
+|---|---|
+| Quoted fields survive splitting | `"48W, 30D, LH"` is **one** field. Split it and the factory builds a different desk |
+| Delimiter chosen by *consistency*, not frequency | A tab file full of prose commas has more commas than tabs |
+| `List Price` beats a bare `Price` column | Mapping the wrong one makes every downstream margin wrong |
+| Each column claimed once | A file with two `Part` columns cannot map both to the same field |
+| `$1,234.56`, `55%`, `(250.00)` all parse | Exports are shaped for spreadsheets, not machines |
+| Short rows padded, not dropped | Exporters routinely omit a trailing empty field |
+
+### Cost resolution, and the failure it refuses to hide
+
+In order of what the file actually said:
+
+1. an explicit cost column
+2. list price less a discount **the file carried**
+3. list price less a discount **the importer was given**
+
+If none apply, the line imports at list and **says so** in the rejected list.
+A line imported at zero or list cost reads as pure margin, and a job quoted off
+it loses money in a way nobody notices until the invoice — so nothing is ever
+dropped or priced silently. `parseNumber` returns `null`, never `0`, for the
+same reason.
+
+Imported lines route as `purchase`: a specification file describes product.
+Labor and freight are the dealer's own additions, never exported by the spec
+tool.
+
+> **Still needed:** a real `.sif` export from each tool a target dealer uses, as
+> a golden-file fixture. The reference PDF in `docs/reference/` is Herman
+> Miller's catalog *release notes* — lead-time flags, finish changes, catalog
+> codes — not an export and not a format spec. It does confirm SIF's three-file
+> anatomy (Top `SL`, Key `PD`, Opt `OD`) and that Herman Miller processes POs
+> through Omni Order Manager, which is the portal thesis this back office is
+> built on.
+
+---
+
 ## Order numbers
 
 Allocated by `allocate_document_number(org, type)`, which increments a counter
