@@ -556,3 +556,79 @@ created_at        timestamptz
 UNIQUE (organization_id, reference) ON project_tasks
 UNIQUE (organization_id, slug) ON task_board_columns
 ```
+
+---
+
+## The project as the hub
+
+Once a quote is won the project stops being a card on a board. Everything a
+dealer does afterwards already carries its id — sales orders, manufacturer
+orders, receipts, work orders, tasks, attachments, payment jobs — and
+`/projects/:projectId` is where that graph is read back as one thing.
+
+The board overlay stays for quick edits and links through to it.
+
+### Two statuses, on purpose
+
+| | What it is |
+|---|---|
+| `projects.workflow_status` | The Kanban column somebody dragged the card into. An **intention** |
+| `project_progress.stage` | Derived from what has actually happened. A **fact** |
+
+They disagree constantly, and the disagreement is the useful part: a job sitting
+in "Installing" with nothing received is a job somebody has stopped looking at.
+`workflow_status` is the name of an org-configurable column
+(`project_workflow_columns`), so it cannot carry a fixed lifecycle — which is
+exactly why the derived stage sits beside it rather than replacing it.
+
+Stages run Quoted → Released → Ordering → Awaiting delivery → Receiving →
+Installing → Ready to bill, and are chosen by what has happened **latest**, not
+by what is still incomplete. A job with product arriving and a crew on site
+reads `Installing`, because that is what a PM needs to know.
+
+### Activity is derived, not logged
+
+`project_activity` UNIONs `project_notes` with events read from the tables that
+already hold those facts — sales orders, manufacturer orders, acknowledgments,
+receipts, change orders, work orders.
+
+A written activity log would be a second copy of those facts, and the copy is
+what goes stale, drifts, or silently stops being written when a code path
+changes. Deriving costs a little on read and cannot lie.
+
+It pays off immediately: an acknowledgment appears in the feed as *"Costs
+15,336.00 more than quoted"* without anything having to remember to write it
+there.
+
+**Pinned notes lead regardless of age.** Dock hours, elevator bookings, and
+COI requirements stay true for months; burying them under a week of status
+updates is how an install day gets lost.
+
+### Change orders
+
+The customer wants something different after signing. The reason it belongs in
+the system is the gap between *requested* and *priced* — that is where a dealer
+does work nobody has agreed to pay for, so the panel warns on unpriced ones and
+`sell_delta` stays `NULL` rather than showing a confident zero.
+
+An approved change order becomes **its own sales order** rather than editing the
+original, which is what `sales_orders` was built for. Rewriting the signed order
+in place would destroy the record of what the customer actually agreed to.
+
+`Approved` and `Rejected` require a `responded_at`, enforced by a CHECK.
+
+### Margin, twice
+
+The header shows quoted margin and margin after acknowledgments. The second is
+the honest one — it is quoted margin less the acknowledged cost variance rolled
+up across every order on the job, and it is usually smaller.
+
+### Key files
+
+| Thing | Where |
+|-------|-------|
+| Page | `src/pages/ProjectDetail.tsx` |
+| Activity feed | `src/components/features/projects/ProjectActivityFeed.tsx` |
+| Change orders | `src/components/features/projects/ChangeOrdersPanel.tsx` |
+| Service / hooks | `src/services/projectHubService.ts`, `src/hooks/queries/useProjectHub.ts` |
+| Migration | `supabase/migrations/20260824110000_project_hub.sql` |

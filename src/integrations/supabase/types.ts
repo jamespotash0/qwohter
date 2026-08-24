@@ -692,6 +692,102 @@ export type Database = {
           },
         ]
       }
+      change_orders: {
+        Row: {
+          change_order_number: string | null
+          cost_delta: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          project_id: string
+          requested_at: string
+          requested_by_name: string | null
+          responded_at: string | null
+          resulting_sales_order_id: string | null
+          sell_delta: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          change_order_number?: string | null
+          cost_delta?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          project_id: string
+          requested_at?: string
+          requested_by_name?: string | null
+          responded_at?: string | null
+          resulting_sales_order_id?: string | null
+          sell_delta?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          change_order_number?: string | null
+          cost_delta?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          project_id?: string
+          requested_at?: string
+          requested_by_name?: string | null
+          responded_at?: string | null
+          resulting_sales_order_id?: string | null
+          sell_delta?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_resulting_sales_order_id_fkey"
+            columns: ["resulting_sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "change_orders_resulting_sales_order_id_fkey"
+            columns: ["resulting_sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           billing_address_line1: string | null
@@ -1948,6 +2044,13 @@ export type Database = {
             foreignKeyName: "payment_jobs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "payment_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -2161,6 +2264,61 @@ export type Database = {
         }
         Relationships: []
       }
+      project_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_pinned: boolean
+          organization_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_pinned?: boolean
+          organization_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_pinned?: boolean
+          organization_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_tasks: {
         Row: {
           assigned_to: string | null
@@ -2248,6 +2406,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "project_tasks_project_id_fkey"
@@ -3581,6 +3746,13 @@ export type Database = {
             foreignKeyName: "sales_orders_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "sales_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -4499,6 +4671,13 @@ export type Database = {
             foreignKeyName: "work_orders_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "work_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -4679,6 +4858,51 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_activity: {
+        Row: {
+          actor_id: string | null
+          detail: string | null
+          is_pinned: boolean | null
+          kind: string | null
+          occurred_at: string | null
+          organization_id: string | null
+          project_id: string | null
+          reference_id: string | null
+          reference_type: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
+      project_progress: {
+        Row: {
+          acknowledged_cost_variance: number | null
+          approved_change_value: number | null
+          lines_awaiting_ack: number | null
+          open_change_orders: number | null
+          open_tasks: number | null
+          order_count: number | null
+          organization_id: string | null
+          project_id: string | null
+          qty_damaged: number | null
+          qty_installed: number | null
+          qty_ordered: number | null
+          qty_received: number | null
+          qty_total: number | null
+          quoted_cost_total: number | null
+          sell_total: number | null
+          stage: string | null
+          workflow_status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -4902,6 +5126,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "work_orders_project_id_fkey"
