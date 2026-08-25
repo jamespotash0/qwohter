@@ -197,11 +197,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_order_lines_number_unique
 
 ALTER TABLE public.order_lines ENABLE ROW LEVEL SECURITY;
 
--- Cost columns live on this table, so read access is membership-wide but the
--- application must hide cost from users failing can_view_cost(). Splitting the
--- buy side into its own table would enforce that in the database; that is a
--- deliberate follow-up once the back-office roles exist, because today every
--- role that can read an order can already read a proposal's costs.
+-- Cost columns live on this table and are readable by any active member.
+--
+-- That is deliberate, not an omission. At a dealer the AE quotes the job, the
+-- designer sees list and discount in the specification tool, and the PM
+-- reconciles acknowledgments against cost -- which is the entire variance
+-- queue. Everyone in the office needs it.
+--
+-- The one group that should not see cost is field crews, and they have no
+-- login here. If a client portal ever lands, a customer is not an org member at
+-- all, so it will need a sell-side-only view rather than a membership check.
 DROP POLICY IF EXISTS "Members can view order lines" ON public.order_lines;
 CREATE POLICY "Members can view order lines"
   ON public.order_lines FOR SELECT TO authenticated

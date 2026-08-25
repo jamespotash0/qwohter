@@ -240,11 +240,10 @@ optimistic). Interpretation lives in `src/lib/pricing/observed.ts`. A line with
 no list price yields `null`, distinct from a genuine 0% discount and never
 coerced to it.
 
-**Cost visibility.** Buy-side numbers on `order_lines` are margin data.
-`can_view_cost()` is the single predicate that decides who may see them; today
-the application hides the columns and splitting the buy side into its own table
-is the follow-up that would enforce it in the database. See
-[SECURITY.md](SECURITY.md).
+**Cost visibility.** Buy-side numbers on `order_lines` are readable by any
+active member, deliberately — everyone in a dealer's office needs cost. The
+`can_view_cost()` predicate that once gated this was removed because nothing
+called it. See [SECURITY.md](SECURITY.md#cost--margin-visibility).
 
 **Attachment caveat.** `entity_id` carries no foreign key — that is the cost of
 a polymorphic table. Deleting a parent row must clean up here explicitly via
@@ -253,6 +252,73 @@ a polymorphic table. Deleting a parent row must clean up here explicitly via
 **`project_attachments` no longer exists.** It was folded into `attachments`
 (`entity_type = 'project'`) and dropped. Legacy rows keep their original storage
 paths; no files moved.
+
+### Shipments & Carrier Tracking
+
+Between "the factory acknowledged it" and "it is on our dock". Recorded from a
+vendor's ship notice, then watched by a tracking provider.
+
+```
+shipments                          (freight in motion)
+├── id (uuid, PK)
+├── organization_id (FK), sales_order_id (FK), vendor_po_id (FK, nullable)
+│
+│   -- entered by a human
+├── carrier_code (normalized slug), carrier_name (as the paperwork names them)
+├── tracking_number (parcel), pro_number (LTL), bill_of_lading, service_level
+├── ship_date, piece_count, weight_lbs, notes
+│
+│   -- observed; written ONLY by apply_tracking_update (service_role)
+├── tracking_status ('pending' | 'info_received' | 'in_transit' |
+│                    'out_for_delivery' | 'available_for_pickup' |
+│                    'attempt_failed' | 'delivered' | 'exception' |
+│                    'expired' | 'unknown')
+├── tracking_status_detail (the carrier's own words, kept verbatim)
+├── tracking_location, estimated_delivery_date, delivered_at
+├── tracking_provider ('aftership' | 'easypost' | 'manual')
+├── provider_tracking_id, last_checked_at, tracking_error, tracking_active
+└── created_by, created_at, updated_at
+
+shipment_lines                     (what the vendor SAYS is on the truck)
+├── shipment_id (FK), order_line_id (FK, RESTRICT)
+├── quantity_shipped (> 0)
+└── UNIQUE (shipment_id, order_line_id)
+
+shipment_tracking_events           (carrier scans, append-only)
+├── shipment_id (FK), occurred_at, status, message, location
+├── checkpoint_key (dedup identity)   UNIQUE (shipment_id, checkpoint_key)
+└── raw (jsonb — the provider's full payload, unread until needed)
+
+receipts.shipment_id (FK, nullable)   -- closes the loop
+```
+
+**Carrier status is never typeable.** `apply_tracking_update` is
+`SECURITY DEFINER`, granted to `service_role`, and explicitly **revoked from
+`authenticated`**. `shipment_tracking_events` has a SELECT policy and no INSERT,
+UPDATE, or DELETE policy. A scan history a dealer can edit is worth nothing in a
+freight claim.
+
+**`delivered` writes no `received` events.** The carrier saying "Delivered"
+means the truck stopped; it does not mean anyone counted what came off it. The
+`shipment_progress` view exposes `awaiting_receipt` instead and waits for a
+human. Same rule, same reason, as damaged product not counting as received.
+
+**Idempotency.** Providers replay their entire checkpoint history on every poll
+and retry webhooks, so `apply_tracking_update` is safe to run twice with the
+same payload: `checkpoint_key` deduplicates the scans and the row update is a
+straight overwrite. An `{"error": ...}` payload moves `last_checked_at` and
+records the message *without* touching the observed status — a failed lookup
+means we do not know where the freight is, not that it stopped moving.
+
+**Two identifiers, not one.** Parcel answers to a tracking number; LTL answers
+to a PRO. Both are stored, both are uniquely indexed per org and carrier, and
+lookups prefer the PRO. The `shipments_identifiable` CHECK requires one of them
+except when `tracking_provider = 'manual'` — an own truck has no number to give.
+
+**Polling** is `shipments_due_for_tracking(p_limit)` (service role only), with a
+per-status cadence from 1 hour for out-for-delivery to 24 hours for delivered.
+It stops once nothing is uncounted, 14 days after delivery, or on `expired`.
+Driven hourly by `invoke_refresh_shipment_tracking()` via pg_cron.
 
 ### Subscriptions & Billing
 

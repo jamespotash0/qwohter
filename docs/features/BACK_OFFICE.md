@@ -843,18 +843,20 @@ view only aggregates.
 
 ## Cost visibility
 
-Buy-side numbers live on `order_lines`, and an installer with an account must
-never read them. `can_view_cost()` is the single predicate that decides, and it
-resolves to Owner/Admin against today's role vocabulary — when back-office roles
-land (PM, warehouse, installer, AP) that function is the only place that
-changes. See [SECURITY.md](../architecture/SECURITY.md#cost--margin-visibility).
+**There is none, deliberately.** Cost columns live on `order_lines` and any
+active member can read them.
 
-Today `order_lines` is readable by any active member, and the **application**
-hides cost columns rather than the database enforcing it. Splitting the buy side
-into its own table would enforce it properly; that is a deliberate follow-up,
-because every role that can read an order can already read a proposal's costs.
+At a dealer, everyone in the office needs cost: the AE quotes the job, the
+designer sees list and discount in the specification tool, and the PM
+reconciles acknowledgments against cost — which is this whole back office. The
+only group that should not see it is field crews, and the install app that
+would have given them logins was cut.
 
----
+The `can_view_cost()` predicate that used to sit here was removed. Nothing ever
+called it, and its comment claimed to be the single source of truth for buy-side
+visibility while no policy enforced it — a boundary that exists only in
+documentation is worse than none. See
+[SECURITY.md](../architecture/SECURITY.md#cost--margin-visibility).
 
 ## Attachments
 
@@ -940,7 +942,7 @@ before the next environment is stood up.
 needs designer, PM, sales, warehouse, installer, and AP. Expanding the set
 touches invitations (`invite_tokens.role` has a CHECK constraint), seat billing,
 and RLS across the app — a product decision, not a mechanical one.
-`can_view_cost()` is written so that only it changes when the roles land.
+Cost visibility is no longer gated — see the section above for why.
 
 **The vendor address book was removed by rewriting history, not reversing it.**
 The migrations that created `vendors` and `vendor_discounts` were edited in

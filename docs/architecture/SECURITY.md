@@ -32,91 +32,32 @@ All functions use `SECURITY DEFINER` and `STABLE` modifiers for RLS policy compa
 |----------|-----------|-------------|
 | `is_active_member` | `(user_id uuid, org_id uuid) → boolean` | Check if user has active membership in organization |
 | `has_org_role` | `(user_id uuid, org_id uuid, roles text[]) → boolean` | Check if user has ANY of the specified roles (e.g., `ARRAY['Admin', 'Owner']`) |
-| `can_view_cost` | `(user_id uuid, org_id uuid) → boolean` | Whether a user may see cost and margin figures. Single source of truth for buy-side visibility |
 | `can_view_membership` | `(user_id uuid, membership_user_id uuid, membership_org_id uuid) → boolean` | Check if user can view another user's membership (same org or self) |
 
 ### Cost & Margin Visibility
 
-Buy-side numbers — what the dealer pays a manufacturer — are not visible to
-everyone with an account. An installer or warehouse user needs to write receipts
-and upload damage photos while never seeing what the product cost.
+**There is none, deliberately.** Cost columns live on `order_lines` and are
+readable by any active member.
 
-`can_view_cost(user_id, org_id)` is the single predicate for this. It resolves to
-Owner/Admin against the current role vocabulary (Owner, Admin, Member); when
-back-office roles land (PM, warehouse, installer, AP) this function is the only
-place that changes.
+This was originally gated behind a `can_view_cost()` predicate, written in
+anticipation of back-office roles (PM, warehouse, installer, AP) and a field app
+that would give installers logins. Neither is being built — this is an office
+system — so the function was removed rather than left dormant.
 
-```sql
--- The intended shape for any table that exposes buy-side numbers:
--- gated on cost visibility, not plain membership.
-CREATE POLICY "Cost viewers can view <table>"
-  ON public.<table> FOR SELECT TO authenticated
-  USING (public.can_view_cost((SELECT auth.uid()), organization_id));
-```
+The reasoning is worth keeping: **at a dealer, everyone in the office needs
+cost.** The AE quotes the job. The designer sees list and discount in the
+specification tool before it ever reaches here. The PM reconciles
+acknowledgments against cost, which is the entire variance queue. The one group
+that should not see it is field crews, and they have no login.
 
-**Not yet applied to `order_lines`.** Cost columns live on that table and it is
-readable by any active member, with the application hiding cost rather than the
-database enforcing it. Splitting the buy side into its own table would close
-that properly; it is a deliberate follow-up, because every role that can read an
-order can already read a proposal's costs.
+A dormant predicate was worse than none, because its own comment claimed to be
+the "single source of truth for buy-side visibility" while nothing enforced it —
+and a boundary that exists only in documentation stops people looking for the
+real one.
 
-Where RLS *does* gate on cost visibility it **filters** rather than rejects, so
-a user without it receives an empty list, not an error. Callers must treat an
-empty result as "cannot price" — never as "zero".
-
-### Current User Helpers (uses `auth.uid()`)
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `is_owner_or_admin` | `() → boolean` | Check if current user is Owner or Admin in their org |
-| `get_current_user_organization` | `() → uuid` | Get current user's organization ID |
-| `get_current_user_role` | `() → text` | Get current user's role ('Owner', 'Admin', 'Member') |
-| `user_has_admin_role_in_org` | `(org_id uuid) → boolean` | Check if current user is Admin/Owner in specific org |
-| `user_has_role_in_org` | `(org_id uuid, required_role text) → boolean` | Check if current user has exact role in org |
-
-### Multi-Org Helpers
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `get_user_org_ids` | `(user_id uuid) → TABLE(organization_id uuid)` | Get all organization IDs user belongs to |
-| `get_org_member_ids` | `(user_id uuid) → TABLE(user_id uuid)` | Get all member IDs in user's organizations |
-
-### Storage Access
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `is_org_folder_admin` | `(user_id uuid, folder_name text) → boolean` | Check if user is Admin/Owner for storage bucket folder |
-| `get_user_org_folders` | `(user_id uuid) → TABLE(org_folder text)` | Get storage folders user can access (org IDs as text) |
-
-### Subscription Checks
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `has_valid_subscription` | `(org_id uuid) → boolean` | Check if org has active/trialing subscription |
-
-### Usage Examples
-
-```sql
--- RLS Policy: Users can view their org's proposals
-CREATE POLICY "view_org_proposals" ON proposals FOR SELECT
-USING (is_active_member(auth.uid(), organization_id));
-
--- RLS Policy: Only admins can delete
-CREATE POLICY "admins_delete" ON proposals FOR DELETE
-USING (has_org_role(auth.uid(), organization_id, ARRAY['Admin', 'Owner']));
-
--- RLS Policy: Users see only their org's data
-CREATE POLICY "org_isolation" ON contacts FOR SELECT
-USING (
-  organization_id IN (
-    SELECT organization_id FROM get_user_org_ids(auth.uid())
-  )
-);
-
--- Check current user's permissions
-SELECT is_owner_or_admin();  -- true/false
-SELECT get_current_user_role();  -- 'Owner', 'Admin', or 'Member'
-```
+**If a client portal lands,** a customer is not an organization member, so no
+membership check can serve them. That needs a view exposing sell-side fields
+only, which is a different mechanism entirely.
 
 ## Rate Limiting
 
