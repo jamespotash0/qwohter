@@ -184,11 +184,16 @@ const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
+// Customers only. Manufacturers are text on the lines that name them.
+const Companies = lazy(() => import("@/pages/Companies"));
 
 // Back office: purchase order acknowledgment variance
-const VarianceQueue = lazy(() => import("@/pages/VarianceQueue"));
-const SalesOrders = lazy(() => import("@/pages/SalesOrders"));
-const SalesOrderDetail = lazy(() => import("@/pages/SalesOrderDetail"));
+// Everything across every job that needs a person. Absorbs what the standalone
+// acknowledgment queue used to be.
+const Today = lazy(() => import("@/pages/Today"));
+// An order is part of a job, not a page of its own: this resolves the old
+// deep link to the job that owns it.
+const OrderRedirect = lazy(() => import("@/pages/OrderRedirect"));
 
 // Calendar page
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -318,11 +323,19 @@ export const AppRouter = () => (
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />
+          <Route path="/companies" element={<Companies />} />
 
           {/* Back office: acknowledgment variance queue */}
-          <Route path="/acknowledgments" element={<VarianceQueue />} />
-          <Route path="/orders" element={<SalesOrders />} />
-          <Route path="/orders/:orderId" element={<SalesOrderDetail />} />
+          <Route path="/today" element={<Today />} />
+          {/* The acknowledgment queue is a segment of Today now. */}
+          <Route
+            path="/acknowledgments"
+            element={<Navigate to="/today?q=acks" replace />}
+          />
+          {/* The list of orders was the list of jobs wearing a different hat.
+              Creating and importing one now happens on the job it belongs to. */}
+          <Route path="/orders" element={<Navigate to="/project-board" replace />} />
+          <Route path="/orders/:orderId" element={<OrderRedirect />} />
 
           {/* Calendar */}
           <Route path="/calendar" element={<Calendar />} />

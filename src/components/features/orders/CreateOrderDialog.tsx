@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Warning, CheckCircle } from '@phosphor-icons/react';
+import { Warning, CheckCircle, Plus } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/pricing';
 import { useCompanies } from '@/hooks/queries/useCompanies';
+import { CompanyDialog } from '@/components/features/companies/CompanyDialog';
 import { useOrderPreview, useCreateOrderFromProposal } from '@/hooks/queries/useSalesOrders';
 
 interface CreateOrderDialogProps {
@@ -59,6 +60,7 @@ export function CreateOrderDialog({
   const [customerPO, setCustomerPO] = useState('');
   const [contractVehicle, setContractVehicle] = useState('');
   const [companyId, setCompanyId] = useState<string>('');
+  const [newCompanyOpen, setNewCompanyOpen] = useState(false);
 
   const { data: companies = [] } = useCompanies(organizationId);
   const {
@@ -112,6 +114,7 @@ export function CreateOrderDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -190,18 +193,42 @@ export function CreateOrderDialog({
             <div className="grid grid-cols-2 gap-4 pt-1">
               <div className="space-y-1.5">
                 <Label>Customer</Label>
-                <Select
-                  value={companyId || 'none'}
-                  onValueChange={v => setCompanyId(v === 'none' ? '' : v)}
-                >
-                  <SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not set</SelectItem>
-                    {companies.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/*
+                  The picker used to be the whole story, which meant a fresh
+                  organization saw an empty list and had nowhere to go. Adding
+                  one from here keeps somebody mid-order in the order.
+                */}
+                <div className="flex items-center gap-1.5">
+                  <Select
+                    value={companyId || 'none'}
+                    onValueChange={v => setCompanyId(v === 'none' ? '' : v)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Not set" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not set</SelectItem>
+                      {companies.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setNewCompanyOpen(true)}
+                    title="Add a company"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {companies.length === 0 && (
+                  <p className="text-xs text-gray-500">
+                    No companies yet. Add the one being billed.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="co-po">Customer PO number</Label>
@@ -241,7 +268,20 @@ export function CreateOrderDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      {/*
+        A sibling rather than a child: two Radix dialog roots stack cleanly, and
+        the order dialog stays open underneath so a company added mid-order does
+        not cost the work already entered.
+      */}
+      <CompanyDialog
+        open={newCompanyOpen}
+        onOpenChange={setNewCompanyOpen}
+        organizationId={organizationId}
+        onSaved={saved => setCompanyId(saved.id)}
+      />
+    </>
   );
 }
 

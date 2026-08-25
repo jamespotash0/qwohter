@@ -85,6 +85,7 @@ export function ImportSpecDialog({
   const [parsed, setParsed] = useState<ParsedFile | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [fallbackDiscount, setFallbackDiscount] = useState('');
+  const [markupPercent, setMarkupPercent] = useState('');
 
   useEffect(() => {
     if (open) return;
@@ -108,13 +109,21 @@ export function ImportSpecDialog({
   const discount =
     fallbackDiscount.trim() === '' ? undefined : Number(fallbackDiscount);
 
+  // Blank and a non-numeric entry both mean "no markup" rather than NaN, which
+  // would silently produce a line with no sell price at all.
+  const markup =
+    markupPercent.trim() === '' || !Number.isFinite(Number(markupPercent))
+      ? 0
+      : Number(markupPercent);
+
   const result = useMemo(() => {
     if (!parsed) return null;
     return rowsToOrderLines(parsed.rows, mapping, {
+      markupPercent: markup,
       fallbackDiscountPercent:
         discount !== undefined && Number.isFinite(discount) ? discount : undefined,
     });
-  }, [parsed, mapping, discount]);
+  }, [parsed, mapping, discount, markup]);
 
   const missing = missingRequired(mapping);
   const totals = useMemo(() => {
@@ -254,6 +263,29 @@ export function ImportSpecDialog({
                   </p>
                 </div>
               )}
+
+            <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="imp-markup" className="text-xs text-gray-600 dark:text-gray-300">
+                  Markup on every line
+                </Label>
+                <Input
+                  id="imp-markup"
+                  type="number"
+                  min={0}
+                  value={markupPercent}
+                  onChange={e => setMarkupPercent(e.target.value)}
+                  placeholder="0"
+                  className="h-8 w-28"
+                />
+              </div>
+              <p className="flex-1 text-sm text-gray-600 dark:text-gray-400">
+                A specification file says what product costs, never what it sells
+                for. Left at zero every line quotes at cost — which is what you
+                want if you mark up per section afterwards, and expensive if you
+                did not mean it.
+              </p>
+            </div>
 
             {/* What will be created */}
             {result && (

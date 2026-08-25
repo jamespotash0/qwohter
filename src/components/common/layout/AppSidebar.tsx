@@ -4,11 +4,11 @@ import {
   ChartBar,
   Kanban,
   AddressBook,
+  Buildings,
   CheckSquare,
   SquaresFour,
   CalendarBlankIcon,
-  Package,
-  ClipboardText,
+  Sun,
   Wrench,
 } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -35,27 +35,63 @@ interface MenuItem {
   roles: string[];
 }
 
+interface MenuGroup {
+  /** Null for the top group, which needs no heading to be understood. */
+  label: string | null;
+  items: MenuItem[];
+}
+
 const ALL_ROLES = ['Owner', 'Admin', 'Member'];
 
 /**
- * One flat list — no groups, no accordions. Settings lives in the profile menu.
+ * Grouped, because eleven flat items was a list you read rather than a place
+ * you navigate.
+ *
+ * Two of those eleven are gone rather than moved. Orders and Acknowledgments
+ * were stages of a job, not places — an order belongs to the job that sold it,
+ * and an unanswered acknowledgment belongs in the cross-job queue with every
+ * other thing waiting on a person. Both are still reachable: /orders/:id
+ * resolves to its job, and /acknowledgments lands on Today.
+ *
+ * What is left divides cleanly. Today and Dashboard are where you start;
+ * Pipeline is the money moving through; Work is time and people; Reference is
+ * what you look things up in.
  */
-const menuItems: MenuItem[] = [
-  { title: "Dashboard", icon: House, path: "/dashboard", roles: ALL_ROLES },
-  { title: "Proposals", icon: FileText, path: "/proposals", roles: ALL_ROLES },
-  { title: "Projects", icon: Kanban, path: "/project-board", roles: ALL_ROLES },
-  { title: "Tasks", icon: CheckSquare, path: "/task-board", roles: ALL_ROLES },
-  { title: "Calendar", icon: CalendarBlankIcon, path: "/calendar", roles: ALL_ROLES },
-  { title: "Contacts", icon: AddressBook, path: "/contacts", roles: ALL_ROLES },
-  { title: "Orders", icon: Package, path: "/orders", roles: ALL_ROLES },
-  // PO lines a vendor has not answered, or answered at a different price or date.
-  { title: "Acknowledgments", icon: ClipboardText, path: "/acknowledgments", roles: ALL_ROLES },
-  // A week of site work by crew. Double-booking is refused by the database.
-  { title: "Schedule", icon: Wrench, path: "/schedule", roles: ALL_ROLES },
-  { title: "Forms", icon: SquaresFour, path: "/forms", roles: ALL_ROLES },
-  { title: "Analytics", icon: ChartBar, path: "/analytics", roles: ALL_ROLES },
-  // Products - HIDDEN for now
-  // { title: "Products", icon: Package, path: "/products", roles: ALL_ROLES },
+const menuGroups: MenuGroup[] = [
+  {
+    label: null,
+    items: [
+      // Everything across every job that needs a person, worst first.
+      { title: "Today", icon: Sun, path: "/today", roles: ALL_ROLES },
+      { title: "Dashboard", icon: House, path: "/dashboard", roles: ALL_ROLES },
+    ],
+  },
+  {
+    label: "Pipeline",
+    items: [
+      { title: "Proposals", icon: FileText, path: "/proposals", roles: ALL_ROLES },
+      // A won quote becomes a job: orders, freight, crews and billing hang off it.
+      { title: "Jobs", icon: Kanban, path: "/project-board", roles: ALL_ROLES },
+    ],
+  },
+  {
+    label: "Work",
+    items: [
+      { title: "Tasks", icon: CheckSquare, path: "/task-board", roles: ALL_ROLES },
+      // A week of site work by crew. Double-booking is refused by the database.
+      { title: "Schedule", icon: Wrench, path: "/schedule", roles: ALL_ROLES },
+      { title: "Calendar", icon: CalendarBlankIcon, path: "/calendar", roles: ALL_ROLES },
+    ],
+  },
+  {
+    label: "Reference",
+    items: [
+      { title: "Contacts", icon: AddressBook, path: "/contacts", roles: ALL_ROLES },
+      { title: "Companies", icon: Buildings, path: "/companies", roles: ALL_ROLES },
+      { title: "Forms", icon: SquaresFour, path: "/forms", roles: ALL_ROLES },
+      { title: "Analytics", icon: ChartBar, path: "/analytics", roles: ALL_ROLES },
+    ],
+  },
 ];
 
 /**
@@ -69,8 +105,18 @@ export function AppSidebar() {
   const user = useUser();
   const { role: currentUserRole } = useCurrentOrganization(user?.id || '');
 
-  const visibleItems = useMemo(
-    () => menuItems.filter(item => !currentUserRole || item.roles.includes(currentUserRole)),
+  // A group whose every item is filtered away by role would otherwise leave a
+  // heading with nothing under it.
+  const visibleGroups = useMemo(
+    () =>
+      menuGroups
+        .map(group => ({
+          ...group,
+          items: group.items.filter(item =>
+            currentUserRole ? item.roles.includes(currentUserRole) : true
+          ),
+        }))
+        .filter(group => group.items.length > 0),
     [currentUserRole]
   );
 
@@ -94,10 +140,35 @@ export function AppSidebar() {
       onMouseLeave={() => setIsHovered(false)}
     >
       <SidebarContent className="px-0 pt-0 pb-6 flex-1">
-        <SidebarGroup className="px-2 py-0">
+        {visibleGroups.map((group, groupIndex) => (
+        <SidebarGroup
+          key={group.label ?? "start"}
+          className={`px-2 py-0 ${groupIndex > 0 ? "mt-2" : ""}`}
+        >
+          {/*
+            The heading slot keeps its height in both states so the rail's
+            vertical rhythm does not change when the panel opens. Open, it is a
+            label; collapsed, it is the rule that label was implying anyway.
+          */}
+          {group.label && (
+            <div className="relative h-6" aria-hidden={isCollapsed}>
+              <span
+                className={`absolute bottom-1 left-[15px] font-inter text-[10px] font-medium uppercase tracking-wider whitespace-nowrap text-[var(--sidebar-nav-text)] ${SLIDE} ${
+                  isCollapsed ? "opacity-0 -translate-x-1" : "opacity-50 translate-x-0"
+                }`}
+              >
+                {group.label}
+              </span>
+              <span
+                className={`absolute bottom-[9px] left-[15px] h-px w-[18px] rounded-full bg-[var(--sidebar-nav-text)] ${SLIDE} ${
+                  isCollapsed ? "opacity-25" : "opacity-0"
+                }`}
+              />
+            </div>
+          )}
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
-              {visibleItems.map((item) => {
+              {group.items.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
 
@@ -161,6 +232,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

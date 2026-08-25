@@ -33,15 +33,13 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useSchedule, useCrews, type ScheduledWorkOrder } from '@/hooks/queries/useWorkOrders';
+import {
+  EmptyState,
+  TONE_SURFACE,
+  toneFor,
+  WORK_ORDER_STATUS_TONES,
+} from '@/components/common/backoffice';
 import { cn } from '@/lib/utils';
-
-const STATUS_STYLES: Record<string, string> = {
-  Draft: 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800',
-  Scheduled: 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20',
-  'In Progress': 'border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20',
-  Complete: 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20',
-  Cancelled: 'border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/10',
-};
 
 /** Monday of the week containing `date`. Weeks start Monday on a job site. */
 function startOfWeek(date: Date): Date {
@@ -168,17 +166,68 @@ export default function SchedulePage() {
         </div>
 
         {crews.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-12 text-center">
-            <Users className="mx-auto h-6 w-6 text-gray-400" />
-            <p className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              No crews yet
-            </p>
-            <p className="mt-1 text-sm text-gray-500">
-              Add your install crews under Settings &rsaquo; Crews before scheduling.
-            </p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title="No crews yet"
+            description="Add your install crews under Settings &rsaquo; Crews before scheduling."
+          />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <>
+          {/* A seven-by-n grid cannot be made to work on a phone, and an
+              install coordinator standing on a site is exactly who needs this
+              screen. Same week, same data, read down instead of across. */}
+          <div className="space-y-3 md:hidden">
+            {days.map(day => {
+              const key = iso(day);
+              const dayItems = lanes.flatMap(lane =>
+                lane.items
+                  .filter(
+                    wo =>
+                      wo.scheduled_start &&
+                      iso(new Date(wo.scheduled_start as string)) === key
+                  )
+                  .map(wo => ({ wo, laneLabel: lane.label }))
+              );
+              return (
+                <div key={key}>
+                  <p
+                    className={cn(
+                      'mb-1.5 text-xs font-medium uppercase tracking-wide',
+                      key === todayISO
+                        ? 'text-[#D9501B] dark:text-orange-400'
+                        : 'text-gray-500'
+                    )}
+                  >
+                    {DAY_LABELS[(day.getDay() + 6) % 7]}{' '}
+                    <span className="tabular-nums">{day.getDate()}</span>
+                  </p>
+                  {dayItems.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-400 dark:border-gray-700">
+                      Nothing scheduled
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {dayItems.map(({ wo, laneLabel }) => (
+                        <div key={wo.work_order_id as string}>
+                          <p className="mb-0.5 text-[11px] text-gray-500">
+                            {laneLabel}
+                          </p>
+                          <WorkOrderCard
+                            workOrder={wo}
+                            onOpen={() =>
+                              wo.project_id && navigate(`/projects/${wo.project_id}`)
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 md:block">
             <table className="w-full min-w-[1040px] table-fixed border-collapse">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800/50">
@@ -262,6 +311,7 @@ export default function SchedulePage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {!isLoading && crews.length > 0 && totalScheduled === 0 && (
@@ -295,7 +345,7 @@ function WorkOrderCard({
       onClick={onOpen}
       className={cn(
         'w-full rounded-md border p-2 text-left transition-shadow hover:shadow-sm',
-        STATUS_STYLES[wo.status as string] ?? STATUS_STYLES.Draft
+        TONE_SURFACE[toneFor(WORK_ORDER_STATUS_TONES, wo.status as string)]
       )}
     >
       <p className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">

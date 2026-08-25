@@ -52,7 +52,14 @@ export type UnifiedCalendarItemSource =
   | 'calendar_event'
   | 'reminder'
   | 'proposal'
-  | 'task_deadline';
+  | 'task_deadline'
+  // The back office, on the same surface as everything else. An install date
+  // depends on a delivery date which depends on a factory's confirmed ship
+  // date, and reading those off three separate screens is how a crew gets
+  // booked for a week when the product lands in the next one.
+  | 'work_order'
+  | 'shipment_eta'
+  | 'ack_ship_date';
 
 export interface UnifiedCalendarItem {
   id: string;
@@ -77,7 +84,11 @@ export const CALENDAR_SOURCE_COLORS: Record<UnifiedCalendarItemSource, string> =
   reminder: '#EC4899',       // Pink
   proposal: '#0D9488',       // Teal
   task_deadline: '#84CC16',  // Lime
+  work_order: '#6366F1',     // Indigo — matches the Installation event type
+  shipment_eta: '#06B6D4',   // Cyan — matches the Delivery event type
+  ack_ship_date: '#8B5CF6',  // Purple — a factory commitment, not yet freight
 };
+
 
 export const CALENDAR_EVENT_TYPE_COLORS: Record<CalendarEventType, string> = {
   Custom: '#3B82F6',        // Blue
@@ -106,4 +117,7 @@ export const CALENDAR_SOURCE_LABELS: Record<UnifiedCalendarItemSource, string> =
   reminder: 'Reminder',
   proposal: 'Proposal',
   task_deadline: 'Task',
+  work_order: 'Site work',
+  shipment_eta: 'Delivery',
+  ack_ship_date: 'Factory ship date',
 };

@@ -9,7 +9,7 @@
  * is not "what did they say" but "what is this costing me".
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UploadSimple } from '@phosphor-icons/react';
+import { Callout } from '@/components/common/backoffice';
+import {
+  ingestAcknowledgmentFile,
+  type AckIngestResult,
+  type MatchTarget,
+} from '@/lib/ack';
 import { formatCurrency, round2 } from '@/lib/pricing';
 import { usePOLines, useAcknowledgePOLines } from '@/hooks/queries/useVarianceQueue';
 import { cn } from '@/lib/utils';
@@ -33,8 +40,14 @@ interface AcknowledgmentDialogProps {
   poNumber?: string | null;
   manufacturerName?: string | null;
   requestedShipDate?: string | null;
-  /** Line id → description, so the dialog can label rows. */
+  /** Order line id → description, so the dialog can label rows. */
   lineLabels?: Record<string, string>;
+  /**
+   * Order line id → model number. Only used for matching an uploaded
+   * acknowledgment: the manufacturer writes their own part numbers, not our
+   * line numbers, so the model is the one stable thing to match on.
+   */
+  lineModels?: Record<string, string | null>;
 }
 
 interface Entry {
@@ -50,6 +63,7 @@ export function AcknowledgmentDialog({
   manufacturerName,
   requestedShipDate,
   lineLabels = {},
+  lineModels = {},
 }: AcknowledgmentDialogProps) {
   const { data, isLoading } = usePOLines(open ? (vendorPOId ?? undefined) : undefined);
   // Memoized rather than defaulted inline: `data ?? []` builds a new array on
@@ -61,6 +75,8 @@ export function AcknowledgmentDialog({
   const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [ackNumber, setAckNumber] = useState('');
   const [shipDate, setShipDate] = useState('');
+  const [ingest, setIngest] = useState<AckIngestResult | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   // Pre-fill with what was ordered: an unchanged acknowledgment is the common
   // case and should not require retyping every figure.
@@ -68,6 +84,7 @@ export function AcknowledgmentDialog({
     if (!open) return;
     setAckNumber('');
     setShipDate(requestedShipDate ?? '');
+    setIngest(null);
     setEntries(
       Object.fromEntries(
         poLines.map((line: POLine) => [
@@ -80,6 +97,34 @@ export function AcknowledgmentDialog({
       )
     );
   }, [open, poLines, requestedShipDate]);
+
+  // What an uploaded acknowledgment gets matched against. Description and model
+  // come from the order line, since a PO line only references one.
+  const matchTargets = useMemo<MatchTarget[]>(
+    () =>
+      poLines.map((line: POLine) => ({
+        poLineId: line.id,
+        lineNumber: line.line_number,
+        modelNumber: lineModels[line.order_line_id] ?? null,
+        description: lineLabels[line.order_line_id] ?? null,
+        quantity: Number(line.quantity),
+        unitCost: Number(line.unit_cost),
+      })),
+    [poLines, lineLabels, lineModels]
+  );
+
+  const handleUpload = async (file: File) => {
+    const result = ingestAcknowledgmentFile(await file.text(), matchTargets);
+    setIngest(result);
+
+    // Nothing is saved here. The figures land in the form and the person who
+    // uploaded the file still has to agree to them.
+    if (result.appliedCount > 0) {
+      setEntries(prev => ({ ...prev, ...result.applied }));
+    }
+    if (result.shipDate) setShipDate(result.shipDate);
+    if (fileInput.current) fileInput.current.value = '';
+  };
 
   const set = (lineId: string, field: keyof Entry, value: string) =>
     setEntries(prev => ({
@@ -145,6 +190,77 @@ export function AcknowledgmentDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/*
+            The manufacturer's own export, rather than retyping it. Delimited
+            files are read here; the figures still have to be agreed to below.
+          */}
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-700">
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".csv,.tsv,.txt,.sif"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) void handleUpload(file);
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInput.current?.click()}
+              disabled={poLines.length === 0}
+            >
+              <UploadSimple className="mr-1.5 h-4 w-4" />
+              Upload their acknowledgment
+            </Button>
+            <p className="flex-1 text-xs text-gray-500">
+              A CSV or tab-delimited export. Rows are matched to lines on the part
+              number, then the description — nothing is saved until you press
+              Record below.
+            </p>
+          </div>
+
+          {ingest?.error && <Callout tone="danger">{ingest.error}</Callout>}
+
+          {ingest && !ingest.error && (
+            <Callout
+              tone={
+                ingest.needsCheck.length > 0 ||
+                ingest.unmatchedRows.length > 0 ||
+                ingest.unmatchedTargets.length > 0
+                  ? 'warn'
+                  : 'success'
+              }
+              title={`Filled in ${ingest.appliedCount} of ${poLines.length} lines`}
+            >
+              <ul className="mt-0.5 space-y-0.5">
+                {ingest.needsCheck.map(match => (
+                  <li key={match.row.sourceRow}>
+                    Row {match.row.sourceRow}
+                    {match.row.description ? ` (${match.row.description})` : ''} —{' '}
+                    {match.reason}. Not filled in.
+                  </li>
+                ))}
+                {ingest.unmatchedRows.length > 0 && (
+                  <li>
+                    {ingest.unmatchedRows.length} row
+                    {ingest.unmatchedRows.length === 1 ? '' : 's'} on their file
+                    matched nothing on this order.
+                  </li>
+                )}
+                {ingest.unmatchedTargets.length > 0 && (
+                  <li>
+                    {ingest.unmatchedTargets.length} line
+                    {ingest.unmatchedTargets.length === 1 ? '' : 's'} on this order
+                    were not mentioned — those stay at what you ordered.
+                  </li>
+                )}
+              </ul>
+            </Callout>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="ack-number">Their acknowledgment number</Label>

@@ -18,15 +18,23 @@ import {
   useCalendarItems,
   useDeleteCalendarEvent,
 } from '@/hooks/queries/useCalendarEvents';
-import { CalendarNavHeader } from '@/components/features/calendar/CalendarNavHeader';
-import type { CalendarViewType } from '@/components/features/calendar/CalendarNavHeader';
+import {
+  CalendarNavHeader,
+  type CalendarViewType,
+} from '@/components/features/calendar/CalendarNavHeader';
+import { CalendarLayerFilter } from '@/components/features/calendar/CalendarLayerFilter';
 import { CalendarMonthView } from '@/components/features/calendar/CalendarMonthView';
 import { CalendarWeekView } from '@/components/features/calendar/CalendarWeekView';
 import { CalendarDayView } from '@/components/features/calendar/CalendarDayView';
 import { CalendarYearView } from '@/components/features/calendar/CalendarYearView';
 import { CreateEventDialog } from '@/components/features/calendar/CreateEventDialog';
 import { CalendarItemDetailSheet } from '@/components/features/calendar/CalendarItemDetailSheet';
-import type { CalendarEvent, UnifiedCalendarItem } from '@/lib/types/calendarEvents';
+import {
+  CALENDAR_SOURCE_LABELS,
+  type CalendarEvent,
+  type UnifiedCalendarItem,
+  type UnifiedCalendarItemSource,
+} from '@/lib/types/calendarEvents';
 
 const Calendar = () => {
   const user = useUser();
@@ -48,23 +56,54 @@ const Calendar = () => {
   const deleteEvent = useDeleteCalendarEvent();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Every layer on by default: a calendar that hides a delivery date until you
+  // find the right toggle is the two-calendar problem again, in one page.
+  const [hiddenSources, setHiddenSources] = useState<Set<UnifiedCalendarItemSource>>(
+    () => new Set()
+  );
+
+  const toggleSource = useCallback((source: UnifiedCalendarItemSource) => {
+    setHiddenSources(prev => {
+      const next = new Set(prev);
+      if (next.has(source)) next.delete(source);
+      else next.add(source);
+      return next;
+    });
+  }, []);
+
+  const visibleItems = useMemo(
+    () => calendarItems.filter(item => !hiddenSources.has(item.source)),
+    [calendarItems, hiddenSources]
+  );
+
+  // Counts come from the unfiltered set, so a layer that is switched off still
+  // says how much it is hiding.
+  const sourceCounts = useMemo(() => {
+    const counts = {} as Record<UnifiedCalendarItemSource, number>;
+    for (const source of Object.keys(CALENDAR_SOURCE_LABELS) as UnifiedCalendarItemSource[]) {
+      counts[source] = 0;
+    }
+    for (const item of calendarItems) counts[item.source] += 1;
+    return counts;
+  }, [calendarItems]);
+
   // Group items by date
   const itemsByDate = useMemo(() => {
     const map = new Map<string, UnifiedCalendarItem[]>();
-    for (const item of calendarItems) {
+    for (const item of visibleItems) {
       const key = format(new Date(item.date), 'yyyy-MM-dd');
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
     return map;
-  }, [calendarItems]);
+  }, [visibleItems]);
 
   // Items for the selected day
   const selectedDayItems = useMemo(() => {
-    return calendarItems.filter((item) =>
+    return visibleItems.filter((item) =>
       isSameDay(new Date(item.date), selectedDate),
     );
-  }, [calendarItems, selectedDate]);
+  }, [visibleItems, selectedDate]);
 
   // ── Centralized navigation ──
 
@@ -202,7 +241,7 @@ const Calendar = () => {
   return (
     <PageContent
       title="Calendar"
-      subtitle="Track proposals, deadlines, and events"
+      subtitle="Everything dated on one surface — proposals, tasks, factory ship dates, deliveries and site work"
       showPageHeader
       className="!h-[calc(100dvh-3.5rem)]"
       headerActions={
@@ -225,6 +264,12 @@ const Calendar = () => {
           todayLabel={view === 'year' ? 'This Year' : 'Today'}
           onPrev={handlePrev}
           onNext={handleNext}
+        />
+
+        <CalendarLayerFilter
+          counts={sourceCounts}
+          hidden={hiddenSources}
+          onToggle={toggleSource}
         />
 
         {/* View content */}

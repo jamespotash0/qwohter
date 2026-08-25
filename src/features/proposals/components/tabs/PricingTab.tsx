@@ -17,7 +17,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, DotsSixVertical, Calculator, Package } from '@phosphor-icons/react';
+import { Plus, Trash, DotsSixVertical, Calculator, Package, UploadSimple } from '@phosphor-icons/react';
 import {
   DndContext,
   closestCenter,
@@ -344,6 +344,9 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     lineItems: [],
   },
 ];
+
+import { ImportSpecDialog } from '@/components/features/orders/ImportSpecDialog';
+import { useSpecImport } from './pricing/useSpecImport';
 
 interface PricingTabProps {
   mode: EditorMode;
@@ -939,6 +942,17 @@ export function PricingTab({ mode }: PricingTabProps) {
     setSections(sections.filter((s) => s.id !== sectionId));
   };
 
+  // Importing a specification file, which appends sections rather than
+  // replacing them — a job can be specified in more than one file.
+  const {
+    isSpecImportOpen,
+    openSpecImport,
+    setSpecImportOpen,
+    handleSpecImport,
+  } = useSpecImport({
+    onSectionsAdded: added => setSections(prev => [...prev, ...added]),
+  });
+
   // Add new section
   const addSection = () => {
     const newSection: PricingSection = {
@@ -1172,6 +1186,25 @@ export function PricingTab({ mode }: PricingTabProps) {
   // ========== FILLER MODE: Unified table with data entry ==========
   return (
     <div className="space-y-6">
+      {/*
+        A specification file is the bill of materials for the job being quoted.
+        It belongs here, at the quote, rather than only at the order — the lines
+        carry their manufacturer, series, options and list price through to the
+        order on release, so the same job is never described twice.
+      */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={openSpecImport} className="rounded-lg">
+          <UploadSimple className="w-4 h-4 mr-2" />
+          Import specification
+        </Button>
+      </div>
+
+      <ImportSpecDialog
+        open={isSpecImportOpen}
+        onOpenChange={setSpecImportOpen}
+        onImport={handleSpecImport}
+      />
+
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}

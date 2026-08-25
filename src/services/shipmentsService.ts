@@ -183,6 +183,34 @@ export async function getOpenShipments(organizationId: string, limit = 200): Pro
   return data ?? [];
 }
 
+/**
+ * Shipment progress for a whole organization, keyed by shipment id.
+ *
+ * The per-order version answers "what is left on this job"; this one backs the
+ * cross-job freight queue, where the question is "which shipment does somebody
+ * have to do something about". It is a separate read rather than a filter over
+ * the other because the queue needs `awaiting_receipt` for shipments spread
+ * across every open order, and asking per order would be one query per job.
+ */
+export async function getShipmentProgressForOrg(
+  organizationId: string
+): Promise<Record<string, ShipmentProgress>> {
+  const { data, error } = await supabase
+    .from('shipment_progress')
+    .select('*')
+    .eq('organization_id', organizationId);
+
+  if (error) {
+    console.error('[shipmentsService] getShipmentProgressForOrg failed:', error);
+    throw new Error(`Failed to load shipment progress: ${error.message}`);
+  }
+
+  const rows = data ?? [];
+  return Object.fromEntries(
+    rows.flatMap(row => (row.shipment_id ? [[row.shipment_id, row] as const] : []))
+  );
+}
+
 /** Paperwork corrections only. Observed carrier state is not settable here. */
 export type UpdateShipmentInput = Partial<
   Pick<

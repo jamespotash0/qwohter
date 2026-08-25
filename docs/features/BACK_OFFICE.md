@@ -37,11 +37,73 @@ see [BILLING.md](BILLING.md). The middle is what Phase 1 builds.
 
 ## Screens
 
+There are two, and the split is the whole navigation model: **the job** answers
+"where is this one", **Today** answers "what needs me across all of them".
+
 | Screen | Where | What it does |
 |--------|-------|--------------|
-| Orders | `/orders` | Every sold job. Create one from a won proposal; the preview reports lines naming no manufacturer before anything is written. |
-| Order detail | `/orders/:id` | Lines with derived fulfillment quantities, the purchasing fan-out, and the orders placed. |
-| Acknowledgments | `/acknowledgments` | The variance queue. |
+| Job | `/projects/:id` | One job from won quote to money owed. The stage rail is its navigation. |
+| Today | `/today` | Everything across every job that needs a person, worst first. |
+| Schedule | `/schedule` | A week of site work by crew. |
+
+An order has no page of its own. `/orders/:id` resolves to the job that owns
+it (`OrderRedirect`), and `/orders` redirects to the jobs board — the list of
+orders was the list of jobs wearing a different hat.
+
+### The stage rail
+
+`project_progress.stage` is derived from an event log, and the rail is both the
+report of it and the tab bar. Seven stages, seven panels, one primary action
+each:
+
+| Stage | Panel | The one button |
+|-------|-------|----------------|
+| Quoted | Order lines | Release to order |
+| Released | Purchasing fan-out | Place with manufacturer |
+| Ordering | Orders placed | Record acknowledgment |
+| Awaiting delivery | Transit | Add shipment |
+| Receiving | Dock | Receive product |
+| Installing | Site work | Schedule crew |
+| Ready to bill | Billing | Create billing schedule |
+
+Two states are shown at once and they are not the same thing: **current** is
+where the job is, from the event log, and **selected** is which panel is open.
+Looking ahead at billing while a crew is still on site is normal, so the
+selection underline and the position marker are drawn differently.
+
+The vocabulary lives in `src/components/common/backoffice/stages.ts`, which
+mirrors the view's `CASE` exactly — no stage the view cannot produce. Panels
+that are not stages (Lines, Activity, Tasks, Changes, Files) sit in a quieter
+row beneath the rail, because they apply to the whole job rather than a step of
+it.
+
+Which panel is open lives in the URL (`?view=`, `?order=`), so a link to a job
+can point at the thing being discussed. An absent `view` follows the job's own
+stage rather than pinning to one.
+
+### Today
+
+Ordered by what it costs to ignore, not by table: damage and cost variance are
+money already moving, acknowledgments are money about to, freight is a date the
+install schedule depends on, and ready-to-bill is cash sitting uninvoiced. The
+counts sit on the segment strip rather than inside each tab — a count only
+visible after you click into it is a count nobody sees.
+
+The freight segment reads `shipment_progress.receipt_count` rather than
+assuming: guess it wrong and every delivered shipment reads as uncounted, which
+is how a queue teaches people to stop reading it.
+
+### Shared primitives
+
+`src/components/common/backoffice/` holds the vocabulary these screens share —
+`StageRail`, `StatusChip`, `Callout`, `MoneyTiles`, `DataTable`, `EmptyState`.
+Reach for them rather than re-deriving a chip colour or a table layout: the
+previous version had four private status colour maps using eight hues for six
+meanings, which is decoration that looks like a legend.
+
+`DataTable` is a table from `md` up and a list of cards below it, from one
+column definition. That is not polish — receiving happens at a loading dock and
+install sign-off happens on a site, both on a phone.
 
 ### Recording an order placed in the portal
 
@@ -55,21 +117,97 @@ What that recording buys is the acknowledgment check, which is the point of the
 whole back office. It needs to know *what was ordered, from whom, at what cost*
 — and none of that requires this application to have sent anything.
 
-The acknowledgment dialog lives on the order's **Orders placed** tab. Lines
+The acknowledgment dialog lives on the job's **Ordering** stage panel. Lines
 pre-fill with what was ordered — an unchanged acknowledgment is the common case
 and should not require retyping every figure — and the running variance total
 updates as you type, because the number a dealer wants is not *what did they
 say* but *what is this costing me*.
 
-> **The gap:** every path into this today is manual entry, which is exactly what
-> dealers will not do. Parsing a forwarded acknowledgment email is what turns
-> the feature on; everything upstream exists to make that possible.
+### Uploading the acknowledgment
+
+`src/lib/ack/` — **Upload their acknowledgment**, on the acknowledgment dialog.
+
+Manual entry was never going to happen at volume, so the manufacturer's own
+export is read instead. Delimited files are handled deterministically today; the
+extraction step is separable, so a PDF or an emailed acknowledgment read by a
+model produces the same `AckRow[]` and everything downstream is unchanged.
+
+**Matching is the hard part, not extraction.** Manufacturers do not echo a
+dealer's line numbers — they send their own sequence, split one ordered line
+when it ships from two plants, merge duplicates, and write the part number in a
+different shape than the specification tool exported. So rows are matched on
+what is stable: the model number normalised hard (`AN-4830`, `an 4830` and
+`AN.4830` are one part), then an exact description, then nothing.
+
+Three rules it will not break:
+
+| Rule | Why |
+|---|---|
+| A line is claimed at most once | Two acknowledgment rows cannot both fill one line |
+| Unmatched is reported **both ways** | A row with no home and a line nobody answered are different problems, and one is invisible if only the other is shown |
+| Weak matches are shown, never applied | A 60%-similar description is worth showing somebody; it is not worth writing a cost against |
+
+Matching runs best-first across the whole file rather than row by row, so a row
+with an exact model match claims its line before a different row's weak
+description match can take it.
+
+Nothing is saved by the upload. Figures land in the form and the person who
+uploaded the file still presses **Record**, because an acknowledged cost decides
+whether the job is profitable.
+
+A row that omits a figure keeps what was ordered rather than becoming zero — an
+acknowledgment is usually silent about what did not change. The header ship date
+takes the **latest** date across the file, since the job is not ready when the
+first carton ships.
+
+> **What is left:** PDF and emailed acknowledgments still need an extraction
+> step. The matching, the reporting and the confirmation flow are already in
+> place and do not change when it arrives.
 
 ---
 
 ## Specification import
 
-**Screen:** Orders › Import spec. `src/lib/sif/`
+**Screen:** the proposal editor's **Pricing** tab › Import specification. `src/lib/sif/`
+
+### It enters at the quote, not at the order
+
+For contract office furniture the specification file *is* the job. A designer
+works in CET, Giza, 2020 or ProjectMatrix, exports, and that file is the bill of
+materials the client is about to be quoted from. So it lands on the **quote**,
+and the same lines carry through:
+
+```
+SIF export
+  → parseSpecFile + confirmed column mapping
+  → rowsToOrderLines            (neutral spec line; cost resolved from the file)
+  → specLinesToPricingSections  (proposal pricing sections, one per area)
+  → the client's proposal
+  → Release to order → materialize.ts → order lines
+  → revised SIF → diff.ts
+```
+
+The reason it cannot enter at the order is the money. **SIF carries list price,
+not dealer cost.** Cost is list less the discount for that manufacturer and
+series — `list_down` mode — so a file that only reaches an order has already
+skipped the step where the dealer's margin is set, and the quote must then have
+been built from some other description of the same job.
+
+There is deliberately **one** import destination. A second path landing straight
+on an order produces a job with no proposal behind it: no client document, no
+win/loss record, and two descriptions of the same lines that can disagree.
+
+`LineSpecMetadata` on a pricing line is what makes this work — manufacturer,
+series, option string, area, phase and `sourceLineNumber` are carried from the
+file through the quote to the order untouched, which is also what lets a revised
+file be diffed against either one later.
+
+Lines that came in at list with no discount, and lines naming no manufacturer,
+are counted and reported after the import rather than corrected silently. Both
+are ways an imported quote is quietly wrong: the first reads as pure margin, and
+the second cannot be ordered at all.
+
+### The parser
 
 Deliberately **tolerant rather than a parser for one dialect.** SIF is a family
 of formats, not a single one — it varies by tool, by version, and by which
@@ -340,11 +478,11 @@ before placing.
 
 ### The variance queue
 
-**Screen:** `/acknowledgments` in the sidebar. Summary tiles first — outstanding
-acknowledgments, lines that changed, net cost exposure, worst schedule slip —
-then the rows, ranked unanswered-first and then by size of the difference.
-Filtered to what needs review by default; matched lines are the healthy majority
-and showing them buries the exceptions.
+**Screen:** the **Acknowledgments** and **Cost variance** segments of Today
+(`/today?q=acks`, `/today?q=variance`). Both read one query and differ only by
+filter, so their counts cannot drift apart. Rows are ranked unanswered-first and
+then by size of the difference; matched lines are excluded by default because
+they are the healthy majority and showing them buries the exceptions.
 
 State is encoded in form as well as number: a severity stripe down the left edge
 and a status pill, so the rows that matter are findable without reading every
@@ -652,6 +790,44 @@ costing needs both, and until now the model could not tell them apart.
 
 ---
 
+## The calendar holds everything dated
+
+`src/services/calendarService.ts` › `fetchAllCalendarItems`, layer chips in
+`CalendarLayerFilter`.
+
+An install date depends on a delivery date which depends on a factory's
+confirmed ship date. Reading those off three screens is how a crew gets booked
+for a week when the product lands in the next one, so all three are layers on
+one surface alongside proposals, reminders, tasks and events.
+
+| Layer | Source | Meaning |
+|---|---|---|
+| Site work | `work_orders.scheduled_start` | A crew booked onto a day. Timed, not all-day |
+| Delivery | `shipments.estimated_delivery_date` | What the carrier currently estimates |
+| Factory ship date | `vendor_pos.acknowledged_ship_date` | A commitment somebody made |
+
+The last two are deliberately separate layers. One is an observation a carrier
+reported and the other is a promise a factory made, and the gap between them is
+where a schedule goes wrong.
+
+Delivered shipments are excluded — an ETA that already happened is history, and
+leaving it on the calendar makes a busy week look busier than it is.
+
+Every layer is on by default; a calendar that hides a delivery date until you
+find the right toggle is the two-calendar problem again in one page. Counts on
+the chips come from the unfiltered set, so a layer switched off still says how
+much it is hiding.
+
+Each source swallows its own error and returns an empty list, so one
+unavailable table degrades that layer rather than emptying the calendar.
+
+> **What is left:** Schedule (`/schedule`) still owns the crew × week grid.
+> That is a genuinely different layout from a time-of-day calendar — crew lanes
+> against days, with the database refusing a double-booking — so it has not been
+> folded in. The data behind it is now on the calendar either way.
+
+---
+
 ## Pricing: two directions
 
 Contract furniture prices **down from list**; everything the app authored
@@ -782,7 +958,8 @@ acks gets an **empty view** — which correctly reads as *no evidence* rather th
 
 ### The drift screen
 
-`findDriftingRates()` is surfaced at the bottom of `/acknowledgments`. It reads
+`findDriftingRates()` is surfaced as Today's **Rate drift** segment
+(`/today?q=drift`). It reads
 *"you quote 55%, they give 48%, 7 points across 7 lines"* per manufacturer and
 series.
 
@@ -903,10 +1080,18 @@ Two behavior changes came with the consolidation:
 | Variance logic | `src/lib/pricing/variance.ts` |
 | Fulfillment routing | `src/lib/pricing/fulfillment.ts` |
 | Work orders | `src/services/workOrdersService.ts` |
-| Variance queue UI | `src/pages/VarianceQueue.tsx`, `src/components/features/variance/` |
+| Back office primitives | `src/components/common/backoffice/` (`stages.ts`, `tones.ts`, `StageRail`, `StatusChip`, `Callout`, `MoneyTiles`, `DataTable`, `EmptyState`) |
+| Job page | `src/pages/ProjectDetail.tsx`, `src/components/features/projects/job/` |
+| Today queue | `src/pages/Today.tsx`, `src/components/features/today/` |
+| Variance UI | `src/components/features/variance/VarianceTable.tsx`, `RateDriftPanel.tsx` |
+| Spec import (quote) | `src/lib/sif/toPricing.ts`, `src/features/proposals/components/tabs/pricing/useSpecImport.ts` |
+| Spec import UI | `src/components/features/orders/ImportSpecDialog.tsx` (shared: parses, maps, previews) |
+| Order deep link | `src/pages/OrderRedirect.tsx` |
 | Observed discount rates | `src/lib/pricing/observed.ts` |
 | Pricing types | `src/lib/types/pricing.ts` |
 | Companies | `src/services/companiesService.ts`, `src/hooks/queries/useCompanies.ts` |
+| Companies UI | `src/pages/Companies.tsx`, `src/components/features/companies/CompanyDialog.tsx` |
+| Acknowledgment ingestion | `src/lib/ack/` (`match.ts`, `parse.ts`, `ingest.ts`) |
 | Attachments | `src/services/attachmentsService.ts`, `src/hooks/queries/useAttachments.ts` |
 | Project files UI | `src/components/features/board/ProjectAttachments.tsx` (now reads `attachments`) |
 | Attachments UI | `src/components/features/attachments/EntityAttachments.tsx` |
@@ -915,8 +1100,8 @@ Two behavior changes came with the consolidation:
 | Shipment UI | `src/components/features/orders/ShipmentDialog.tsx`, `ShipmentsPanel.tsx`, `TrackingTimeline.tsx` |
 | Tracking adapters | `supabase/functions/_shared/tracking/` (`provider.ts`, `aftership.ts`, `easypost.ts`, `carriers.ts`) |
 | Tracking functions | `supabase/functions/track-shipment/`, `refresh-shipment-tracking/`, `tracking-webhook/` |
-| Migrations | `supabase/migrations/20260819100000_companies.sql`, `20260819100001_attachments.sql`, `20260819100002_consolidate_attachments.sql`, `20260819100003_sales_orders.sql`, `20260819100005_vendor_purchase_orders.sql`, `20260819100006_order_line_fulfillment_type.sql`, `20260819100007_work_orders.sql`, `20260820100000_observed_discounts.sql`, `20260821100000_observed_rates_from_acks.sql`, `20260821110000_allocate_document_number.sql`, `20260821110001_order_status_from_events.sql`, `20260824100000_receipts.sql`, `20260824120000_shipments.sql` |
-| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts`, `src/test/lib/tracking.test.ts` |
+| Migration | `supabase/migrations/20260819100000_dealer_back_office.sql` (the eighteen incremental files consolidated into one) |
+| Tests | `src/test/lib/pricing.test.ts`, `src/test/lib/observed.test.ts`, `src/test/lib/materialize.test.ts`, `src/test/lib/variance.test.ts`, `src/test/lib/fulfillment.test.ts`, `src/test/lib/tracking.test.ts`, `src/test/lib/jobModel.test.ts`, `src/test/lib/toPricing.test.ts`, `src/test/lib/ack.test.ts` |
 
 ---
 

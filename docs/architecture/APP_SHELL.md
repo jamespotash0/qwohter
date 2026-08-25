@@ -75,10 +75,42 @@ without the delay a cursor resting near the rail can flicker it open and shut.
 
 ## Navigation
 
-`AppSidebar` renders one flat list — no groups, no accordions: Dashboard,
-Proposals, Projects, Tasks, Calendar, Contacts, Forms, Analytics. Items are
-filtered by the user's role. Projects (`/project-board`) and Tasks
-(`/task-board`) are top-level entries rather than sub-items of a "Board" parent.
+`AppSidebar` renders four labelled groups. Items are filtered by the user's
+role, and a group whose items are all filtered away is not rendered at all.
+
+| Group | Items | Why together |
+|-------|-------|--------------|
+| *(none)* | Today, Dashboard | Where you start |
+| Pipeline | Proposals, Jobs | The money moving through |
+| Work | Tasks, Schedule, Calendar | Time and people |
+| Reference | Contacts, Companies, Forms, Analytics | What you look things up in |
+
+Jobs is `/project-board`; Tasks is `/task-board`. Both are top-level entries
+rather than sub-items of a "Board" parent.
+
+### What is deliberately absent
+
+Two former entries — **Orders** and **Acknowledgments** — were stages of a job
+rather than places. An order belongs to the job that sold it, and an
+unanswered acknowledgment belongs in the cross-job queue with everything else
+waiting on a person. Neither is unreachable:
+
+| Old route | Now |
+|-----------|-----|
+| `/orders` | Redirects to `/project-board` |
+| `/orders/:id` | Resolves to the job that owns the order (`OrderRedirect`) |
+| `/acknowledgments` | Redirects to `/today?q=acks` |
+
+Creating an order happens on the job page, where the proposal and project it
+needs are already in hand. Importing a specification happens earlier still — on
+the proposal's Pricing tab, because the file is what the job is quoted from.
+
+### Group headings and the collapsed rail
+
+A heading occupies a fixed 24px slot in both sidebar states so the rail's
+vertical rhythm does not change when the panel opens. Expanded, the slot holds
+the label; collapsed, it cross-fades to a short rule — the separator the label
+was implying anyway.
 
 ### Keeping the slide smooth
 

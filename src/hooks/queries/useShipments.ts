@@ -20,6 +20,7 @@ import {
   getShipmentLines,
   getShipmentProgress,
   getOpenShipments,
+  getShipmentProgressForOrg,
   getTrackingEvents,
   updateShipment,
   markManualDelivery,
@@ -107,6 +108,26 @@ export function useShipmentProgress(salesOrderId?: string) {
  * on a second monitor all morning, and a webhook that arrives while they are
  * looking at it should land on the page rather than wait for a manual reload.
  */
+/**
+ * Shipment progress across the organization, keyed by shipment id.
+ *
+ * Pairs with `useOpenShipments`: the shipments say where the freight is, this
+ * says whether anybody has counted it. Without it a delivered shipment cannot
+ * be told apart from a delivered shipment nobody opened, and the queue would
+ * flag every arrival as uncounted.
+ */
+export function useShipmentProgressForOrg(organizationId?: string) {
+  return useQuery({
+    queryKey: [...shipmentKeys.all, 'progress-org', organizationId ?? '__pending__'],
+    enabled: !!organizationId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      if (!organizationId) return {};
+      return getShipmentProgressForOrg(organizationId);
+    },
+  });
+}
+
 export function useOpenShipments(organizationId?: string) {
   return useQuery({
     queryKey: shipmentKeys.open(organizationId ?? '__pending__'),

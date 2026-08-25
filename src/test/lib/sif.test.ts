@@ -192,6 +192,31 @@ describe('parseNumber', () => {
 });
 
 describe('rowsToOrderLines', () => {
+  it('applies a blanket markup to every line', () => {
+    // A spec tool exports cost, never sell. Without this every imported line
+    // quotes at cost.
+    const rows = [['Steelcase', 'Panel', '2', '500']];
+    const mapping = {
+      manufacturer_name: 0,
+      description: 1,
+      quantity: 2,
+      list_price: 3,
+    };
+    const { lines } = rowsToOrderLines(rows, mapping, {
+      fallbackDiscountPercent: 50,
+      markupPercent: 20,
+    });
+    expect(lines[0]!.markup_value).toBe(20);
+    expect(lines[0]!.markup_type).toBe('percent');
+  });
+
+  it('defaults markup to zero when the importer names none', () => {
+    const rows = [['Steelcase', 'Panel', '1', '100']];
+    const mapping = { manufacturer_name: 0, description: 1, quantity: 2, unit_cost: 3 };
+    const { lines } = rowsToOrderLines(rows, mapping);
+    expect(lines[0]!.markup_value).toBe(0);
+  });
+
   const mapping: ColumnMapping = {
     manufacturer_name: 0,
     series_name: 1,

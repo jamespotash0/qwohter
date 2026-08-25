@@ -127,6 +127,14 @@ export interface MapOptions {
   fallbackDiscountPercent?: number;
   /** Area for rows whose file carries no area column. */
   defaultArea?: string | null;
+  /**
+   * Markup applied to every line, as a percentage. A specification tool exports
+   * what the product costs, never what the dealer sells it for, so a file that
+   * imports without one quotes at cost. Zero is a legitimate answer — a dealer
+   * who marks up per section afterwards wants exactly that — but it has to be
+   * a decision somebody made rather than a default nobody saw.
+   */
+  markupPercent?: number;
 }
 
 export interface MapResult {
@@ -220,7 +228,7 @@ export function rowsToOrderLines(
       unit_cost: unitCost,
       sell_rule: null,
       markup_type: 'percent',
-      markup_value: 0,
+      markup_value: options.markupPercent ?? 0,
       discount_type: null,
       discount_value: null,
       sell_price: parseNumber(cell(row, mapping.sell_price)) ?? 0,
