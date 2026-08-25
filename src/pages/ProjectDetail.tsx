@@ -22,6 +22,7 @@ import {
   ListChecks,
   ShoppingCart,
   ArrowsClockwise,
+  Receipt,
   Paperclip,
   Warning,
   Wrench,
@@ -39,6 +40,8 @@ import { ProjectActivityFeed } from '@/components/features/projects/ProjectActiv
 import { ChangeOrdersPanel } from '@/components/features/projects/ChangeOrdersPanel';
 import { WorkOrderDialog } from '@/components/features/projects/WorkOrderDialog';
 import { CompleteWorkOrderDialog } from '@/components/features/projects/CompleteWorkOrderDialog';
+import { BillingHandoff } from '@/components/features/projects/BillingHandoff';
+import { ProjectPaymentsSection } from '@/components/features/board/ProjectPaymentsSection';
 import { EntityAttachments } from '@/components/features/attachments/EntityAttachments';
 import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { cn } from '@/lib/utils';
@@ -253,6 +256,10 @@ export default function ProjectDetailPage() {
               <Wrench className="w-4 h-4 mr-1.5" />
               Site work ({workOrders.length})
             </TabsTrigger>
+            <TabsTrigger value="billing">
+              <Receipt className="w-4 h-4 mr-1.5" />
+              Billing
+            </TabsTrigger>
             <TabsTrigger value="files">
               <Paperclip className="w-4 h-4 mr-1.5" />
               Files
@@ -400,6 +407,22 @@ export default function ProjectDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          {/* The last link: a job that has been sold, ordered, delivered and
+              installed becomes money owed. */}
+          <TabsContent value="billing" className="mt-4">
+            <div className="space-y-5">
+              <BillingHandoff
+                organizationId={organizationId}
+                projectId={projectId}
+              />
+              <ProjectPaymentsSection
+                projectId={projectId}
+                organizationId={organizationId}
+                contractDefault={sell}
+              />
             </div>
           </TabsContent>
 

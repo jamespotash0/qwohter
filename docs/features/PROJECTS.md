@@ -632,3 +632,53 @@ up across every order on the job, and it is usually smaller.
 | Change orders | `src/components/features/projects/ChangeOrdersPanel.tsx` |
 | Service / hooks | `src/services/projectHubService.ts`, `src/hooks/queries/useProjectHub.ts` |
 | Migration | `supabase/migrations/20260824110000_project_hub.sql` |
+
+---
+
+## Billing handoff
+
+**Where:** the project's **Billing** tab. `src/lib/billing/milestones.ts`
+
+The last link in the chain the project hub describes: a job that has been sold,
+ordered, delivered, and installed becomes money owed.
+
+### Prompted, never automatic
+
+The project's stage is derived, and deriving a *status* is safe in a way that
+creating *financial records* off one is not. A job that reads "Ready to bill"
+for a moment because a quantity was corrected must not quietly produce an
+invoice schedule somebody then has to unpick. So the handoff offers, and a
+person accepts.
+
+### Phases release on events, not dates
+
+The default schedule is **milestone-triggered**, because a deposit is earned
+when the order is placed, not on the 15th:
+
+| Phase | Releases on | Reads |
+|-------|-------------|-------|
+| Deposit on order | 50% | anything ordered |
+| On delivery | 40% | anything received |
+| Final on completion | 10% | everything installed |
+
+`delivered` fires on the **first** delivery, not the last. Holding a delivery
+payment until the final carton arrives finances the manufacturer's back-order
+out of the dealer's own working capital.
+
+`complete` is the only one that requires the whole quantity — and an empty order
+never reads as complete.
+
+An **unrecognised milestone key never qualifies**. Guessing would invoice a
+customer for something that may not have happened, which is the one mistake in
+this system a *customer* notices.
+
+### Amounts
+
+`billing_phases.resolved_amount` is a **snapshot taken at invoice time**, not a
+computed column — so `phaseValue()` resolves a percentage against the contract
+total while a phase is unbilled, and returns the snapshotted figure once it has
+been. A change order can move the contract afterwards, and an issued invoice
+must not silently restate itself.
+
+`unbilledValue()` reports genuinely valueless phases separately rather than
+folding them into the total: an unpriced phase is not a free one.
