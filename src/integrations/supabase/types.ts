@@ -3587,6 +3587,7 @@ export type Database = {
           received_by: string | null
           received_date: string
           sales_order_id: string
+          shipment_id: string | null
           tracking_number: string | null
           updated_at: string
           vendor_po_id: string | null
@@ -3601,6 +3602,7 @@ export type Database = {
           received_by?: string | null
           received_date?: string
           sales_order_id: string
+          shipment_id?: string | null
           tracking_number?: string | null
           updated_at?: string
           vendor_po_id?: string | null
@@ -3615,6 +3617,7 @@ export type Database = {
           received_by?: string | null
           received_date?: string
           sales_order_id?: string
+          shipment_id?: string | null
           tracking_number?: string | null
           updated_at?: string
           vendor_po_id?: string | null
@@ -3639,6 +3642,20 @@ export type Database = {
             columns: ["sales_order_id"]
             isOneToOne: false
             referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_progress"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "receipts_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
           {
@@ -3881,6 +3898,262 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      shipment_lines: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          order_line_id: string
+          organization_id: string
+          quantity_shipped: number
+          shipment_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_line_id: string
+          organization_id: string
+          quantity_shipped: number
+          shipment_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_line_id?: string
+          organization_id?: string
+          quantity_shipped?: number
+          shipment_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_line_fulfillment"
+            referencedColumns: ["order_line_id"]
+          },
+          {
+            foreignKeyName: "shipment_lines_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_lines_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_progress"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_lines_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipment_tracking_events: {
+        Row: {
+          checkpoint_key: string
+          created_at: string
+          id: string
+          location: string | null
+          message: string | null
+          occurred_at: string
+          organization_id: string
+          raw: Json | null
+          shipment_id: string
+          status: string | null
+        }
+        Insert: {
+          checkpoint_key: string
+          created_at?: string
+          id?: string
+          location?: string | null
+          message?: string | null
+          occurred_at: string
+          organization_id: string
+          raw?: Json | null
+          shipment_id: string
+          status?: string | null
+        }
+        Update: {
+          checkpoint_key?: string
+          created_at?: string
+          id?: string
+          location?: string | null
+          message?: string | null
+          occurred_at?: string
+          organization_id?: string
+          raw?: Json | null
+          shipment_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_tracking_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_progress"
+            referencedColumns: ["shipment_id"]
+          },
+          {
+            foreignKeyName: "shipment_tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          bill_of_lading: string | null
+          carrier_code: string | null
+          carrier_name: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          estimated_delivery_date: string | null
+          id: string
+          last_checked_at: string | null
+          notes: string | null
+          organization_id: string
+          piece_count: number | null
+          pro_number: string | null
+          provider_tracking_id: string | null
+          sales_order_id: string
+          service_level: string | null
+          ship_date: string | null
+          tracking_active: boolean
+          tracking_error: string | null
+          tracking_location: string | null
+          tracking_number: string | null
+          tracking_provider: string
+          tracking_status: string
+          tracking_status_detail: string | null
+          updated_at: string
+          vendor_po_id: string | null
+          weight_lbs: number | null
+        }
+        Insert: {
+          bill_of_lading?: string | null
+          carrier_code?: string | null
+          carrier_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          estimated_delivery_date?: string | null
+          id?: string
+          last_checked_at?: string | null
+          notes?: string | null
+          organization_id: string
+          piece_count?: number | null
+          pro_number?: string | null
+          provider_tracking_id?: string | null
+          sales_order_id: string
+          service_level?: string | null
+          ship_date?: string | null
+          tracking_active?: boolean
+          tracking_error?: string | null
+          tracking_location?: string | null
+          tracking_number?: string | null
+          tracking_provider?: string
+          tracking_status?: string
+          tracking_status_detail?: string | null
+          updated_at?: string
+          vendor_po_id?: string | null
+          weight_lbs?: number | null
+        }
+        Update: {
+          bill_of_lading?: string | null
+          carrier_code?: string | null
+          carrier_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          estimated_delivery_date?: string | null
+          id?: string
+          last_checked_at?: string | null
+          notes?: string | null
+          organization_id?: string
+          piece_count?: number | null
+          pro_number?: string | null
+          provider_tracking_id?: string | null
+          sales_order_id?: string
+          service_level?: string | null
+          ship_date?: string | null
+          tracking_active?: boolean
+          tracking_error?: string | null
+          tracking_location?: string | null
+          tracking_number?: string | null
+          tracking_provider?: string
+          tracking_status?: string
+          tracking_status_detail?: string | null
+          updated_at?: string
+          vendor_po_id?: string | null
+          weight_lbs?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "shipments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_po_progress"
+            referencedColumns: ["vendor_po_id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signup_invites: {
         Row: {
@@ -5006,6 +5279,61 @@ export type Database = {
         }
         Relationships: []
       }
+      shipment_progress: {
+        Row: {
+          awaiting_receipt: boolean | null
+          delivered_at: string | null
+          estimated_delivery_date: string | null
+          line_count: number | null
+          organization_id: string | null
+          qty_damaged: number | null
+          qty_received: number | null
+          qty_shipped: number | null
+          qty_uncounted: number | null
+          receipt_count: number | null
+          sales_order_id: string | null
+          shipment_id: string | null
+          tracking_status: string | null
+          vendor_po_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_order_progress"
+            referencedColumns: ["sales_order_id"]
+          },
+          {
+            foreignKeyName: "shipments_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_po_progress"
+            referencedColumns: ["vendor_po_id"]
+          },
+          {
+            foreignKeyName: "shipments_vendor_po_id_fkey"
+            columns: ["vendor_po_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_pos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions_pending_sync: {
         Row: {
           id: string | null
@@ -5163,6 +5491,19 @@ export type Database = {
         Args: { p_document_type: string; p_organization_id: string }
         Returns: number
       }
+      apply_spec_revision: {
+        Args: {
+          p_additions?: Json
+          p_removals?: Json
+          p_sales_order_id: string
+          p_updates?: Json
+        }
+        Returns: Json
+      }
+      apply_tracking_update: {
+        Args: { p_checkpoints?: Json; p_shipment_id: string; p_update: Json }
+        Returns: Json
+      }
       approve_member: { Args: { member_id: string }; Returns: boolean }
       attempt_org_creation: {
         Args: { p_ip: string; p_profile_id: string }
@@ -5304,6 +5645,10 @@ export type Database = {
         Args: { p_lines: Json; p_order: Json }
         Returns: string
       }
+      create_shipment_with_lines: {
+        Args: { p_lines?: Json; p_shipment: Json }
+        Returns: string
+      }
       create_vendor_po_with_lines: {
         Args: { p_lines: Json; p_po: Json }
         Returns: string
@@ -5394,6 +5739,7 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      invoke_refresh_shipment_tracking: { Args: never; Returns: undefined }
       invoke_signature_reminders_edge_function: {
         Args: never
         Returns: undefined
@@ -5481,6 +5827,20 @@ export type Database = {
         Returns: string
       }
       secure_rpc: { Args: { p_action: string; p_params?: Json }; Returns: Json }
+      shipments_due_for_tracking: {
+        Args: { p_limit?: number }
+        Returns: {
+          carrier_code: string
+          last_checked_at: string
+          organization_id: string
+          pro_number: string
+          provider_tracking_id: string
+          shipment_id: string
+          tracking_number: string
+          tracking_provider: string
+          tracking_status: string
+        }[]
+      }
       transfer_ownership: {
         Args: { p_new_owner_id: string; p_organization_id: string }
         Returns: Json

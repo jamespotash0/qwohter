@@ -1,10 +1,10 @@
 /**
  * Sales Order Detail
  *
- * One job, from what was sold through to what has been bought, received, and
- * installed. Three tabs because those are three different jobs a person sits
+ * One job, from what was sold through to what has been bought, shipped,
+ * received, and installed. Tabbed because those are separate jobs a person sits
  * down to do: check the scope, split it across manufacturers, chase the
- * acknowledgments.
+ * acknowledgments, watch the freight.
  */
 
 import { useMemo, useState } from 'react';
@@ -15,7 +15,9 @@ import {
   Storefront,
   ListChecks,
   Paperclip,
+  ArrowsClockwise,
   Package,
+  Truck,
 } from '@phosphor-icons/react';
 import { PageContent } from '@/components/common/layout';
 import { Button } from '@/components/ui/button';
@@ -30,9 +32,13 @@ import {
 } from '@/hooks/queries/useSalesOrders';
 import { FanOutPanel } from '@/components/features/orders/FanOutPanel';
 import { AcknowledgmentDialog } from '@/components/features/orders/AcknowledgmentDialog';
+import { RevisionDialog } from '@/components/features/orders/RevisionDialog';
 import { EntityAttachments } from '@/components/features/attachments/EntityAttachments';
 import { ReceiveDialog } from '@/components/features/orders/ReceiveDialog';
+import { ShipmentDialog } from '@/components/features/orders/ShipmentDialog';
+import { ShipmentsPanel } from '@/components/features/orders/ShipmentsPanel';
 import { usePOProgress } from '@/hooks/queries/useReceipts';
+import { useShipments } from '@/hooks/queries/useShipments';
 import { cn } from '@/lib/utils';
 
 export default function SalesOrderDetailPage() {
@@ -46,9 +52,16 @@ export default function SalesOrderDetailPage() {
   const { data: progress = {} } = useOrderProgress(order?.organization_id);
   // Receiving status per manufacturer order, derived the same way.
   const { data: poProgress = {} } = usePOProgress(orderId);
+  const { data: shipments = [] } = useShipments(orderId);
 
   const [ackPOId, setAckPOId] = useState<string | null>(null);
   const [receivePOId, setReceivePOId] = useState<string | null>(null);
+  const [revisionOpen, setRevisionOpen] = useState(false);
+  // Set when receiving is opened from a tracked shipment rather than from a
+  // manufacturer order, which scopes the lines to that truck's manifest.
+  const [receiveShipmentId, setReceiveShipmentId] = useState<string | null>(null);
+  const [shipPOId, setShipPOId] = useState<string | null>(null);
+  const [shipDialogOpen, setShipDialogOpen] = useState(false);
 
   const lineLabels = useMemo(
     () => Object.fromEntries(lines.map(l => [l.id, l.description])),
@@ -67,6 +80,7 @@ export default function SalesOrderDetailPage() {
 
   const activePO = pos.find(p => p.id === ackPOId);
   const receivingPO = pos.find(p => p.id === receivePOId);
+  const shippingPO = pos.find(p => p.id === shipPOId);
 
   if (isLoading) {
     return (
@@ -99,10 +113,17 @@ export default function SalesOrderDetailPage() {
         .filter(Boolean)
         .join(' · ')}
       headerActions={
-        <Button variant="outline" size="sm" onClick={() => navigate('/orders')}>
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
-          Orders
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* The designer revised after the quote. Which of 520 lines moved? */}
+          <Button variant="outline" size="sm" onClick={() => setRevisionOpen(true)}>
+            <ArrowsClockwise className="w-4 h-4 mr-1.5" />
+            Compare revision
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate('/orders')}>
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Orders
+          </Button>
+        </div>
       }
     >
       <div className="space-y-5">
@@ -152,6 +173,10 @@ export default function SalesOrderDetailPage() {
             <TabsTrigger value="pos">
               <ClipboardText className="w-4 h-4 mr-1.5" />
               Orders placed ({pos.length})
+            </TabsTrigger>
+            <TabsTrigger value="transit">
+              <Truck className="w-4 h-4 mr-1.5" />
+              In transit ({shipments.length})
             </TabsTrigger>
             <TabsTrigger value="files">
               <Paperclip className="w-4 h-4 mr-1.5" />
@@ -303,7 +328,21 @@ export default function SalesOrderDetailPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setReceivePOId(po.id)}
+                        onClick={() => {
+                          setShipPOId(po.id);
+                          setShipDialogOpen(true);
+                        }}
+                      >
+                        <Truck className="w-4 h-4 mr-1.5" />
+                        Ship
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setReceiveShipmentId(null);
+                          setReceivePOId(po.id);
+                        }}
                       >
                         <Package className="w-4 h-4 mr-1.5" />
                         Receive
@@ -314,6 +353,36 @@ export default function SalesOrderDetailPage() {
               </div>
             )}
           </TabsContent>
+          {/* Where the freight is between the factory and the dock */}
+          <TabsContent value="transit" className="mt-4">
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShipPOId(null);
+                    setShipDialogOpen(true);
+                  }}
+                >
+                  <Truck className="w-4 h-4 mr-1.5" />
+                  Record shipment
+                </Button>
+              </div>
+              <ShipmentsPanel
+                salesOrderId={order.id}
+                onRecordShipment={() => {
+                  setShipPOId(null);
+                  setShipDialogOpen(true);
+                }}
+                onReceive={(shipmentId, vendorPOId) => {
+                  setReceiveShipmentId(shipmentId);
+                  setReceivePOId(vendorPOId);
+                }}
+              />
+            </div>
+          </TabsContent>
+
           {/* The customer's contract, the spec file, drawings — and later, the
               acknowledgment PDFs an extraction was run against. */}
           <TabsContent value="files" className="mt-4">
@@ -327,14 +396,35 @@ export default function SalesOrderDetailPage() {
         </Tabs>
       </div>
 
+      <RevisionDialog
+        open={revisionOpen}
+        onOpenChange={setRevisionOpen}
+        salesOrderId={order.id}
+      />
+
       <ReceiveDialog
-        open={!!receivePOId}
-        onOpenChange={open => !open && setReceivePOId(null)}
+        open={!!receivePOId || !!receiveShipmentId}
+        onOpenChange={open => {
+          if (open) return;
+          setReceivePOId(null);
+          setReceiveShipmentId(null);
+        }}
         organizationId={order.organization_id}
         salesOrderId={order.id}
         vendorPOId={receivePOId}
+        shipmentId={receiveShipmentId}
         poNumber={receivingPO?.po_number}
         manufacturerName={receivingPO?.manufacturer_name}
+      />
+
+      <ShipmentDialog
+        open={shipDialogOpen}
+        onOpenChange={setShipDialogOpen}
+        organizationId={order.organization_id}
+        salesOrderId={order.id}
+        vendorPOId={shipPOId}
+        poNumber={shippingPO?.po_number}
+        manufacturerName={shippingPO?.manufacturer_name}
       />
 
       <AcknowledgmentDialog

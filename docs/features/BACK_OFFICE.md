@@ -120,6 +120,64 @@ tool.
 
 ---
 
+## Specification revisions
+
+**Screen:** an order's **Compare revision** action. `src/lib/sif/diff.ts`
+
+The designer revises after the quote is signed and nobody can tell which of 520
+lines moved, so everyone re-reads the whole file — or nobody does, which is what
+actually happens.
+
+### Matching is the whole difficulty
+
+Specification tools **renumber on export**, so identity cannot rest on position.
+Matched in order of how much a match can be trusted:
+
+| Pass | Key | Means |
+|------|-----|-------|
+| 1 | `source_line_number` | The tool's own identity, when stable |
+| 2 | part + options | The same product, configured the same way |
+| 3 | part alone | The same product, reconfigured |
+
+Each incoming line claims **at most one** existing line and vice versa, so a job
+with forty identical task chairs cannot collapse them onto a single match.
+
+### Classification, and why the ranking
+
+`options` outranks `cost`, which outranks `quantity`. A different configuration
+is a different product; a price move changes margin without changing what
+arrives on the truck; a quantity move is the one everybody already notices.
+
+### Two things it refuses to do
+
+**It will not touch product already on a manufacturer order.** Those changes
+lead the list, are excluded from the apply, and are refused again by
+`apply_spec_revision` as a backstop — verified: asked to both update and remove
+an ordered line, the function returns `refused: 2` and the line is untouched.
+Editing a line the factory has been told to build destroys the record of what
+was ordered; the honest routes are a change order or a cancellation.
+
+**It will not remove lines the dealer added themselves.** Install labor,
+freight, and pass-through costs never appear in a specification export, so their
+absence means nothing. This was caught in testing against real data, where the
+first diff cheerfully proposed cancelling *"Delivery & Installation"* — a crew's
+own work — on every revision. Only `purchase` lines participate in removal
+detection; unknown routing is treated as spec-sourced, since a person reviews
+before anything applies.
+
+### Applying
+
+`apply_spec_revision` does it in one call, because a half-applied revision is
+worse than none: an order where twelve lines moved and eight did not reconciles
+against neither version of the specification.
+
+Removals **cancel rather than delete** — a removed line may carry fulfillment
+events, attachments, or a place in someone's memory of the job. And line numbers
+are **never resequenced**, because a line number is what a factory and a
+warehouse quote back at you.
+
+---
+
 ## Order numbers
 
 Allocated by `allocate_document_number(org, type)`, which increments a counter

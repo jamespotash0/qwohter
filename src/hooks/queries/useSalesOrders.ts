@@ -20,6 +20,8 @@ import {
   updateSalesOrder,
   getProjectIdForProposal,
   getOrderProgress,
+  getLinesForDiff,
+  applySpecRevision,
   type SalesOrder,
   type OrderLine,
   type CreateSalesOrderInput,
@@ -47,6 +49,8 @@ export const salesOrderKeys = {
   fanOut: (salesOrderId: string) => [...salesOrderKeys.all, 'fan-out', salesOrderId] as const,
   pos: (salesOrderId: string) => [...salesOrderKeys.all, 'pos', salesOrderId] as const,
   preview: (proposalId: string) => [...salesOrderKeys.all, 'preview', proposalId] as const,
+  linesForDiff: (salesOrderId: string) =>
+    [...salesOrderKeys.all, 'lines-for-diff', salesOrderId] as const,
   progress: (organizationId: string) =>
     [...salesOrderKeys.all, 'progress', organizationId] as const,
   projectFor: (proposalId: string) =>
@@ -289,3 +293,63 @@ export function useFanOutPurchaseOrders() {
   });
 }
 
+
+/**
+ * Order lines paired with how much of each is already on a manufacturer order.
+ *
+ * The fulfillment figure is what makes a revision safe to review: without it
+ * every line looks free to change, including the ones a factory has already
+ * been told to build.
+ */
+export function useLinesForDiff(salesOrderId?: string) {
+  return useQuery({
+    queryKey: salesOrderKeys.linesForDiff(salesOrderId ?? '__pending__'),
+    enabled: !!salesOrderId,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      if (!salesOrderId) return [];
+      return getLinesForDiff(salesOrderId);
+    },
+  });
+}
+
+export function useApplyRevision() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      salesOrderId,
+      payload,
+    }: {
+      salesOrderId: string;
+      payload: Parameters<typeof applySpecRevision>[1];
+    }) => applySpecRevision(salesOrderId, payload),
+    onSuccess: result => {
+      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
+      queryClient.invalidateQueries({ queryKey: varianceQueryKeys.all });
+
+      const parts = [
+        result.added > 0 && `${result.added} added`,
+        result.updated > 0 && `${result.updated} changed`,
+        result.removed > 0 && `${result.removed} cancelled`,
+      ].filter(Boolean);
+
+      toast.success('Revision applied', {
+        description: parts.length > 0 ? parts.join(', ') : 'Nothing to change',
+      });
+
+      // Refusals are not an error — they are the guard doing its job — but the
+      // person needs to know those lines still need a change order.
+      if (result.refused > 0) {
+        toast.warning(
+          `${result.refused} line${result.refused === 1 ? '' : 's'} left alone`,
+          { description: 'Already on a manufacturer order — raise a change order instead.' }
+        );
+      }
+    },
+    onError: (error: unknown) =>
+      toast.error('Could not apply the revision', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      }),
+  });
+}

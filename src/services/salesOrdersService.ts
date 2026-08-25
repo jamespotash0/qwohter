@@ -574,3 +574,78 @@ export async function getObservedRates(
 
   return (data || []) as unknown as ObservedRateRow[];
 }
+
+// ============================================================================
+// Specification revisions
+// ============================================================================
+
+/**
+ * Order lines paired with how much of each has been ordered.
+ *
+ * The fulfillment figure is what makes a diff safe: without it every line looks
+ * free to change, including the ones a factory has already been told to build.
+ */
+export async function getLinesForDiff(
+  salesOrderId: string
+): Promise<import('@/lib/sif/diff').ExistingLine[]> {
+  const [lines, fulfillment] = await Promise.all([
+    getOrderLines(salesOrderId),
+    getOrderFulfillment(salesOrderId),
+  ]);
+
+  return lines
+    .filter(line => line.status !== 'Cancelled')
+    .map(line => ({
+      id: line.id,
+      line_number: line.line_number,
+      manufacturer_name: line.manufacturer_name,
+      model_number: line.model_number,
+      description: line.description,
+      option_string: line.option_string,
+      quantity: Number(line.quantity),
+      unit_cost: Number(line.unit_cost),
+      list_price: line.list_price === null ? null : Number(line.list_price),
+      source_line_number: line.source_line_number,
+      qty_ordered: Number(fulfillment[line.id]?.qty_ordered ?? 0),
+      fulfillment_type: line.fulfillment_type,
+    }));
+}
+
+export interface RevisionResult {
+  updated: number;
+  added: number;
+  removed: number;
+  /** Lines the database refused because they are already on order. */
+  refused: number;
+}
+
+/**
+ * Apply a reviewed revision.
+ *
+ * Already-ordered lines are excluded by the caller and refused again by the
+ * function — two guards on purpose, because the failure is silent and
+ * expensive: editing a line the factory has been told to build destroys the
+ * record of what was actually ordered.
+ */
+export async function applySpecRevision(
+  salesOrderId: string,
+  payload: {
+    updates: Record<string, unknown>[];
+    additions: Record<string, unknown>[];
+    removals: { id: string }[];
+  }
+): Promise<RevisionResult> {
+  const { data, error } = await supabase.rpc('apply_spec_revision' as never, {
+    p_sales_order_id: salesOrderId,
+    p_updates: payload.updates,
+    p_additions: payload.additions,
+    p_removals: payload.removals,
+  } as never);
+
+  if (error) {
+    console.error('[salesOrdersService] applySpecRevision failed:', error);
+    throw new Error(`Failed to apply the revision: ${error.message}`);
+  }
+
+  return data as unknown as RevisionResult;
+}
