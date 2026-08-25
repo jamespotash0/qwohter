@@ -100,6 +100,7 @@ npm run docs:preview           # Preview built docs
 |-----|-------------|
 | [CLIENT_PORTAL_PLAN.md](docs/plans/CLIENT_PORTAL_PLAN.md) | Client portal feature plan |
 | [PERMISSIONS_BITMASK_PLAN.md](docs/plans/PERMISSIONS_BITMASK_PLAN.md) | JWT + bitmask permissions (replace per-request DB role checks) |
+| [AI_TEMPLATE_AUTHORING_PLAN.md](docs/plans/AI_TEMPLATE_AUTHORING_PLAN.md) | Doc variables after the catalog: table/rollup tiers, AI-authored templates |
 
 ---
 

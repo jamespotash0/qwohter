@@ -4037,6 +4037,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           delivered_at: string | null
+          delivery_recorded_by: string | null
           estimated_delivery_date: string | null
           id: string
           last_checked_at: string | null
@@ -4066,6 +4067,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           delivered_at?: string | null
+          delivery_recorded_by?: string | null
           estimated_delivery_date?: string | null
           id?: string
           last_checked_at?: string | null
@@ -4095,6 +4097,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           delivered_at?: string | null
+          delivery_recorded_by?: string | null
           estimated_delivery_date?: string | null
           id?: string
           last_checked_at?: string | null
@@ -5516,10 +5519,6 @@ export type Database = {
       block_access: {
         Args: { org_id: string; reason: string }
         Returns: undefined
-      }
-      can_view_cost: {
-        Args: { check_org_id: string; check_user_id: string }
-        Returns: boolean
       }
       can_view_membership: {
         Args: {

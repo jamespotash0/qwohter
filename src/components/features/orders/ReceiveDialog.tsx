@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label';
 import { useCreateReceipt } from '@/hooks/queries/useReceipts';
 import { useOrderLines, useOrderFulfillment } from '@/hooks/queries/useSalesOrders';
 import { usePOLines } from '@/hooks/queries/useVarianceQueue';
+import { useShipmentLines } from '@/hooks/queries/useShipments';
 import { summarizeReceipt, buildReceiptLines } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,14 @@ interface ReceiveDialogProps {
   salesOrderId: string;
   /** Which manufacturer order this delivery satisfies, if known. */
   vendorPOId?: string | null;
+  /**
+   * The shipment being counted, when the delivery was tracked in.
+   *
+   * Recording it is what lets "the carrier said delivered" and "we counted it"
+   * be compared — which is the entire point of tracking a shipment rather than
+   * just watching one.
+   */
+  shipmentId?: string | null;
   poNumber?: string | null;
   manufacturerName?: string | null;
   /**
@@ -62,6 +71,7 @@ export function ReceiveDialog({
   organizationId,
   salesOrderId,
   vendorPOId,
+  shipmentId,
   poNumber,
   manufacturerName,
   orderLineIds,
@@ -70,6 +80,8 @@ export function ReceiveDialog({
   const { data: fulfillment = {} } = useOrderFulfillment(salesOrderId);
   // Lines belonging to the manufacturer order being received against.
   const { data: poLines = [] } = usePOLines(vendorPOId ?? undefined);
+  // What this particular truck was carrying, when the delivery was tracked in.
+  const { data: shipmentLines = [] } = useShipmentLines(shipmentId ?? undefined);
   const createReceipt = useCreateReceipt();
 
   const [receivedDate, setReceivedDate] = useState('');
@@ -88,11 +100,17 @@ export function ReceiveDialog({
    */
   const allowedIds = useMemo(() => {
     if (orderLineIds) return new Set(orderLineIds);
+    // A shipment's manifest is the tightest scope there is: it names what was
+    // physically on this truck, which is narrower than everything the
+    // manufacturer still owes.
+    if (shipmentId && shipmentLines.length > 0) {
+      return new Set(shipmentLines.map(l => l.order_line_id));
+    }
     if (vendorPOId && poLines.length > 0) {
       return new Set(poLines.map(l => l.order_line_id));
     }
     return null;
-  }, [orderLineIds, vendorPOId, poLines]);
+  }, [orderLineIds, vendorPOId, poLines, shipmentId, shipmentLines]);
 
   // Only lines with something still owed. A fully received line on a partial
   // delivery is noise, and hiding it keeps the clerk's eye on the short ones.
@@ -164,6 +182,7 @@ export function ReceiveDialog({
           organization_id: organizationId,
           sales_order_id: salesOrderId,
           vendor_po_id: vendorPOId ?? null,
+          shipment_id: shipmentId ?? null,
           received_date: receivedDate || null,
           carrier: carrier.trim() || null,
           bill_of_lading: billOfLading.trim() || null,

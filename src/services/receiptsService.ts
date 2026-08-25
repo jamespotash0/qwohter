@@ -30,6 +30,8 @@ export interface CreateReceiptInput {
   organization_id: string;
   sales_order_id: string;
   vendor_po_id?: string | null;
+  /** The shipment this delivery came off, when it was tracked in. */
+  shipment_id?: string | null;
   received_date?: string | null;
   carrier?: string | null;
   tracking_number?: string | null;

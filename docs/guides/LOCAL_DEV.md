@@ -149,6 +149,9 @@ All edge functions live in `supabase/functions/<name>/index.ts`. The local gatew
 | `generate-google-doc` | Google Docs integration | Google OAuth secrets |
 | `google-oauth-callback` | Google OAuth flow | Google OAuth secrets |
 | `get-mapbox-token` | Mapbox proxy | `MAPBOX_PUBLIC_TOKEN` |
+| `track-shipment` | Register / refresh / detect carrier tracking | `AFTERSHIP_API_KEY` (or `EASYPOST_API_KEY`) |
+| `refresh-shipment-tracking` | Hourly tracking poll (pg_cron) | Same, plus service role |
+| `tracking-webhook` | Carrier status push from the provider | `TRACKING_WEBHOOK_SECRET` |
 
 ---
 

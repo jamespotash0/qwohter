@@ -277,6 +277,7 @@ shipments                          (freight in motion)
 ├── tracking_location, estimated_delivery_date, delivered_at
 ├── tracking_provider ('aftership' | 'easypost' | 'manual')
 ├── provider_tracking_id, last_checked_at, tracking_error, tracking_active
+├── delivery_recorded_by (FK auth.users)  -- set only by mark_manual_delivery
 └── created_by, created_at, updated_at
 
 shipment_lines                     (what the vendor SAYS is on the truck)
@@ -297,6 +298,31 @@ receipts.shipment_id (FK, nullable)   -- closes the loop
 `authenticated`**. `shipment_tracking_events` has a SELECT policy and no INSERT,
 UPDATE, or DELETE policy. A scan history a dealer can edit is worth nothing in a
 freight claim.
+
+The UPDATE policy on `shipments` is column-blind, so that rule is enforced by
+the `guard_observed_tracking` trigger: an UPDATE arriving as `authenticated`
+that changes `tracking_status`, `tracking_status_detail`, `tracking_location`,
+`delivered_at`, `delivery_recorded_by`, `last_checked_at`, `tracking_error`,
+`provider_tracking_id`, or `tracking_provider` is rejected outright. Identifiers
+(PRO, tracking number, BOL, dates, piece count, notes, `tracking_active`) stay
+freely editable. `SECURITY DEFINER` functions run as the owner and are exempt by
+construction, which is exactly the intended set of doors.
+
+**One door through it: `mark_manual_delivery(p_shipment_id, p_delivered_at)`.**
+A carrier with no API — own truck, white-glove agent — has nobody to ask, so its
+shipment would otherwise sit at `pending` for life: `uncounted` keys off
+`delivered`, meaning the deliveries a dealer controls most directly were the
+only ones that could never raise it, and one given an ETA went `late` the day
+after and stayed there. The function is `authenticated`-callable, checks
+membership, and **refuses on any shipment whose `tracking_provider` is not
+`manual`**. Who asserted it lands in `delivery_recorded_by`, so a status that
+came from a human stays distinguishable from one that came from a scan. Pass
+`NULL` to undo.
+
+It is deliberately not a general status setter. `in_transit` on an own truck is
+a field somebody has to remember to keep current, and the attention rules read a
+stale status as fact — delivery is one terminal assertion, made once, by the
+person who already knows.
 
 **`delivered` writes no `received` events.** The carrier saying "Delivered"
 means the truck stopped; it does not mean anyone counted what came off it. The

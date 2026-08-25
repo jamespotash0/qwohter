@@ -64,6 +64,41 @@ GOOGLE_OAUTH_CLIENT_ID=...googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET=GOCSPX-...
 ```
 
+### Carrier tracking
+
+All optional. With none of them set, shipments are still recorded and their
+status is moved by hand — the back office does not fall over because nobody has
+bought a tracking subscription.
+
+```bash
+TRACKING_PROVIDER=aftership             # aftership (default) | easypost | manual
+AFTERSHIP_API_KEY=asat_...              # required when provider is aftership
+AFTERSHIP_API_VERSION=2025-07           # URL-segment API version; bump without a deploy
+EASYPOST_API_KEY=EZAK...                # required when provider is easypost
+TRACKING_WEBHOOK_SECRET=...             # shared secret for the tracking-webhook endpoint
+```
+
+`TRACKING_WEBHOOK_SECRET` is compared in constant time against a `?token=` query
+parameter (or an `x-tracking-token` header). Without it set, `tracking-webhook`
+refuses every call rather than accepting unauthenticated status writes. Give the
+provider the URL as:
+
+```
+https://<project>.supabase.co/functions/v1/tracking-webhook?token=<secret>
+```
+
+The hourly poller reaches its edge function through pg_cron, which reads two
+**Supabase Vault** secrets rather than environment variables:
+
+```sql
+select vault.create_secret('https://<project>.supabase.co/functions/v1', 'edge_functions_base_url');
+select vault.create_secret('<service role key>', 'service_role_key');
+```
+
+Without `edge_functions_base_url` the scheduled job logs a warning and does
+nothing — deliberately, so a misconfigured environment fails loudly instead of
+silently never polling. `track-shipment` still works from the UI meanwhile.
+
 ### Application
 
 ```bash

@@ -86,7 +86,13 @@ verify_jwt = false
 verify_jwt = false
 [functions.sync-stripe-quantities]
 verify_jwt = false
+[functions.refresh-shipment-tracking]
+verify_jwt = false
+[functions.track-shipment]
+verify_jwt = false
 [functions.track-signing-view]
+verify_jwt = false
+[functions.tracking-webhook]
 verify_jwt = false
 
 # =====================================================
