@@ -49,7 +49,6 @@ export type AnalyticsEvent =
   | 'proposal_tab_switched'
   | 'proposal_saved'
   | 'line_item_added'
-  | 'catalog_browsed'
   | 'ai_extraction_used'
   | 'pricing_section_added'
   | 'pricing_calculator_used'

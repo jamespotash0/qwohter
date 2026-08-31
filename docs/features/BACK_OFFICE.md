@@ -867,9 +867,25 @@ text is hand-entered upstream.
 
 The catalog hierarchy that used to exist (domains, manufacturers, lines, series,
 models, config schemas, option value sets, business rules) was removed outright —
-9 tables, 2 views, 4 functions, and 24 source files. Products a dealer curates
-for labor, freight, and ancillary items live in the ordinary `products` table and
-are picked with `ProductLibraryPicker`.
+9 tables, 2 views, 4 functions, and 24 source files.
+
+The flat product library that replaced it has now gone the same way. A proposal
+takes products two ways and no others:
+
+| Way in | What it is |
+|---|---|
+| **Manual** | Type the line — name, model, SKU, description |
+| **Upload** | Extraction reads a quote sheet or spec document, and you check the result before it lands |
+
+Picking from a saved list was a third way in that made the same argument the
+hierarchy did: the specification tool has already resolved the part number, the
+options and the list price, so a curated list here is another price book to keep
+current. Proposals written while it existed still carry lines sourced from it —
+they render as before and edit through the ordinary product editor, because
+there is no library left to re-pick them from.
+
+The `products` table and its page remain for the dealer's own labor, freight and
+ancillary items; they are simply no longer a source for a proposal line.
 
 ### Summary totals
 

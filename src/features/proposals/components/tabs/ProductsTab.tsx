@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Plus, UploadSimple, Package, Database, PencilSimple } from '@phosphor-icons/react';
+import { Plus, UploadSimple, Package, PencilSimple } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,10 +27,8 @@ import { ExtractedProductsPreview } from './ExtractedProductsPreview';
 import { ExtractionProgressDialog } from './ExtractionProgressDialog';
 import { ExtractedProductEditor } from './ExtractedProductEditor';
 import { generateProductAlias } from '../../utils/productVariables';
-import { ProductLibraryPicker } from '@/components/features/products/ProductLibraryPicker';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { useUser } from '@/auth';
-import type { Product as LibraryProduct } from '@/lib/types/products';
 import { ProductEntryCards } from './products/ProductEntryCards';
 import { LineItemsSection } from './products/LineItemsSection';
 import { CatalogProductsSection } from './products/CatalogProductsSection';
@@ -58,8 +56,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const [extractionSummary, setExtractionSummary] = useState<ExtractionResult['summary']>();
 
   // Catalog selection state
-  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id ?? '');
 
@@ -269,79 +265,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
     setExtractionSummary(undefined);
   }, [products, setProductsData, onDirtyChange]);
 
-  // ==================== Product Library ====================
-
-  /** Map a saved product into a proposal line. */
-  const createProductFromLibrary = useCallback((
-    libraryProduct: LibraryProduct, existingProducts: Product[]
-  ): Product => {
-    const existingAliases = existingProducts.filter(p => p.alias).map(p => p.alias as string);
-    const newProduct: Product = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: libraryProduct.name,
-      quantity: 1,
-      unit: 'ea',
-      description: '',
-      rawData: {
-        // Manufacturer, series, and model are plain text on a saved product.
-        // There is no catalog hierarchy to record ids from.
-        manufacturer: libraryProduct.manufacturer,
-        series: libraryProduct.series,
-        model: libraryProduct.model,
-        sku: libraryProduct.display_id,
-        ...(libraryProduct.specifications ?? {}),
-        source: 'library',
-      },
-    };
-    newProduct.alias = generateProductAlias(newProduct, existingAliases, existingProducts.length);
-    return newProduct;
-  }, []);
-
-  const handleLibraryProductSelect = useCallback((libraryProduct: LibraryProduct) => {
-    if (editingProduct) {
-      const updatedProduct: Product = {
-        ...editingProduct,
-        name: libraryProduct.name,
-        rawData: {
-          ...editingProduct.rawData,
-          manufacturer: libraryProduct.manufacturer,
-          series: libraryProduct.series,
-          model: libraryProduct.model,
-          sku: libraryProduct.display_id,
-          ...(libraryProduct.specifications ?? {}),
-          source: 'library',
-        },
-      };
-      setProductsData({ items: products.map(p => p.id === editingProduct.id ? updatedProduct : p) });
-      onDirtyChange?.(true);
-      toast.success(`Updated "${updatedProduct.name}"`);
-    } else {
-      const newProduct = createProductFromLibrary(libraryProduct, products);
-      setProductsData({ items: [...products, newProduct] });
-      onDirtyChange?.(true);
-      toast.success(`Added "${newProduct.name}"`);
-    }
-    setEditingProduct(null);
-    setCatalogDialogOpen(false);
-  }, [products, setProductsData, onDirtyChange, editingProduct, createProductFromLibrary]);
-
-  const handleLibraryProductSelectAndContinue = useCallback((libraryProduct: LibraryProduct) => {
-    const newProduct = createProductFromLibrary(libraryProduct, products);
-    setProductsData({ items: [...products, newProduct] });
-    onDirtyChange?.(true);
-    toast.success(`Added "${newProduct.name}" - pick another`);
-  }, [products, setProductsData, onDirtyChange, createProductFromLibrary]);
-
-  const handleCatalogCancel = useCallback(() => {
-    setEditingProduct(null);
-    setCatalogDialogOpen(false);
-  }, []);
-
-  const handleEditCatalogProduct = useCallback((product: Product) => {
-    setEditingProduct(product);
-    setCatalogDialogOpen(true);
-  }, []);
-
   // ==================== AI Edit ====================
 
   const handleEditAiProduct = useCallback((product: Product) => {
@@ -414,7 +337,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       {!hasAnyProducts && (
         <ProductEntryCards
           onAddLineItem={addProduct}
-          onBrowseCatalog={() => { trackEvent('catalog_browsed'); setCatalogDialogOpen(true); }}
           onUploadDocument={() => fileInputRef.current?.click()}
           isExtracting={extracting}
         />
@@ -431,14 +353,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
             Add Line Item
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setCatalogDialogOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 text-xs"
-          >
-            <Database className="w-3.5 h-3.5 mr-1" />
-            Browse Catalog
           </Button>
           <Button
             variant="outline"
@@ -471,7 +385,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           products={catalogProducts}
           onUpdateProduct={updateProduct}
           onRemoveProduct={removeProduct}
-          onEditCatalogProduct={handleEditCatalogProduct}
           onEditAiProduct={handleEditAiProduct}
         />
       )}
@@ -493,37 +406,14 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         summary={extractionSummary}
       />
 
-      {/* Catalog Selection Dialog */}
-      <Dialog open={catalogDialogOpen} onOpenChange={(open) => { if (!open) handleCatalogCancel(); }}>
-        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              {editingProduct ? (
-                <><PencilSimple className="w-5 h-5 text-emerald-600" /> Replace Product</>
-              ) : (
-                <><Database className="w-5 h-5 text-emerald-600" /> Add from Product Library</>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <ProductLibraryPicker
-              organizationId={organization?.id}
-              onSelect={handleLibraryProductSelect}
-              onSelectAndContinue={editingProduct ? undefined : handleLibraryProductSelectAndContinue}
-              onCancel={handleCatalogCancel}
-              className="h-full"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI-Extracted Product Edit Dialog */}
+      {/* Edit dialog for any non-manual product — extracted, or picked from
+          the product library before that was removed. */}
       <Dialog open={aiEditDialogOpen} onOpenChange={(open) => { if (!open) handleCloseAiEditDialog(); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PencilSimple className="w-5 h-5 text-purple-600" />
-              Edit Extracted Product
+              Edit Product
             </DialogTitle>
           </DialogHeader>
           {editingAiProduct && (() => {

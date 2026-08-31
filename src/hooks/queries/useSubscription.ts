@@ -17,6 +17,8 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
   reason: string;
   inGracePeriod?: boolean;
   graceDaysRemaining?: number;
+  /** No subscription row exists yet - the org is likely still being provisioned */
+  provisioning?: boolean;
 }> {
   try {
     const { data, error } = await supabase
@@ -38,6 +40,7 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
         hasAccess: false,
         status: null,
         reason: 'No active subscription',
+        provisioning: true,
       };
     }
 
@@ -119,12 +122,22 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
  * }
  * ```
  */
-export function useSubscriptionStatus(organizationId: string, enabled: boolean = true) {
+export function useSubscriptionStatus(
+  organizationId: string,
+  enabled: boolean = true,
+  options: { pollWhileProvisioning?: boolean } = {}
+) {
+  const { pollWhileProvisioning = false } = options;
+
   return useQuery({
     queryKey: queryKeys.subscription.status(organizationId),
     queryFn: () => fetchSubscriptionStatus(organizationId),
     enabled: !!organizationId && enabled,
     staleTime: 60 * 1000, // 1 minute - subscription doesn't change often
     retry: 1, // Don't retry aggressively for subscription checks
+    // Right after signup the trial row is still being written by
+    // create-trial-subscription. Poll instead of showing a paywall.
+    refetchInterval: (query) =>
+      pollWhileProvisioning && query.state.data?.provisioning ? 2000 : false,
   });
 }

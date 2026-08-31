@@ -1,8 +1,14 @@
 /**
  * Catalog Products Section
  *
- * Displays library-picked and AI-extracted products in a card grid.
- * Each card shows alias, manufacturer/series/model, key info, and specs.
+ * Every product that was not typed in by hand, in a card grid: alias,
+ * manufacturer/series/model, key info and specs.
+ *
+ * In practice that means extracted products. Proposals written before the
+ * product library was removed also carry lines picked from it, and those still
+ * render here — they are marked differently so it is clear where they came
+ * from, and they edit through the same editor as everything else, because
+ * there is no longer a library to re-pick them from.
  */
 
 import { Database, Package, PencilSimple, Trash } from '@phosphor-icons/react';
@@ -21,7 +27,6 @@ interface CatalogProductsSectionProps {
   products: Product[];
   onUpdateProduct: (id: string, updates: Partial<Product>) => void;
   onRemoveProduct: (id: string) => void;
-  onEditCatalogProduct: (product: Product) => void;
   onEditAiProduct: (product: Product) => void;
 }
 
@@ -29,7 +34,6 @@ export function CatalogProductsSection({
   products,
   onUpdateProduct,
   onRemoveProduct,
-  onEditCatalogProduct,
   onEditAiProduct,
 }: CatalogProductsSectionProps) {
   return (
@@ -49,8 +53,7 @@ export function CatalogProductsSection({
             product={product}
             onUpdate={onUpdateProduct}
             onRemove={onRemoveProduct}
-            onEditCatalog={onEditCatalogProduct}
-            onEditAi={onEditAiProduct}
+            onEdit={onEditAiProduct}
           />
         ))}
       </div>
@@ -63,18 +66,17 @@ function CatalogProductCard({
   product,
   onUpdate,
   onRemove,
-  onEditCatalog,
-  onEditAi,
+  onEdit,
 }: {
   product: Product;
   onUpdate: (id: string, updates: Partial<Product>) => void;
   onRemove: (id: string) => void;
-  onEditCatalog: (product: Product) => void;
-  onEditAi: (product: Product) => void;
+  onEdit: (product: Product) => void;
 }) {
-  // 'catalog' is the legacy value from the removed product hierarchy; 'library'
-  // is what the product-library picker writes. Both mean "picked from a saved
-  // product" as opposed to AI-extracted.
+  // Both values are historical now: 'catalog' came from the product hierarchy
+  // and 'library' from the picker that replaced it. Neither can be created any
+  // more, but proposals written before they were removed still carry them, and
+  // the card says so rather than pretending they were extracted.
   const isCatalogProduct =
     product.rawData?.source === 'library' || product.rawData?.source === 'catalog';
   const rawData = product.rawData as unknown as Record<string, unknown> | undefined;
@@ -104,23 +106,15 @@ function CatalogProductCard({
           />
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          {isCatalogProduct ? (
-            <button
-              onClick={() => onEditCatalog(product)}
-              className="p-1 text-gray-400 hover:text-emerald-600 transition-colors rounded hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-              title="Edit product"
-            >
-              <PencilSimple className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <button
-              onClick={() => onEditAi(product)}
-              className="p-1 text-gray-400 hover:text-purple-600 transition-colors rounded hover:bg-purple-50 dark:hover:bg-purple-900/20"
-              title="Edit extracted data"
-            >
-              <PencilSimple className="w-3.5 h-3.5" />
-            </button>
-          )}
+          {/* One editor for both. A library-picked line has no library left to
+              re-pick from, so it is edited in place like an extracted one. */}
+          <button
+            onClick={() => onEdit(product)}
+            className="p-1 text-gray-400 hover:text-purple-600 transition-colors rounded hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            title="Edit product"
+          >
+            <PencilSimple className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => onRemove(product.id)}
             className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"

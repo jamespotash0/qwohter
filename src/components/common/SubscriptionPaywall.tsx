@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,12 @@ interface SubscriptionPaywallProps {
   organizationId: string;
   children: React.ReactNode;
 }
+
+/**
+ * How long to wait for a just-created org's trial subscription to land before
+ * giving up and showing the paywall.
+ */
+const PROVISIONING_GRACE_MS = 30_000;
 
 const PLAN_FEATURES = [
   'Unlimited proposals',
@@ -37,7 +43,22 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const { role } = useCurrentOrganization(user?.id || '', !!user?.id);
   const isOwner = role === 'Owner';
 
-  const { data: subscription, isLoading } = useSubscriptionStatus(organizationId, !!organizationId);
+  // Immediately after signup the trial subscription row may not exist yet.
+  // Wait it out with a setup spinner instead of flashing the paywall.
+  const [inProvisioningWindow, setInProvisioningWindow] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setInProvisioningWindow(false), PROVISIONING_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const { data: subscription, isLoading } = useSubscriptionStatus(
+    organizationId,
+    !!organizationId,
+    { pollWhileProvisioning: inProvisioningWindow }
+  );
+
+  const isProvisioning = !!subscription?.provisioning && inProvisioningWindow;
 
   useRealtimeSubscription(
     'subscriptions',
@@ -61,6 +82,10 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
         if (statusChanged) {
           if (newData?.hasAccess && !subscription?.hasAccess) {
+            // First-time provisioning: the paywall was never shown, so just
+            // let the query result through instead of toasting a reload.
+            if (subscription?.provisioning) return;
+
             toast.success('Subscription activated! Reloading...', { duration: 2000 });
             setTimeout(() => window.location.reload(), 2000);
           } else if (!newData?.hasAccess && subscription?.hasAccess) {
@@ -83,11 +108,19 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     });
   };
 
-  // Loading state
-  if (isLoading) {
+  // Loading, or waiting on a freshly created org's trial subscription
+  if (isLoading || isProvisioning) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3]">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#FFFEFA] via-[#FFF9F7] to-[#FFE8E3]">
         <Loader2 className="w-10 h-10 animate-spin text-[#ee6c4d]" />
+        {isProvisioning && (
+          <p
+            className="text-sm text-[#171717]/60"
+            style={{ fontFamily: 'Urbanist, sans-serif' }}
+          >
+            Setting up your account...
+          </p>
+        )}
       </div>
     );
   }
@@ -131,7 +164,9 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   // Block access if no subscription
   if (!subscription?.hasAccess) {
     const blockReason = subscription?.reason || '';
-    const isTrialExpired = blockReason.toLowerCase().includes('trial');
+    // No subscription row at all (setup never completed) reads as "Subscribe",
+    // not "Manage Plan" - there is nothing to manage yet.
+    const isTrialExpired = blockReason.toLowerCase().includes('trial') || !!subscription?.provisioning;
     const isPaymentFailed = blockReason.toLowerCase().includes('payment') ||
                             blockReason.toLowerCase().includes('past_due') ||
                             blockReason.toLowerCase().includes('failed');
