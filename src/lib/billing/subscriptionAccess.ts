@@ -85,8 +85,9 @@ export function evaluateSubscription(
     return { hasAccess: true, status: data.stripe_subscription_status, reason: '' };
   }
 
-  // Payment failure grace period, ending on a date Stripe's webhook set.
-  if (data.grace_period_end) {
+  // Payment failure grace, for a card we can retry. A trial that never
+  // converted has none, so it gets only the trial grace below.
+  if (data.grace_period_end && data.has_payment_method) {
     const gracePeriodEnd = new Date(data.grace_period_end);
     if (now <= gracePeriodEnd) {
       return {

@@ -134,6 +134,19 @@ See [SECURITY.md](docs/architecture/SECURITY.md) for full reference.
 - **UI state:** useState (local) or Zustand (global)
 - **Never mix:** Keep server and UI state separate
 
+### Comments
+- **Be concise** - A line or two. No paragraphs, no essays.
+- **Explain why, not what** - The code says what it does; skip narrating it.
+- **Comment the surprising** - A workaround, a non-obvious constraint, an order that matters. Obvious code needs nothing.
+- **No file-header essays** - One line saying what the file is, if that isn't clear from its name.
+
+```typescript
+// Good: short, explains a non-obvious choice
+// Net beats list price: taking list makes every margin wrong.
+
+// Bad: a paragraph restating the code and its rationale at length
+```
+
 ### Naming
 - Services: `{feature}Service.ts`
 - Hooks: `use{Feature}.ts`

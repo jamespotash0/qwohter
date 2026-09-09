@@ -88,6 +88,7 @@ describe('evaluateSubscription — grace periods', () => {
       row({
         stripe_subscription_status: 'past_due',
         grace_period_end: daysFromNow(4),
+        has_payment_method: true,
         access_blocked_reason: 'Card declined',
       }),
       NOW
@@ -96,6 +97,25 @@ describe('evaluateSubscription — grace periods', () => {
     expect(result.inGracePeriod).toBe(true);
     expect(result.graceDaysRemaining).toBe(4);
     expect(result.reason).toBe('Card declined');
+  });
+
+  it('gives no payment grace to a trial that never converted', () => {
+    // The bug this guards: a trial ending without a card fails its first
+    // invoice like any other payment failure, so grace_period_end was set and
+    // the account stayed usable for weeks. With no card on file there is
+    // nothing to retry — only the 3-day trial grace applies, and it is over.
+    const result = evaluateSubscription(
+      row({
+        stripe_subscription_status: 'Past_due',
+        trial_end: daysFromNow(-7),
+        has_payment_method: false,
+        grace_period_end: daysFromNow(30),
+        access_blocked_reason: 'Payment failed',
+      }),
+      NOW
+    );
+    expect(result.hasAccess).toBe(false);
+    expect(result.inGracePeriod).toBeUndefined();
   });
 
   it('refuses once the payment grace period has passed', () => {
