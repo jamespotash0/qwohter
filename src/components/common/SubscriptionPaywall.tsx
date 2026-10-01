@@ -163,13 +163,28 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
   // Block access if no subscription
   if (!subscription?.hasAccess) {
-    const blockReason = subscription?.reason || '';
-    // No subscription row at all (setup never completed) reads as "Subscribe",
-    // not "Manage Plan" - there is nothing to manage yet.
-    const isTrialExpired = blockReason.toLowerCase().includes('trial') || !!subscription?.provisioning;
-    const isPaymentFailed = blockReason.toLowerCase().includes('payment') ||
-                            blockReason.toLowerCase().includes('past_due') ||
-                            blockReason.toLowerCase().includes('failed');
+    const blockReason = (subscription?.reason ?? '').toLowerCase();
+    const reasonMentions = (...needles: string[]) =>
+      needles.some(needle => blockReason.includes(needle));
+
+    /**
+     * Why access is blocked, which decides what the button offers.
+     *
+     * An account that never finished setting up is asked to *subscribe*; there
+     * is nothing to manage yet, and "Manage Plan" is what made the paywall read
+     * as an accusation to somebody ten seconds into a signup.
+     */
+    const blockKind: 'payment' | 'never-subscribed' | 'lapsed' = reasonMentions(
+      'payment',
+      'past_due',
+      'failed'
+    )
+      ? 'payment'
+      : subscription?.provisioning === true
+        ? 'never-subscribed'
+        : reasonMentions('trial')
+          ? 'never-subscribed'
+          : 'lapsed';
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/50 backdrop-blur-sm p-4">
@@ -245,7 +260,11 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
                   className="flex-1 h-12 rounded-full bg-[#ee6c4d] hover:bg-[#d95b3e] text-white font-semibold text-sm"
                   style={{ fontFamily: 'Urbanist, sans-serif' }}
                 >
-                  {isPaymentFailed ? 'Update Payment' : isTrialExpired ? 'Subscribe' : 'Manage Plan'}
+                  {blockKind === 'payment'
+                    ? 'Update Payment'
+                    : blockKind === 'never-subscribed'
+                      ? 'Subscribe'
+                      : 'Manage Plan'}
                 </Button>
               ) : (
                 <div

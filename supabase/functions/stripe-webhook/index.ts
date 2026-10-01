@@ -313,8 +313,8 @@ serve(async (req) => {
             }
           }
 
-          // Payment failure grace period: check DB for grace_period_end
-          if (!isActive) {
+          // Payment failure grace, only for a card we can retry.
+          if (!isActive && hasPaymentMethod) {
             const { data: graceSub } = await supabase
               .from('subscriptions')
               .select('grace_period_end')
@@ -368,7 +368,7 @@ serve(async (req) => {
         // Check if there's an active grace period already set
         const { data: deletedSub } = await supabase
           .from('subscriptions')
-          .select('grace_period_end, current_period_end')
+          .select('grace_period_end, has_payment_method')
           .eq('stripe_subscription_id', stripeSubscriptionId)
           .single();
 
@@ -380,14 +380,10 @@ serve(async (req) => {
         const isPaymentFailureCancellation =
           (subscription as any).cancellation_details?.reason === 'payment_failed';
 
-        if (!deletedGracePeriodEnd && isPaymentFailureCancellation) {
-          // Use Stripe's period end (freshest), fall back to DB value
-          const anchorDate = deletedPeriodEndISO
-            ? new Date(deletedPeriodEndISO)
-            : deletedSub?.current_period_end
-              ? new Date(deletedSub.current_period_end)
-              : new Date();
-          deletedGracePeriodEnd = new Date(anchorDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+        if (!deletedGracePeriodEnd && isPaymentFailureCancellation && deletedSub?.has_payment_method) {
+          // From the cancellation, not current_period_end — Stripe has already
+          // advanced that past the unpaid period.
+          deletedGracePeriodEnd = new Date(deletedNow.getTime() + (7 * 24 * 60 * 60 * 1000));
           console.log('Setting grace period from deleted handler (race):', deletedGracePeriodEnd.toISOString());
         }
 
@@ -450,7 +446,7 @@ serve(async (req) => {
         // Fetch current subscription to get period end and check grace
         const { data: failedSub } = await supabase
           .from('subscriptions')
-          .select('current_period_end, grace_period_end, stripe_subscription_id')
+          .select('current_period_end, grace_period_end, stripe_subscription_id, has_payment_method')
           .eq('stripe_customer_id', stripeCustomerId)
           .single();
 
@@ -474,11 +470,25 @@ serve(async (req) => {
           }
         }
 
-        // Calculate grace period: 7 days from current_period_end
-        // Use the freshly-synced period end if available, otherwise fall back to DB value
-        const failedPeriodEnd = failedUpdateData.current_period_end || failedSub?.current_period_end;
-        const failedAnchor = failedPeriodEnd ? new Date(failedPeriodEnd) : new Date();
-        const failedGracePeriodEnd = new Date(failedAnchor.getTime() + (7 * 24 * 60 * 60 * 1000));
+        // Anchored on the failure, not current_period_end: Stripe advances that
+        // to the next period when the renewal invoice is created, which turned
+        // 7 days into ~5 weeks.
+        const failedGracePeriodEnd = new Date(Date.now() + (7 * 24 * 60 * 60 * 1000));
+
+        // A trial that never converted fails its first invoice with no card to
+        // retry, so no payment grace. The 3-day trial grace still applies.
+        if (!failedSub?.has_payment_method) {
+          failedUpdateData.grace_period_end = null;
+          failedUpdateData.access_blocked_reason = 'No payment method';
+
+          await supabase
+            .from('subscriptions')
+            .update(failedUpdateData)
+            .eq('stripe_customer_id', stripeCustomerId);
+
+          console.log('Payment failed with no payment method on file, no grace period:', stripeCustomerId);
+          break;
+        }
 
         // Only set grace_period_end if not already set (don't extend on retries)
         if (!failedSub?.grace_period_end) {

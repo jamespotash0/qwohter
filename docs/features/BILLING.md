@@ -53,6 +53,7 @@ type SubscriptionStatus =
 - **Per-seat pricing:** $20/user/month
 - **14-day free trial** (local-only until payment method added)
 - **3-day grace period** after trial expiry
+- **7-day payment-failure grace period**, only for customers with a card on file
 - **Proration** for mid-cycle seat changes
 
 ## Subscription States
@@ -74,6 +75,13 @@ type SubscriptionStatus =
 4. No payment method at trial end → 3-day grace period
 5. Grace period ends → Access blocked
 ```
+
+**A trial that never converts gets no payment-failure grace.** Stripe fails the
+first invoice of a trial with no card on file, which looks like any other
+payment failure. The 7-day payment grace is for a customer whose card we can
+retry, so it is granted only when `has_payment_method` is true — in the webhook,
+in `has_valid_subscription()`/the `is_active` trigger, and in
+`evaluateSubscription()`. Otherwise the 3-day trial grace is the only window.
 
 ## Edge Functions
 
@@ -207,8 +215,16 @@ When triggered: Payment attempt fails (card declined, insufficient funds, etc.)
 
 Actions:
 1. Update status to `past_due`
-2. Create urgent notification for admins/owners
-3. Include payment recovery instructions
+2. Set `grace_period_end` to **7 days from the failure** — but only when
+   `has_payment_method` is true; otherwise it is cleared and
+   `access_blocked_reason` is set to `No payment method`
+3. Create urgent notification for admins/owners
+4. Include payment recovery instructions
+
+> The grace period is anchored on the failure, not on `current_period_end`.
+> Stripe advances `current_period_end` to the next period as soon as the
+> renewal invoice is created, so anchoring there stretched a 7-day rule into
+> roughly five weeks of free access.
 
 ```typescript
 // Notification includes:
