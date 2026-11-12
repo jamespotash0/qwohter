@@ -58,7 +58,7 @@ export const authFlowHelpers = {
         if (error.message === 'Invalid login credentials') {
           return {
             success: false,
-            error: "Invalid email or password. Please check your credentials and try again."
+            error: "Incorrect email or password. Please try again."
           };
         }
 
@@ -85,7 +85,7 @@ export const authFlowHelpers = {
           console.log('Resend OTP failed:', resendResult.error);
           return {
             success: false,
-            error: "Your email hasn't been verified yet. Please go to Create Account to complete verification."
+            error: "Verify your email to finish creating your account."
           };
         }
 
@@ -98,7 +98,7 @@ export const authFlowHelpers = {
       if (!user) {
         return {
           success: false,
-          error: "Failed to sign in. Please try again."
+          error: "Something went wrong. Please try again."
         };
       }
 
@@ -126,7 +126,7 @@ export const authFlowHelpers = {
       console.log('SignIn catch error:', error);
       return {
         success: false,
-        error: error.message || "An unexpected error occurred during signin."
+        error: error.message || "Something went wrong. Please try again."
       };
     }
   },
@@ -158,7 +158,7 @@ export const authFlowHelpers = {
           // They should sign in instead
           return {
             success: false,
-            error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
+            error: "An account with this email already exists. Sign in instead."
           };
         }
 
@@ -208,7 +208,7 @@ export const authFlowHelpers = {
 
           return {
             success: false,
-            error: `Rate limit exceeded. Supabase limits signup attempts to prevent abuse. Please wait ${waitTime} before trying again. If you already have an account, try signing in instead.`
+            error: `Too many attempts. Try again in ${waitTime}.`
           };
         }
 
@@ -237,27 +237,27 @@ export const authFlowHelpers = {
           console.log('Resend OTP failed:', resendResult.error);
           return {
             success: false,
-            error: "An account with this email already exists. Please sign in instead. If you believe this is an error, please contact support."
+            error: "An account with this email already exists. Sign in instead."
           };
         }
 
         if (error.message.includes('Invalid email')) {
           return {
             success: false,
-            error: "Please enter a valid email address."
+            error: "Enter a valid email address."
           };
         }
 
         if (error.message.includes('Password')) {
           return {
             success: false,
-            error: "Password must be at least 6 characters long."
+            error: "Password is too short."
           };
         }
 
         return {
           success: false,
-          error: "Failed to create account. Please try again."
+          error: "Something went wrong. Please try again."
         };
       }
 
@@ -287,7 +287,7 @@ export const authFlowHelpers = {
         tempSignupService.clear();
         return {
           success: false,
-          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
+          error: "An account with this email already exists. Sign in instead."
         };
       }
 
@@ -307,7 +307,7 @@ export const authFlowHelpers = {
       tempSignupService.clear();
       return {
         success: false,
-        error: error.message || "An unexpected error occurred during signup."
+        error: error.message || "Something went wrong. Please try again."
       };
     }
   },
@@ -329,7 +329,7 @@ export const authFlowHelpers = {
       if (!tempData || tempData.email !== email) {
         return {
           success: false,
-          error: "Verification session expired. Please sign up again."
+          error: "Your session expired. Start over to get a new code."
         };
       }
 
@@ -341,13 +341,13 @@ export const authFlowHelpers = {
         if (verifyError.message.includes('expired')) {
           return {
             success: false,
-            error: "Verification code has expired. Please request a new code."
+            error: "That code has expired. Resend a new one."
           };
         }
 
         return {
           success: false,
-          error: "Invalid verification code. Please check the code and try again."
+          error: "Incorrect code. Please try again."
         };
       }
 
@@ -381,7 +381,7 @@ export const authFlowHelpers = {
       tempSignupService.clear();
       return {
         success: false,
-        error: "Verification failed. Please try again."
+        error: "Something went wrong. Please try again."
       };
 
     } catch (error: any) {
@@ -389,7 +389,7 @@ export const authFlowHelpers = {
       tempSignupService.clear();
       return {
         success: false,
-        error: error.message || "An error occurred during verification."
+        error: error.message || "Something went wrong. Please try again."
       };
     }
   },
@@ -411,7 +411,7 @@ export const authFlowHelpers = {
       if (!tempData || tempData.email !== email) {
         return {
           success: false,
-          error: "Session expired. Please sign up again."
+          error: "Your session expired. Start over to get a new code."
         };
       }
 
@@ -421,13 +421,13 @@ export const authFlowHelpers = {
         if (error.message.includes('rate limit') || error.message.includes('429')) {
           return {
             success: false,
-            error: "Too many requests. Please wait a minute before requesting another code."
+            error: "Too many attempts. Try again in a minute."
           };
         }
 
         return {
           success: false,
-          error: "Failed to resend code. Please try again."
+          error: "Couldn't resend the code. Please try again."
         };
       }
 
@@ -439,7 +439,7 @@ export const authFlowHelpers = {
       console.error('Resend OTP error:', error);
       return {
         success: false,
-        error: error.message || "An error occurred while resending the code."
+        error: error.message || "Couldn't resend the code. Please try again."
       };
     }
   },

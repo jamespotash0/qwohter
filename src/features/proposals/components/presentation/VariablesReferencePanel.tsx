@@ -17,9 +17,8 @@ import {
   X,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { toast } from '@/components/ui/sonner';
 import { getAllFormVariables, type VariableDefinition } from './VariableExtension';
-import { PRODUCT_VARIABLE_FIELDS, getFieldsByCategory } from '../../utils/productVariables';
+import { getFieldsByCategory } from '../../utils/productVariables';
 import type { FormBuilderData } from '../../context/FormBuilderContext';
 
 interface VariablesReferencePanelProps {
@@ -138,9 +137,6 @@ export function VariablesReferencePanel({ formData, onClose }: VariablesReferenc
     const formatted = isTemplateRef ? `{{${key}}}` : `{{${key}}}`;
     navigator.clipboard.writeText(formatted);
     setCopiedKey(key);
-    toast.success('Copied!', {
-      description: `${formatted}`,
-    });
     setTimeout(() => setCopiedKey(null), 2000);
   }, []);
 

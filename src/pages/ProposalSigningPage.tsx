@@ -5,7 +5,7 @@
  * Accessed via /sign/:token
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { FileText, CheckCircle, Warning, Spinner, PenNib, X, Signature } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';

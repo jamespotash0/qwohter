@@ -4,7 +4,6 @@ import { Loader2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSignOut, useUser } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/components/ui/sonner';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import { useSubscriptionStatus } from '@/hooks/queries/useSubscription';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
@@ -83,14 +82,11 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
         if (statusChanged) {
           if (newData?.hasAccess && !subscription?.hasAccess) {
             // First-time provisioning: the paywall was never shown, so just
-            // let the query result through instead of toasting a reload.
+            // let the query result through instead of reloading.
             if (subscription?.provisioning) return;
-
-            toast.success('Subscription activated! Reloading...', { duration: 2000 });
-            setTimeout(() => window.location.reload(), 2000);
+            window.location.reload();
           } else if (!newData?.hasAccess && subscription?.hasAccess) {
-            toast.error('Subscription expired. Redirecting...', { duration: 1500 });
-            setTimeout(() => window.location.reload(), 1500);
+            window.location.reload();
           }
         }
       }

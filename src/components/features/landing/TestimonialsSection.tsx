@@ -1,5 +1,5 @@
 import { CheckCircleIcon } from "lucide-react";
-import React, { JSX } from "react";
+import React from "react";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -49,7 +49,7 @@ const testimonials = [
   },
 ];
 
-export const TestimonialsSection = (): JSX.Element => {
+export const TestimonialsSection = (): React.JSX.Element => {
   const navigate = useNavigate();
 
   return (

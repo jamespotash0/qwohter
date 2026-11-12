@@ -12,7 +12,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
@@ -20,6 +19,7 @@ import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { SignupRecoveryPrompt } from "@/components/auth/SignupRecoveryPrompt";
 import { InviteRequiredScreen } from "@/components/auth/InviteRequiredScreen";
+import { InlineError } from "@/components/common/InlineError";
 import { validateInviteTokenDetailed, validateSignupInviteToken } from "@/utils/inviteTokens";
 import { checkInviteRateLimit, logInviteAttempt, getUserIpAddress } from "@/utils/rateLimiting";
 import { tempSignupService } from "@/services/tempSignupService";
@@ -46,8 +46,13 @@ import { redirectAfterAuth } from "./Auth/utils/redirectHelpers";
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Auth errors render inline next to the form; success is shown by the next screen, so no toasts.
+  const [formError, setFormError] = useState<string | null>(null);
+  const toast = ({ description, variant }: { title: string; description: string; variant?: 'destructive' }) => {
+    if (variant === 'destructive') setFormError(description);
+  };
 
   // Use extracted hooks for state management
   const authFlow = useAuthFlow();
@@ -56,6 +61,11 @@ const Auth = () => {
 
   // Track processed invite tokens to prevent loops
   const processedInviteTokenRef = useRef<string | null>(null);
+
+  // Typing or changing step clears the stale error.
+  useEffect(() => {
+    setFormError(null);
+  }, [formState.email, formState.password, formState.otpCode, formState.orgName, authFlow.step]);
 
   // Track OTP verification attempts
   const [otpAttempts, setOtpAttempts] = useState(0);
@@ -177,11 +187,6 @@ const Auth = () => {
               });
 
               if (inviteResult?.joined) {
-                toast({
-                  title: "Joined!",
-                  description: `Welcome to ${inviteResult.organization_name}!`,
-                });
-
                 // Sync Stripe seat count (non-blocking)
                 stripeService.syncSeatCount(inviteResult.organization_id, 'add').catch((err: any) =>
                   console.error('Seat sync error after invite auto-join:', err)
@@ -194,10 +199,6 @@ const Auth = () => {
                 navigate('/dashboard', { replace: true });
                 return;
               } else if (inviteResult?.already_member) {
-                toast({
-                  title: "Already a member",
-                  description: `You're already a member of ${inviteResult.organization_name}.`,
-                });
                 setValidatingInviteToken(false);
                 navigate('/dashboard', { replace: true });
                 return;
@@ -211,11 +212,6 @@ const Auth = () => {
           // Fallback: sign out and proceed with create-account flow
           await authService.signOut();
           clearAuthState();
-
-          toast({
-            title: "Signed out",
-            description: "You've been signed out to accept this invitation",
-          });
         }
 
         // 3. Set up the invite flow (user not signed in or signed out above)
@@ -525,14 +521,11 @@ const Auth = () => {
     const isInviteeCheck = !!(pendingInviteToken && effectiveOrgId);
 
     if (otpAttempts >= MAX_OTP_ATTEMPTS) {
-      toast({
-        title: "Too Many Attempts",
-        description: "Please request a new verification code to continue.",
-        variant: "destructive"
-      });
+      setFormError("Too many attempts. Resend a new code to continue.");
       return;
     }
 
+    setFormError(null);
     const result = await handleOtpVerification({
       email: formState.email,
       otpCode: formState.otpCode,
@@ -550,20 +543,11 @@ const Auth = () => {
       const newAttempts = otpAttempts + 1;
       setOtpAttempts(newAttempts);
 
-      if (newAttempts >= MAX_OTP_ATTEMPTS) {
-        toast({
-          title: "Too Many Failed Attempts",
-          description: "Please click 'Resend Code' to get a new verification code.",
-          variant: "destructive"
-        });
-      } else {
-        const remainingAttempts = MAX_OTP_ATTEMPTS - newAttempts;
-        toast({
-          title: "Invalid Code",
-          description: `Incorrect verification code. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} remaining.`,
-          variant: "destructive"
-        });
-      }
+      // Keep a specific error from the handler (rate limit, setup failure) over the generic one.
+      const remainingAttempts = MAX_OTP_ATTEMPTS - newAttempts;
+      setFormError(prev => prev ?? (remainingAttempts <= 0
+        ? "That code didn't work. Resend a new code to try again."
+        : `That code didn't work. Please try again. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} left.`));
       return;
     }
 
@@ -592,24 +576,11 @@ const Auth = () => {
       const waitTimeMatch = error.message?.match(/after (\d+) seconds/);
 
       if (waitTimeMatch && waitTimeMatch[1]) {
-        const seconds = parseInt(waitTimeMatch[1], 10);
-        toast({
-          title: "Please Wait",
-          description: `You can request another code in ${seconds} seconds.`,
-          variant: "destructive"
-        });
-      } else if (error.message?.includes('rate limit') || error.message?.includes('Email rate limit exceeded')) {
-        toast({
-          title: "Too Many Attempts",
-          description: "Please wait 60 seconds before requesting another code.",
-          variant: "destructive"
-        });
+        setFormError(`You can request another code in ${parseInt(waitTimeMatch[1], 10)} seconds.`);
+      } else if (error.message?.includes('rate limit')) {
+        setFormError("Please wait 60 seconds before requesting another code.");
       } else {
-        toast({
-          title: "Resend Failed",
-          description: error.message || "Failed to resend verification code.",
-          variant: "destructive"
-        });
+        setFormError(error.message || "Couldn't resend the code. Please try again.");
       }
       // Throw so OtpVerificationForm knows resend failed and won't show success overlay
       throw new Error(error.message || "Failed to resend code");
@@ -621,11 +592,7 @@ const Auth = () => {
     }
 
     setOtpAttempts(0);
-
-    toast({
-      title: "Code Sent!",
-      description: "Check your inbox. If no email arrives, wait 60 seconds before trying again."
-    });
+    setFormError(null);
   };
 
   const onOrganizationSubmit = async (e: React.FormEvent) => {
@@ -677,11 +644,7 @@ const Auth = () => {
     const { error } = await authService.resendOtp(formState.email);
 
     if (error) {
-      toast({
-        title: "Could not send code",
-        description: error.message || "Please try again or start over.",
-        variant: "destructive"
-      });
+      setFormError(error.message || "Couldn't send a code. Try again or start over.");
       throw error;
     }
 
@@ -699,11 +662,6 @@ const Auth = () => {
     setOtpAttempts(0);
     authFlow.setStep('verify-otp');
     saveAuthState({ step: 'verify-otp', email: formState.email, fullName: formState.fullName });
-
-    toast({
-      title: "Code Sent!",
-      description: "Check your inbox for the verification code."
-    });
   };
 
   const onRecoveryStartOver = () => {
@@ -990,6 +948,7 @@ const Auth = () => {
                   showPassword={formState.showPassword}
                   loading={authFlow.loading}
                   isEmailLocked={isEmailLocked}
+                  error={formError}
                   onEmailChange={formState.setEmail}
                   onPasswordChange={formState.setPassword}
                   onFirstNameChange={formState.setFirstName}
@@ -1016,6 +975,9 @@ const Auth = () => {
                   onStartOver={onRecoveryStartOver}
                 />
               )}
+              {authFlow.step === "signup-recovery" && (
+                <InlineError message={formError} className="mt-4 justify-center" />
+              )}
 
               {/* OTP Verification Form */}
               {authFlow.step === "verify-otp" && (
@@ -1026,6 +988,7 @@ const Auth = () => {
                   onOtpCodeChange={formState.setOtpCode}
                   onSubmit={onOtpSubmit}
                   onResendCode={onResendCode}
+                  error={formError}
                 />
               )}
 
@@ -1036,6 +999,7 @@ const Auth = () => {
                   loading={authFlow.loading}
                   onOrgNameChange={formState.setOrgName}
                   onSubmit={onOrganizationSubmit}
+                  error={formError}
                 />
               )}
 
@@ -1056,6 +1020,7 @@ const Auth = () => {
                   onIndustryChange={formState.setIndustry}
                   onFoundViaChange={formState.setFoundVia}
                   onSubmit={onCompanyInfoSubmit}
+                  error={formError}
                 />
               )}
 

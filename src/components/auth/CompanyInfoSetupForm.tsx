@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { InlineError } from "@/components/common/InlineError";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -31,6 +32,7 @@ interface CompanyInfoSetupFormProps {
   onIndustryChange: (industry: string) => void;
   onFoundViaChange: (foundVia: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  error?: string | null;
 }
 
 export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
@@ -47,7 +49,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   onWebsiteChange,
   onIndustryChange,
   onFoundViaChange,
-  onSubmit
+  onSubmit,
+  error,
 }) => {
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [touched, setTouched] = useState<{[key: string]: boolean}>({});
@@ -203,7 +206,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         </div>
 
         {/* Submit Button */}
-        <div className="pt-3">
+        <div className="pt-3 space-y-3">
+          <InlineError message={error} />
           <Button
             type="submit"
             className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full transition-all duration-200 group"

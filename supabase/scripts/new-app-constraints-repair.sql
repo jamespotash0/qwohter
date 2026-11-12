@@ -67,30 +67,18 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."config_option_group_metadata"
-      ADD CONSTRAINT "config_option_group_metadata_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."config_option_group_metadata"
-      ADD CONSTRAINT "config_option_group_metadata_slug_key" UNIQUE ("slug");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."config_value_sets"
-      ADD CONSTRAINT "config_value_sets_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."config_value_sets"
-      ADD CONSTRAINT "config_value_sets_slug_key" UNIQUE ("slug");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -165,16 +153,10 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."manufacturer_product_domains"
-      ADD CONSTRAINT "manufacturer_product_domains_manufacturer_id_domain_id_key" UNIQUE ("manufacturer_id", "domain_id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."manufacturer_product_domains"
-      ADD CONSTRAINT "manufacturer_product_domains_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -193,9 +175,6 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_models"
-      ADD CONSTRAINT "models_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -256,51 +235,30 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_line"
-      ADD CONSTRAINT "product_categories_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_manufacturers"
-      ADD CONSTRAINT "product_manufacturers_code_key" UNIQUE ("code");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_manufacturers"
-      ADD CONSTRAINT "product_manufacturers_name_key" UNIQUE ("name");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_manufacturers"
-      ADD CONSTRAINT "product_manufacturers_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_domain"
-      ADD CONSTRAINT "product_types_code_key" UNIQUE ("code");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_domain"
-      ADD CONSTRAINT "product_types_name_key" UNIQUE ("name");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_domain"
-      ADD CONSTRAINT "product_types_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -445,9 +403,6 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_series"
-      ADD CONSTRAINT "series_pkey" PRIMARY KEY ("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -711,9 +666,6 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."config_value_sets"
-      ADD CONSTRAINT "config_value_sets_manufacturer_id_fkey" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON DELETE SET NULL;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -809,16 +761,10 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."manufacturer_product_domains"
-      ADD CONSTRAINT "manufacturer_product_domains_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "public"."product_domain"("id") ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."manufacturer_product_domains"
-      ADD CONSTRAINT "manufacturer_product_domains_manufacturer_id_fkey" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -844,16 +790,10 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_models"
-      ADD CONSTRAINT "models_product_category_id_fkey" FOREIGN KEY ("product_line_id") REFERENCES "public"."product_line"("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_models"
-      ADD CONSTRAINT "models_product_series_id_fkey" FOREIGN KEY ("product_series_id") REFERENCES "public"."product_series"("id");
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -893,30 +833,18 @@ EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_line"
-      ADD CONSTRAINT "product_category_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "public"."product_domain"("id") ON UPDATE CASCADE ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_line"
-      ADD CONSTRAINT "product_line_manufacturer_id_fkey" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_models"
-      ADD CONSTRAINT "product_models_product_manufacturer_id_fkey" FOREIGN KEY ("product_manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON UPDATE CASCADE ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
 END $repair$;
-DO $repair$ BEGIN
-  ALTER TABLE ONLY "public"."product_series"
-      ADD CONSTRAINT "product_series_product_line_id_fkey" FOREIGN KEY ("product_line_id") REFERENCES "public"."product_line"("id") ON DELETE CASCADE;
 EXCEPTION
   WHEN duplicate_object OR duplicate_table OR invalid_table_definition THEN NULL;
   WHEN others THEN RAISE WARNING 'skipped [%] %', SQLSTATE, SQLERRM;
@@ -1369,11 +1297,6 @@ CREATE INDEX IF NOT EXISTS "idx_calendar_events_date_range" ON "public"."calenda
 CREATE INDEX IF NOT EXISTS "idx_calendar_events_event_type" ON "public"."calendar_events" USING "btree" ("event_type");
 CREATE INDEX IF NOT EXISTS "idx_calendar_events_organization" ON "public"."calendar_events" USING "btree" ("organization_id");
 CREATE INDEX IF NOT EXISTS "idx_calendar_events_start_date" ON "public"."calendar_events" USING "btree" ("start_date");
-CREATE INDEX IF NOT EXISTS "idx_config_value_sets_category" ON "public"."config_value_sets" USING "btree" ("category");
-CREATE INDEX IF NOT EXISTS "idx_config_value_sets_category_manufacturer" ON "public"."config_value_sets" USING "btree" ("category", "manufacturer_id");
-CREATE INDEX IF NOT EXISTS "idx_config_value_sets_manufacturer" ON "public"."config_value_sets" USING "btree" ("manufacturer_id");
-CREATE INDEX IF NOT EXISTS "idx_config_value_sets_slug" ON "public"."config_value_sets" USING "btree" ("slug");
-CREATE INDEX IF NOT EXISTS "idx_config_value_sets_values" ON "public"."config_value_sets" USING "gin" ("values");
 CREATE INDEX IF NOT EXISTS "idx_contacts_created_by" ON "public"."contacts" USING "btree" ("created_by");
 CREATE INDEX IF NOT EXISTS "idx_contacts_emails_gin" ON "public"."contacts" USING "gin" ("emails");
 CREATE INDEX IF NOT EXISTS "idx_contacts_full_name" ON "public"."contacts" USING "btree" ("full_name");
@@ -1403,9 +1326,6 @@ CREATE INDEX IF NOT EXISTS "idx_invite_tokens_is_used" ON "public"."invite_token
 CREATE INDEX IF NOT EXISTS "idx_invite_tokens_org_id" ON "public"."invite_tokens" USING "btree" ("organization_id");
 CREATE INDEX IF NOT EXISTS "idx_invite_tokens_revoked" ON "public"."invite_tokens" USING "btree" ("organization_id", "revoked_at") WHERE ("revoked_at" IS NULL);
 CREATE INDEX IF NOT EXISTS "idx_invite_tokens_token" ON "public"."invite_tokens" USING "btree" ("token");
-CREATE INDEX IF NOT EXISTS "idx_manufacturer_product_domains_composite" ON "public"."manufacturer_product_domains" USING "btree" ("domain_id", "manufacturer_id");
-CREATE INDEX IF NOT EXISTS "idx_manufacturer_product_domains_domain_id" ON "public"."manufacturer_product_domains" USING "btree" ("domain_id");
-CREATE INDEX IF NOT EXISTS "idx_manufacturer_product_domains_manufacturer_id" ON "public"."manufacturer_product_domains" USING "btree" ("manufacturer_id");
 CREATE INDEX IF NOT EXISTS "idx_memberships_department" ON "public"."memberships" USING "btree" ("department") WHERE ("department" IS NOT NULL);
 CREATE INDEX IF NOT EXISTS "idx_memberships_invited_by" ON "public"."memberships" USING "btree" ("invited_by");
 CREATE INDEX IF NOT EXISTS "idx_memberships_join_type" ON "public"."memberships" USING "btree" ("join_type") WHERE ("join_type" IS NOT NULL);
@@ -1423,18 +1343,6 @@ CREATE INDEX IF NOT EXISTS "idx_onboarding_expires_at" ON "public"."user_onboard
 CREATE INDEX IF NOT EXISTS "idx_onboarding_user_id" ON "public"."user_onboarding_progress" USING "btree" ("user_id");
 CREATE INDEX IF NOT EXISTS "idx_organizations_has_logo" ON "public"."organizations" USING "btree" ((("logo_data" IS NOT NULL))) WHERE ("logo_data" IS NOT NULL);
 CREATE INDEX IF NOT EXISTS "idx_password_reset_audit_email" ON "public"."password_reset_audit" USING "btree" ("email", "requested_at" DESC);
-CREATE INDEX IF NOT EXISTS "idx_product_domain_name" ON "public"."product_domain" USING "btree" ("name");
-CREATE INDEX IF NOT EXISTS "idx_product_line_domain" ON "public"."product_line" USING "btree" ("domain_id");
-CREATE INDEX IF NOT EXISTS "idx_product_line_manufacturer_id" ON "public"."product_line" USING "btree" ("manufacturer_id");
-CREATE INDEX IF NOT EXISTS "idx_product_line_name" ON "public"."product_line" USING "btree" ("name");
-CREATE INDEX IF NOT EXISTS "idx_product_models_config_schema" ON "public"."product_models" USING "gin" ("config_schema");
-CREATE INDEX IF NOT EXISTS "idx_product_models_has_config" ON "public"."product_models" USING "btree" (((("config_schema" IS NOT NULL) AND ("config_schema" <> '{"groups": [], "options": {}, "version": "2.0"}'::"jsonb")))) WHERE (("config_schema" IS NOT NULL) AND ("config_schema" <> '{"groups": [], "options": {}, "version": "2.0"}'::"jsonb"));
-CREATE INDEX IF NOT EXISTS "idx_product_models_name" ON "public"."product_models" USING "btree" ("name");
-CREATE INDEX IF NOT EXISTS "idx_product_models_product_line_id" ON "public"."product_models" USING "btree" ("product_line_id");
-CREATE INDEX IF NOT EXISTS "idx_product_models_product_manufacturer_id" ON "public"."product_models" USING "btree" ("product_manufacturer_id");
-CREATE INDEX IF NOT EXISTS "idx_product_models_series" ON "public"."product_models" USING "btree" ("product_series_id");
-CREATE INDEX IF NOT EXISTS "idx_product_series_name" ON "public"."product_series" USING "btree" ("name");
-CREATE INDEX IF NOT EXISTS "idx_product_series_product_line_id" ON "public"."product_series" USING "btree" ("product_line_id");
 CREATE INDEX IF NOT EXISTS "idx_products_category" ON "public"."products" USING "btree" ("category");
 CREATE INDEX IF NOT EXISTS "idx_products_created_by" ON "public"."products" USING "btree" ("created_by");
 CREATE INDEX IF NOT EXISTS "idx_products_name" ON "public"."products" USING "btree" ("name");

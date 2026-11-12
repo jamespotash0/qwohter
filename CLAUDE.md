@@ -67,6 +67,7 @@ npm run docs:preview           # Preview built docs
 | [PROJECTS.md](docs/features/PROJECTS.md) | Kanban board, tasks, attachments |
 | [CONTACTS.md](docs/features/CONTACTS.md) | Contact management, phone validation |
 | [FORMS.md](docs/features/FORMS.md) | Form builder, templates, JSONB structure |
+| [BACK_OFFICE.md](docs/features/BACK_OFFICE.md) | Dealer back office: companies, vendors, discount resolution, list-down pricing, attachments |
 | [NOTIFICATIONS.md](docs/features/NOTIFICATIONS.md) | Email/in-app notifications, retry logic, preferences |
 | [SETTINGS.md](docs/features/SETTINGS.md) | All settings tabs, workflow settings |
 | [BILLING.md](docs/features/BILLING.md) | Stripe subscriptions, webhooks, seat management |
@@ -99,6 +100,9 @@ npm run docs:preview           # Preview built docs
 |-----|-------------|
 | [CLIENT_PORTAL_PLAN.md](docs/plans/CLIENT_PORTAL_PLAN.md) | Client portal feature plan |
 | [PERMISSIONS_BITMASK_PLAN.md](docs/plans/PERMISSIONS_BITMASK_PLAN.md) | JWT + bitmask permissions (replace per-request DB role checks) |
+| [COORDINATOR_AGENT_PLAN.md](docs/plans/COORDINATOR_AGENT_PLAN.md) | Email-based coordinator agent: inbox, thread→job resolution, connector, tiered writes |
+| [PORTAL_CONNECTOR_PLAN.md](docs/plans/PORTAL_CONNECTOR_PLAN.md) | Read portal quotes, orders and acks into proposals and jobs via existing AI extraction; no field maps |
+| [AI_TEMPLATE_AUTHORING_PLAN.md](docs/plans/AI_TEMPLATE_AUTHORING_PLAN.md) | Doc variables after the catalog: table/rollup tiers, AI-authored templates |
 
 ---
 

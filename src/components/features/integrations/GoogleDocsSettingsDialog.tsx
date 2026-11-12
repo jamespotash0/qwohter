@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, FolderOpen, HelpCircle, CheckCircle2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
 import {
   Tooltip,
   TooltipContent,
@@ -81,7 +80,6 @@ export const GoogleDocsSettingsDialog: React.FC<GoogleDocsSettingsDialogProps> =
       await invalidateQueries.connectedIntegrations(organizationId);
       await invalidateQueries.googleConnection(organizationId);
 
-      toast.success('Google Docs settings updated');
       onClose();
     } catch (err) {
       console.error('Failed to update Google settings:', err);

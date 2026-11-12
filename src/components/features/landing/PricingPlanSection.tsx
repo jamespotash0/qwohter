@@ -1,5 +1,5 @@
 import { CheckCircle2Icon, XCircleIcon } from "lucide-react";
-import React, { JSX } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -24,7 +24,7 @@ const bottomFeatures = [
   { icon: "close", text: "Cancel anytime" },
 ];
 
-export const PricingPlanSection = (): JSX.Element => {
+export const PricingPlanSection = (): React.JSX.Element => {
   const navigate = useNavigate();
 
   return (

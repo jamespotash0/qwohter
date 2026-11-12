@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { useSignOut } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeInput } from "@/utils/security";
@@ -30,7 +30,7 @@ const ResetPassword = () => {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { mutate: signOut } = useSignOut();
 
@@ -39,12 +39,7 @@ const ResetPassword = () => {
 
     const invalidLink = () => {
       if (cancelled) return;
-      setSessionError('The reset link is invalid or has expired. Please request a new password reset.');
-      toast({
-        title: "Invalid Reset Link",
-        description: "The reset link is invalid or has expired. Please request a new password reset.",
-        variant: "destructive",
-      });
+      setSessionError('Reset links work once and expire after a short time.');
     };
 
     // The Supabase client is configured with flowType 'pkce' + detectSessionInUrl, so it
@@ -113,7 +108,7 @@ const ResetPassword = () => {
       cancelled = true;
       subscription.unsubscribe();
     };
-  }, [searchParams, toast]);
+  }, [searchParams]);
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
@@ -137,34 +132,10 @@ const ResetPassword = () => {
 
     if (!password || !confirmPassword) return;
 
-    const validation = validatePassword(password);
-    if (!validation.isValid) {
-      toast({
-        title: "Password requirements not met",
-        description: validation.errors.join(", "),
-        variant: "destructive",
-      });
-      return;
-    }
+    // The submit button is disabled until these hold; this guards Enter-key submits.
+    if (!validatePassword(password).isValid || password !== confirmPassword || !sessionReady) return;
 
-    if (password !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure both passwords are identical.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!sessionReady) {
-      toast({
-        title: "Session Not Ready",
-        description: "Please wait for the session to be established or use the reset link from your email.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    setSubmitError(null);
     setLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({
@@ -191,10 +162,6 @@ const ResetPassword = () => {
       });
 
       setSuccess(true);
-      toast({
-        title: "Password updated!",
-        description: "Your password has been changed. Please sign in with your new password.",
-      });
 
       setTimeout(() => {
         navigate("/sign-in");
@@ -202,11 +169,7 @@ const ResetPassword = () => {
 
     } catch (error: any) {
       console.error('Password reset error:', error);
-      toast({
-        title: "Error updating password",
-        description: error.message || "Failed to update password. Please try again.",
-        variant: "destructive",
-      });
+      setSubmitError(error.message || "Couldn't update your password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -302,7 +265,7 @@ const ResetPassword = () => {
                 className="text-[28px] text-[#171717] tracking-[0.3px] leading-[1.2] mb-1"
                 style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600 }}
               >
-                {success ? "Password updated!" : "Reset your password"}
+                {success ? "Password updated!" : sessionError && !sessionReady ? "This link has expired" : "Reset your password"}
               </h2>
               <p
                 className="text-[#171717]/50 text-sm"
@@ -310,6 +273,8 @@ const ResetPassword = () => {
               >
                 {success
                   ? "Your password has been successfully changed. Please sign in with your new password."
+                  : sessionError && !sessionReady
+                  ? "No problem — we'll send you a fresh one."
                   : "Choose a strong password for your account."
                 }
               </p>
@@ -317,29 +282,20 @@ const ResetPassword = () => {
 
             {/* Form */}
             <div>
-              {sessionError && !sessionReady && (
-                <div className="bg-[#FEF2F2] border border-[#EF4444]/20 rounded-lg p-4 mb-5">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 bg-[#EF4444] rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">!</span>
-                    </div>
-                    <p
-                      className="text-sm font-medium text-[#991B1B]"
-                      style={{ fontFamily: 'Urbanist, sans-serif' }}
-                    >
-                      Session Error
-                    </p>
-                  </div>
-                  <p
-                    className="text-sm text-[#B91C1C] mt-1"
-                    style={{ fontFamily: 'Urbanist, sans-serif' }}
-                  >
+              {sessionError && !sessionReady ? (
+                <div className="space-y-5 text-center">
+                  <p className="text-sm text-[#171717]/60" style={{ fontFamily: 'Urbanist, sans-serif' }}>
                     {sessionError}
                   </p>
+                  <Button
+                    onClick={() => navigate("/forgot-password")}
+                    className="w-full h-12 bg-[#ee6c4d] hover:bg-[#ee6c4d]/90 text-white font-semibold rounded-full"
+                    style={{ fontFamily: 'Urbanist, sans-serif' }}
+                  >
+                    Send a new link
+                  </Button>
                 </div>
-              )}
-
-              {!success ? (
+              ) : !success ? (
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
                     <Label
@@ -453,6 +409,8 @@ const ResetPassword = () => {
                       </div>
                     )}
                   </div>
+
+                  <InlineError message={submitError} />
 
                   <Button
                     type="submit"

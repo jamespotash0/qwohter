@@ -10,15 +10,15 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import {
   checkQBDesktopConnection,
   createQBDesktopConnection,
   generateQWCFile,
   disconnectQBDesktop,
-  getQBSyncLogs,
   type QBDesktopConnection,
 } from '@/services/quickbooksDesktopService';
-import { Download, RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Download, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface QuickBooksDesktopIntegrationProps {
   organization: any;
@@ -32,6 +32,7 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
   const [connection, setConnection] = useState<QBDesktopConnection | null>(null);
   const [loading, setLoading] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Only Owner and Admin can manage QB integration
   const canManageIntegration = userRole === 'Owner' || userRole === 'Admin';
@@ -67,6 +68,7 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
     if (!organization?.id) return;
 
     setLoading(true);
+    setError(null);
 
     try {
       await createQBDesktopConnection({
@@ -77,12 +79,11 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
         sync_frequency_minutes: setupData.syncFrequency,
       });
 
-      toast.success('QuickBooks Desktop connected successfully!');
       setShowSetup(false);
       loadConnection();
     } catch (error) {
       console.error('Setup failed:', error);
-      toast.error('Failed to setup QuickBooks Desktop connection');
+      setError('Failed to set up the QuickBooks Desktop connection.');
     } finally {
       setLoading(false);
     }
@@ -90,6 +91,7 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
 
   const handleDownloadQWC = async () => {
     if (!organization?.id) return;
+    setError(null);
 
     try {
       const qwcBlob = await generateQWCFile(organization.id);
@@ -105,7 +107,7 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
       toast.success('QWC file downloaded! Open it with QuickBooks Web Connector.');
     } catch (error) {
       console.error('Failed to generate QWC:', error);
-      toast.error('Failed to generate QWC file');
+      setError('Failed to generate the QWC file.');
     }
   };
 
@@ -116,13 +118,13 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
       return;
     }
 
+    setError(null);
     try {
       await disconnectQBDesktop(organization.id);
       setConnection(null);
-      toast.success('QuickBooks Desktop disconnected');
     } catch (error) {
       console.error('Disconnect failed:', error);
-      toast.error('Failed to disconnect QuickBooks Desktop');
+      setError('Failed to disconnect QuickBooks Desktop.');
     }
   };
 
@@ -174,7 +176,7 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Setup QuickBooks Desktop</h3>
 
-        <form onSubmit={handleSetupSubmit} className="space-y-4">
+        <form onSubmit={handleSetupSubmit} onChange={() => setError(null)} className="space-y-4">
           <div>
             <Label htmlFor="companyFileName">Company File Name</Label>
             <Input
@@ -242,6 +244,7 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
             </p>
           </div>
 
+          <InlineError message={error} />
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>
               {loading ? 'Connecting...' : 'Connect'}
@@ -278,6 +281,8 @@ export const QuickBooksDesktopIntegration: React.FC<QuickBooksDesktopIntegration
           </Button>
         )}
       </div>
+
+      <InlineError message={error} className="-mt-4 mb-4" />
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="p-4 bg-muted rounded-lg">

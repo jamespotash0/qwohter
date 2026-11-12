@@ -11,6 +11,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner, Signature, CheckCircle, UploadSimple } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import type { EditorMode } from '../ProposalEditor';
 import {
   uploadProposalDocument,
@@ -57,6 +58,8 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Load documents and signatures on mount (filler mode only)
   useEffect(() => {
@@ -69,12 +72,13 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
   const loadDocuments = useCallback(async () => {
     if (!proposalId) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
       const docs = await getProposalDocuments(proposalId);
       setDocuments(docs);
     } catch (error) {
       console.error('Failed to load documents:', error);
-      toast.error('Failed to load documents');
+      setLoadError('Failed to load documents');
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +97,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
 
   // Handle file upload
   const handleFileUpload = useCallback(async (file: File) => {
-    if (!proposalId || !organizationId) {
-      toast.error('Missing proposal or organization information');
-      return;
-    }
+    if (!proposalId || !organizationId) return;
 
     setIsUploading(true);
 
@@ -106,7 +107,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       });
 
       if (!result.success) {
-        toast.error(result.error || 'Upload failed');
+        setUploadError(`${file.name}: ${result.error || 'Upload failed'}`);
         return;
       }
 
@@ -114,7 +115,6 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       if (result.document) {
         setDocuments(prev => [result.document!, ...prev]);
       }
-      toast.success(`${file.name} uploaded successfully`);
 
       // Reset file input
       if (fileInputRef.current) {
@@ -122,7 +122,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload file');
+      setUploadError(`${file.name}: Failed to upload file`);
     } finally {
       setIsUploading(false);
     }
@@ -130,6 +130,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
 
   // Upload files sequentially to avoid isUploading race conditions
   const handleMultipleFiles = useCallback(async (files: File[]) => {
+    setUploadError(null);
     for (const file of files) {
       await handleFileUpload(file);
     }
@@ -149,7 +150,6 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
       const result = await deleteProposalDocument(docId);
       if (result.success) {
         setDocuments(prev => prev.filter(doc => doc.id !== docId));
-        toast.success('Document deleted');
       } else {
         toast.error(result.error || 'Failed to delete');
       }
@@ -163,11 +163,7 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
 
   // Handle download document
   const handleDownload = useCallback((doc: ProposalDocument) => {
-    if (doc.download_url) {
-      window.open(doc.download_url, '_blank');
-    } else {
-      toast.error('Download URL not available');
-    }
+    if (doc.download_url) window.open(doc.download_url, '_blank');
   }, []);
 
   // Drag & drop handlers
@@ -279,8 +275,12 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
           </div>
         </div>
 
+        <InlineError message={uploadError} />
+
         {/* Documents List */}
-      {totalFiles === 0 ? (
+      {loadError ? (
+        <InlineError message={loadError} className="justify-center py-8" />
+      ) : totalFiles === 0 ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600">
           <FileIcon className="w-10 h-10 mx-auto mb-2 text-gray-400" />
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
@@ -374,8 +374,8 @@ export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabP
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={() => handleDownload(doc)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
-                    title="Download"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={doc.download_url ? 'Download' : 'Download link unavailable'}
                     disabled={!doc.download_url}
                   >
                     <Download className="w-4 h-4" />

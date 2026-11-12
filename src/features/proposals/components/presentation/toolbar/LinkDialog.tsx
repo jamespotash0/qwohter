@@ -6,8 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, X, Trash } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { Link, Trash } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,

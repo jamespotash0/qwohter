@@ -13,38 +13,6 @@
 -- Tables: 60   Statements: 542
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
-CREATE OR REPLACE FUNCTION "public"."is_valid_config_schema"("schema" "jsonb") RETURNS boolean
-    LANGUAGE "plpgsql" IMMUTABLE
-    SET "search_path" TO 'public'
-    AS $$
-BEGIN
-  -- Check required top-level keys
-  IF schema IS NULL THEN
-    RETURN TRUE; -- NULL is allowed
-  END IF;
-
-  IF NOT (schema ? 'version' AND schema ? 'options') THEN
-    RETURN FALSE;
-  END IF;
-
-  -- Check version is a string
-  IF jsonb_typeof(schema->'version') != 'string' THEN
-    RETURN FALSE;
-  END IF;
-
-  -- Check options is an object
-  IF jsonb_typeof(schema->'options') != 'object' THEN
-    RETURN FALSE;
-  END IF;
-
-  -- If groups exists, it must be an array
-  IF schema ? 'groups' AND jsonb_typeof(schema->'groups') != 'array' THEN
-    RETURN FALSE;
-  END IF;
-
-  RETURN TRUE;
-END;
-$$;
 CREATE OR REPLACE FUNCTION "public"."check_project_linked_to_main_version_and_won"("p_proposal_id" "uuid") RETURNS boolean
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO 'public'
@@ -213,26 +181,6 @@ CREATE TABLE IF NOT EXISTS "public"."calendar_events" (
     CONSTRAINT "calendar_events_event_type_check" CHECK (("event_type" = ANY (ARRAY['Custom'::"text", 'Meeting'::"text", 'Site Visit'::"text", 'Follow Up'::"text", 'Deadline'::"text", 'Milestone'::"text", 'Delivery'::"text", 'Installation'::"text"])))
 );
 ALTER TABLE "public"."calendar_events" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."config_option_group_metadata" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "slug" character varying(100) NOT NULL,
-    "field_type" character varying(50) NOT NULL,
-    "input_type" character varying(50),
-    "description" "text",
-    "created_at" timestamp with time zone DEFAULT "now"()
-);
-ALTER TABLE "public"."config_option_group_metadata" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."config_value_sets" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "slug" character varying(100) NOT NULL,
-    "name" character varying(255) NOT NULL,
-    "category" character varying(100),
-    "manufacturer_id" "uuid",
-    "values" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"()
-);
-ALTER TABLE "public"."config_value_sets" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "organization_id" "uuid" NOT NULL,
@@ -333,13 +281,6 @@ CREATE TABLE IF NOT EXISTS "public"."invite_tokens" (
 );
 ALTER TABLE ONLY "public"."invite_tokens" REPLICA IDENTITY FULL;
 ALTER TABLE "public"."invite_tokens" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."manufacturer_product_domains" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "manufacturer_id" "uuid" NOT NULL,
-    "domain_id" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"()
-);
-ALTER TABLE "public"."manufacturer_product_domains" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."memberships" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid",
@@ -470,53 +411,6 @@ CREATE TABLE IF NOT EXISTS "public"."password_reset_audit" (
     "success" boolean
 );
 ALTER TABLE "public"."password_reset_audit" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."product_domain" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "name" "text" NOT NULL,
-    "code" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"()
-);
-ALTER TABLE "public"."product_domain" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."product_line" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "name" "text" NOT NULL,
-    "code" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"(),
-    "domain_id" "uuid",
-    "manufacturer_id" "uuid"
-);
-ALTER TABLE "public"."product_line" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."product_manufacturers" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "name" "text" NOT NULL,
-    "code" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"(),
-    "logo_url" "text"
-);
-ALTER TABLE "public"."product_manufacturers" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."product_models" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "product_line_id" "uuid" NOT NULL,
-    "product_series_id" "uuid",
-    "name" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"(),
-    "product_manufacturer_id" "uuid",
-    "config_schema" "jsonb" DEFAULT '{"groups": [], "options": {}, "version": "2.0"}'::"jsonb",
-    CONSTRAINT "product_models_config_schema_valid" CHECK ("public"."is_valid_config_schema"("config_schema"))
-);
-ALTER TABLE "public"."product_models" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."product_series" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "name" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone,
-    "product_line_id" "uuid"
-);
-ALTER TABLE "public"."product_series" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."products" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "organization_id" "uuid" NOT NULL,
@@ -548,23 +442,6 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
 );
 ALTER TABLE ONLY "public"."profiles" REPLICA IDENTITY FULL;
 ALTER TABLE "public"."profiles" OWNER TO "postgres";
-CREATE TABLE IF NOT EXISTS "public"."project_attachments" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "project_id" "uuid" NOT NULL,
-    "organization_id" "uuid" NOT NULL,
-    "file_name" "text" NOT NULL,
-    "file_path" "text" NOT NULL,
-    "file_size" bigint NOT NULL,
-    "file_type" "text" NOT NULL,
-    "public_url" "text" NOT NULL,
-    "uploaded_by" "uuid" NOT NULL,
-    "description" "text",
-    "category" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "project_attachments_category_check" CHECK (("category" = ANY (ARRAY['drawing'::"text", 'proposal'::"text", 'invoice'::"text", 'photo'::"text", 'contract'::"text", 'specification'::"text", 'other'::"text"])))
-);
-ALTER TABLE "public"."project_attachments" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."project_tasks" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "project_id" "uuid",
@@ -952,14 +829,6 @@ ALTER TABLE ONLY "public"."available_integrations"
     ADD CONSTRAINT "available_integrations_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."calendar_events"
     ADD CONSTRAINT "calendar_events_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."config_option_group_metadata"
-    ADD CONSTRAINT "config_option_group_metadata_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."config_option_group_metadata"
-    ADD CONSTRAINT "config_option_group_metadata_slug_key" UNIQUE ("slug");
-ALTER TABLE ONLY "public"."config_value_sets"
-    ADD CONSTRAINT "config_value_sets_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."config_value_sets"
-    ADD CONSTRAINT "config_value_sets_slug_key" UNIQUE ("slug");
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."notification_retry_queue"
@@ -980,16 +849,10 @@ ALTER TABLE ONLY "public"."invite_tokens"
     ADD CONSTRAINT "invite_tokens_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."invite_tokens"
     ADD CONSTRAINT "invite_tokens_token_key" UNIQUE ("token");
-ALTER TABLE ONLY "public"."manufacturer_product_domains"
-    ADD CONSTRAINT "manufacturer_product_domains_manufacturer_id_domain_id_key" UNIQUE ("manufacturer_id", "domain_id");
-ALTER TABLE ONLY "public"."manufacturer_product_domains"
-    ADD CONSTRAINT "manufacturer_product_domains_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_user_id_organization_id_key" UNIQUE ("user_id", "organization_id");
-ALTER TABLE ONLY "public"."product_models"
-    ADD CONSTRAINT "models_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."notification_preferences"
     ADD CONSTRAINT "notification_preferences_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."notification_preferences"
@@ -1006,28 +869,12 @@ ALTER TABLE ONLY "public"."organizations"
     ADD CONSTRAINT "organizations_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."password_reset_audit"
     ADD CONSTRAINT "password_reset_audit_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."product_line"
-    ADD CONSTRAINT "product_categories_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."product_manufacturers"
-    ADD CONSTRAINT "product_manufacturers_code_key" UNIQUE ("code");
-ALTER TABLE ONLY "public"."product_manufacturers"
-    ADD CONSTRAINT "product_manufacturers_name_key" UNIQUE ("name");
-ALTER TABLE ONLY "public"."product_manufacturers"
-    ADD CONSTRAINT "product_manufacturers_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."product_domain"
-    ADD CONSTRAINT "product_types_code_key" UNIQUE ("code");
-ALTER TABLE ONLY "public"."product_domain"
-    ADD CONSTRAINT "product_types_name_key" UNIQUE ("name");
-ALTER TABLE ONLY "public"."product_domain"
-    ADD CONSTRAINT "product_types_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_unique_display_id_per_org" UNIQUE ("organization_id", "display_id");
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."project_tasks"
     ADD CONSTRAINT "project_tasks_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."project_tasks"
@@ -1060,8 +907,6 @@ ALTER TABLE ONLY "public"."scheduled_notifications"
     ADD CONSTRAINT "scheduled_notifications_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."security_audit_log"
     ADD CONSTRAINT "security_audit_log_pkey" PRIMARY KEY ("id");
-ALTER TABLE ONLY "public"."product_series"
-    ADD CONSTRAINT "series_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."signup_invites"
     ADD CONSTRAINT "signup_invites_pkey" PRIMARY KEY ("id");
 ALTER TABLE ONLY "public"."signup_invites"
@@ -1132,11 +977,6 @@ CREATE INDEX "idx_calendar_events_date_range" ON "public"."calendar_events" USIN
 CREATE INDEX "idx_calendar_events_event_type" ON "public"."calendar_events" USING "btree" ("event_type");
 CREATE INDEX "idx_calendar_events_organization" ON "public"."calendar_events" USING "btree" ("organization_id");
 CREATE INDEX "idx_calendar_events_start_date" ON "public"."calendar_events" USING "btree" ("start_date");
-CREATE INDEX "idx_config_value_sets_category" ON "public"."config_value_sets" USING "btree" ("category");
-CREATE INDEX "idx_config_value_sets_category_manufacturer" ON "public"."config_value_sets" USING "btree" ("category", "manufacturer_id");
-CREATE INDEX "idx_config_value_sets_manufacturer" ON "public"."config_value_sets" USING "btree" ("manufacturer_id");
-CREATE INDEX "idx_config_value_sets_slug" ON "public"."config_value_sets" USING "btree" ("slug");
-CREATE INDEX "idx_config_value_sets_values" ON "public"."config_value_sets" USING "gin" ("values");
 CREATE INDEX "idx_contacts_created_by" ON "public"."contacts" USING "btree" ("created_by");
 CREATE INDEX "idx_contacts_emails_gin" ON "public"."contacts" USING "gin" ("emails");
 CREATE INDEX "idx_contacts_full_name" ON "public"."contacts" USING "btree" ("full_name");
@@ -1166,9 +1006,6 @@ CREATE INDEX "idx_invite_tokens_is_used" ON "public"."invite_tokens" USING "btre
 CREATE INDEX "idx_invite_tokens_org_id" ON "public"."invite_tokens" USING "btree" ("organization_id");
 CREATE INDEX "idx_invite_tokens_revoked" ON "public"."invite_tokens" USING "btree" ("organization_id", "revoked_at") WHERE ("revoked_at" IS NULL);
 CREATE INDEX "idx_invite_tokens_token" ON "public"."invite_tokens" USING "btree" ("token");
-CREATE INDEX "idx_manufacturer_product_domains_composite" ON "public"."manufacturer_product_domains" USING "btree" ("domain_id", "manufacturer_id");
-CREATE INDEX "idx_manufacturer_product_domains_domain_id" ON "public"."manufacturer_product_domains" USING "btree" ("domain_id");
-CREATE INDEX "idx_manufacturer_product_domains_manufacturer_id" ON "public"."manufacturer_product_domains" USING "btree" ("manufacturer_id");
 CREATE INDEX "idx_memberships_department" ON "public"."memberships" USING "btree" ("department") WHERE ("department" IS NOT NULL);
 CREATE INDEX "idx_memberships_invited_by" ON "public"."memberships" USING "btree" ("invited_by");
 CREATE INDEX "idx_memberships_join_type" ON "public"."memberships" USING "btree" ("join_type") WHERE ("join_type" IS NOT NULL);
@@ -1186,18 +1023,6 @@ CREATE INDEX "idx_onboarding_expires_at" ON "public"."user_onboarding_progress" 
 CREATE INDEX "idx_onboarding_user_id" ON "public"."user_onboarding_progress" USING "btree" ("user_id");
 CREATE INDEX "idx_organizations_has_logo" ON "public"."organizations" USING "btree" ((("logo_data" IS NOT NULL))) WHERE ("logo_data" IS NOT NULL);
 CREATE INDEX "idx_password_reset_audit_email" ON "public"."password_reset_audit" USING "btree" ("email", "requested_at" DESC);
-CREATE INDEX "idx_product_domain_name" ON "public"."product_domain" USING "btree" ("name");
-CREATE INDEX "idx_product_line_domain" ON "public"."product_line" USING "btree" ("domain_id");
-CREATE INDEX "idx_product_line_manufacturer_id" ON "public"."product_line" USING "btree" ("manufacturer_id");
-CREATE INDEX "idx_product_line_name" ON "public"."product_line" USING "btree" ("name");
-CREATE INDEX "idx_product_models_config_schema" ON "public"."product_models" USING "gin" ("config_schema");
-CREATE INDEX "idx_product_models_has_config" ON "public"."product_models" USING "btree" (((("config_schema" IS NOT NULL) AND ("config_schema" <> '{"groups": [], "options": {}, "version": "2.0"}'::"jsonb")))) WHERE (("config_schema" IS NOT NULL) AND ("config_schema" <> '{"groups": [], "options": {}, "version": "2.0"}'::"jsonb"));
-CREATE INDEX "idx_product_models_name" ON "public"."product_models" USING "btree" ("name");
-CREATE INDEX "idx_product_models_product_line_id" ON "public"."product_models" USING "btree" ("product_line_id");
-CREATE INDEX "idx_product_models_product_manufacturer_id" ON "public"."product_models" USING "btree" ("product_manufacturer_id");
-CREATE INDEX "idx_product_models_series" ON "public"."product_models" USING "btree" ("product_series_id");
-CREATE INDEX "idx_product_series_name" ON "public"."product_series" USING "btree" ("name");
-CREATE INDEX "idx_product_series_product_line_id" ON "public"."product_series" USING "btree" ("product_line_id");
 CREATE INDEX "idx_products_category" ON "public"."products" USING "btree" ("category");
 CREATE INDEX "idx_products_created_by" ON "public"."products" USING "btree" ("created_by");
 CREATE INDEX "idx_products_name" ON "public"."products" USING "btree" ("name");
@@ -1205,11 +1030,6 @@ CREATE INDEX "idx_products_organization_id" ON "public"."products" USING "btree"
 CREATE INDEX "idx_products_product_number" ON "public"."products" USING "btree" ("organization_id", "product_number");
 CREATE INDEX "idx_profiles_is_super_admin" ON "public"."profiles" USING "btree" ("is_super_admin") WHERE ("is_super_admin" = true);
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_profiles_email" ON "public"."profiles" USING "btree" ("email");
-CREATE INDEX "idx_project_attachments_category" ON "public"."project_attachments" USING "btree" ("category");
-CREATE INDEX "idx_project_attachments_created_at" ON "public"."project_attachments" USING "btree" ("created_at" DESC);
-CREATE INDEX "idx_project_attachments_organization_id" ON "public"."project_attachments" USING "btree" ("organization_id");
-CREATE INDEX "idx_project_attachments_project_id" ON "public"."project_attachments" USING "btree" ("project_id");
-CREATE INDEX "idx_project_attachments_uploaded_by" ON "public"."project_attachments" USING "btree" ("uploaded_by");
 CREATE INDEX "idx_project_tasks_assigned_to" ON "public"."project_tasks" USING "btree" ("assigned_to");
 CREATE INDEX "idx_project_tasks_created_at" ON "public"."project_tasks" USING "btree" ("created_at" DESC);
 CREATE INDEX "idx_project_tasks_created_by" ON "public"."project_tasks" USING "btree" ("created_by");
@@ -1336,8 +1156,6 @@ ALTER TABLE ONLY "public"."calendar_events"
     ADD CONSTRAINT "calendar_events_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."calendar_events"
     ADD CONSTRAINT "calendar_events_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."config_value_sets"
-    ADD CONSTRAINT "config_value_sets_manufacturer_id_fkey" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."contacts"
@@ -1364,20 +1182,12 @@ ALTER TABLE ONLY "public"."invite_tokens"
     ADD CONSTRAINT "invite_tokens_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."invite_tokens"
     ADD CONSTRAINT "invite_tokens_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."manufacturer_product_domains"
-    ADD CONSTRAINT "manufacturer_product_domains_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "public"."product_domain"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."manufacturer_product_domains"
-    ADD CONSTRAINT "manufacturer_product_domains_manufacturer_id_fkey" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_invited_by_fkey" FOREIGN KEY ("invited_by") REFERENCES "public"."profiles"("id");
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."memberships"
     ADD CONSTRAINT "memberships_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."product_models"
-    ADD CONSTRAINT "models_product_category_id_fkey" FOREIGN KEY ("product_line_id") REFERENCES "public"."product_line"("id");
-ALTER TABLE ONLY "public"."product_models"
-    ADD CONSTRAINT "models_product_series_id_fkey" FOREIGN KEY ("product_series_id") REFERENCES "public"."product_series"("id");
 ALTER TABLE ONLY "public"."notification_preferences"
     ADD CONSTRAINT "notification_preferences_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."notification_preferences"
@@ -1388,26 +1198,12 @@ ALTER TABLE ONLY "public"."notifications"
     ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."organization_creation_log"
     ADD CONSTRAINT "organization_creation_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."product_line"
-    ADD CONSTRAINT "product_category_domain_id_fkey" FOREIGN KEY ("domain_id") REFERENCES "public"."product_domain"("id") ON UPDATE CASCADE ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."product_line"
-    ADD CONSTRAINT "product_line_manufacturer_id_fkey" FOREIGN KEY ("manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."product_models"
-    ADD CONSTRAINT "product_models_product_manufacturer_id_fkey" FOREIGN KEY ("product_manufacturer_id") REFERENCES "public"."product_manufacturers"("id") ON UPDATE CASCADE ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."product_series"
-    ADD CONSTRAINT "product_series_product_line_id_fkey" FOREIGN KEY ("product_line_id") REFERENCES "public"."product_line"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."products"
     ADD CONSTRAINT "products_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON UPDATE CASCADE ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE CASCADE;
-ALTER TABLE ONLY "public"."project_attachments"
-    ADD CONSTRAINT "project_attachments_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."project_tasks"
     ADD CONSTRAINT "project_tasks_assigned_to_fkey" FOREIGN KEY ("assigned_to") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 ALTER TABLE ONLY "public"."project_tasks"
@@ -1668,3 +1464,145 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_invoice_sync_billing_phase
   WHERE billing_phase_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_invoice_sync_proposal
   ON public.quickbooks_desktop_invoice_sync (proposal_id);
+
+-- ============================================================================
+-- Back office: companies, vendors, vendor discounts, attachments
+-- Source: supabase/migrations/20260819100000_companies_vendors.sql
+--         supabase/migrations/20260819100001_attachments.sql
+--         supabase/migrations/20260819100002_consolidate_attachments.sql
+-- NOTE: project_attachments was folded into attachments and dropped; it is
+--       deliberately absent from this script.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.companies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  legal_name text,
+  company_type text NOT NULL DEFAULT 'Customer'
+    CHECK (company_type IN ('Customer', 'Prospect', 'Partner', 'Other')),
+  billing_address_line1 text,
+  billing_address_line2 text,
+  billing_city text,
+  billing_state text,
+  billing_postal_code text,
+  billing_country text DEFAULT 'US',
+  shipping_address_line1 text,
+  shipping_address_line2 text,
+  shipping_city text,
+  shipping_state text,
+  shipping_postal_code text,
+  shipping_country text DEFAULT 'US',
+  phone text,
+  website text,
+  payment_terms text DEFAULT 'Net 30',
+  tax_exempt boolean NOT NULL DEFAULT false,
+  tax_exempt_certificate text,
+  default_tax_rate numeric CHECK (default_tax_rate IS NULL OR default_tax_rate >= 0),
+  primary_contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  external_accounting_id text,
+  notes text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_companies_org ON public.companies (organization_id);
+CREATE INDEX IF NOT EXISTS idx_companies_org_active_name
+  ON public.companies (organization_id, is_active, name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_org_name_unique
+  ON public.companies (organization_id, lower(name));
+ALTER TABLE public.contacts
+  ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_contacts_company
+  ON public.contacts (company_id) WHERE company_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS public.vendors (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  vendor_type text NOT NULL DEFAULT 'Manufacturer'
+    CHECK (vendor_type IN ('Manufacturer', 'Supplier', 'Subcontractor', 'Freight', 'Other')),
+  account_number text,
+  order_method text NOT NULL DEFAULT 'Email'
+    CHECK (order_method IN ('Email', 'Portal', 'EDI', 'Fax', 'Phone')),
+  order_email text,
+  acknowledgment_email text,
+  portal_url text,
+  remit_to_name text,
+  remit_to_address_line1 text,
+  remit_to_address_line2 text,
+  remit_to_city text,
+  remit_to_state text,
+  remit_to_postal_code text,
+  remit_to_country text DEFAULT 'US',
+  phone text,
+  payment_terms text DEFAULT 'Net 30',
+  freight_terms text
+    CHECK (freight_terms IS NULL OR freight_terms IN (
+      'FOB Origin', 'FOB Destination', 'Prepaid', 'Prepaid and Add', 'Collect')),
+  standard_lead_time_days integer
+    CHECK (standard_lead_time_days IS NULL OR standard_lead_time_days >= 0),
+  rep_name text,
+  rep_email text,
+  rep_phone text,
+  external_accounting_id text,
+  notes text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_vendors_org ON public.vendors (organization_id);
+CREATE INDEX IF NOT EXISTS idx_vendors_org_active_name
+  ON public.vendors (organization_id, is_active, name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vendors_org_name_unique
+  ON public.vendors (organization_id, lower(name));
+CREATE TABLE IF NOT EXISTS public.vendor_discounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  vendor_id uuid NOT NULL REFERENCES public.vendors(id) ON DELETE CASCADE,
+  series_name text,
+  contract_vehicle text,
+  discount_percent numeric NOT NULL
+    CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  effective_from date,
+  effective_to date,
+  CONSTRAINT vendor_discounts_effective_range
+    CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from),
+  notes text,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_vendor_discounts_lookup
+  ON public.vendor_discounts (vendor_id, lower(series_name), lower(contract_vehicle));
+CREATE INDEX IF NOT EXISTS idx_vendor_discounts_org
+  ON public.vendor_discounts (organization_id);
+CREATE TABLE IF NOT EXISTS public.attachments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  entity_type text NOT NULL
+    CHECK (entity_type IN (
+      'project', 'proposal', 'company', 'vendor', 'sales_order', 'order_line',
+      'vendor_po', 'acknowledgment', 'receipt', 'work_order', 'punch_item')),
+  entity_id uuid NOT NULL,
+  document_type text NOT NULL DEFAULT 'other'
+    CONSTRAINT attachments_document_type_check
+    CHECK (document_type IN (
+      'acknowledgment', 'packing_slip', 'bill_of_lading', 'damage_photo',
+      'vendor_invoice', 'customer_invoice', 'quote', 'proposal', 'drawing',
+      'specification', 'spec_file', 'photo', 'contract', 'other')),
+  file_name text NOT NULL,
+  file_path text NOT NULL,
+  file_size bigint NOT NULL,
+  file_type text NOT NULL,
+  description text,
+  uploaded_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_entity
+  ON public.attachments (entity_type, entity_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_attachments_org
+  ON public.attachments (organization_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_org_doctype
+  ON public.attachments (organization_id, document_type, created_at DESC);

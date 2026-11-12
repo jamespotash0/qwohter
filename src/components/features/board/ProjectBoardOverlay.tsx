@@ -18,7 +18,7 @@ import { ProjectAttachments } from './ProjectAttachments';
 import { ProjectTasks } from './ProjectTasks';
 import { ProjectPaymentsSection } from './ProjectPaymentsSection';
 import type { Project, ProjectPriority } from '@/services/boardService';
-import type { ProjectAttachment } from '@/lib/types/projectAttachments';
+import type { AttachmentWithUrl } from '@/hooks/queries/useAttachments';
 import { trackEvent } from '@/lib/analytics';
 
 // =============================================================================
@@ -28,7 +28,7 @@ import { trackEvent } from '@/lib/analytics';
 interface ProjectBoardOverlayProps {
   project: Project;
   organizationId: string;
-  attachments: ProjectAttachment[];
+  attachments: AttachmentWithUrl[];
   onClose: () => void;
   onUpdate: (projectId: string, updates: Partial<Project>) => void;
   onAttachmentsChange: () => void;
@@ -106,12 +106,22 @@ export function ProjectBoardOverlay({
                 <span className="text-[11px] text-gray-500">{project.workflow_status}</span>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <XIcon className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              {/* The overlay is for quick edits; the full page is where the job
+                  actually lives — orders, acknowledgments, changes, activity. */}
+              <a
+                href={`/projects/${project.id}`}
+                className="rounded-md px-2 py-1 text-[11px] font-medium text-[#ee6c4d] hover:bg-orange-50 transition-colors"
+              >
+                Open full project →
+              </a>
+              <button
+                onClick={onClose}
+                className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Inline Properties */}

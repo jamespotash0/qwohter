@@ -88,7 +88,7 @@ export function getSpecificationFields(
   if (!rawData) return [];
   const metaFields = [
     'source', 'productDomain', 'productLine', 'manufacturer', 'series', 'model',
-    '_specificationLabels', 'domain_id', 'manufacturer_id', 'product_line_id',
+    '_specificationLabels',
     'series_id', 'model_id',
   ];
   const keyInfoFields = [

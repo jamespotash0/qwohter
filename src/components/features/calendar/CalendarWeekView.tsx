@@ -19,7 +19,6 @@ import {
 import { cn } from '@/lib/utils';
 import { QuickAddPopover } from './QuickAddPopover';
 import type { UnifiedCalendarItem } from '@/lib/types/calendarEvents';
-import { CALENDAR_SOURCE_LABELS } from '@/lib/types/calendarEvents';
 
 interface CalendarWeekViewProps {
   selectedDate: Date;

@@ -72,7 +72,7 @@ const solutionItems = [
   },
 ];
 
-export const ProblemSolutionSection = (): JSX.Element => {
+export const ProblemSolutionSection = (): React.JSX.Element => {
   const [activeTab, setActiveTab] = useState<string>("problem");
 
   const currentItems = activeTab === "problem" ? problemItems : solutionItems;

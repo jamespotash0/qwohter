@@ -103,6 +103,9 @@ export const canAccessSettingsTab = (tabName: string, userRole: string): boolean
       return canManageTeam(userRole); // Admin and Owner can access team management
     case 'security':
       return hasAdminPermissions(userRole); // Admin and Owner can access security
+    case 'crews':
+      // Crew rates are cost data, so crew setup is Owner/Admin.
+      return hasAdminPermissions(userRole);
     case 'payments':
       return hasAdminPermissions(userRole); // Admin and Owner can access payment settings
     case 'permissions':

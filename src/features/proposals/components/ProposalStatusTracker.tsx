@@ -14,7 +14,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { CheckCircle, XCircle, Signature, BellRinging, BellSlash } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { stopSigningReminders } from '@/services/proposalSigningService';
 import type { SigningToken } from '@/services/proposalSigningService';
 
@@ -149,20 +149,21 @@ interface ReminderInfo {
 
 function ReminderIndicator({ info, onStopped }: { info: ReminderInfo; onStopped?: () => void }) {
   const [stopping, setStopping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const remaining = info.maxReminders - info.sentCount;
 
   const handleStop = async () => {
     setStopping(true);
+    setError(null);
     try {
       const result = await stopSigningReminders(info.tokenId);
       if (result.success) {
-        toast.success('Reminders stopped');
         onStopped?.();
       } else {
-        toast.error(result.error || 'Failed to stop reminders');
+        setError(result.error || 'Failed to stop reminders');
       }
     } catch {
-      toast.error('Failed to stop reminders');
+      setError('Failed to stop reminders');
     } finally {
       setStopping(false);
     }
@@ -173,7 +174,7 @@ function ReminderIndicator({ info, onStopped }: { info: ReminderInfo; onStopped?
     : 'No reminders sent yet';
 
   return (
-    <Popover>
+    <Popover onOpenChange={() => setError(null)}>
       <PopoverTrigger asChild>
         <button
           className="ml-1 p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -208,6 +209,7 @@ function ReminderIndicator({ info, onStopped }: { info: ReminderInfo; onStopped?
             <BellSlash className="w-3 h-3" />
             {stopping ? 'Stopping...' : 'Stop reminders'}
           </button>
+          <InlineError message={error} className="text-[11px]" />
         </div>
       </PopoverContent>
     </Popover>

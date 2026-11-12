@@ -4,7 +4,6 @@
  */
 
 import { organizationSettingsService } from '@/services/companySettingsService';
-import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import * as authService from '@/auth/services/authService';
@@ -186,21 +185,6 @@ export const handleCompanyInfoSkip = async (params: HandleCompanyInfoSkipParams)
 
   clearAuthState();
   navigate('/dashboard?welcome=true');
-};
-
-interface HandleLogoUploadParams {
-  setCurrentLogoUrl: (url: string | undefined) => void;
-  toast: (props: { title: string; description: string }) => void;
-}
-
-export const handleLogoUpload = (result: LogoUploadResult, params: HandleLogoUploadParams) => {
-  const { setCurrentLogoUrl, toast } = params;
-
-  setCurrentLogoUrl(result.url);
-  toast({
-    title: 'Logo uploaded successfully!',
-    description: 'Your company logo has been saved.',
-  });
 };
 
 export const handleLogoError = (error: string, toast: (props: { title: string; description: string; variant: 'destructive' }) => void) => {

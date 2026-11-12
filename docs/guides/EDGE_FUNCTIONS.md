@@ -62,6 +62,24 @@ supabase/functions/
 | `submit-signature` | Verify PDF hash, embed signature at detected position, process signing | Token verification |
 | `signature-reminders` | Send reminder emails for pending signatures (cron-triggered hourly via pg_cron) | Service role (cron) |
 
+### Carrier tracking
+
+| Function | Purpose | Auth |
+|----------|---------|------|
+| `track-shipment` | Register a number with the provider, refresh one now, or detect which carrier a number belongs to | JWT required |
+| `refresh-shipment-tracking` | Poll everything `shipments_due_for_tracking()` returns (cron-triggered hourly via pg_cron) | Service role (cron) |
+| `tracking-webhook` | Provider push of carrier status | Shared secret (`?token=`) |
+
+The provider adapters live in `supabase/functions/_shared/tracking/` and are
+selected by `TRACKING_PROVIDER`. Nothing outside that folder knows which vendor
+is in use.
+
+`track-shipment` uses **two clients on purpose**: reads go through a client
+carrying the caller's JWT so RLS decides what they may see, and only the write
+of observed carrier state uses the service role. `apply_tracking_update` is
+revoked from `authenticated` — carrier status must never be typeable, or it
+proves nothing in a freight claim.
+
 ## Function Template
 
 ### Authenticated Endpoint
@@ -228,6 +246,13 @@ RESEND_API_KEY=re_...
 # Google
 GOOGLE_OAUTH_CLIENT_ID=...
 GOOGLE_OAUTH_CLIENT_SECRET=...
+
+# Carrier tracking (all optional)
+TRACKING_PROVIDER=aftership
+AFTERSHIP_API_KEY=asat_...
+AFTERSHIP_API_VERSION=2025-07
+EASYPOST_API_KEY=EZAK...
+TRACKING_WEBHOOK_SECRET=...
 
 # App
 APP_URL=https://www.qwohter.com

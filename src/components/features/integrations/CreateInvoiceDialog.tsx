@@ -20,11 +20,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, FileText, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/components/ui/sonner';
 import type { Proposal } from '@/services/proposalsService';
 import type { IntegrationType } from '@/lib/types/integrations';
-import { checkQBOnlineConnection, createInvoiceInQBOnline } from '@/services/quickbooksOnlineService';
-import { checkQBDesktopConnection, createInvoiceInQBDesktop } from '@/services/quickbooksDesktopService';
+import { createInvoiceInQBOnline } from '@/services/quickbooksOnlineService';
+import { createInvoiceInQBDesktop } from '@/services/quickbooksDesktopService';
 import { getIntegrations } from '@/services/integrationsService';
 
 interface CreateInvoiceDialogProps {
@@ -103,14 +102,12 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
       if (result?.success) {
         setSuccess(true);
         setInvoiceUrl(result.invoice_url || null);
-        toast.success('Invoice created successfully');
       } else {
         throw new Error(result?.error || 'Failed to create invoice');
       }
     } catch (err) {
       console.error('Failed to create invoice:', err);
       setError(err instanceof Error ? err.message : 'Failed to create invoice');
-      toast.error('Failed to create invoice');
     } finally {
       setIsCreating(false);
     }

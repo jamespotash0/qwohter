@@ -8,7 +8,6 @@ import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-import { versionCheckService } from '@/services/versionCheckService';
 import { stripeService } from '@/services/stripeService';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
@@ -214,44 +213,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // - Resets all stores
   // - Redirects to sign-in
   // Manual polling removed in v3.0.0 - no longer needed
-
-  // Poll for new app version every 5 minutes
-  useEffect(() => {
-    // Initialize version check on mount
-    versionCheckService.initializeVersionCheck();
-
-    console.log('⏱️ Starting version polling (5min interval)...');
-
-    let hasShownToast = false;
-
-    const checkVersion = async () => {
-      const hasNewVersion = await versionCheckService.checkForNewVersion();
-
-      if (hasNewVersion && !hasShownToast) {
-        // Show persistent toast once when version changes
-        hasShownToast = true;
-        toast('New version available!', {
-          description: 'A new update was made to the app.',
-          duration: Infinity, // Persist until manually dismissed
-          action: {
-            label: 'Refresh',
-            onClick: () => {
-              versionCheckService.forceReload();
-            },
-          },
-        });
-      }
-    };
-
-    // Poll every 5 minutes (reduced from 30s for better performance)
-    const pollInterval = setInterval(() => {
-      checkVersion();
-    }, 300000); // 5 minutes
-
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, []);
 
   const handleLogout = async () => {
     // ✅ v3.0.0: Use new signOut mutation with callback

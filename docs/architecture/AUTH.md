@@ -22,6 +22,10 @@ User → AuthProvider.tsx → authService.ts → Supabase Auth
 | `useAuth.ts` | `src/auth/hooks/` | Hooks: `useUser()`, `useSession()`, `useProfile()`, `useSignIn()`, `useSignOut()` |
 | `AuthEventMutex.ts` | `src/auth/utils/` | Prevents race conditions on rapid auth events |
 
+## Error Display
+
+Auth screens (sign-in, sign-up, OTP, onboarding, forgot/reset password) show errors inline via `InlineError` (`src/components/common/InlineError.tsx`) next to the field or submit button, never as toasts. Success isn't toasted either; the next screen shows it. In `Auth.tsx` the action handlers still get a `toast`-shaped callback, which routes `destructive` calls into `formError` and drops the rest. Copy stays short and standard ("Incorrect email or password.", "Too many attempts. Try again in 5 minutes."). An expired reset link replaces the form with a "Send a new link" action.
+
 ## Sign-In Flow
 
 ```
@@ -155,7 +159,7 @@ Org Admin/Owner invites a user by email to join their organization.
 2. If invalid → navigate to /invalid-invitation?error={type}
 3. If valid + signed-in user's email matches invite email:
    → Auto-join via RPC (auto_join_pending_invite)
-   → Stripe seat sync, toast, redirect to dashboard
+   → Stripe seat sync, redirect to dashboard
 4. If valid + email mismatch:
    → Redirect to /invalid-invitation?error=EmailMismatch&inviteEmail=...&currentEmail=...
    → Invite token stored in sessionStorage (`mismatchInviteToken`)

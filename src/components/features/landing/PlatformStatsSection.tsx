@@ -1,4 +1,4 @@
-import React, { JSX, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 // import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -36,7 +36,7 @@ const metricsData = [
   },
 ];
 
-export const PlatformStatsSection = (): JSX.Element => {
+export const PlatformStatsSection = (): React.JSX.Element => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

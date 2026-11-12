@@ -15,6 +15,7 @@ import { Warning } from "@phosphor-icons/react";
 import { useForms } from "@/hooks/queries";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
+import { InlineError } from "@/components/common/InlineError";
 
 // Helper to format document type for display
 const formatDocumentType = (type: string | null | undefined): string => {
@@ -32,7 +33,8 @@ export interface ProposalInitialData {
 interface CreateProposalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateProposal: (data: ProposalInitialData) => void;
+  // Throw to keep the dialog open with the error shown.
+  onCreateProposal: (data: ProposalInitialData) => void | Promise<void>;
 }
 
 const CreateProposalDialog = ({
@@ -45,6 +47,8 @@ const CreateProposalDialog = ({
   // Form fields
   const [projectName, setProjectName] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string>("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch user, organization and forms
   const user = useUser();
@@ -65,6 +69,7 @@ const CreateProposalDialog = ({
 
   // Reset form when dialog opens or closes
   useEffect(() => {
+    setError(null);
     if (!open) {
       // Reset all fields when dialog closes
       setProjectName("");
@@ -75,16 +80,21 @@ const CreateProposalDialog = ({
   // Check if form is valid
   const isFormValid = projectName.trim() && selectedFormId;
 
-  const handleCreate = () => {
-    if (isFormValid) {
-      const data: ProposalInitialData = {
+  const handleCreate = async () => {
+    if (!isFormValid || isCreating) return;
+    setIsCreating(true);
+    setError(null);
+    try {
+      await onCreateProposal({
         projectName: projectName.trim(),
         formId: selectedFormId,
-      };
-
-      onCreateProposal(data);
+      });
       resetForm();
       onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create proposal');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -137,7 +147,7 @@ const CreateProposalDialog = ({
             <Input
               id="projectName"
               value={projectName}
-              onChange={e => setProjectName(e.target.value)}
+              onChange={e => { setProjectName(e.target.value); setError(null); }}
               onKeyDown={handleKeyDown}
               placeholder="e.g., Office Building Renovation"
               autoFocus
@@ -156,7 +166,7 @@ const CreateProposalDialog = ({
                 <span className="text-sm text-slate-400">No forms available</span>
               </div>
             ) : (
-              <Select value={selectedFormId} onValueChange={setSelectedFormId}>
+              <Select value={selectedFormId} onValueChange={(v) => { setSelectedFormId(v); setError(null); }}>
                 <SelectTrigger
                   id="form"
                   className="h-11 rounded-lg bg-white border-slate-200 data-[placeholder]:text-slate-400"
@@ -194,6 +204,8 @@ const CreateProposalDialog = ({
           </div>
         </div>
 
+        <InlineError message={error} className="px-1" />
+
         {/* Actions */}
         <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
           <Button
@@ -208,10 +220,10 @@ const CreateProposalDialog = ({
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!isFormValid || hasNoForms}
+            disabled={!isFormValid || hasNoForms || isCreating}
             className="bg-slate-900 hover:bg-slate-800 px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continue
+            {isCreating ? 'Creating...' : 'Continue'}
           </Button>
         </div>
       </DialogContent>

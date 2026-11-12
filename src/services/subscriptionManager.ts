@@ -21,7 +21,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { queryClient, queryKeys, invalidateQueries } from '@/lib/queryClient';
+import { queryClient, invalidateQueries } from '@/lib/queryClient';
 import { proposalQueryKeys } from '@/hooks/queries/useProposals';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 

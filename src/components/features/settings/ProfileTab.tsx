@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { useResetPassword, useUpdateProfile } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
@@ -17,6 +18,9 @@ interface ProfileTabProps {
 export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
   const [editedFullName, setEditedFullName] = useState(profile?.full_name || '');
   const [isEditingName, setIsEditingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   // Email change dialog states
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -50,35 +54,25 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
   }
 
   const handleSaveName = async () => {
+    setNameError(null);
     updateProfile(
       { userId: user.id, updates: { full_name: editedFullName } },
       {
         onSuccess: () => {
-          toast({
-            title: "Name Updated",
-            description: "Your name has been updated successfully.",
-          });
           setIsEditingName(false);
         },
         onError: (error) => {
           console.error('Error updating name:', error);
-          toast({
-            title: "Error",
-            description: error instanceof Error ? error.message : "Failed to update name",
-            variant: "destructive",
-          });
+          setNameError(error instanceof Error ? error.message : 'Failed to update name');
         }
       }
     );
   };
 
   const handleEmailChange = async () => {
+    setEmailError(null);
     if (!newEmail || !currentPassword) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
+      setEmailError('Please fill in all fields.');
       return;
     }
 
@@ -105,11 +99,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
       setNewEmail('');
       setCurrentPassword('');
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update email",
-        variant: "destructive",
-      });
+      setEmailError(error instanceof Error ? error.message : 'Failed to update email');
     } finally {
       setIsUpdatingEmail(false);
     }
@@ -117,6 +107,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
 
   const handlePasswordReset = async () => {
     if (!user.email) return;
+    setResetError(null);
 
     resetPassword(user.email, {
       onSuccess: () => {
@@ -127,11 +118,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
         });
       },
       onError: (error) => {
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to send reset email",
-          variant: "destructive",
-        });
+        setResetError(error instanceof Error ? error.message : 'Failed to send reset email');
       }
     });
   };
@@ -158,7 +145,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
               <>
                 <Input
                   value={editedFullName}
-                  onChange={(e) => setEditedFullName(e.target.value)}
+                  onChange={(e) => { setEditedFullName(e.target.value); setNameError(null); }}
                   placeholder="Enter your name"
                   className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
                 />
@@ -176,6 +163,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
                   onClick={() => {
                     setEditedFullName(profile?.full_name || '');
                     setIsEditingName(false);
+                    setNameError(null);
                   }}
                   className="h-9 px-4"
                 >
@@ -200,6 +188,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
             )}
           </div>
         </div>
+            <InlineError message={nameError} className="px-6 justify-end" />
           </div>
         </div>
 
@@ -226,7 +215,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
                 <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5 inline-block">Unverified</span>
               )}
             </div>
-            <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+            <Dialog open={showEmailDialog} onOpenChange={(open) => { setShowEmailDialog(open); setEmailError(null); }}>
               <DialogTrigger asChild>
                 <Button
                   size="sm"
@@ -251,7 +240,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
                       id="current-password"
                       type="password"
                       value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      onChange={(e) => { setCurrentPassword(e.target.value); setEmailError(null); }}
                       placeholder="Enter your current password"
                     />
                   </div>
@@ -261,10 +250,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
                       id="new-email"
                       type="email"
                       value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
+                      onChange={(e) => { setNewEmail(e.target.value); setEmailError(null); }}
                       placeholder="Enter new email address"
                     />
                   </div>
+                  <InlineError message={emailError} />
                 </div>
                 <DialogFooter>
                   <Button
@@ -307,7 +297,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
             </p>
           </div>
           <div className="flex items-center gap-3 min-w-[480px] justify-end">
-            <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+            <Dialog open={showPasswordDialog} onOpenChange={(open) => { setShowPasswordDialog(open); setResetError(null); }}>
               <DialogTrigger asChild>
                 <Button
                   size="sm"
@@ -349,6 +339,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile }) => {
                     </p>
                   </div>
                 )}
+                <InlineError message={resetError} />
               </div>
               <DialogFooter>
                 <Button

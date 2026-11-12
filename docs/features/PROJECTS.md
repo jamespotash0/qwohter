@@ -155,7 +155,6 @@ Manages projects (board items) and workflow columns:
 | Function | Purpose |
 |----------|---------|
 | `fetchBoardItems(orgId)` | Get projects (filters to Won proposals) |
-| `createBoardItem(data)` | Create project from proposal |
 | `updateBoardItem(id, data)` | Update project |
 | `deleteBoardItem(id)` | Remove from board |
 | `moveBoardItem(id, columnId, position)` | Move between columns |
@@ -230,7 +229,6 @@ const reference = generateTaskReference(organizationName, existingCount);
 |------|---------|
 | `useProjects(orgId)` | Fetch board items with realtime |
 | `useWorkflowColumns(orgId)` | Fetch workflow columns |
-| `useCreateProject()` | Create with optimistic updates |
 | `useUpdateProject()` | Update with optimistic updates |
 | `useDeleteProject()` | Delete with rollback on error |
 | `useMoveBoardItem()` | Move between columns |
@@ -247,7 +245,6 @@ const reference = generateTaskReference(organizationName, existingCount);
 | `useProjectTasks(projectId)` | Fetch project-specific tasks |
 | `useOrganizationTasks(orgId)` | Fetch all org tasks |
 | `useCreateProjectTask()` | Create with auto-reference |
-| `useUpdateProjectTask()` | Generic update |
 | `useDeleteProjectTask()` | Delete |
 | `useAssignTask()` | Assign to user |
 | `useUpdateTaskStatus()` | Change column |
@@ -556,3 +553,129 @@ created_at        timestamptz
 UNIQUE (organization_id, reference) ON project_tasks
 UNIQUE (organization_id, slug) ON task_board_columns
 ```
+
+---
+
+## The project as the hub
+
+Once a quote is won the project stops being a card on a board. Everything a
+dealer does afterwards already carries its id — sales orders, manufacturer
+orders, receipts, work orders, tasks, attachments, payment jobs — and
+`/projects/:projectId` is where that graph is read back as one thing.
+
+The board overlay stays for quick edits and links through to it.
+
+### Two statuses, on purpose
+
+| | What it is |
+|---|---|
+| `projects.workflow_status` | The Kanban column somebody dragged the card into. An **intention** |
+| `project_progress.stage` | Derived from what has actually happened. A **fact** |
+
+They disagree constantly, and the disagreement is the useful part: a job sitting
+in "Installing" with nothing received is a job somebody has stopped looking at.
+`workflow_status` is the name of an org-configurable column
+(`project_workflow_columns`), so it cannot carry a fixed lifecycle — which is
+exactly why the derived stage sits beside it rather than replacing it.
+
+Stages run Quoted → Released → Ordering → Awaiting delivery → Receiving →
+Installing → Ready to bill, and are chosen by what has happened **latest**, not
+by what is still incomplete. A job with product arriving and a crew on site
+reads `Installing`, because that is what a PM needs to know.
+
+### Activity is derived, not logged
+
+`project_activity` UNIONs `project_notes` with events read from the tables that
+already hold those facts — sales orders, manufacturer orders, acknowledgments,
+receipts, change orders, work orders.
+
+A written activity log would be a second copy of those facts, and the copy is
+what goes stale, drifts, or silently stops being written when a code path
+changes. Deriving costs a little on read and cannot lie.
+
+It pays off immediately: an acknowledgment appears in the feed as *"Costs
+15,336.00 more than quoted"* without anything having to remember to write it
+there.
+
+**Pinned notes lead regardless of age.** Dock hours, elevator bookings, and
+COI requirements stay true for months; burying them under a week of status
+updates is how an install day gets lost.
+
+### Change orders
+
+The customer wants something different after signing. The reason it belongs in
+the system is the gap between *requested* and *priced* — that is where a dealer
+does work nobody has agreed to pay for, so the panel warns on unpriced ones and
+`sell_delta` stays `NULL` rather than showing a confident zero.
+
+An approved change order becomes **its own sales order** rather than editing the
+original, which is what `sales_orders` was built for. Rewriting the signed order
+in place would destroy the record of what the customer actually agreed to.
+
+`Approved` and `Rejected` require a `responded_at`, enforced by a CHECK.
+
+### Margin, twice
+
+The header shows quoted margin and margin after acknowledgments. The second is
+the honest one — it is quoted margin less the acknowledged cost variance rolled
+up across every order on the job, and it is usually smaller.
+
+### Key files
+
+| Thing | Where |
+|-------|-------|
+| Page | `src/pages/ProjectDetail.tsx` |
+| Activity feed | `src/components/features/projects/ProjectActivityFeed.tsx` |
+| Change orders | `src/components/features/projects/ChangeOrdersPanel.tsx` |
+| Service / hooks | `src/services/projectHubService.ts`, `src/hooks/queries/useProjectHub.ts` |
+| Migration | `supabase/migrations/20260824110000_project_hub.sql` |
+
+---
+
+## Billing handoff
+
+**Where:** the project's **Billing** tab. `src/lib/billing/milestones.ts`
+
+The last link in the chain the project hub describes: a job that has been sold,
+ordered, delivered, and installed becomes money owed.
+
+### Prompted, never automatic
+
+The project's stage is derived, and deriving a *status* is safe in a way that
+creating *financial records* off one is not. A job that reads "Ready to bill"
+for a moment because a quantity was corrected must not quietly produce an
+invoice schedule somebody then has to unpick. So the handoff offers, and a
+person accepts.
+
+### Phases release on events, not dates
+
+The default schedule is **milestone-triggered**, because a deposit is earned
+when the order is placed, not on the 15th:
+
+| Phase | Releases on | Reads |
+|-------|-------------|-------|
+| Deposit on order | 50% | anything ordered |
+| On delivery | 40% | anything received |
+| Final on completion | 10% | everything installed |
+
+`delivered` fires on the **first** delivery, not the last. Holding a delivery
+payment until the final carton arrives finances the manufacturer's back-order
+out of the dealer's own working capital.
+
+`complete` is the only one that requires the whole quantity — and an empty order
+never reads as complete.
+
+An **unrecognised milestone key never qualifies**. Guessing would invoice a
+customer for something that may not have happened, which is the one mistake in
+this system a *customer* notices.
+
+### Amounts
+
+`billing_phases.resolved_amount` is a **snapshot taken at invoice time**, not a
+computed column — so `phaseValue()` resolves a percentage against the contract
+total while a phase is unbilled, and returns the snapshotted figure once it has
+been. A change order can move the contract afterwards, and an issued invoice
+must not silently restate itself.
+
+`unbilledValue()` reports genuinely valueless phases separately rather than
+folding them into the total: an unpriced phase is not a free one.

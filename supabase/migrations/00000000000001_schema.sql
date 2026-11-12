@@ -10267,9 +10267,9 @@ GRANT ALL ON FUNCTION "public"."create_default_workflow_columns"("org_id" "uuid"
 
 
 
-REVOKE ALL ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid", "org_prefix" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid", "org_prefix" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_org_with_owner"("org_name" "text", "found_via" "text", "industry" "text", "owner_id" "uuid", "org_prefix" "text") TO "service_role";
 
 
 
@@ -11251,7 +11251,7 @@ CREATE POLICY "Admins can upload organization logos"
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'organization-logos'
-  AND is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
+  AND public.is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
 );
 
 -- Owner/Admin can update logos
@@ -11259,7 +11259,7 @@ CREATE POLICY "Admins can update organization logos"
 ON storage.objects FOR UPDATE TO authenticated
 USING (
   bucket_id = 'organization-logos'
-  AND is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
+  AND public.is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
 );
 
 -- Owner/Admin can delete logos
@@ -11267,7 +11267,7 @@ CREATE POLICY "Admins can delete organization logos"
 ON storage.objects FOR DELETE TO authenticated
 USING (
   bucket_id = 'organization-logos'
-  AND is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
+  AND public.is_org_folder_admin((select auth.uid()), (storage.foldername(name))[1])
 );
 
 -- Any org member can view logos
@@ -11275,7 +11275,7 @@ CREATE POLICY "Members can view organization logos"
 ON storage.objects FOR SELECT TO authenticated
 USING (
   bucket_id = 'organization-logos'
-  AND is_active_member((select auth.uid()), ((storage.foldername(name))[1])::uuid)
+  AND public.is_active_member((select auth.uid()), ((storage.foldername(name))[1])::uuid)
 );
 
 

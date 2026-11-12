@@ -248,49 +248,6 @@ export async function isFormInUse(formId: string): Promise<boolean> {
 }
 
 /**
- * Set a form as the default for an organization
- * This will unset any existing default form
- */
-export async function setDefaultForm(
-  formId: string,
-  organizationId: string
-): Promise<Form> {
-  if (!formId) {
-    throw new Error('Form ID is required');
-  }
-  if (!organizationId) {
-    throw new Error('Organization ID is required');
-  }
-
-  // First, unset all other forms as default in this organization
-  const { error: unsetError } = await (supabase
-    .from('forms') as any)
-    .update({ is_default: false, updated_at: new Date().toISOString() })
-    .eq('organization_id', organizationId)
-    .eq('is_default', true)
-    .neq('id', formId);
-
-  if (unsetError) {
-    console.error('Error unsetting default forms:', unsetError);
-    throw new Error(`Failed to unset default forms: ${unsetError.message}`);
-  }
-
-  // Then set this form as default
-  return updateForm(formId, { is_default: true });
-}
-
-/**
- * Unset a form as default
- */
-export async function unsetDefaultForm(formId: string): Promise<Form> {
-  if (!formId) {
-    throw new Error('Form ID is required');
-  }
-
-  return updateForm(formId, { is_default: false });
-}
-
-/**
  * Fetch all archived forms for an organization
  */
 export async function fetchArchivedForms(organizationId: string): Promise<Form[]> {

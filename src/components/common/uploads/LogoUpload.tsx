@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, X, Loader2 } from 'lucide-react';
-import { LogoUploadService, LogoUploadResult, LogoValidationResult } from '@/services/LogoUploadService';
+import { Upload, Loader2 } from 'lucide-react';
+import {
+  LogoUploadService,
+  LogoUploadResult,
+  LogoValidationResult,
+} from '@/services/LogoUploadService';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/auth';
 import { cn } from '@/lib/utils';

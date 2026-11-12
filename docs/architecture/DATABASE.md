@@ -160,6 +160,192 @@ contacts
 └── created_at, updated_at
 ```
 
+### Products
+
+```
+products                           (the dealer's own item list)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── product_number, display_id
+├── name, amount, amount_unit
+├── category, product_type
+├── manufacturer, series, model    (plain TEXT - no catalog hierarchy)
+├── specifications (JSONB), options (JSONB)
+├── sort_order
+└── created_by, created_at, updated_at
+```
+
+**There is no product catalog.** The domain → manufacturer → line → series →
+model hierarchy, its per-model configuration schemas, option value sets, and
+business rules were removed. CET, Giza, 2020, and ProjectMatrix already resolve
+the part number, validate the option combination, and apply list price before a
+specification reaches this app; reproducing that would mean licensing catalog
+data and tracking quarterly price books across dozens of manufacturers.
+
+`products` is what remains: a flat, org-scoped list a dealer curates for what no
+spec tool provides — labor, freight, delivery, install, and ancillary items.
+
+### Back Office (Companies, Attachments)
+
+Foundation tables for dealer back-office operations. `contacts` model people;
+`companies` is the account a dealer sells to, because an invoice cannot be
+addressed to a person's name alone.
+
+There is deliberately **no matching table for who you buy from**. Dealers place
+orders in each manufacturer's own portal, so this system never composes a
+document that needs an address — an address book would be pure setup cost.
+Manufacturers travel as text on the order line.
+
+```
+companies                          (who you sell to)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── name, legal_name
+├── company_type ('Customer' | 'Prospect' | 'Partner' | 'Other')
+├── billing_address_* (line1, line2, city, state, postal_code, country)
+├── shipping_address_* (falls back to billing when unset)
+├── payment_terms, tax_exempt, tax_exempt_certificate, default_tax_rate
+├── primary_contact_id (FK → contacts)
+├── external_accounting_id (customer id in QuickBooks)
+├── is_active (boolean - deactivate rather than delete)
+└── created_by, created_at, updated_at
+
+attachments                        (polymorphic file attachments)
+├── id (uuid, PK)
+├── organization_id (FK)
+├── entity_type ('vendor_po' | 'receipt' | 'work_order' | 'order_line' | ...)
+├── entity_id (uuid, NO foreign key - polymorphic)
+├── document_type ('acknowledgment' | 'packing_slip' | 'damage_photo' | ...)
+├── file_name, file_path, file_size, file_type
+├── description
+└── uploaded_by, created_at, updated_at
+```
+
+**No catalog references.** Manufacturer and series are text throughout. Spec
+tools resolve part numbers and list price upstream, so the name on the line *is* the
+manufacturer identity.
+
+**Discount rates are observed from acknowledgments, not entered.** A dealer's
+discount is not one number and is not reference data anyone should type in — it
+is negotiated per job, and a standing schedule is stale within a quarter. The
+`observed_vendor_discounts` view infers it from `po_lines.acked_unit_cost`
+against `list_price`, grouped by manufacturer / series / contract.
+
+Deliberately **not** from `order_lines.unit_cost`: that value is materialized
+from the proposal, which was priced by the specification tool applying the
+dealer's own multiplier — inferring from it would read the assumption back as an
+observation. The view exposes both, so drift between what the quote assumes and
+what factories actually charge is one subtraction (`drift_percent`, positive =
+optimistic). Interpretation lives in `src/lib/pricing/observed.ts`. A line with
+no list price yields `null`, distinct from a genuine 0% discount and never
+coerced to it.
+
+**Cost visibility.** Buy-side numbers on `order_lines` are readable by any
+active member, deliberately — everyone in a dealer's office needs cost. The
+`can_view_cost()` predicate that once gated this was removed because nothing
+called it. See [SECURITY.md](SECURITY.md#cost--margin-visibility).
+
+**Attachment caveat.** `entity_id` carries no foreign key — that is the cost of
+a polymorphic table. Deleting a parent row must clean up here explicitly via
+`deleteAttachmentsForEntity()`; nothing cascades on its own.
+
+**`project_attachments` no longer exists.** It was folded into `attachments`
+(`entity_type = 'project'`) and dropped. Legacy rows keep their original storage
+paths; no files moved.
+
+### Shipments & Carrier Tracking
+
+Between "the factory acknowledged it" and "it is on our dock". Recorded from a
+vendor's ship notice, then watched by a tracking provider.
+
+```
+shipments                          (freight in motion)
+├── id (uuid, PK)
+├── organization_id (FK), sales_order_id (FK), vendor_po_id (FK, nullable)
+│
+│   -- entered by a human
+├── carrier_code (normalized slug), carrier_name (as the paperwork names them)
+├── tracking_number (parcel), pro_number (LTL), bill_of_lading, service_level
+├── ship_date, piece_count, weight_lbs, notes
+│
+│   -- observed; written ONLY by apply_tracking_update (service_role)
+├── tracking_status ('pending' | 'info_received' | 'in_transit' |
+│                    'out_for_delivery' | 'available_for_pickup' |
+│                    'attempt_failed' | 'delivered' | 'exception' |
+│                    'expired' | 'unknown')
+├── tracking_status_detail (the carrier's own words, kept verbatim)
+├── tracking_location, estimated_delivery_date, delivered_at
+├── tracking_provider ('aftership' | 'easypost' | 'manual')
+├── provider_tracking_id, last_checked_at, tracking_error, tracking_active
+├── delivery_recorded_by (FK auth.users)  -- set only by mark_manual_delivery
+└── created_by, created_at, updated_at
+
+shipment_lines                     (what the vendor SAYS is on the truck)
+├── shipment_id (FK), order_line_id (FK, RESTRICT)
+├── quantity_shipped (> 0)
+└── UNIQUE (shipment_id, order_line_id)
+
+shipment_tracking_events           (carrier scans, append-only)
+├── shipment_id (FK), occurred_at, status, message, location
+├── checkpoint_key (dedup identity)   UNIQUE (shipment_id, checkpoint_key)
+└── raw (jsonb — the provider's full payload, unread until needed)
+
+receipts.shipment_id (FK, nullable)   -- closes the loop
+```
+
+**Carrier status is never typeable.** `apply_tracking_update` is
+`SECURITY DEFINER`, granted to `service_role`, and explicitly **revoked from
+`authenticated`**. `shipment_tracking_events` has a SELECT policy and no INSERT,
+UPDATE, or DELETE policy. A scan history a dealer can edit is worth nothing in a
+freight claim.
+
+The UPDATE policy on `shipments` is column-blind, so that rule is enforced by
+the `guard_observed_tracking` trigger: an UPDATE arriving as `authenticated`
+that changes `tracking_status`, `tracking_status_detail`, `tracking_location`,
+`delivered_at`, `delivery_recorded_by`, `last_checked_at`, `tracking_error`,
+`provider_tracking_id`, or `tracking_provider` is rejected outright. Identifiers
+(PRO, tracking number, BOL, dates, piece count, notes, `tracking_active`) stay
+freely editable. `SECURITY DEFINER` functions run as the owner and are exempt by
+construction, which is exactly the intended set of doors.
+
+**One door through it: `mark_manual_delivery(p_shipment_id, p_delivered_at)`.**
+A carrier with no API — own truck, white-glove agent — has nobody to ask, so its
+shipment would otherwise sit at `pending` for life: `uncounted` keys off
+`delivered`, meaning the deliveries a dealer controls most directly were the
+only ones that could never raise it, and one given an ETA went `late` the day
+after and stayed there. The function is `authenticated`-callable, checks
+membership, and **refuses on any shipment whose `tracking_provider` is not
+`manual`**. Who asserted it lands in `delivery_recorded_by`, so a status that
+came from a human stays distinguishable from one that came from a scan. Pass
+`NULL` to undo.
+
+It is deliberately not a general status setter. `in_transit` on an own truck is
+a field somebody has to remember to keep current, and the attention rules read a
+stale status as fact — delivery is one terminal assertion, made once, by the
+person who already knows.
+
+**`delivered` writes no `received` events.** The carrier saying "Delivered"
+means the truck stopped; it does not mean anyone counted what came off it. The
+`shipment_progress` view exposes `awaiting_receipt` instead and waits for a
+human. Same rule, same reason, as damaged product not counting as received.
+
+**Idempotency.** Providers replay their entire checkpoint history on every poll
+and retry webhooks, so `apply_tracking_update` is safe to run twice with the
+same payload: `checkpoint_key` deduplicates the scans and the row update is a
+straight overwrite. An `{"error": ...}` payload moves `last_checked_at` and
+records the message *without* touching the observed status — a failed lookup
+means we do not know where the freight is, not that it stopped moving.
+
+**Two identifiers, not one.** Parcel answers to a tracking number; LTL answers
+to a PRO. Both are stored, both are uniquely indexed per org and carrier, and
+lookups prefer the PRO. The `shipments_identifiable` CHECK requires one of them
+except when `tracking_provider = 'manual'` — an own truck has no number to give.
+
+**Polling** is `shipments_due_for_tracking(p_limit)` (service role only), with a
+per-status cadence from 1 hour for out-for-delivery to 24 hours for delivered.
+It stops once nothing is uncounted, 14 days after delivery, or on `expired`.
+Driven hourly by `invoke_refresh_shipment_tracking()` via pg_cron.
+
 ### Subscriptions & Billing
 
 ```

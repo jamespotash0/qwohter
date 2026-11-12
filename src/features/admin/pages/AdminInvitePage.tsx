@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { generateSecureToken } from '@/utils/inviteTokens';
+import { InlineError } from '@/components/common/InlineError';
 
 interface GeneratedInvite {
   token: string;
@@ -23,6 +24,7 @@ interface GeneratedInvite {
   email: string;
   expiresAt: Date;
   emailSent: boolean;
+  emailFailed: boolean;
 }
 
 export function AdminInvitePage() {
@@ -30,16 +32,19 @@ export function AdminInvitePage() {
   const [loading, setLoading] = useState(false);
   const [generatedInvite, setGeneratedInvite] = useState<GeneratedInvite | null>(null);
   const [copied, setCopied] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleGenerateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email.trim()) {
-      toast.error('Please enter an email address');
+      setEmailError('Please enter an email address');
       return;
     }
 
     setLoading(true);
+    setFormError(null);
 
     try {
       // Generate a secure token for the signup invite
@@ -64,7 +69,7 @@ export function AdminInvitePage() {
       if (error) {
         // If table doesn't exist, show error
         if (error.code === '42P01') {
-          toast.error('Signup invites table not set up. Please run the migration.');
+          setFormError('Signup invites table not set up. Please run the migration.');
           setLoading(false);
           return;
         }
@@ -76,6 +81,7 @@ export function AdminInvitePage() {
 
       // Send invitation email via edge function
       let emailSent = false;
+      let emailFailed = false;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.access_token) {
@@ -89,15 +95,14 @@ export function AdminInvitePage() {
 
           if (response.error) {
             console.error('Failed to send invite email:', response.error);
-            toast.warning('Invite created but email failed to send. Please share the link manually.');
+            emailFailed = true;
           } else {
             emailSent = true;
-            toast.success('Invitation email sent successfully');
           }
         }
       } catch (emailError) {
         console.error('Error sending invite email:', emailError);
-        toast.warning('Invite created but email failed to send. Please share the link manually.');
+        emailFailed = true;
       }
 
       setGeneratedInvite({
@@ -106,14 +111,11 @@ export function AdminInvitePage() {
         email: email.trim(),
         expiresAt,
         emailSent,
+        emailFailed,
       });
-
-      if (!emailSent) {
-        toast.success('Invite link generated successfully');
-      }
     } catch (error) {
       console.error('Error generating invite:', error);
-      toast.error('Failed to generate invite link');
+      setFormError('Failed to generate invite link');
     } finally {
       setLoading(false);
     }
@@ -125,7 +127,6 @@ export function AdminInvitePage() {
     try {
       await navigator.clipboard.writeText(generatedInvite.inviteUrl);
       setCopied(true);
-      toast.success('Copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       toast.error('Failed to copy');
@@ -136,6 +137,7 @@ export function AdminInvitePage() {
     setEmail('');
     setGeneratedInvite(null);
     setCopied(false);
+    setFormError(null);
   };
 
   return (
@@ -164,14 +166,17 @@ export function AdminInvitePage() {
                 type="email"
                 placeholder="user@company.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setEmailError(null); setFormError(null); }}
                 className="mt-1"
                 required
               />
+              <InlineError message={emailError} className="mt-1" />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 The email address of the person who will create a new organization.
               </p>
             </div>
+
+            <InlineError message={formError} />
 
             <Button
               type="submit"
@@ -210,6 +215,12 @@ export function AdminInvitePage() {
                   ? `An invitation email has been sent to ${generatedInvite.email}`
                   : `Share this link with ${generatedInvite.email}`}
               </p>
+              {generatedInvite.emailFailed && (
+                <InlineError
+                  message="The invite email failed to send. Share the link manually."
+                  className="justify-center mt-2"
+                />
+              )}
             </div>
 
             {/* Invite details */}

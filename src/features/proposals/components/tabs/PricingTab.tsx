@@ -17,7 +17,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, DotsSixVertical, Calculator, Package } from '@phosphor-icons/react';
+import { Plus, Trash, DotsSixVertical, Calculator, Package, UploadSimple } from '@phosphor-icons/react';
 import {
   DndContext,
   closestCenter,
@@ -55,6 +55,22 @@ import type { EditorMode } from '../ProposalEditor';
 import { useFormBuilder } from '../../context/FormBuilderContext';
 import { getStateOptions, getStateTaxRate, formatTaxRate } from '../../utils/salesTaxRates';
 
+// Pricing shapes and money math now live in @/lib/pricing so order lines,
+// purchase orders, and job costing resolve prices through the same code.
+import {
+  calculateSellPrice,
+  calculateSubtotal,
+  calculateTotalCost,
+  calculatePricing,
+  calculateCostMarkupPercent,
+  formatCurrency,
+  FULFILLMENT_TYPES,
+  FULFILLMENT_TYPE_LABELS,
+  type PricingLineItem,
+  type PricingSection,
+  type FulfillmentType,
+} from '@/lib/pricing';
+
 // Sell rule options
 const SELL_RULES = [
   { value: 'per_hour', label: 'Per Hour' },
@@ -65,90 +81,6 @@ const SELL_RULES = [
   { value: 'flat_rate', label: 'Flat Rate' },
 ];
 
-// Pricing line item interface
-interface PricingLineItem {
-  id: string;
-  name: string;
-  modelNumber?: string; // Model number for display (from product)
-  quantity: number;
-  sellRule: string;
-  unitCost: number;
-  markupValue: number; // Markup value - interpreted based on markupType
-  markupType?: 'percent' | 'dollar'; // Markup type (default: percent)
-  isTaxable?: boolean; // Whether this item has sales tax applied
-  discountValue?: number; // Discount value (applied after markup, before tax)
-  discountType?: 'percent' | 'dollar'; // Discount type
-  sourceProductId?: string; // Optional: links to a product, if any
-  // Calculated fields (stored for reference)
-  sellPrice?: number; // Calculated sell price (after markup/discount, before tax)
-  taxAmount?: number; // Calculated tax amount for this item
-}
-
-// Pricing section interface
-interface PricingSection {
-  id: string;
-  name: string;
-  type: string;
-  collapsed: boolean;
-  lineItems: PricingLineItem[];
-}
-
-// Pricing summary interface (calculated totals)
-interface PricingSummary {
-  totalCost: number;
-  subtotal: number;
-  grossProfit: number;
-  grossProfitPercent: number;
-  totalTax: number;
-  grandTotal: number;
-}
-
-// Calculate sell price (after markup and discount, before tax)
-const calculateSellPrice = (item: PricingLineItem): number => {
-  const baseCost = item.quantity * item.unitCost;
-
-  // Apply markup (percent or flat dollar amount)
-  let priceAfterMarkup: number;
-  if (item.markupType === 'dollar') {
-    // Flat dollar markup
-    priceAfterMarkup = baseCost + (item.markupValue || 0);
-  } else {
-    // Percentage markup (default)
-    const markup = baseCost * (item.markupValue / 100);
-    priceAfterMarkup = baseCost + markup;
-  }
-
-  // Apply discount if present
-  if (item.discountValue && item.discountValue > 0) {
-    if (item.discountType === 'percent') {
-      return priceAfterMarkup * (1 - item.discountValue / 100);
-    } else {
-      // Dollar discount
-      return Math.max(0, priceAfterMarkup - item.discountValue);
-    }
-  }
-
-  return priceAfterMarkup;
-};
-
-// Calculate section subtotal (sell price with markup)
-const calculateSubtotal = (items: PricingLineItem[]): number => {
-  return items.reduce((sum, item) => sum + calculateSellPrice(item), 0);
-};
-
-// Calculate total cost (without markup)
-const calculateTotalCost = (items: PricingLineItem[]): number => {
-  return items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0);
-};
-
-// Format currency
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
-};
 
 // Scientific Calculator Component (inline in table header)
 function CalculatorPopover() {
@@ -371,6 +303,7 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'merchandise',
     name: 'Merchandise',
     type: 'merchandise',
+    fulfillmentType: 'purchase',
     collapsed: false,
     lineItems: [],
   },
@@ -378,6 +311,9 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'delivery_install',
     name: 'Delivery & Installation',
     type: 'delivery_install',
+    // The dealer's own crew by default. Sections that get subcontracted are
+    // switched here, or overridden on the individual line.
+    fulfillmentType: 'self_perform',
     collapsed: false,
     lineItems: [],
   },
@@ -385,6 +321,9 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'freight',
     name: 'Freight & Shipping',
     type: 'freight',
+    // Bought either way -- from the factory as prepaid-and-add, or from a
+    // carrier -- so it belongs in the purchase order fan-out.
+    fulfillmentType: 'purchase',
     collapsed: false,
     lineItems: [],
   },
@@ -392,6 +331,7 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'tariffs',
     name: 'Tariffs & Fees',
     type: 'tariffs',
+    fulfillmentType: 'pass_through',
     collapsed: false,
     lineItems: [],
   },
@@ -399,10 +339,14 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     id: 'other',
     name: 'Other Costs',
     type: 'other',
+    fulfillmentType: 'pass_through',
     collapsed: false,
     lineItems: [],
   },
 ];
+
+import { ImportSpecDialog } from '@/components/features/orders/ImportSpecDialog';
+import { useSpecImport } from './pricing/useSpecImport';
 
 interface PricingTabProps {
   mode: EditorMode;
@@ -413,6 +357,7 @@ interface SortableSectionRowProps {
   section: PricingSection;
   sectionIndex: number;
   onUpdateName: (name: string) => void;
+  onUpdateFulfillmentType: (type: FulfillmentType) => void;
   onToggleCollapse: (checked: boolean) => void;
   onRemove: () => void;
 }
@@ -421,6 +366,7 @@ function SortableSectionRow({
   section,
   sectionIndex,
   onUpdateName,
+  onUpdateFulfillmentType,
   onToggleCollapse,
   onRemove,
 }: SortableSectionRowProps) {
@@ -460,13 +406,39 @@ function SortableSectionRow({
       </div>
 
       {/* Section Name (editable) */}
-      <div className="col-span-9">
+      <div className="col-span-6">
         <Input
           value={section.name}
           onChange={(e) => onUpdateName(e.target.value)}
           className="h-8 font-semibold text-gray-900 dark:text-gray-100 border-transparent bg-transparent hover:border-gray-300 focus:border-coral"
           placeholder="Section name"
         />
+      </div>
+
+      {/*
+        How lines in this section get delivered. Set once here so whoever fills
+        in a proposal never has to think about it -- and so the back office knows
+        which lines to buy and which to crew.
+      */}
+      <div className="col-span-3">
+        <Select
+          value={section.fulfillmentType ?? 'pass_through'}
+          onValueChange={(value) => onUpdateFulfillmentType(value as FulfillmentType)}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Fulfillment" />
+          </SelectTrigger>
+          <SelectContent>
+            {FULFILLMENT_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                <span className="font-medium">{FULFILLMENT_TYPE_LABELS[type].label}</span>
+                <span className="block text-[10px] text-gray-500">
+                  {FULFILLMENT_TYPE_LABELS[type].description}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Collapsed by default checkbox */}
@@ -762,41 +734,11 @@ export function PricingTab({ mode }: PricingTabProps) {
       return;
     }
 
-    // Helper to round to 2 decimal places
-    const round2 = (num: number) => Math.round(num * 100) / 100;
-
-    // Calculate per-item sellPrice and taxAmount, then create enriched sections
-    const enrichedSections = sections.map(section => ({
-      ...section,
-      lineItems: section.lineItems.map(item => {
-        const sellPrice = round2(calculateSellPrice(item));
-        const taxAmount = item.isTaxable ? round2(sellPrice * (salesTaxPercent / 100)) : 0;
-        return {
-          ...item,
-          sellPrice,
-          taxAmount,
-        };
-      }),
-    }));
-
-    // Calculate summary totals from enriched sections
-    const subtotalValue = round2(enrichedSections.reduce((total, section) =>
-      total + section.lineItems.reduce((sum, item) => sum + (item.sellPrice || 0), 0), 0));
-    const totalCostValue = round2(enrichedSections.reduce((total, section) =>
-      total + section.lineItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0), 0));
-    const totalTaxValue = round2(enrichedSections.reduce((total, section) =>
-      total + section.lineItems.reduce((sum, item) => sum + (item.taxAmount || 0), 0), 0));
-    const grossProfitValue = round2(subtotalValue - totalCostValue);
-    const grossProfitPercentValue = round2(subtotalValue > 0 ? (grossProfitValue / subtotalValue) * 100 : 0);
-
-    const summary: PricingSummary = {
-      totalCost: totalCostValue,
-      subtotal: subtotalValue,
-      grossProfit: grossProfitValue,
-      grossProfitPercent: grossProfitPercentValue,
-      totalTax: totalTaxValue,
-      grandTotal: round2(subtotalValue + totalTaxValue),
-    };
+    // Stamp per-item sellPrice/taxAmount and roll up the summary totals.
+    const { sections: enrichedSections, summary } = calculatePricing(
+      sections,
+      salesTaxPercent
+    );
 
     // Sync to context whenever local state changes (includes calculated summary and per-item values)
     setPricingData({
@@ -894,7 +836,7 @@ export function PricingTab({ mode }: PricingTabProps) {
     const cost = sections.reduce((total, section) => total + calculateTotalCost(section.lineItems), 0);
     const profit = subtotal - cost; // Profit is before tax
     const marginPercent = subtotal > 0 ? (profit / subtotal) * 100 : 0;
-    const markupPercent = cost > 0 ? (profit / cost) * 100 : 0;
+    const markupPercent = calculateCostMarkupPercent(subtotal, cost);
     return {
       totalCost: cost,
       grossProfit: profit,
@@ -929,13 +871,6 @@ export function PricingTab({ mode }: PricingTabProps) {
     });
     return items;
   }, [sections]);
-
-  // Toggle section collapse
-  const toggleSection = (sectionId: string) => {
-    setSections(
-      sections.map((s) => (s.id === sectionId ? { ...s, collapsed: !s.collapsed } : s))
-    );
-  };
 
   // Add line item to section
   const addLineItem = (sectionId: string) => {
@@ -1007,12 +942,26 @@ export function PricingTab({ mode }: PricingTabProps) {
     setSections(sections.filter((s) => s.id !== sectionId));
   };
 
+  // Importing a specification file, which appends sections rather than
+  // replacing them — a job can be specified in more than one file.
+  const {
+    isSpecImportOpen,
+    openSpecImport,
+    setSpecImportOpen,
+    handleSpecImport,
+  } = useSpecImport({
+    onSectionsAdded: added => setSections(prev => [...prev, ...added]),
+  });
+
   // Add new section
   const addSection = () => {
     const newSection: PricingSection = {
       id: `section_${Date.now()}`,
       name: 'New Section',
       type: 'other',
+      // Never routed to purchasing by default: raising a purchase order nobody
+      // asked for is worse than a line the dealer has to categorise.
+      fulfillmentType: 'pass_through',
       collapsed: false,
       lineItems: [],
     };
@@ -1087,6 +1036,13 @@ export function PricingTab({ mode }: PricingTabProps) {
                       section={section}
                       sectionIndex={sectionIndex}
                       onUpdateName={(name) => updateSectionName(section.id, name)}
+                      onUpdateFulfillmentType={(fulfillmentType) =>
+                        setSections(
+                          sections.map((s) =>
+                            s.id === section.id ? { ...s, fulfillmentType } : s
+                          )
+                        )
+                      }
                       onToggleCollapse={(checked) => {
                         setSections(
                           sections.map((s) =>
@@ -1230,6 +1186,25 @@ export function PricingTab({ mode }: PricingTabProps) {
   // ========== FILLER MODE: Unified table with data entry ==========
   return (
     <div className="space-y-6">
+      {/*
+        A specification file is the bill of materials for the job being quoted.
+        It belongs here, at the quote, rather than only at the order — the lines
+        carry their manufacturer, series, options and list price through to the
+        order on release, so the same job is never described twice.
+      */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={openSpecImport} className="rounded-lg">
+          <UploadSimple className="w-4 h-4 mr-2" />
+          Import specification
+        </Button>
+      </div>
+
+      <ImportSpecDialog
+        open={isSpecImportOpen}
+        onOpenChange={setSpecImportOpen}
+        onImport={handleSpecImport}
+      />
+
       {/* Unified Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Table Header */}

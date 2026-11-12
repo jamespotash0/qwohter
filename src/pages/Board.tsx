@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
-import { useProjectAttachments } from '@/hooks/useProjectAttachments';
+import { useAttachments } from '@/hooks/queries/useAttachments';
 import {
   useProjects,
   useWorkflowColumns,
@@ -148,7 +148,10 @@ export default function Board() {
     : null;
 
   // Fetch project attachments for selected project
-  const { attachments, refetch: refetchAttachments } = useProjectAttachments(selectedProject?.id);
+  const { data: attachments = [], refetch: refetchAttachments } = useAttachments(
+    'project',
+    selectedProject?.id
+  );
 
   // React Query automatically handles:
   // - Data fetching via useProjects/useWorkflowColumns

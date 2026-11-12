@@ -398,23 +398,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const handleOpenPortal = async () => {
-    if (!hasPermission) {
-      toast({
-        title: "Permission Denied",
-        description: "You need Owner permissions to manage your plan.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!subscription?.stripe_customer_id) {
-      toast({
-        title: "No Subscription",
-        description: "You need an active subscription to access the billing portal.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Non-owners see Access Restricted; buttons are disabled without a Stripe customer.
+    if (!hasPermission || !subscription?.stripe_customer_id) return;
 
     try {
       setProcessingPlan('portal');
@@ -457,14 +442,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const handleUpgradePlan = async (plan: SubscriptionPlan) => {
-    if (!hasPermission) {
-      toast({
-        title: "Permission Denied",
-        description: "You need Owner permissions to upgrade your plan.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Non-owners see Access Restricted instead of this tab
+    if (!hasPermission) return;
 
     try {
       setProcessingPlan(plan.id);
@@ -484,11 +463,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       const priceId = plan.stripe_price_id_monthly;
 
       if (!priceId || priceId.includes('placeholder')) {
-        toast({
-          title: "Setup Required",
-          description: "Please configure Stripe product IDs first. Check STRIPE_SETUP_GUIDE.md",
-          variant: "destructive",
-        });
+        console.error('Setup Required: configure Stripe product IDs first. Check STRIPE_SETUP_GUIDE.md');
         setProcessingPlan(null);
         return;
       }
@@ -788,7 +763,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   onClick={handleOpenPortal}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  disabled={!hasPermission || processingPlan === 'portal'}
+                  disabled={!hasPermission || !subscription?.stripe_customer_id || processingPlan === 'portal'}
+                  title={!subscription?.stripe_customer_id ? 'Available once you have a paid subscription' : undefined}
                 >
                   {processingPlan === 'portal' ? (
                     <>
@@ -927,7 +903,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         <Button
                           className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white flex items-center justify-center gap-2"
                           onClick={() => subscription?.is_active ? handleOpenPortal() : handleUpgradePlan(plan)}
-                          disabled={isProcessing}
+                          disabled={isProcessing || (subscription?.is_active && !subscription?.stripe_customer_id)}
+                          title={subscription?.is_active && !subscription?.stripe_customer_id ? 'Available once you have a paid subscription' : undefined}
                         >
                           {isProcessing ? (
                             <>

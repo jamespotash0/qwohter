@@ -19,7 +19,13 @@ export interface Contact {
   full_name: string;
   emails: string[]; // Array of email addresses (at least one required)
   phones?: PhoneNumber[]; // Array of phone objects with number and type
+  /**
+   * Free-text employer. Superseded by company_id; retained as the pre-migration
+   * value and as the fallback label for contacts not yet linked to a company.
+   */
   company_name?: string;
+  /** Employer, when linked to a companies row. */
+  company_id?: string | null;
   contact_type?: string; // Lead, Customer, Vendor, Partner, Contractor, Architect, etc.
   addresses?: string[]; // Array of addresses
   notes?: string;
@@ -35,6 +41,7 @@ export interface CreateContactInput {
   emails: string[]; // At least one email required
   phones?: PhoneNumber[];
   company_name?: string;
+  company_id?: string | null;
   contact_type?: string;
   addresses?: string[];
   notes?: string;
@@ -46,6 +53,7 @@ export interface UpdateContactInput {
   emails?: string[];
   phones?: PhoneNumber[];
   company_name?: string;
+  company_id?: string | null;
   contact_type?: string;
   addresses?: string[];
   notes?: string;

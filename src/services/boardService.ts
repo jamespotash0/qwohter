@@ -22,14 +22,6 @@ export type WorkflowColumn = Database['public']['Tables']['project_workflow_colu
 
 export type ProjectPriority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest';
 
-export interface CreateBoardItemData {
-  proposal_id: string;
-  workflow_status: string;
-  board_order?: number;
-  priority?: ProjectPriority;
-  completion_date?: string;
-}
-
 export interface UpdateBoardItemData {
   workflow_status?: string;
   board_order?: number | null;
@@ -138,47 +130,6 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
   };
 
   return transformedData as Project;
-}
-
-/**
- * Create a new board item
- */
-export async function createBoardItem(
-  organizationId: string,
-  itemData: CreateBoardItemData
-): Promise<Project> {
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({
-      ...itemData,
-      organization_id: organizationId,
-    } as any)
-    .select(`
-      *,
-      proposals (
-        id,
-        proposal_number,
-        project_name,
-        form_data,
-        status,
-        is_main_version,
-        total_value,
-        client_name,
-        client_company,
-        job_location
-      )
-    `)
-    .single();
-
-  if (error) throw error;
-
-  const proposal = Array.isArray((data as any).proposals) ? (data as any).proposals[0] : (data as any).proposals;
-
-  return {
-    ...data as any,
-    proposal: proposal || null,
-    proposals: undefined,
-  } as Project;
 }
 
 /**

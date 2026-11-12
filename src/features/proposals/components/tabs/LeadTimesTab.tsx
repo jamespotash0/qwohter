@@ -13,8 +13,8 @@
  * - Filler mode: Enter actual durations and dates
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Plus, Trash, DotsSixVertical, Clock, CaretDown, CaretRight } from '@phosphor-icons/react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash, DotsSixVertical, Clock } from '@phosphor-icons/react';
 import {
   DndContext,
   closestCenter,
@@ -278,18 +278,6 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
   const disabledInputClassName = isBuilderMode
     ? cn(inputClassName, TAB_DISABLED_MODIFIER)
     : inputClassName;
-
-  // Calculate total phases
-  const totalPhases = useMemo(() => {
-    return sections.reduce((sum, section) => sum + section.phases.length, 0);
-  }, [sections]);
-
-  // Toggle section collapse
-  const toggleSection = (sectionId: string) => {
-    setSections(
-      sections.map((s) => (s.id === sectionId ? { ...s, collapsed: !s.collapsed } : s))
-    );
-  };
 
   // Update section name
   const updateSectionName = (sectionId: string, name: string) => {

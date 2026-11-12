@@ -16,7 +16,6 @@ import {
   deleteAllNotifications,
   notifyTaskAssigned,
 } from '@/services/notificationService';
-import type { Notification } from '@/lib/types/notifications';
 
 const QUERY_KEY = 'notifications';
 

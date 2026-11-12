@@ -10,7 +10,6 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { cn } from '@/lib/utils';
 import {
-  Plus,
   Minus,
   ArrowUp,
   ArrowDown,

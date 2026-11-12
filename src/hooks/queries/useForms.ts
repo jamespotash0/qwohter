@@ -25,8 +25,6 @@ import {
   deleteForm,
   copyForm,
   getDefaultForm,
-  setDefaultForm,
-  unsetDefaultForm,
   fetchArchivedForms,
   archiveForm,
   unarchiveForm,
@@ -292,7 +290,6 @@ export function useDeleteForm() {
 
     onSuccess: (formId, variables, context) => {
       console.log('[useDeleteForm] onSuccess - Form deleted successfully:', formId);
-      toast.success('Form deleted successfully');
 
       // Remove from cache
       queryClient.removeQueries({ queryKey: formsQueryKeys.detail(formId) });
@@ -352,59 +349,6 @@ export function useCopyForm() {
 
     onError: (error) => {
       toast.error('Failed to duplicate form: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    },
-  });
-}
-
-/**
- * Hook: Set Default Form Mutation
- *
- * Sets a form as the default for an organization
- */
-export function useSetDefaultForm() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ formId, organizationId }: { formId: string; organizationId: string }) => {
-      return setDefaultForm(formId, organizationId);
-    },
-
-    onSuccess: (updatedForm) => {
-      trackEvent('form_set_as_default');
-      // Invalidate all relevant caches
-      queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(updatedForm.organization_id) });
-      queryClient.invalidateQueries({ queryKey: formsQueryKeys.default(updatedForm.organization_id) });
-      queryClient.setQueryData(formsQueryKeys.detail(updatedForm.id), updatedForm);
-    },
-
-    onError: (error) => {
-      toast.error('Failed to set default form: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    },
-  });
-}
-
-/**
- * Hook: Unset Default Form Mutation
- *
- * Removes a form's default status
- */
-export function useUnsetDefaultForm() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ formId, organizationId }: { formId: string; organizationId: string }) => {
-      return unsetDefaultForm(formId);
-    },
-
-    onSuccess: (updatedForm, variables) => {
-      // Invalidate all relevant caches
-      queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(variables.organizationId) });
-      queryClient.invalidateQueries({ queryKey: formsQueryKeys.default(variables.organizationId) });
-      queryClient.setQueryData(formsQueryKeys.detail(updatedForm.id), updatedForm);
-    },
-
-    onError: (error) => {
-      toast.error('Failed to remove default form: ' + (error instanceof Error ? error.message : 'Unknown error'));
     },
   });
 }

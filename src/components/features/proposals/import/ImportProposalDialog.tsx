@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { InlineError } from '@/components/common/InlineError';
 import { ArrowLeft, ArrowRight, FileUp, Loader2 } from 'lucide-react';
 import { FileUploadStep } from './FileUploadStep';
 import { ProcessingStep } from './ProcessingStep';
@@ -69,7 +69,6 @@ interface ImportProposalDialogProps {
 
 export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialogProps) {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const user = useUser();
   const { organizationId } = useCurrentOrganization(user?.id || '');
 
@@ -139,6 +138,9 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
   }, [linkedTemplates, state.manual.templateId]);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  useEffect(() => setCreateError(null), [open, state.manual]);
 
   const resetState = useCallback(() => {
     setState({
@@ -250,34 +252,11 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
   }, [state.file, state.fileType]);
 
   const handleCreateProposal = useCallback(async () => {
-    if (!state.manual.projectName.trim()) {
-      toast({
-        title: 'Project Name Required',
-        description: 'Please enter a project name to continue.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!state.manual.formId) {
-      toast({
-        title: 'Form Required',
-        description: 'Please select a form template.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!state.manual.templateId) {
-      toast({
-        title: 'Template Required',
-        description: 'Please select a document template.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    // The Create button stays disabled until all three are set.
+    if (!state.manual.projectName.trim() || !state.manual.formId || !state.manual.templateId) return;
 
     setIsCreating(true);
+    setCreateError(null);
 
     try {
       const { extractedData, manual } = state;
@@ -314,11 +293,6 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
       // Invalidate the proposals cache
       await invalidateQueries.allProposals();
 
-      toast({
-        title: 'Proposal Imported',
-        description: `"${manual.projectName}" has been created successfully.`,
-      });
-
       onOpenChange(false);
       resetState();
 
@@ -328,16 +302,11 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
       }
     } catch (error) {
       console.error('Failed to create proposal:', error);
-      toast({
-        title: 'Import Failed',
-        description:
-          error instanceof Error ? error.message : 'Failed to create proposal from imported data.',
-        variant: 'destructive',
-      });
+      setCreateError(error instanceof Error ? error.message : 'Failed to create proposal from imported data.');
     } finally {
       setIsCreating(false);
     }
-  }, [state, toast, onOpenChange, resetState, navigate]);
+  }, [state, onOpenChange, resetState, navigate]);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
@@ -591,6 +560,8 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
             </div>
           )}
         </div>
+
+        <InlineError message={createError} />
 
         {/* Footer buttons */}
         <div className="flex justify-between pt-4 border-t">

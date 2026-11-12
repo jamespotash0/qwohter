@@ -113,17 +113,7 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}) {
     autoReloadTimeoutRef.current = setTimeout(() => {
       if (isUserActive()) {
         console.log('⏸️ Auto-reload delayed - user is active (typing/editing)');
-        // Show reminder toast and try again in 2 minutes
-        toast.warning('Update pending', {
-          description: 'Save your work and reload when ready.',
-          duration: 10000,
-          action: {
-            label: 'Reload',
-            onClick: () => forceReload(),
-          },
-        });
-
-        // Try again in 2 minutes
+        // Try again in 2 minutes; the persistent "Update available" toast still offers Reload.
         autoReloadTimeoutRef.current = setTimeout(() => {
           if (!isUserActive()) {
             console.log('🔄 Auto-reloading after delay (user now inactive)');

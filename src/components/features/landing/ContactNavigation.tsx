@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 
 interface ContactNavigationProps {
   activeSection?: string;
@@ -8,7 +7,7 @@ interface ContactNavigationProps {
   onRipple?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
-export const ContactNavigation = ({ activeSection = 'contact', onGetDemo, onRipple }: ContactNavigationProps): JSX.Element => {
+export const ContactNavigation = ({ activeSection = 'contact', onGetDemo, onRipple }: ContactNavigationProps): React.JSX.Element => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = React.useState(false);
 

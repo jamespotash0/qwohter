@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Mail } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { useResetPassword } from "@/auth";
 import { sanitizeInput } from "@/utils/security";
 
@@ -22,7 +22,7 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
 
   const { mutate: resetPassword, isPending: loading } = useResetPassword();
 
@@ -33,20 +33,8 @@ const ForgotPassword = () => {
     resetPassword(
       email,
       {
-        onSuccess: () => {
-          setSent(true);
-          toast({
-            title: "Reset link sent!",
-            description: "Check your email for password reset instructions.",
-          });
-        },
-        onError: (error: any) => {
-          toast({
-            title: "Error",
-            description: error.message || "Failed to send reset email. Please try again.",
-            variant: "destructive",
-          });
-        },
+        onSuccess: () => setSent(true),
+        onError: (err: any) => setError(err.message || "Couldn't send the reset email. Please try again."),
       }
     );
   };
@@ -168,12 +156,16 @@ const ForgotPassword = () => {
                       id="email"
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(sanitizeInput.email(e.target.value))}
+                      onChange={(e) => {
+                        setEmail(sanitizeInput.email(e.target.value));
+                        setError(null);
+                      }}
                       placeholder="Enter your email"
                       required
                       className="h-12 bg-[#f7f2e9]/50 border-[#171717]/10 rounded-full placeholder:text-[#171717]/30 focus:border-[#EE6C4D] focus:ring-[#EE6C4D]/20"
                       style={{ fontFamily: 'Urbanist, sans-serif' }}
                     />
+                    <InlineError message={error} />
                   </div>
 
                   <Button

@@ -178,10 +178,22 @@ const ProposalFiller = lazy(() => import("@/pages/ProposalFiller"));
 
 // Board pages
 const Board = lazy(() => import("@/pages/Board"));
+const ProjectDetail = lazy(() => import("@/pages/ProjectDetail"));
+const Schedule = lazy(() => import("@/pages/Schedule"));
 const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
+// Customers only. Manufacturers are text on the lines that name them.
+const Companies = lazy(() => import("@/pages/Companies"));
+
+// Back office: purchase order acknowledgment variance
+// Everything across every job that needs a person. Absorbs what the standalone
+// acknowledgment queue used to be.
+const Today = lazy(() => import("@/pages/Today"));
+// An order is part of a job, not a page of its own: this resolves the old
+// deep link to the job that owns it.
+const OrderRedirect = lazy(() => import("@/pages/OrderRedirect"));
 
 // Calendar page
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -192,12 +204,6 @@ const Notifications = lazy(() => import("@/pages/Notifications"));
 // Admin pages - Product Catalog Management
 const AdminLayout = lazy(() => import("@/features/admin/components/AdminLayout").then(m => ({ default: m.AdminLayout })));
 const AdminDashboard = lazy(() => import("@/features/admin/pages/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
-const DomainsPage = lazy(() => import("@/features/admin/pages/DomainsPage").then(m => ({ default: m.DomainsPage })));
-const ManufacturersPage = lazy(() => import("@/features/admin/pages/ManufacturersPage").then(m => ({ default: m.ManufacturersPage })));
-const ProductLinesPage = lazy(() => import("@/features/admin/pages/ProductLinesPage").then(m => ({ default: m.ProductLinesPage })));
-const SeriesPage = lazy(() => import("@/features/admin/pages/SeriesPage").then(m => ({ default: m.SeriesPage })));
-const ModelsPage = lazy(() => import("@/features/admin/pages/ModelsPage").then(m => ({ default: m.ModelsPage })));
-const ValueSetsPage = lazy(() => import("@/features/admin/pages/ValueSetsPage").then(m => ({ default: m.ValueSetsPage })));
 const AdminInvitePage = lazy(() => import("@/features/admin/pages/AdminInvitePage").then(m => ({ default: m.AdminInvitePage })));
 
 // Products page - HIDDEN for now
@@ -301,12 +307,6 @@ export const AppRouter = () => (
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="appinvite" element={<AdminInvitePage />} />
-            <Route path="products/domains" element={<DomainsPage />} />
-            <Route path="products/manufacturers" element={<ManufacturersPage />} />
-            <Route path="products/lines" element={<ProductLinesPage />} />
-            <Route path="products/series" element={<SeriesPage />} />
-            <Route path="products/models" element={<ModelsPage />} />
-            <Route path="options/value-sets" element={<ValueSetsPage />} />
           </Route>
 
           {/* Main application routes (protected by MainLayout with sidebar) */}
@@ -317,10 +317,25 @@ export const AppRouter = () => (
 
           {/* Board workflow */}
           <Route path="/project-board" element={<Board />} />
+          <Route path="/projects/:projectId" element={<ProjectDetail />} />
+          <Route path="/schedule" element={<Schedule />} />
           <Route path="/task-board" element={<TaskBoard />} />
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />
+          <Route path="/companies" element={<Companies />} />
+
+          {/* Back office: acknowledgment variance queue */}
+          <Route path="/today" element={<Today />} />
+          {/* The acknowledgment queue is a segment of Today now. */}
+          <Route
+            path="/acknowledgments"
+            element={<Navigate to="/today?q=acks" replace />}
+          />
+          {/* The list of orders was the list of jobs wearing a different hat.
+              Creating and importing one now happens on the job it belongs to. */}
+          <Route path="/orders" element={<Navigate to="/project-board" replace />} />
+          <Route path="/orders/:orderId" element={<OrderRedirect />} />
 
           {/* Calendar */}
           <Route path="/calendar" element={<Calendar />} />

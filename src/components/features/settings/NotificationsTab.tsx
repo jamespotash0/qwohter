@@ -10,7 +10,7 @@ import { BellRing, CalendarClock, Mail, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import {
   useNotificationPreferencesWithDefaults,
   useUpdateNotificationPreferences,
@@ -32,6 +32,7 @@ interface NotificationToggleProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
+  error?: string | null;
 }
 
 function NotificationToggle({
@@ -42,28 +43,32 @@ function NotificationToggle({
   checked,
   onCheckedChange,
   disabled,
+  error,
 }: NotificationToggleProps) {
   return (
-    <div className="flex items-start justify-between py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 text-gray-500 dark:text-gray-400">
-          {icon}
+    <div className="py-4 border-b border-gray-100 dark:border-gray-800 last:border-0">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 text-gray-500 dark:text-gray-400">
+            {icon}
+          </div>
+          <div>
+            <Label htmlFor={id} className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+              {label}
+            </Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {description}
+            </p>
+          </div>
         </div>
-        <div>
-          <Label htmlFor={id} className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-            {label}
-          </Label>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            {description}
-          </p>
-        </div>
+        <Switch
+          id={id}
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+          disabled={disabled}
+        />
       </div>
-      <Switch
-        id={id}
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-      />
+      <InlineError message={error} className="mt-1 justify-end" />
     </div>
   );
 }
@@ -79,6 +84,9 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
   const [phoneInput, setPhoneInput] = useState('');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const hasInitialized = useRef(false);
+  // Keyed by preference (or 'all') so the error shows beside the toggle that reverted.
+  const [saveError, setSaveError] = useState<{ key: string; message: string } | null>(null);
+  const errorFor = (key: string) => (saveError?.key === key ? saveError.message : null);
 
   // Sync local state with server data - only on initial load
   useEffect(() => {
@@ -100,6 +108,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
 
       // Update local state immediately for smooth UX
       setLocalPrefs((prev) => ({ ...prev, [key]: value }));
+      setSaveError(null);
 
       // Save to server
       updatePreferences(
@@ -110,7 +119,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
         },
         {
           onError: () => {
-            toast.error('Failed to save preferences');
+            setSaveError({ key, message: 'Failed to save. Try again.' });
             // Revert on error
             if (preferences) {
               setLocalPrefs(preferences);
@@ -177,6 +186,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
 
     // Update local state immediately
     setLocalPrefs((prev) => ({ ...prev, ...updates }));
+    setSaveError(null);
 
     // Save to server
     updatePreferences(
@@ -187,7 +197,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
       },
       {
         onError: () => {
-          toast.error('Failed to save preferences');
+          setSaveError({ key: 'all', message: 'Failed to save. Try again.' });
           if (preferences) {
             setLocalPrefs(preferences);
           }
@@ -278,6 +288,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
               disabled={isPending}
             />
           </div>
+          <InlineError message={errorFor('email_enabled') || errorFor('notification_email')} />
           {(localPrefs.email_enabled ?? true) && (
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className="text-sm text-gray-500">Send to</span>
@@ -322,7 +333,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
               checked={localPrefs.sms_enabled ?? false}
               onCheckedChange={(checked) => {
                 if (checked && !localPrefs.sms_phone) {
-                  toast.error('Please add a phone number first');
+                  setSaveError({ key: 'sms_phone', message: 'Please add a phone number first.' });
                   setIsEditingPhone(true);
                   return;
                 }
@@ -359,6 +370,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
               </button>
             )}
           </div>
+          <InlineError message={errorFor('sms_enabled') || errorFor('sms_phone')} className="mt-1 ml-6" />
           <p className="text-xs text-gray-400 mt-2 ml-6">
             SMS notifications will be available in a future update
           </p>
@@ -389,9 +401,11 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
             disabled={isPending}
           />
         </div>
+        <InlineError message={errorFor('all')} className="mb-2 justify-end" />
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           <NotificationToggle
             id="email_on_signature_sent"
+            error={errorFor('email_on_signature_sent')}
             label="Signature Requested"
             description="When you send a document for signature"
             icon={<PaperPlaneTilt className="w-4 h-4" />}
@@ -401,6 +415,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_signature_viewed"
+            error={errorFor('email_on_signature_viewed')}
             label="Document Viewed"
             description="When a client opens your document"
             icon={<Eye className="w-4 h-4" />}
@@ -410,6 +425,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_signature_signed"
+            error={errorFor('email_on_signature_signed')}
             label="Document Signed"
             description="When a client signs your document"
             icon={<PenNib className="w-4 h-4" />}
@@ -419,6 +435,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_proposal_submitted"
+            error={errorFor('email_on_proposal_submitted')}
             label="Proposal Submitted"
             description="When a proposal is submitted for review"
             icon={<PaperPlaneTilt className="w-4 h-4" />}
@@ -428,6 +445,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_proposal_won"
+            error={errorFor('email_on_proposal_won')}
             label="Proposal Won"
             description="When a proposal is marked as won"
             icon={<CheckCircle className="w-4 h-4" />}
@@ -437,6 +455,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_proposal_rejected"
+            error={errorFor('email_on_proposal_rejected')}
             label="Proposal Rejected"
             description="When a proposal is marked as rejected"
             icon={<XCircle className="w-4 h-4" />}
@@ -446,6 +465,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_mention"
+            error={errorFor('email_on_mention')}
             label="Mentions"
             description="When someone mentions you in a comment"
             icon={<At className="w-4 h-4" />}
@@ -455,6 +475,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_task_assigned"
+            error={errorFor('email_on_task_assigned')}
             label="Task Assigned"
             description="When a task is assigned to you"
             icon={<UserPlus className="w-4 h-4" />}
@@ -464,6 +485,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_reminder_due"
+            error={errorFor('email_on_reminder_due')}
             label="Reminder Due"
             description="When a reminder you created becomes due"
             icon={<BellRing className="w-4 h-4" />}
@@ -473,6 +495,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
           />
           <NotificationToggle
             id="email_on_task_due"
+            error={errorFor('email_on_task_due')}
             label="Task Due Date"
             description="When a task assigned to you is due soon or overdue"
             icon={<CalendarClock className="w-4 h-4" />}
@@ -490,6 +513,7 @@ export function NotificationsTab({ userId, organizationId, userEmail, userRole =
             </h4>
             <NotificationToggle
               id="email_on_member_joined"
+              error={errorFor('email_on_member_joined')}
               label="Member Joined"
               description="When a new member joins your organization"
               icon={<Users className="w-4 h-4" />}

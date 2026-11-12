@@ -10,6 +10,5 @@ export { handleInviteJoin } from './handleInviteJoin';
 export {
   handleCompanyInfoSubmit,
   handleCompanyInfoSkip,
-  handleLogoUpload,
   handleLogoError,
 } from './handleCompanyInfo';

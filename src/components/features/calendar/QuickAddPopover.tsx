@@ -15,6 +15,7 @@ import { useCreateCalendarEvent } from '@/hooks/queries/useCalendarEvents';
 import type { CalendarEventType } from '@/lib/types/calendarEvents';
 import { CALENDAR_EVENT_TYPE_COLORS, CALENDAR_EVENT_TYPE_LABELS } from '@/lib/types/calendarEvents';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 interface QuickAddPopoverProps {
   date: Date;
@@ -51,6 +52,7 @@ export const QuickAddPopover: React.FC<QuickAddPopoverProps> = ({
   // Reset form when popover opens
   useEffect(() => {
     if (open) {
+      createEvent.reset();
       setTitle('');
       setDescription('');
       setEventType('Custom');
@@ -79,14 +81,18 @@ export const QuickAddPopover: React.FC<QuickAddPopoverProps> = ({
       ? `${dateStr}T${endTime}:00`
       : undefined;
 
-    await createEvent.mutateAsync({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      start_date: startISO,
-      end_date: endISO,
-      all_day: allDay,
-      event_type: eventType,
-    });
+    try {
+      await createEvent.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        start_date: startISO,
+        end_date: endISO,
+        all_day: allDay,
+        event_type: eventType,
+      });
+    } catch {
+      return; // Shown inline from createEvent.error.
+    }
 
     onOpenChange(false);
   };
@@ -122,6 +128,7 @@ export const QuickAddPopover: React.FC<QuickAddPopoverProps> = ({
               'focus:border-[#EE6C4D] focus:ring-2 focus:ring-[#EE6C4D]/20',
             )}
           />
+          <InlineError message={createEvent.error?.message} />
 
           {/* Description */}
           <Input

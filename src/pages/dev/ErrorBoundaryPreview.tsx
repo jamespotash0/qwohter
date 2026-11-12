@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { RefreshCw, ArrowLeft, Home } from 'lucide-react';
+import { RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**

@@ -5,7 +5,7 @@
  * Allows them to add an optional comment before requesting approval.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ShieldCheck, Loader2 } from 'lucide-react';
+import { InlineError } from '@/components/common/InlineError';
 
 interface ApprovalRequestDialogProps {
   open: boolean;
@@ -35,13 +36,22 @@ export function ApprovalRequestDialog({
 }: ApprovalRequestDialogProps) {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleConfirm = async () => {
+  // Clear stale errors whenever the dialog opens or closes.
+  useEffect(() => setError(null), [open]);
+
+  const handleConfirm = async (e: React.MouseEvent) => {
+    // AlertDialogAction closes on click; stay open until the request succeeds.
+    e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     try {
       await onConfirm(comment.trim() || undefined);
       setComment('');
       onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request approval');
     } finally {
       setIsSubmitting(false);
     }
@@ -81,11 +91,12 @@ export function ApprovalRequestDialog({
             id="approval-comment"
             placeholder="Add a note for the reviewer..."
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            onChange={(e) => { setComment(e.target.value); setError(null); }}
             className="mt-2 resize-none"
             rows={3}
             disabled={isSubmitting}
           />
+          <InlineError message={error} className="mt-3" />
         </div>
 
         <AlertDialogFooter>

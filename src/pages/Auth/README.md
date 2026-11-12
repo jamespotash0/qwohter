@@ -98,7 +98,6 @@ Available actions:
 - `handleOrganizationSubmit` - Create or join organization
 - `handleCompanyInfoSubmit` - Save company information
 - `handleCompanyInfoSkip` - Skip company info step
-- `handleLogoUpload` - Handle logo upload
 - `handleLogoError` - Handle logo upload error
 
 ### Utilities

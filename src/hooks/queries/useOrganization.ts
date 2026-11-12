@@ -6,21 +6,17 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, invalidateQueries } from '@/lib/queryClient';
-import { toast } from '@/components/ui/sonner';
+import { queryKeys } from '@/lib/queryClient';
 import { supabase } from '@/integrations/supabase/client';
 import {
   fetchOrganizationByUserId,
   fetchOrganizationById,
-  updateOrganization,
   fetchOrganizationMembers,
   fetchInviteTokens,
   checkSubscriptionStatus,
-  type Organization,
   type OrganizationMember,
   type UserMembership,
   type InviteToken,
-  type UpdateOrganizationData,
   type SubscriptionStatus,
 } from '@/services/organizationService';
 import { teamInvitationService } from '@/services/teamInvitationService';
@@ -133,72 +129,6 @@ export function useSubscriptionStatus(organizationId: string, enabled: boolean =
 // ============================================================================
 // Mutation Hooks
 // ============================================================================
-
-/**
- * Hook: Update Organization
- *
- * Updates organization settings with optimistic updates
- *
- * @returns Mutation object for updating organization
- */
-export function useUpdateOrganization() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      organizationId,
-      updates
-    }: {
-      organizationId: string;
-      updates: UpdateOrganizationData;
-    }) => {
-      return updateOrganization(organizationId, updates);
-    },
-
-    onMutate: async ({ organizationId, updates }) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.organization.detail(organizationId)
-      });
-
-      // Snapshot for rollback
-      const previousOrg = queryClient.getQueryData<Organization>(
-        queryKeys.organization.detail(organizationId)
-      );
-
-      // Optimistically update
-      queryClient.setQueryData<Organization>(
-        queryKeys.organization.detail(organizationId),
-        (old) => {
-          if (!old) return old;
-          return { ...old, ...updates };
-        }
-      );
-
-      return { previousOrg, organizationId };
-    },
-
-    onSuccess: (updatedOrg, variables) => {
-      toast.success('Organization updated successfully');
-
-      // Invalidate all organization queries
-      invalidateQueries.allOrganization();
-    },
-
-    onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousOrg && context?.organizationId) {
-        queryClient.setQueryData(
-          queryKeys.organization.detail(context.organizationId),
-          context.previousOrg
-        );
-      }
-
-      console.error('Failed to update organization:', error);
-      toast.error('Failed to update organization');
-    },
-  });
-}
 
 // ============================================================================
 // Convenience Hooks

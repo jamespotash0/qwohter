@@ -71,14 +71,7 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ onTemplateCopied }) => {
     customName?: string,
     customDescription?: string
   ) => {
-    if (!currentOrganization?.id) {
-      toast({
-        title: 'No Organization',
-        description: 'Please select an organization first',
-        variant: 'destructive',
-      });
-      return;
-    }
+    if (!currentOrganization?.id) return;
 
     copyTemplateMutation.mutate(
       {
@@ -89,10 +82,6 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ onTemplateCopied }) => {
       },
       {
         onSuccess: (newForm) => {
-          toast({
-            title: 'Template Added to My Forms',
-            description: `"${newForm.name}" is now available in your forms`,
-          });
           setPreviewTemplate(null);
 
           // Notify parent to potentially switch back to My Forms tab
@@ -101,11 +90,10 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ onTemplateCopied }) => {
           }
         },
         onError: (error) => {
-          toast({
-            title: 'Failed to Copy Template',
-            description: error.message,
-            variant: 'destructive',
-          });
+          // The preview dialog shows its own error inline; quick copy from a card has nowhere else.
+          if (!previewTemplate) {
+            toast({ title: 'Failed to Copy Template', description: error.message, variant: 'destructive' });
+          }
         },
       }
     );
@@ -213,6 +201,8 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ onTemplateCopied }) => {
         onClose={() => setPreviewTemplate(null)}
         onCopy={handleCopy}
         isLoading={copyTemplateMutation.isPending}
+        error={copyTemplateMutation.error?.message}
+        onErrorClear={copyTemplateMutation.reset}
       />
     </div>
   );

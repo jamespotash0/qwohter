@@ -336,12 +336,6 @@ export function ExtractedProductEditor({
     onChange(updated);
   }, [product, onChange]);
 
-  // Check if a section has any non-null values
-  const hasValues = (obj: Record<string, unknown> | undefined): boolean => {
-    if (!obj) return false;
-    return Object.values(obj).some(v => v !== null && v !== undefined);
-  };
-
   return (
     <div
       className={cn(

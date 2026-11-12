@@ -84,10 +84,7 @@ export function useProjectPaymentMutations(projectId: string) {
       if (input.seedPhases) await seedDefaultPhases(job);
       return job;
     },
-    onSuccess: () => {
-      invalidate();
-      toast.success('Payment job created');
-    },
+    onSuccess: invalidate,
     onError: (e) =>
       toast.error(e instanceof Error ? e.message : 'Failed to create payment job'),
   });
@@ -102,10 +99,7 @@ export function useProjectPaymentMutations(projectId: string) {
 
   const deleteJob = useMutation({
     mutationFn: (id: string) => deletePaymentJob(id),
-    onSuccess: () => {
-      invalidate();
-      toast.success('Payment job deleted');
-    },
+    onSuccess: invalidate,
     onError: (e) =>
       toast.error(e instanceof Error ? e.message : 'Failed to delete payment job'),
   });
@@ -134,10 +128,7 @@ export function useProjectPaymentMutations(projectId: string) {
 
   const markPaid = useMutation({
     mutationFn: (id: string) => markPhasePaid(id),
-    onSuccess: () => {
-      invalidate();
-      toast.success('Phase marked paid');
-    },
+    onSuccess: invalidate,
     onError: (e) =>
       toast.error(e instanceof Error ? e.message : 'Failed to mark phase paid'),
   });

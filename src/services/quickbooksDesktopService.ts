@@ -6,7 +6,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Proposal } from '@/services/proposalsService';
-import { generateInvoiceQBXML, generateCustomerQBXML } from '@/lib/qbxml/generators';
+import { generateInvoiceQBXML } from '@/lib/qbxml/generators';
 
 export interface QBDesktopConnection {
   id: string;

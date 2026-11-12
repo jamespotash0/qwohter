@@ -5,7 +5,7 @@ interface DemoNavigationProps {
   activeSection?: string;
 }
 
-export const DemoNavigation = ({ activeSection = 'demo' }: DemoNavigationProps): JSX.Element => {
+export const DemoNavigation = ({ activeSection = 'demo' }: DemoNavigationProps): React.JSX.Element => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = React.useState(false);
 

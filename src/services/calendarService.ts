@@ -203,6 +203,145 @@ export async function fetchTaskDeadlines(
 }
 
 /**
+ * First value that is actually written in, else the fallback.
+ *
+ * A work order may carry a blank site name rather than a null one, and `??`
+ * keeps an empty string — which renders as an untitled bar on the calendar.
+ */
+const firstNonEmpty = (
+  values: (string | null | undefined)[],
+  fallback: string
+): string => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) return value;
+  }
+  return fallback;
+};
+
+/**
+ * Site work: crews booked onto days.
+ *
+ * The labour half of a job, on the same surface as the freight it waits for.
+ */
+export async function fetchWorkOrderDates(
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<UnifiedCalendarItem[]> {
+  const { data, error } = await (supabase
+    .from('work_orders') as any)
+    .select('id, work_order_number, work_type, status, scheduled_start, scheduled_end, site_name, project_id')
+    .eq('organization_id', organizationId)
+    .not('scheduled_start', 'is', null)
+    .neq('status', 'Cancelled')
+    .gte('scheduled_start', startDate)
+    .lte('scheduled_start', endDate)
+    .order('scheduled_start', { ascending: true });
+
+  if (error) {
+    console.error('[calendarService] fetchWorkOrderDates error:', error);
+    return [];
+  }
+
+  return (data ?? []).map((w: any): UnifiedCalendarItem => ({
+    id: `work-order-${w.id}`,
+    source: 'work_order',
+    title: firstNonEmpty([w.site_name, w.work_order_number, w.work_type], 'Site work'),
+    description: w.work_type ?? null,
+    date: w.scheduled_start,
+    endDate: w.scheduled_end ?? null,
+    // Site work has real hours; a crew booked 8am-noon is not an all-day event.
+    allDay: false,
+    color: CALENDAR_SOURCE_COLORS.work_order,
+    status: w.status ?? 'Scheduled',
+    sourceId: w.id,
+    linkUrl: w.project_id ? `/projects/${w.project_id}` : '/schedule',
+  }));
+}
+
+/**
+ * Freight arriving, as the carrier currently estimates it.
+ *
+ * Delivered shipments are excluded: an ETA that has already happened is history,
+ * and leaving it on the calendar makes a busy week look busier than it is.
+ */
+export async function fetchShipmentETAs(
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<UnifiedCalendarItem[]> {
+  const { data, error } = await (supabase
+    .from('shipments') as any)
+    .select('id, estimated_delivery_date, tracking_status, carrier_name, carrier_code, tracking_number, sales_order_id, delivered_at')
+    .eq('organization_id', organizationId)
+    .is('delivered_at', null)
+    .not('estimated_delivery_date', 'is', null)
+    .gte('estimated_delivery_date', startDate.split('T')[0])
+    .lte('estimated_delivery_date', endDate.split('T')[0])
+    .order('estimated_delivery_date', { ascending: true });
+
+  if (error) {
+    console.error('[calendarService] fetchShipmentETAs error:', error);
+    return [];
+  }
+
+  return (data ?? []).map((s: any): UnifiedCalendarItem => ({
+    id: `shipment-${s.id}`,
+    source: 'shipment_eta',
+    title: `Delivery — ${firstNonEmpty([s.carrier_name, s.carrier_code], 'freight')}`,
+    description: s.tracking_number ?? null,
+    date: s.estimated_delivery_date,
+    endDate: null,
+    allDay: true,
+    color: CALENDAR_SOURCE_COLORS.shipment_eta,
+    status: s.tracking_status ?? 'unknown',
+    sourceId: s.id,
+    linkUrl: s.sales_order_id ? `/orders/${s.sales_order_id}` : undefined,
+  }));
+}
+
+/**
+ * The date a factory said it would ship.
+ *
+ * Distinct from a delivery ETA and shown separately on purpose: this is a
+ * commitment somebody made, not an observation a carrier reported, and the gap
+ * between the two is where a schedule goes wrong.
+ */
+export async function fetchAcknowledgedShipDates(
+  organizationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<UnifiedCalendarItem[]> {
+  const { data, error } = await (supabase
+    .from('vendor_pos') as any)
+    .select('id, po_number, manufacturer_name, acknowledged_ship_date, status, sales_order_id')
+    .eq('organization_id', organizationId)
+    .not('acknowledged_ship_date', 'is', null)
+    .gte('acknowledged_ship_date', startDate.split('T')[0])
+    .lte('acknowledged_ship_date', endDate.split('T')[0])
+    .order('acknowledged_ship_date', { ascending: true });
+
+  if (error) {
+    console.error('[calendarService] fetchAcknowledgedShipDates error:', error);
+    return [];
+  }
+
+  return (data ?? []).map((p: any): UnifiedCalendarItem => ({
+    id: `ack-ship-${p.id}`,
+    source: 'ack_ship_date',
+    title: `${firstNonEmpty([p.manufacturer_name], 'Factory')} ships`,
+    description: p.po_number ?? null,
+    date: p.acknowledged_ship_date,
+    endDate: null,
+    allDay: true,
+    color: CALENDAR_SOURCE_COLORS.ack_ship_date,
+    status: p.status ?? undefined,
+    sourceId: p.id,
+    linkUrl: p.sales_order_id ? `/orders/${p.sales_order_id}` : undefined,
+  }));
+}
+
+/**
  * Fetch all calendar items for a date range (unified view)
  */
 export async function fetchAllCalendarItems(
@@ -210,16 +349,28 @@ export async function fetchAllCalendarItems(
   startDate: string,
   endDate: string,
 ): Promise<UnifiedCalendarItem[]> {
-  const [events, proposals, reminders, tasks] = await Promise.all([
-    fetchCalendarEvents(organizationId, startDate, endDate),
-    fetchProposalDates(organizationId, startDate, endDate),
-    fetchReminderDates(organizationId, startDate, endDate),
-    fetchTaskDeadlines(organizationId, startDate, endDate),
-  ]);
+  // Each source already swallows its own error and returns [], so one
+  // unavailable table degrades that layer rather than emptying the calendar.
+  const [events, proposals, reminders, tasks, workOrders, shipments, ackDates] =
+    await Promise.all([
+      fetchCalendarEvents(organizationId, startDate, endDate),
+      fetchProposalDates(organizationId, startDate, endDate),
+      fetchReminderDates(organizationId, startDate, endDate),
+      fetchTaskDeadlines(organizationId, startDate, endDate),
+      fetchWorkOrderDates(organizationId, startDate, endDate),
+      fetchShipmentETAs(organizationId, startDate, endDate),
+      fetchAcknowledgedShipDates(organizationId, startDate, endDate),
+    ]);
 
-  return [...events, ...proposals, ...reminders, ...tasks].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
+  return [
+    ...events,
+    ...proposals,
+    ...reminders,
+    ...tasks,
+    ...workOrders,
+    ...shipments,
+    ...ackDates,
+  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 // =============================================================================

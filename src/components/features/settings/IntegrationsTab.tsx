@@ -9,7 +9,7 @@ import { Shield, Plug, Loader2, AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { IntegrationCard } from '@/components/features/integrations/IntegrationCard';
 import { QBOnlineConnectDialog } from '@/components/features/integrations/QBOnlineConnectDialog';
 import { QBDesktopConnectDialog } from '@/components/features/integrations/QBDesktopConnectDialog';
@@ -56,6 +56,8 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const [pendingDisconnect, setPendingDisconnect] = useState<IntegrationType | null>(null);
 
   const [isUpdatingStorage, setIsUpdatingStorage] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [disconnectError, setDisconnectError] = useState<{ type: IntegrationType; message: string } | null>(null);
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
@@ -63,6 +65,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const handleUpdateStorageSetting = async (field: string, value: string | boolean | null) => {
     if (!organization?.id) return;
     setIsUpdatingStorage(true);
+    setStorageError(null);
     try {
       const { error } = await supabase
         .from('organizations')
@@ -74,7 +77,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       }
     } catch (error) {
       console.error('Failed to update storage setting:', error);
-      toast.error('Failed to update storage settings');
+      setStorageError('Failed to update storage settings.');
     } finally {
       setIsUpdatingStorage(false);
     }
@@ -93,20 +96,13 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const googleDocsIntegration = connectedIntegrations.find(i => i.integration_type === 'google_docs');
   const googleDocsSettings = googleDocsIntegration?.settings as { drive_folder_id?: string; connected_email?: string } | undefined;
 
-  // Show error toast if loading failed
   React.useEffect(() => {
-    if (error) {
-      console.error('Failed to load integrations:', error);
-      toast.error('Failed to load integrations');
-    }
+    if (error) console.error('Failed to load integrations:', error);
   }, [error]);
 
   // Handle connect
   const handleConnect = async (type: IntegrationType) => {
-    if (!hasEditPermission) {
-      toast.error('You need Admin or Owner permissions to manage integrations');
-      return;
-    }
+    if (!hasEditPermission) return;
 
     setConnectingType(type);
 
@@ -125,10 +121,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
   // Handle disconnect - show confirmation first
   const handleDisconnect = (type: IntegrationType) => {
-    if (!hasEditPermission) {
-      toast.error('You need Admin or Owner permissions to manage integrations');
-      return;
-    }
+    if (!hasEditPermission) return;
 
     setPendingDisconnect(type);
     setShowDisconnectConfirm(true);
@@ -136,10 +129,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
   // Handle configure - open settings dialog
   const handleConfigure = (type: IntegrationType) => {
-    if (!hasEditPermission) {
-      toast.error('You need Admin or Owner permissions to manage integrations');
-      return;
-    }
+    if (!hasEditPermission) return;
 
     if (type === 'google_docs') {
       setShowGoogleDocsSettings(true);
@@ -152,18 +142,16 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
     setDisconnectingType(pendingDisconnect);
     setShowDisconnectConfirm(false);
+    setDisconnectError(null);
 
     try {
       if (pendingDisconnect === 'quickbooks_online') {
         await disconnectQBOnline(organization.id);
-        toast.success('QuickBooks Online disconnected');
       } else if (pendingDisconnect === 'quickbooks_desktop') {
         await disconnectQBDesktop(organization.id);
-        toast.success('QuickBooks Desktop disconnected');
       } else if (pendingDisconnect === 'google_docs') {
         await disconnectGoogle(organization.id);
         trackEvent('google_disconnected');
-        toast.success('Google Docs disconnected');
       }
 
       // Invalidate cache to trigger refetch
@@ -175,7 +163,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       }
     } catch (error) {
       console.error('Failed to disconnect integration:', error);
-      toast.error('Failed to disconnect integration');
+      setDisconnectError({ type: pendingDisconnect, message: 'Failed to disconnect. Try again.' });
     } finally {
       setDisconnectingType(null);
       setPendingDisconnect(null);
@@ -215,8 +203,6 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     if (wasGoogleDocs) {
       await invalidateQueries.googleConnection(organization.id);
     }
-
-    toast.success('Integration connected successfully');
   };
 
   if (!hasEditPermission) {
@@ -254,6 +240,8 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
           <div className="h-px bg-gray-200 dark:bg-gray-700 mt-4"></div>
         </div>
 
+        <InlineError message={error ? 'Failed to load integrations. Refresh to try again.' : null} />
+
         {/* Integrations Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {integrations.map((integration) => {
@@ -265,21 +253,23 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               : integration.isConnected;
 
             return (
-              <IntegrationCard
-                key={integration.type}
-                name={integration.name}
-                description={integration.description}
-                logoUrl={integration.logoUrl}
-                isConnected={effectiveConnected}
-                needsReconnection={googleNeedsReconnection}
-                onConnect={() => handleConnect(integration.type)}
-                onDisconnect={() => handleDisconnect(integration.type)}
-                onConfigure={isGoogleDocs ? () => handleConfigure(integration.type) : undefined}
-                isConnecting={connectingType === integration.type}
-                isDisconnecting={disconnectingType === integration.type}
-                comingSoon={integration.comingSoon}
-                platformRequirement={integration.platformRequirement}
-              />
+              <div key={integration.type} className="space-y-2">
+                <IntegrationCard
+                  name={integration.name}
+                  description={integration.description}
+                  logoUrl={integration.logoUrl}
+                  isConnected={effectiveConnected}
+                  needsReconnection={googleNeedsReconnection}
+                  onConnect={() => handleConnect(integration.type)}
+                  onDisconnect={() => handleDisconnect(integration.type)}
+                  onConfigure={isGoogleDocs ? () => handleConfigure(integration.type) : undefined}
+                  isConnecting={connectingType === integration.type}
+                  isDisconnecting={disconnectingType === integration.type}
+                  comingSoon={integration.comingSoon}
+                  platformRequirement={integration.platformRequirement}
+                />
+                {disconnectError?.type === integration.type && <InlineError message={disconnectError.message} />}
+              </div>
             );
           })}
         </div>
@@ -290,6 +280,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             Storage Settings
           </h2>
           <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
+          <InlineError message={storageError} className="px-6" />
 
           <div className="space-y-1">
             {/* Primary Storage Provider */}

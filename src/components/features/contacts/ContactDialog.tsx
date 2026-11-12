@@ -32,6 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import MapboxInput from '@/components/common/inputs/MapboxInput';
 import { useCreateContact, useUpdateContact } from '@/hooks/useContacts';
+import { InlineError } from '@/components/common/InlineError';
 import type { Contact, CreateContactInput } from '@/lib/types/contacts';
 import { CONTACT_TYPES, PHONE_TYPES } from '@/lib/types/contacts';
 import { isValidEmail } from '@/lib/utils/contactUtils';
@@ -80,6 +81,10 @@ export const ContactDialog = ({
 
   const createContact = useCreateContact(organizationId);
   const updateContact = useUpdateContact();
+
+  useEffect(() => {
+    if (open) updateContact.reset();
+  }, [open]);
 
   // Helper to validate phone number using libphonenumber-js
   const validatePhoneNumber = (phone: { number: string; type: string }): string | null => {
@@ -290,12 +295,13 @@ export const ContactDialog = ({
 
       onOpenChange(false);
     } catch (error) {
-      // Error handling is done in the hooks
+      // Update errors show inline; create errors still toast from the hook (InfoTab relies on it).
       console.error('Failed to save contact:', error);
     }
   };
 
   const handleChange = (field: keyof CreateContactInput, value: string) => {
+    if (updateContact.error) updateContact.reset();
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -782,6 +788,8 @@ export const ContactDialog = ({
               </div>
             </div>
           )}
+
+          <InlineError message={updateContact.error?.message} />
 
           <DialogFooter>
             <Button
