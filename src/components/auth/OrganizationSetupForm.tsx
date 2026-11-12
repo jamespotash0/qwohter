@@ -8,19 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { InlineError } from "@/components/common/InlineError";
 
 interface OrganizationSetupFormProps {
   orgName: string;
   loading: boolean;
   onOrgNameChange: (name: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  error?: string | null;
 }
 
 export const OrganizationSetupForm: React.FC<OrganizationSetupFormProps> = ({
   orgName,
   loading,
   onOrgNameChange,
-  onSubmit
+  onSubmit,
+  error,
 }) => {
   const inputClasses = `
     w-full h-12 px-4 bg-[#f7f2e9]/50 border border-[#171717]/10 rounded-full
@@ -55,6 +58,8 @@ export const OrganizationSetupForm: React.FC<OrganizationSetupFormProps> = ({
             You can change this later in settings
           </p>
         </div>
+
+        <InlineError message={error} />
 
         <Button
           type="submit"

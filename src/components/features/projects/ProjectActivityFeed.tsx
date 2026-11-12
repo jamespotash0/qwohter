@@ -38,6 +38,7 @@ import {
   type ProjectActivity,
 } from '@/hooks/queries/useProjectHub';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 const KIND_META: Record<
   string,
@@ -121,7 +122,7 @@ export function ProjectActivityFeed({
       setBody('');
       setPinnedInput(false);
     } catch {
-      // Surfaced as a toast by the mutation hook.
+      // Shown inline under the composer from createNote.error.
     }
   };
 
@@ -131,11 +132,15 @@ export function ProjectActivityFeed({
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
         <Textarea
           value={body}
-          onChange={e => setBody(e.target.value)}
+          onChange={e => {
+            setBody(e.target.value);
+            if (createNote.error) createNote.reset();
+          }}
           placeholder="What should the next person know? Access codes, a moved date, what the client said on site…"
           rows={3}
           className="resize-none border-0 p-0 shadow-none focus-visible:ring-0"
         />
+        <InlineError message={createNote.error?.message} className="mt-1" />
         <div className="mt-2 flex items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-700/50 pt-2">
           <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
             <Checkbox

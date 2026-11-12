@@ -374,29 +374,6 @@ export async function createSalesOrderWithLines(
 // Mutations
 // ============================================================================
 
-export async function updateSalesOrder(
-  salesOrderId: string,
-  patch: Partial<CreateSalesOrderInput>
-): Promise<SalesOrder> {
-  const { data, error } = await table('sales_orders')
-    .update(patch as never)
-    .eq('id', salesOrderId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[salesOrdersService] updateSalesOrder failed:', error);
-    if (error.code === '23505') {
-      throw new Error(
-        `Order number "${patch.order_number}" is already in use.`
-      );
-    }
-    throw new Error(`Failed to update sales order: ${error.message}`);
-  }
-
-  return data as unknown as SalesOrder;
-}
-
 export async function updateOrderLine(
   orderLineId: string,
   patch: Partial<MaterializedOrderLine> & { status?: OrderLineStatus; notes?: string | null }

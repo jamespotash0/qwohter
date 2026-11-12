@@ -58,15 +58,6 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
       return { success: false, error: getRateLimitMessage(rateCheck) };
     }
 
-    // Show warning if close to limit (OTP only allows 3 attempts)
-    if (rateCheck.remaining_attempts && rateCheck.remaining_attempts <= 1) {
-      toast({
-        title: 'Warning',
-        description: `Last attempt before temporary lockout.`,
-        variant: 'destructive',
-      });
-    }
-
     const result = await authFlowHelpers.handleOtpVerification(email, otpCode);
 
     if (result.success && result.data?.userId) {

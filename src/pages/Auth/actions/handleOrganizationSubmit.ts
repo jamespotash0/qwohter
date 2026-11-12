@@ -95,10 +95,6 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
         }
       }
 
-      toast({
-        title: 'Organization created!',
-        description: `${result.data.organizationName} has been created successfully.`,
-      });
       setStep('company-info');
       saveAuthState({
         step: 'company-info',

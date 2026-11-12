@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCreateCompany, useUpdateCompany } from '@/hooks/queries/useCompanies';
+import { InlineError } from '@/components/common/InlineError';
 import type { Company } from '@/services/companiesService';
 
 const COMPANY_TYPES = ['Customer', 'Prospect', 'Partner', 'Other'] as const;
@@ -103,6 +104,8 @@ export function CompanyDialog({
   // one's values.
   useEffect(() => {
     if (!open) return;
+    createCompany.reset();
+    updateCompany.reset();
     setName(company?.name ?? '');
     setLegalName(company?.legal_name ?? '');
     setCompanyType(company?.company_type ?? 'Customer');
@@ -163,9 +166,14 @@ export function CompanyDialog({
       notes: notes.trim() || null,
     };
 
-    const saved = isEdit
-      ? await updateCompany.mutateAsync({ companyId: company!.id, patch: payload })
-      : await createCompany.mutateAsync(payload);
+    let saved;
+    try {
+      saved = isEdit
+        ? await updateCompany.mutateAsync({ companyId: company!.id, patch: payload })
+        : await createCompany.mutateAsync(payload);
+    } catch {
+      return; // Shown inline from the mutation's error.
+    }
 
     onSaved?.(saved);
     onOpenChange(false);
@@ -363,6 +371,8 @@ export function CompanyDialog({
             />
           </div>
         </div>
+
+        <InlineError message={(isEdit ? updateCompany : createCompany).error?.message} />
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

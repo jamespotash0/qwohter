@@ -220,9 +220,6 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       const result = await removeProposalFromProjectBoard(proposalId);
       if (result.success) {
         invalidateQueries.allBoard();
-        toast.success('Removed from Project Board', {
-          description: 'Proposal has been removed from the project board',
-        });
       } else {
         toast.error('Error', { description: result.error || 'Failed to remove proposal from project board' });
       }

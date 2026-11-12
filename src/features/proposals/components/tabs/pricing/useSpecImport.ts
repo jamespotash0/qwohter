@@ -44,12 +44,6 @@ export function useSpecImport({ onSectionsAdded }: UseSpecImportOptions) {
       onSectionsAdded(result.sections);
       setIsOpen(false);
 
-      const sectionWord = result.sections.length === 1 ? 'section' : 'sections';
-      toast.success(
-        `Imported ${lines.length} lines into ${result.sections.length} ${sectionWord}`,
-        { description: `From ${fileName}` }
-      );
-
       // Raised separately and after, because these are not failures — the lines
       // did import. They are the two ways an imported quote is quietly wrong.
       if (result.needsCost > 0) {

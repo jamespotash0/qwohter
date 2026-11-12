@@ -30,6 +30,7 @@ import {
 } from '@/lib/ack';
 import { formatCurrency, round2 } from '@/lib/pricing';
 import { usePOLines, useAcknowledgePOLines } from '@/hooks/queries/useVarianceQueue';
+import { InlineError } from '@/components/common/InlineError';
 import { cn } from '@/lib/utils';
 import type { POLine } from '@/services/vendorPOService';
 
@@ -97,6 +98,10 @@ export function AcknowledgmentDialog({
       )
     );
   }, [open, poLines, requestedShipDate]);
+
+  useEffect(() => {
+    if (open) acknowledge.reset();
+  }, [open]);
 
   // What an uploaded acknowledgment gets matched against. Description and model
   // come from the order line, since a PO line only references one.
@@ -171,7 +176,7 @@ export function AcknowledgmentDialog({
       });
       onOpenChange(false);
     } catch {
-      // Reported as a toast by the mutation hook.
+      // Shown inline from acknowledge.error.
     }
   };
 
@@ -389,6 +394,8 @@ export function AcknowledgmentDialog({
             </span>
           </div>
         </div>
+
+        <InlineError message={acknowledge.error?.message} />
 
         <DialogFooter>
           <Button

@@ -7,14 +7,14 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Info, CloudCheck, CloudArrowUp, Warning, Package, CurrencyDollar, Clock, FileText, FilePdf } from '@phosphor-icons/react';
+import { Info, CloudCheck, CloudArrowUp, Package, CurrencyDollar, Clock, FileText, FilePdf } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
 import { EditorSidebar } from './EditorSidebar';
 import { ProposalStatusTracker } from './ProposalStatusTracker';
 import { trackEvent } from '@/lib/analytics';
 import { useProposalSigningTokens } from '@/hooks/queries/useSigningTokens';
 import { motion } from 'framer-motion';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { Input } from '@/components/ui/input';
 import {
   Tooltip,
@@ -108,6 +108,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string | null>(null);
   const hasAppliedTemplateDefaultsRef = useRef(false);
@@ -150,6 +151,15 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const [nameIsDirty, setNameIsDirty] = useState(false);
   const [initialFormName, setInitialFormName] = useState('New Form Template');
   const [initialProposalName, setInitialProposalName] = useState('Untitled Proposal');
+
+  // Editing the name clears a "Name is required" error.
+  useEffect(() => {
+    if (saveError === 'Name is required') {
+      setSaveError(null);
+      setSaveStatus('idle');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run on name edits only
+  }, [formName, proposalName]);
 
   // Track dirty state for each tab
   const [tabDirtyStates, setTabDirtyStates] = useState<Record<string, boolean>>({});
@@ -322,24 +332,20 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
 
   // Handle save (can be called manually or by auto-save)
   const handleSave = useCallback(async (isAutoSave = false) => {
-    if (!currentOrganization?.id) {
-      if (!isAutoSave) toast.error('No organization selected');
-      return;
-    }
-
-    if (!user?.id) {
-      if (!isAutoSave) toast.error('Not authenticated');
-      return;
-    }
+    if (!currentOrganization?.id || !user?.id) return;
 
     const trimmedName = (isBuilderMode ? formName : proposalName).trim();
     if (!trimmedName) {
-      if (!isAutoSave) toast.error('Name is required');
+      if (!isAutoSave) {
+        setSaveError('Name is required');
+        setSaveStatus('error');
+      }
       return;
     }
 
     setIsSaving(true);
     setSaveStatus('saving');
+    setSaveError(null);
 
     try {
       if (isBuilderMode) {
@@ -355,7 +361,6 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
               metadata: serializedMetadata,
             },
           });
-          if (!isAutoSave) toast.success('Form template saved');
         } else {
           // Create new form
           await createFormMutation.mutateAsync({
@@ -367,7 +372,6 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             is_archived: false,
             is_default: false,
           });
-          if (!isAutoSave) toast.success('Form template created');
         }
         markClean();
         setNameIsDirty(false);
@@ -377,7 +381,6 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       } else {
         // Filler mode: save proposal values
         if (!proposalId || !proposalData) {
-          if (!isAutoSave) toast.error('No proposal to update');
           setSaveStatus('idle');
           return;
         }
@@ -434,7 +437,6 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             ...(completedAt && { completed_at: completedAt }),
           },
         });
-        if (!isAutoSave) toast.success('Proposal saved');
         markClean();
         setNameIsDirty(false);
         setTabDirtyStates({});
@@ -446,12 +448,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Save failed:', error);
+      // Stays up until the next save attempt so the reason isn't missed.
+      setSaveError('Save failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
       setSaveStatus('error');
-      if (!isAutoSave) {
-        toast.error('Failed to save: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      }
-      // Reset error status after 5 seconds
-      setTimeout(() => setSaveStatus('idle'), 5000);
     } finally {
       setIsSaving(false);
     }
@@ -576,7 +575,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           formTemplates={formTemplates}
           // Force save before generation to ensure latest data is used
           onBeforeGenerate={async () => {
-            await handleSave(false); // false = not auto-save, so it shows toast
+            await handleSave(false); // false = not auto-save, so it reports errors
           }}
         />
       );
@@ -688,14 +687,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
               </motion.div>
             )}
             {saveStatus === 'error' && (
-              <motion.div
-                className="flex items-center gap-1.5 text-red-500"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <Warning className="w-4 h-4" />
-                <span>Save failed</span>
-              </motion.div>
+              <InlineError message={saveError ?? 'Save failed'} className="max-w-sm" />
             )}
             {saveStatus === 'idle' && combinedIsDirty && (
               <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { InlineError } from '@/components/common/InlineError';
 
 interface TemplatePreviewProps {
   template: Template | null;
@@ -29,6 +30,8 @@ interface TemplatePreviewProps {
   onClose: () => void;
   onCopy: (template: Template, customName?: string, customDescription?: string) => void;
   isLoading?: boolean;
+  error?: string | null;
+  onErrorClear?: () => void;
 }
 
 export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
@@ -37,6 +40,8 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   onClose,
   onCopy,
   isLoading = false,
+  error,
+  onErrorClear,
 }) => {
   const [customName, setCustomName] = useState('');
   const [customDescription, setCustomDescription] = useState('');
@@ -46,6 +51,8 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       setCustomName(template.name);
       setCustomDescription(template.description || '');
     }
+    onErrorClear?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only on open/close
   }, [template, open]);
 
   if (!template) return null;
@@ -84,7 +91,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                   <Input
                     id="custom-name"
                     value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
+                    onChange={(e) => { setCustomName(e.target.value); onErrorClear?.(); }}
                     placeholder="Enter form name"
                   />
                 </div>
@@ -93,7 +100,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                   <Input
                     id="custom-description"
                     value={customDescription}
-                    onChange={(e) => setCustomDescription(e.target.value)}
+                    onChange={(e) => { setCustomDescription(e.target.value); onErrorClear?.(); }}
                     placeholder="Enter description"
                   />
                 </div>
@@ -181,6 +188,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           </div>
         </ScrollArea>
 
+        <InlineError message={error} />
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel

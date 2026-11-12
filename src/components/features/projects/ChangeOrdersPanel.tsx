@@ -50,6 +50,7 @@ import {
   CHANGE_ORDER_STATUS_TONES,
 } from '@/components/common/backoffice';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 const STATUSES: ChangeOrderStatus[] = [
   'Requested',
@@ -98,7 +99,7 @@ export function ChangeOrdersPanel({ organizationId, projectId }: ChangeOrdersPan
       setDescription('');
       setOpen(false);
     } catch {
-      // Surfaced as a toast by the mutation hook.
+      // Shown inline from createChangeOrder.error.
     }
   };
 
@@ -115,7 +116,13 @@ export function ChangeOrdersPanel({ organizationId, projectId }: ChangeOrdersPan
               : `${openOnes.length} awaiting an answer.`}
           </p>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)}>
+        <Button
+          size="sm"
+          onClick={() => {
+            createChangeOrder.reset();
+            setOpen(true);
+          }}
+        >
           <Plus className="w-4 h-4 mr-1.5" />
           Log a change
         </Button>
@@ -214,6 +221,7 @@ export function ChangeOrdersPanel({ organizationId, projectId }: ChangeOrdersPan
               />
             </div>
           </div>
+          <InlineError message={createChangeOrder.error?.message} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel

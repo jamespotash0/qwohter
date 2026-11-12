@@ -211,40 +211,6 @@ export async function getShipmentProgressForOrg(
   );
 }
 
-/** Paperwork corrections only. Observed carrier state is not settable here. */
-export type UpdateShipmentInput = Partial<
-  Pick<
-    Shipment,
-    | 'vendor_po_id'
-    | 'carrier_code'
-    | 'carrier_name'
-    | 'tracking_number'
-    | 'pro_number'
-    | 'bill_of_lading'
-    | 'service_level'
-    | 'ship_date'
-    | 'piece_count'
-    | 'weight_lbs'
-    | 'notes'
-    | 'tracking_active'
-  >
->;
-
-export async function updateShipment(
-  shipmentId: string,
-  updates: UpdateShipmentInput
-): Promise<void> {
-  const { error } = await supabase
-    .from('shipments')
-    .update(updates)
-    .eq('id', shipmentId);
-
-  if (error) {
-    console.error('[shipmentsService] updateShipment failed:', error);
-    throw new Error(`Failed to update the shipment: ${error.message}`);
-  }
-}
-
 /**
  * Assert delivery on a carrier with nobody to ask.
  *

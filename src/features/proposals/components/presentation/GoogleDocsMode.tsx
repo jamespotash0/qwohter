@@ -47,6 +47,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { GoogleDocsEmbed } from './GoogleDocsEmbed';
 import { VersionDialog, type VersionMode } from './VersionDialog';
 import { DriveFilePicker } from './DriveFilePicker';
@@ -136,6 +137,7 @@ export function GoogleDocsMode({
   const [showLinkExisting, setShowLinkExisting] = useState(false);
   const [selectedExistingDoc, setSelectedExistingDoc] = useState<DriveFile | null>(null);
   const [showSignatureDialog, setShowSignatureDialog] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Check if user has connected Google - check BOTH sources
   // 1. google_oauth_tokens table (has actual tokens for API calls)
@@ -200,35 +202,9 @@ export function GoogleDocsMode({
     existingDocId?: string;
     version?: number;
   }) => {
-    // Validate Google connection
-    if (!isGoogleConnected) {
-      toast.error('Google not connected', {
-        description: 'An admin needs to connect Google in Settings → Integrations',
-      });
-      return;
-    }
-
-    // Validate we have required data
-    if (!selectedTemplate) {
-      toast.error('No template selected', {
-        description: 'Please select a Google Docs template to generate from',
-      });
-      return;
-    }
-
-    if (!proposalId) {
-      toast.error('Proposal not saved', {
-        description: 'Please save the proposal before generating a document',
-      });
-      return;
-    }
-
-    if (!organizationId) {
-      toast.error('Organization not found', {
-        description: 'Unable to determine organization',
-      });
-      return;
-    }
+    // The UI already blocks these: a not-connected panel, and a disabled Generate button.
+    if (!isGoogleConnected || !selectedTemplate || !proposalId || !organizationId) return;
+    setGenerateError(null);
 
     // Build output title - use proposal number if available
     const outputTitle = proposalInfo?.proposalNumber
@@ -279,13 +255,9 @@ export function GoogleDocsMode({
 
       // Check if needs reconnection
       if (errorMessage.includes('connect') || errorMessage.includes('reconnect')) {
-        toast.error('Google connection expired', {
-          description: 'An admin needs to reconnect Google in Settings → Integrations',
-        });
+        setGenerateError('Google connection expired. An admin needs to reconnect Google in Settings → Integrations.');
       } else {
-        toast.error('Failed to generate document', {
-          description: errorMessage,
-        });
+        setGenerateError(`Failed to generate document: ${errorMessage}`);
       }
     }
   }, [selectedTemplate, proposalId, organizationId, proposalInfo, proposalData, formData, generateMutation, onDocGenerated, isGoogleConnected]);
@@ -393,27 +365,17 @@ export function GoogleDocsMode({
   const handleUnlinkConfirm = useCallback(() => {
     setShowUnlinkDialog(false);
     onUnlinkDocument?.();
-    toast.success('Document unlinked', {
-      description: 'You can generate a new document anytime',
-    });
   }, [onUnlinkDocument]);
 
   // Handle linking an existing document from Drive picker
   const handleLinkExisting = useCallback(() => {
-    if (!selectedExistingDoc) {
-      toast.error('No document selected', {
-        description: 'Please select a document from your Google Drive',
-      });
-      return;
-    }
+    // Link Document is disabled until a doc is picked.
+    if (!selectedExistingDoc) return;
 
     // Call the onDocGenerated callback with the selected doc ID
     onDocGenerated?.(selectedExistingDoc.id);
     setSelectedExistingDoc(null);
     setShowLinkExisting(false);
-    toast.success('Document linked!', {
-      description: `"${selectedExistingDoc.name}" is now connected to this proposal`,
-    });
   }, [selectedExistingDoc, onDocGenerated]);
 
   // No document yet - show generation UI
@@ -571,6 +533,7 @@ export function GoogleDocsMode({
                     size="lg"
                     onClick={handleLinkExisting}
                     disabled={!selectedExistingDoc}
+                    title={selectedExistingDoc ? undefined : 'Select a document from your Google Drive first'}
                     className="flex-1"
                   >
                     <LinkSimple className="w-5 h-5 mr-2" />
@@ -589,7 +552,7 @@ export function GoogleDocsMode({
                   <DriveFilePicker
                     organizationId={organizationId}
                     value={selectedTemplateFile?.id}
-                    onSelect={setSelectedTemplateFile}
+                    onSelect={(file) => { setSelectedTemplateFile(file); setGenerateError(null); }}
                     placeholder="Search for templates..."
                     templateOnly
                   />
@@ -603,7 +566,8 @@ export function GoogleDocsMode({
                 <Button
                   size="lg"
                   onClick={() => handleGenerate()}
-                  disabled={isGenerating || !selectedTemplate}
+                  disabled={isGenerating || !selectedTemplate || !proposalId}
+                  title={!proposalId ? 'Save the proposal before generating a document' : !selectedTemplate ? 'Select a template first' : undefined}
                   className="w-full"
                 >
                   {isGenerating ? (
@@ -618,6 +582,10 @@ export function GoogleDocsMode({
                     </>
                   )}
                 </Button>
+                {!proposalId && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Save the proposal before generating a document.</p>
+                )}
+                <InlineError message={generateError} className="mt-2" />
 
                 {/* Divider and Link Existing option */}
                 <div className="flex items-center gap-3 my-4">
@@ -803,6 +771,12 @@ export function GoogleDocsMode({
         </TooltipProvider>
       </div>
 
+      {generateError && (
+        <div className="px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <InlineError message={generateError} />
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Embedded Google Doc */}
@@ -812,13 +786,7 @@ export function GoogleDocsMode({
             canEdit={canEdit}
             title={proposalInfo?.projectName || 'Proposal'}
             isGenerating={isGenerating}
-            onUnlink={() => {
-              // Auto-unlink when document is not accessible
-              onUnlinkDocument?.();
-              toast.info('Document unlinked', {
-                description: 'The document was not accessible and has been unlinked',
-              });
-            }}
+            onUnlink={() => onUnlinkDocument?.()}
           />
         </div>
       </div>

@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CaretDown } from '@phosphor-icons/react';
-import { toast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SigningReminderDefaults {
@@ -36,6 +36,8 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [approvalEnabled, setApprovalEnabled] = useState(requireProposalApproval);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
 
   const defaultReminders: SigningReminderDefaults = signingReminderDefaults || {
     enabled: true,
@@ -56,16 +58,11 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
   }, [signingReminderDefaults]);
 
   const handleToggleApproval = async (enabled: boolean) => {
-    if (!hasEditPermission) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to change workflow settings.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // The switch is disabled for non-editors
+    if (!hasEditPermission) return;
 
     setIsUpdating(true);
+    setApprovalError(null);
     setApprovalEnabled(enabled); // Optimistic update
 
     try {
@@ -81,11 +78,7 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
     } catch (error) {
       console.error('Error updating approval setting:', error);
       setApprovalEnabled(!enabled); // Revert on error
-      toast({
-        title: "Error",
-        description: "Failed to update workflow settings. Please try again.",
-        variant: "destructive",
-      });
+      setApprovalError('Failed to update. Please try again.');
     } finally {
       setIsUpdating(false);
     }
@@ -95,6 +88,7 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
     if (!hasEditPermission) return;
 
     setIsUpdating(true);
+    setReminderError(null);
     const prevConfig = { ...reminderConfig };
     setReminderConfig(newConfig); // Optimistic
 
@@ -111,11 +105,7 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
     } catch (error) {
       console.error('Error updating reminder defaults:', error);
       setReminderConfig(prevConfig); // Revert
-      toast({
-        title: "Error",
-        description: "Failed to update reminder defaults.",
-        variant: "destructive",
-      });
+      setReminderError('Failed to update reminder defaults. Please try again.');
     } finally {
       setIsUpdating(false);
     }
@@ -137,6 +127,7 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
               Members will require approval from an Admin or Owner to change a proposal status from Draft to another status.
               Admins and Owners can change status directly without approval.
             </p>
+            <InlineError message={approvalError} className="mt-2" />
           </div>
           <div className="flex items-center gap-3 min-w-[120px] justify-end">
             <span className="text-sm text-gray-500">
@@ -215,6 +206,7 @@ export const WorkflowSettingsSection: React.FC<WorkflowSettingsSectionProps> = (
                 </div>
               </div>
             )}
+            <InlineError message={reminderError} className="mt-2" />
           </div>
           <div className="flex items-center gap-3 min-w-[120px] justify-end">
             <span className="text-sm text-gray-500">

@@ -34,6 +34,7 @@ import {
 } from '@/hooks/queries/useWorkOrders';
 import { useOrderLines } from '@/hooks/queries/useSalesOrders';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 interface CompleteWorkOrderDialogProps {
   open: boolean;
@@ -62,6 +63,7 @@ export function CompleteWorkOrderDialog({
   useEffect(() => {
     if (!open) return;
     setDone({});
+    complete.reset();
   }, [open]);
 
   // Seed planned quantities as lines arrive, filling only missing keys so a
@@ -103,7 +105,7 @@ export function CompleteWorkOrderDialog({
       });
       onOpenChange(false);
     } catch {
-      // Surfaced as a toast by the mutation hook.
+      // Shown inline from complete.error.
     }
   };
 
@@ -183,6 +185,8 @@ export function CompleteWorkOrderDialog({
             </p>
           </div>
         )}
+
+        <InlineError message={complete.error?.message} />
 
         <DialogFooter className="items-center gap-3 sm:justify-between">
           <span className="text-sm text-gray-500">

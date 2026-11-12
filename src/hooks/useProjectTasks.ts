@@ -10,7 +10,6 @@ import {
   fetchProjectTasks,
   fetchOrganizationTasks,
   createProjectTask,
-  updateProjectTask,
   deleteProjectTask,
   assignTask,
   updateTaskStatus,
@@ -19,7 +18,6 @@ import {
 } from '@/services/projectTasksService';
 import type {
   CreateProjectTaskInput,
-  UpdateProjectTaskInput,
   TaskStatus,
   TaskPriority,
 } from '@/lib/types/projectTasks';
@@ -106,29 +104,6 @@ export function useCreateProjectTask(organizationId: string, projectId: string) 
   });
 }
 
-export function useUpdateProjectTask(organizationId: string, projectId?: string) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: ({ taskId, input }: { taskId: string; input: UpdateProjectTaskInput }) =>
-      updateProjectTask(taskId, input),
-    onSuccess: () => {
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
-      }
-      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update task',
-        variant: 'destructive',
-      });
-    },
-  });
-}
-
 export function useDeleteProjectTask(organizationId: string, projectId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -140,10 +115,6 @@ export function useDeleteProjectTask(organizationId: string, projectId?: string)
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
       }
       queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
-      toast({
-        title: 'Task deleted',
-        description: 'The task has been removed.',
-      });
     },
     onError: (error: Error) => {
       toast({

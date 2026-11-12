@@ -168,10 +168,7 @@ export default function Forms() {
     description: string;
     documentType: string;
   }) => {
-    if (!currentOrganization?.id || !user?.id) {
-      toast.error('Missing organization or user information');
-      return;
-    }
+    if (!currentOrganization?.id || !user?.id) return;
 
     try {
       // Create form with blank canvas
@@ -210,10 +207,7 @@ export default function Forms() {
     customName?: string,
     customDescription?: string
   ) => {
-    if (!currentOrganization?.id) {
-      toast.error('Please select an organization first');
-      return;
-    }
+    if (!currentOrganization?.id) return;
 
     copyTemplateMutation.mutate(
       {
@@ -224,7 +218,6 @@ export default function Forms() {
       },
       {
         onSuccess: (newForm) => {
-          toast.success(`"${newForm.name}" has been added to your forms`);
           setPreviewTemplate(null);
           // Navigate to form builder to edit the new form
           setTimeout(() => {
@@ -232,7 +225,8 @@ export default function Forms() {
           }, 500);
         },
         onError: (error) => {
-          toast.error(`Failed to copy template: ${error.message}`);
+          // The preview dialog shows its own error inline; quick copy from a card has nowhere else.
+          if (!previewTemplate) toast.error(`Failed to copy template: ${error.message}`);
         },
       }
     );
@@ -454,6 +448,8 @@ export default function Forms() {
             onClose={() => setPreviewTemplate(null)}
             onCopy={handleCopyTemplate}
             isLoading={copyTemplateMutation.isPending}
+            error={copyTemplateMutation.error?.message}
+            onErrorClear={copyTemplateMutation.reset}
           />
         </>
       )}

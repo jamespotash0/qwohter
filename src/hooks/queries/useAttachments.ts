@@ -11,7 +11,6 @@ import {
   getAttachments,
   getAttachmentsByDocumentType,
   uploadAttachment,
-  updateAttachment,
   deleteAttachment,
   type AttachmentWithUrl,
   type AttachmentEntityType,
@@ -92,37 +91,9 @@ export function useUploadAttachment() {
           attachment.entity_id
         ),
       });
-      toast.success('File uploaded', { description: attachment.file_name });
     },
     onError: (error: unknown) =>
       toast.error('Upload failed', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
-  });
-}
-
-export function useUpdateAttachment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      attachmentId,
-      patch,
-    }: {
-      attachmentId: string;
-      patch: { description?: string | null; document_type?: AttachmentDocumentType };
-    }) => updateAttachment(attachmentId, patch),
-    onSuccess: attachment => {
-      queryClient.invalidateQueries({
-        queryKey: attachmentsQueryKeys.entity(
-          attachment.entity_type,
-          attachment.entity_id
-        ),
-      });
-      toast.success('File updated', { description: attachment.file_name });
-    },
-    onError: (error: unknown) =>
-      toast.error('Could not update file', {
         description: error instanceof Error ? error.message : 'Unknown error',
       }),
   });
@@ -148,7 +119,6 @@ export function useDeleteAttachment() {
           variables.entityId
         ),
       });
-      toast.success('File deleted');
     },
     onError: (error: unknown) =>
       toast.error('Could not delete file', {

@@ -34,6 +34,7 @@ import { usePOLines } from '@/hooks/queries/useVarianceQueue';
 import { useShipmentLines } from '@/hooks/queries/useShipments';
 import { summarizeReceipt, buildReceiptLines } from '@/lib/pricing';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 interface ReceiveDialogProps {
   open: boolean;
@@ -130,6 +131,7 @@ export function ReceiveDialog({
     setCarrier('');
     setBillOfLading('');
     setEntries({});
+    createReceipt.reset();
   }, [open]);
 
   // Seed each line's outstanding quantity as the lines become available.
@@ -191,7 +193,7 @@ export function ReceiveDialog({
       });
       onOpenChange(false);
     } catch {
-      // Surfaced as a toast by the mutation hook; keep the dialog open.
+      // Shown inline from createReceipt.error; keep the dialog open.
     }
   };
 
@@ -344,6 +346,8 @@ export function ReceiveDialog({
             </div>
           )}
         </div>
+
+        <InlineError message={createReceipt.error?.message} />
 
         <DialogFooter className="items-center gap-3 sm:justify-between">
           <span className="text-sm text-gray-500">

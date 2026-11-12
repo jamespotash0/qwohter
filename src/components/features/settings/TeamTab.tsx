@@ -9,6 +9,7 @@ import {
   useRevokeInvitation
 } from "@/hooks/queries/useOrganization";
 import { useToast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { useUser } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -46,6 +47,10 @@ export function TeamTab() {
   const [inviteSentDialog, setInviteSentDialog] = useState<{ open: boolean; emails: string[] }>({ open: false, emails: [] });
   const [revokeDialog, setRevokeDialog] = useState<{ open: boolean; token: string; email: string }>({ open: false, token: "", email: "" });
   const [isSending, setIsSending] = useState(false);
+  // Per invite row (keyed by row id), and one for whichever confirm dialog is open.
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  useEffect(() => setDialogError(null), [removeDialog.open, transferDialog.open, revokeDialog.open]);
 
   // Billing confirmation dialog state
   const [billingConfirmDialog, setBillingConfirmDialog] = useState<{
@@ -101,6 +106,7 @@ export function TeamTab() {
 
   // Row management handlers
   const updateInviteRow = (id: string, field: keyof InviteRow, value: string | undefined) => {
+    setRowErrors(({ [id]: _, ...rest }) => rest);
     setInviteRows(rows => rows.map(row =>
       row.id === id ? { ...row, [field]: value } : row
     ));
@@ -138,15 +144,13 @@ export function TeamTab() {
     const validInvites = getValidInvites();
     if (validInvites.length === 0) return;
 
-    // Check for duplicate emails within the list
-    const emails = validInvites.map(i => i.email);
-    const uniqueEmails = new Set(emails);
-    if (uniqueEmails.size !== emails.length) {
-      toast({
-        title: "Duplicate emails",
-        description: "Please remove duplicate email addresses",
-        variant: "destructive",
-      });
+    // Mark every row whose email appears more than once
+    const normalize = (email: string) => email.trim().toLowerCase();
+    const counts = new Map<string, number>();
+    inviteRows.forEach(row => row.email && counts.set(normalize(row.email), (counts.get(normalize(row.email)) || 0) + 1));
+    const duplicates = inviteRows.filter(row => row.email && (counts.get(normalize(row.email)) || 0) > 1);
+    if (duplicates.length > 0) {
+      setRowErrors(Object.fromEntries(duplicates.map(row => [row.id, 'Duplicate email'])));
       return;
     }
 
@@ -189,17 +193,12 @@ export function TeamTab() {
         setInviteSentDialog({ open: true, emails: successfulEmails });
       }
 
-      // Show error toast if any failed
-      if (failedEmails.length > 0) {
-        toast({
-          title: `Failed to send ${failedEmails.length} invitation(s)`,
-          description: `Could not send invites to: ${failedEmails.join(', ')}`,
-          variant: "destructive",
-        });
-      }
-
-      // Reset to single empty row
-      setInviteRows([createEmptyInviteRow()]);
+      // Keep only the failed invites in the form so they can be retried
+      const failedRows = invitesToSend
+        .filter(invite => failedEmails.includes(invite.email))
+        .map(invite => ({ ...createEmptyInviteRow(), email: invite.email, role: invite.role, department: invite.department }));
+      setInviteRows(failedRows.length > 0 ? failedRows : [createEmptyInviteRow()]);
+      setRowErrors(Object.fromEntries(failedRows.map(row => [row.id, "Couldn't send this invite. Try again."])));
     } catch (error: any) {
       console.error('Failed to send invites:', error);
     } finally {
@@ -208,15 +207,12 @@ export function TeamTab() {
   };
 
   const handleRevokeInvite = async () => {
+    setDialogError(null);
     try {
       await revokeInviteMutation(revokeDialog.token);
       setRevokeDialog({ open: false, token: "", email: "" });
     } catch (error: any) {
-      toast({
-        title: "Failed to revoke invitation",
-        description: error.message,
-        variant: "destructive",
-      });
+      setDialogError(error.message || 'Failed to revoke invitation');
     }
   };
 
@@ -239,35 +235,20 @@ export function TeamTab() {
   const handleDeactivateMember = async () => {
     if (!currentOrganization) return;
 
-    // Close dialog immediately for responsive feel
-    setRemoveDialog({ open: false, memberId: "", memberName: "" });
-
+    setDialogError(null);
     try {
       await removeMemberMutation(removeDialog.memberId);
-
-      // Success confirmation
-      toast({
-        title: "Member deactivated",
-        description: `${removeDialog.memberName} has been deactivated. Their access has been revoked.`,
-      });
+      setRemoveDialog({ open: false, memberId: "", memberName: "" });
     } catch (error: any) {
-      toast({
-        title: "Failed to deactivate member",
-        description: error.message,
-        variant: "destructive",
-      });
+      setDialogError(error.message || 'Failed to deactivate member');
     }
   };
 
-  const handleReactivateMember = async (memberId: string, memberName: string) => {
+  const handleReactivateMember = async (memberId: string) => {
     if (!currentOrganization) return;
 
     try {
       await updateStatusMutation({ membershipId: memberId, status: 'Active' }); //membership_status
-      toast({
-        title: "Member reactivated",
-        description: `${memberName} has been reactivated.`,
-      });
     } catch (error: any) {
       toast({
         title: "Failed to reactivate member",
@@ -282,10 +263,6 @@ export function TeamTab() {
 
     try {
       await updateRoleMutation({ membershipId: memberId, role: newRole });
-      toast({
-        title: "Role updated",
-        description: `Member role changed to ${newRole}`,
-      });
     } catch (error: any) {
       toast({
         title: "Failed to update role",
@@ -308,11 +285,6 @@ export function TeamTab() {
         .eq('id', memberId);
 
       if (error) throw error;
-
-      toast({
-        title: "Department updated",
-        description: "Member department has been updated.",
-      });
     } catch (error: any) {
       toast({
         title: "Failed to update department",
@@ -324,6 +296,7 @@ export function TeamTab() {
 
   const handleTransferOwnership = async () => {
     if (!currentOrganization || !user?.id) return;
+    setDialogError(null);
 
     try {
       // Use atomic RPC function for secure ownership transfer
@@ -335,17 +308,9 @@ export function TeamTab() {
 
       if (error) throw error;
 
-      toast({
-        title: "Ownership transferred",
-        description: `${transferDialog.memberName} is now the owner of this organization. You are now an Admin.`,
-      });
       setTransferDialog({ open: false, memberId: "", memberName: "" });
     } catch (error: any) {
-      toast({
-        title: "Failed to transfer ownership",
-        description: error.message,
-        variant: "destructive",
-      });
+      setDialogError(error.message || 'Failed to transfer ownership');
     }
   };
 
@@ -390,49 +355,52 @@ export function TeamTab() {
           {/* Invite Rows */}
           <div className="space-y-2">
             {inviteRows.map((row) => (
-              <div key={row.id} className="flex gap-2 items-center">
-                <Input
-                  type="email"
-                  placeholder="john@emailaddress.com"
-                  value={row.email}
-                  onChange={(e) => updateInviteRow(row.id, 'email', e.target.value)}
-                  className="flex-1 placeholder:text-gray-400"
-                />
-                <Select value={row.department} onValueChange={(value) => updateInviteRow(row.id, 'department', value)}>
-                  <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
-                    <SelectValue placeholder="Department" />
-                  </SelectTrigger>
-                  <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
-                    <SelectItem value="Customer Success">Customer Success</SelectItem>
-                    <SelectItem value="Engineering">Engineering</SelectItem>
-                    <SelectItem value="Executive">Executive</SelectItem>
-                    <SelectItem value="Finance">Finance</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
-                    <SelectItem value="Operations">Operations</SelectItem>
-                    <SelectItem value="Product">Product</SelectItem>
-                    <SelectItem value="Sales">Sales</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={row.role} onValueChange={(value) => updateInviteRow(row.id, 'role', value as Role)}>
-                  <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
-                    <SelectValue placeholder="Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Member">Member</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeInviteRow(row.id)}
-                  className="h-9 w-9 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+              <div key={row.id}>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="email"
+                    placeholder="john@emailaddress.com"
+                    value={row.email}
+                    onChange={(e) => updateInviteRow(row.id, 'email', e.target.value)}
+                    className="flex-1 placeholder:text-gray-400"
+                  />
+                  <Select value={row.department} onValueChange={(value) => updateInviteRow(row.id, 'department', value)}>
+                    <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
+                      <SelectValue placeholder="Department" />
+                    </SelectTrigger>
+                    <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
+                      <SelectItem value="Customer Success">Customer Success</SelectItem>
+                      <SelectItem value="Engineering">Engineering</SelectItem>
+                      <SelectItem value="Executive">Executive</SelectItem>
+                      <SelectItem value="Finance">Finance</SelectItem>
+                      <SelectItem value="HR">HR</SelectItem>
+                      <SelectItem value="IT">IT</SelectItem>
+                      <SelectItem value="Marketing">Marketing</SelectItem>
+                      <SelectItem value="Operations">Operations</SelectItem>
+                      <SelectItem value="Product">Product</SelectItem>
+                      <SelectItem value="Sales">Sales</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={row.role} onValueChange={(value) => updateInviteRow(row.id, 'role', value as Role)}>
+                    <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Member">Member</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeInviteRow(row.id)}
+                    className="h-9 w-9 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <InlineError message={rowErrors[row.id]} className="mt-1" />
               </div>
             ))}
           </div>
@@ -711,7 +679,7 @@ export function TeamTab() {
                       {member.status === 'Inactive' ? ( //membership_status
                         <Button
                           size="sm"
-                          onClick={() => handleReactivateMember(member.id, member.full_name || member.email || 'Unknown User')}
+                          onClick={() => handleReactivateMember(member.id)}
                           className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <RotateCcw className="w-3 h-3 mr-1" />
@@ -805,6 +773,7 @@ export function TeamTab() {
               </div>
             </DialogDescription>
           </DialogHeader>
+          <InlineError message={dialogError} />
           <DialogFooter>
             <Button
               variant="outline"
@@ -844,6 +813,7 @@ export function TeamTab() {
               </div>
             </DialogDescription>
           </DialogHeader>
+          <InlineError message={dialogError} />
           <DialogFooter>
             <Button
               variant="outline"
@@ -957,6 +927,7 @@ export function TeamTab() {
               </div>
             </DialogDescription>
           </DialogHeader>
+          <InlineError message={dialogError} />
           <DialogFooter>
             <Button
               variant="outline"

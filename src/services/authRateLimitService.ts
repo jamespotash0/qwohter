@@ -221,7 +221,7 @@ export function formatBlockedUntil(blockedUntil: string): string {
 export function getRateLimitMessage(result: RateLimitCheckResult): string {
   if (result.blocked && result.blocked_until) {
     const waitTime = formatBlockedUntil(result.blocked_until);
-    return `Too many attempts. Please try again in ${waitTime}.`;
+    return `Too many attempts. Try again in ${waitTime}.`;
   }
 
   if (result.remaining_attempts !== undefined && result.remaining_attempts <= 2) {

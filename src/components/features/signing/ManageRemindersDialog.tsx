@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { useProposalSigningTokens } from '@/hooks/queries/useSigningTokens';
 import { updateSigningReminders, type SigningToken } from '@/services/proposalSigningService';
 
@@ -81,6 +81,7 @@ export const ManageRemindersDialog: React.FC<ManageRemindersDialogProps> = ({
 // Individual token reminder card
 function TokenReminderCard({ token, onUpdated }: { token: SigningToken; onUpdated: () => void }) {
   const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const config = token.reminder_config || { enabled: false, intervalDays: 3, maxReminders: 3 };
   const sentCount = token.reminder_count || 0;
@@ -88,16 +89,16 @@ function TokenReminderCard({ token, onUpdated }: { token: SigningToken; onUpdate
 
   const handleUpdate = async (newConfig: { enabled: boolean; intervalDays: number; maxReminders: number }) => {
     setUpdating(true);
+    setError(null);
     try {
       const result = await updateSigningReminders(token.id, newConfig);
       if (result.success) {
-        toast.success(newConfig.enabled ? 'Reminders updated' : 'Reminders disabled');
         onUpdated();
       } else {
-        toast.error(result.error || 'Failed to update reminders');
+        setError(result.error || 'Failed to update reminders');
       }
     } catch {
-      toast.error('Failed to update reminders');
+      setError('Failed to update reminders');
     } finally {
       setUpdating(false);
     }
@@ -211,6 +212,7 @@ function TokenReminderCard({ token, onUpdated }: { token: SigningToken; onUpdate
           </span>
         )}
       </div>
+      <InlineError message={error} className="text-xs" />
     </div>
   );
 }

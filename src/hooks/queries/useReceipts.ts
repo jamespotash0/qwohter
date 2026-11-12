@@ -8,7 +8,6 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/components/ui/sonner';
 import {
   createReceipt,
   getReceipts,
@@ -99,32 +98,12 @@ export function useCreateReceipt() {
       receipt: CreateReceiptInput;
       lines: CreateReceiptLineInput[];
     }) => createReceipt(receipt, lines),
-    onSuccess: (_id, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: receiptKeys.all });
       // Fulfillment quantities and both derived statuses come from the events
       // this just wrote.
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: varianceQueryKeys.all });
-
-      const damaged = variables.lines.reduce(
-        (sum, line) => sum + (line.quantity_damaged ?? 0),
-        0
-      );
-      const received = variables.lines.reduce(
-        (sum, line) => sum + line.quantity_received,
-        0
-      );
-
-      toast.success('Delivery recorded', {
-        description:
-          damaged > 0
-            ? `${received} received, ${damaged} damaged and still owed`
-            : `${received} received`,
-      });
     },
-    onError: (error: unknown) =>
-      toast.error('Could not record the delivery', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }

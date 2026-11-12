@@ -72,11 +72,7 @@ export function useCreateCalendarEvent(organizationId: string) {
     mutationFn: (input: CreateCalendarEventInput) =>
       createCalendarEvent(organizationId, input),
     onSuccess: () => {
-      toast.success('Event created');
       queryClient.invalidateQueries({ queryKey: calendarQueryKeys.all });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create event');
     },
   });
 }
@@ -87,11 +83,7 @@ export function useUpdateCalendarEvent() {
     mutationFn: ({ id, input }: { id: string; input: UpdateCalendarEventInput }) =>
       updateCalendarEvent(id, input),
     onSuccess: () => {
-      toast.success('Event updated');
       queryClient.invalidateQueries({ queryKey: calendarQueryKeys.all });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update event');
     },
   });
 }
@@ -101,7 +93,6 @@ export function useDeleteCalendarEvent() {
   return useMutation({
     mutationFn: (id: string) => deleteCalendarEvent(id),
     onSuccess: () => {
-      toast.success('Event deleted');
       queryClient.invalidateQueries({ queryKey: calendarQueryKeys.all });
     },
     onError: (error: Error) => {

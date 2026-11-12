@@ -99,12 +99,7 @@ export function useCreateProjectNote() {
     mutationFn: (input: CreateNoteInput) => createProjectNote(input),
     onSuccess: note => {
       queryClient.invalidateQueries({ queryKey: projectHubKeys.activity(note.project_id) });
-      toast.success(note.is_pinned ? 'Note pinned to the project' : 'Note added');
     },
-    onError: (error: unknown) =>
-      toast.error('Could not save the note', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }
 
@@ -115,7 +110,6 @@ export function useSetNotePinned() {
       setNotePinned(noteId, isPinned),
     onSuccess: note => {
       queryClient.invalidateQueries({ queryKey: projectHubKeys.activity(note.project_id) });
-      toast.success(note.is_pinned ? 'Pinned' : 'Unpinned');
     },
     onError: (error: unknown) =>
       toast.error('Could not update the note', {
@@ -133,7 +127,6 @@ export function useDeleteProjectNote() {
       queryClient.invalidateQueries({
         queryKey: projectHubKeys.activity(variables.projectId),
       });
-      toast.success('Note deleted');
     },
     onError: (error: unknown) =>
       toast.error('Could not delete the note', {
@@ -146,14 +139,9 @@ export function useCreateChangeOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateChangeOrderInput) => createChangeOrder(input),
-    onSuccess: co => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectHubKeys.all });
-      toast.success('Change order created', { description: co.title });
     },
-    onError: (error: unknown) =>
-      toast.error('Could not create the change order', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }
 
@@ -167,9 +155,8 @@ export function useUpdateChangeOrder() {
       changeOrderId: string;
       patch: UpdateChangeOrderInput;
     }) => updateChangeOrder(changeOrderId, patch),
-    onSuccess: co => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectHubKeys.all });
-      toast.success(`Change order ${co.status?.toLowerCase()}`, { description: co.title });
     },
     onError: (error: unknown) =>
       toast.error('Could not update the change order', {

@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { toast } from '@/components/ui/sonner';
 
 interface VariableItem {
   key: string;
@@ -224,7 +223,6 @@ export const TemplateVariablesReference: React.FC<TemplateVariablesReferenceProp
     const formatted = `{{${key}}}`;
     navigator.clipboard.writeText(formatted);
     setCopiedKey(key);
-    toast.success(`Copied ${formatted}`);
     setTimeout(() => setCopiedKey(null), 2000);
   };
 

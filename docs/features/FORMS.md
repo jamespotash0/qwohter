@@ -232,7 +232,6 @@ copyTemplateToOrganization({
 | `useUpdateForm()` | Update with rollback on error |
 | `useDeleteForm()` | Delete with cache cleanup |
 | `useCopyForm()` | Duplicate form |
-| `useSetDefaultForm()` | Make form default |
 | `useArchiveForm()` | Soft delete |
 | `useUnarchiveForm()` | Restore archived |
 

@@ -14,7 +14,7 @@
  * back at you.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { UploadSimple, Plus, Minus, PencilSimple, Lock } from '@phosphor-icons/react';
 import {
   Dialog,
@@ -31,6 +31,7 @@ import { guessMapping, rowsToOrderLines } from '@/lib/sif/map';
 import { diffSpecification, sortDiff, type LineChange } from '@/lib/sif/diff';
 import { useLinesForDiff, useApplyRevision } from '@/hooks/queries/useSalesOrders';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 const KIND_META: Record<
   string,
@@ -69,10 +70,15 @@ export function RevisionDialog({ open, onOpenChange, salesOrderId }: RevisionDia
   const [incoming, setIncoming] = useState<ReturnType<typeof rowsToOrderLines>['lines']>([]);
   const [showUnchanged, setShowUnchanged] = useState(false);
 
+  useEffect(() => {
+    if (open) applyRevision.reset();
+  }, [open]);
+
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    applyRevision.reset();
     const parsed = parseSpecFile(await file.text());
     const mapping = guessMapping(parsed.headers);
     setIncoming(rowsToOrderLines(parsed.rows, mapping).lines);
@@ -95,22 +101,26 @@ export function RevisionDialog({ open, onOpenChange, salesOrderId }: RevisionDia
     // Blocked changes are excluded here and refused again by the database.
     const safe = (c: LineChange) => !c.alreadyOrdered;
 
-    await applyRevision.mutateAsync({
-      salesOrderId,
-      payload: {
-        updates: diff.modified.filter(safe).map(c => ({
-          id: c.existing!.id,
-          quantity: c.incoming!.quantity,
-          unit_cost: c.incoming!.unit_cost,
-          list_price: c.incoming!.list_price,
-          dealer_discount_percent: c.incoming!.dealer_discount_percent,
-          option_string: c.incoming!.option_string,
-          description: c.incoming!.description,
-        })),
-        additions: diff.added.map(c => c.incoming as unknown as Record<string, unknown>),
-        removals: diff.removed.filter(safe).map(c => ({ id: c.existing!.id })),
-      },
-    });
+    try {
+      await applyRevision.mutateAsync({
+        salesOrderId,
+        payload: {
+          updates: diff.modified.filter(safe).map(c => ({
+            id: c.existing!.id,
+            quantity: c.incoming!.quantity,
+            unit_cost: c.incoming!.unit_cost,
+            list_price: c.incoming!.list_price,
+            dealer_discount_percent: c.incoming!.dealer_discount_percent,
+            option_string: c.incoming!.option_string,
+            description: c.incoming!.description,
+          })),
+          additions: diff.added.map(c => c.incoming as unknown as Record<string, unknown>),
+          removals: diff.removed.filter(safe).map(c => ({ id: c.existing!.id })),
+        },
+      });
+    } catch {
+      return; // Shown inline from applyRevision.error.
+    }
     onOpenChange(false);
     setIncoming([]);
     setFileName('');
@@ -299,6 +309,8 @@ export function RevisionDialog({ open, onOpenChange, salesOrderId }: RevisionDia
           onChange={handleFile}
           aria-label="Revised specification file"
         />
+
+        <InlineError message={applyRevision.error?.message} />
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

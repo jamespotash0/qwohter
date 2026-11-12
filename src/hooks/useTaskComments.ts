@@ -247,10 +247,6 @@ export function useUploadTaskAttachment(taskId: string, organizationId: string) 
       trackEvent('task_attachment_uploaded');
       queryClient.invalidateQueries({ queryKey: [ATTACHMENTS_KEY, taskId] });
       queryClient.invalidateQueries({ queryKey: [ACTIVITY_KEY, taskId] });
-      toast({
-        title: 'File uploaded',
-        description: 'Attachment added successfully',
-      });
     },
     onError: (error: Error) => {
       toast({

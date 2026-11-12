@@ -12,7 +12,6 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getObservedRates, type ObservedRateRow } from '@/services/salesOrdersService';
-import { toast } from '@/components/ui/sonner';
 import {
   getVarianceQueue,
   acknowledgePOLines,
@@ -128,17 +127,9 @@ export function useAcknowledgePOLines() {
       lines: AcknowledgeLineInput[];
       header?: { vendorAckNumber?: string | null; acknowledgedShipDate?: string | null };
     }) => acknowledgePOLines(vendorPOId, lines, header),
-    onSuccess: (_result, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: varianceQueryKeys.all });
-      const count = variables.lines.length;
-      toast.success(
-        `Acknowledgment recorded for ${count} line${count === 1 ? '' : 's'}`
-      );
     },
-    onError: (error: unknown) =>
-      toast.error('Could not record acknowledgment', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }
 

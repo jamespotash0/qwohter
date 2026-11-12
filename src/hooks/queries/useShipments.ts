@@ -22,7 +22,6 @@ import {
   getOpenShipments,
   getShipmentProgressForOrg,
   getTrackingEvents,
-  updateShipment,
   markManualDelivery,
   refreshTracking,
   detectCarrier,
@@ -30,7 +29,6 @@ import {
   type CreateShipmentLineInput,
   type Shipment,
   type ShipmentProgress,
-  type UpdateShipmentInput,
 } from '@/services/shipmentsService';
 import { salesOrderKeys } from './useSalesOrders';
 import { receiptKeys } from './useReceipts';
@@ -157,15 +155,6 @@ export function useCreateShipment() {
       // `shipped` events change fulfillment quantities and derived status.
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
 
-      const shipped = (variables.lines ?? []).reduce(
-        (sum, line) => sum + Number(line.quantity_shipped || 0),
-        0
-      );
-
-      toast.success('Shipment recorded', {
-        description: shipped > 0 ? `${shipped} on the truck` : 'Watching for carrier updates',
-      });
-
       // Registering is a network round trip to the provider and is allowed to
       // fail: the shipment is already recorded, the hourly poller will pick it
       // up, and a failed registration must not read as a failed save.
@@ -178,24 +167,6 @@ export function useCreateShipment() {
         }
       }
     },
-    onError: (error: unknown) =>
-      toast.error('Could not record the shipment', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
-  });
-}
-
-export function useUpdateShipment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ shipmentId, updates }: { shipmentId: string; updates: UpdateShipmentInput }) =>
-      updateShipment(shipmentId, updates),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: shipmentKeys.all }),
-    onError: (error: unknown) =>
-      toast.error('Could not update the shipment', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }
 
@@ -217,19 +188,9 @@ export function useMarkManualDelivery() {
       shipmentId: string;
       deliveredAt?: string | null;
     }) => markManualDelivery(shipmentId, deliveredAt === undefined ? new Date().toISOString() : deliveredAt),
-    onSuccess: (_result, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: shipmentKeys.all });
       queryClient.invalidateQueries({ queryKey: receiptKeys.all });
-
-      toast.success(
-        variables.deliveredAt === null ? 'Delivery undone' : 'Marked delivered',
-        {
-          description:
-            variables.deliveredAt === null
-              ? 'Back to awaiting delivery'
-              : 'Count it in when the boxes are opened',
-        }
-      );
     },
     onError: (error: unknown) =>
       toast.error('Could not record the delivery', {

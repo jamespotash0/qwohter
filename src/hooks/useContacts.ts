@@ -81,11 +81,6 @@ export const useCreateContact = (organizationId: string) => {
       trackEvent('contact_created', { contact_type: newContact.contact_type });
       // Invalidate contacts query to refetch
       queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
-
-      toast({
-        title: 'Contact Created',
-        description: `${newContact.full_name} has been added to your contacts.`,
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -102,7 +97,6 @@ export const useCreateContact = (organizationId: string) => {
  */
 export const useUpdateContact = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: ({
@@ -121,18 +115,6 @@ export const useUpdateContact = () => {
       queryClient.invalidateQueries({
         queryKey: ['contact', updatedContact.id],
       });
-
-      toast({
-        title: 'Contact Updated',
-        description: `${updatedContact.full_name} has been updated.`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error Updating Contact',
-        description: error.message,
-        variant: 'destructive',
-      });
     },
   });
 };
@@ -150,11 +132,6 @@ export const useDeleteContact = (organizationId: string) => {
     onSuccess: () => {
       // Invalidate contacts query to refetch
       queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
-
-      toast({
-        title: 'Contact Deleted',
-        description: 'The contact has been removed.',
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -180,11 +157,6 @@ export const useBulkDeleteContacts = (organizationId: string) => {
       trackEvent('contacts_bulk_deleted', { count: contactIds.length });
       // Invalidate contacts query to refetch
       queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
-
-      toast({
-        title: 'Contacts Deleted',
-        description: `${contactIds.length} contact${contactIds.length === 1 ? '' : 's'} have been removed.`,
-      });
     },
     onError: (error: Error) => {
       toast({

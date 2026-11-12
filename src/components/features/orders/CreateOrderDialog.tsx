@@ -35,6 +35,7 @@ import { formatCurrency } from '@/lib/pricing';
 import { useCompanies } from '@/hooks/queries/useCompanies';
 import { CompanyDialog } from '@/components/features/companies/CompanyDialog';
 import { useOrderPreview, useCreateOrderFromProposal } from '@/hooks/queries/useSalesOrders';
+import { InlineError } from '@/components/common/InlineError';
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -75,6 +76,7 @@ export function CreateOrderDialog({
       setCustomerPO('');
       setContractVehicle('');
       setCompanyId('');
+      createOrder.reset();
     }
   }, [open]);
 
@@ -109,7 +111,7 @@ export function CreateOrderDialog({
       onOpenChange(false);
       onCreated?.(salesOrderId);
     } catch {
-      // Reported as a toast by the mutation hook.
+      // Shown inline from createOrder.error.
     }
   };
 
@@ -254,6 +256,8 @@ export function CreateOrderDialog({
             </div>
           </div>
         ) : null}
+
+        <InlineError message={createOrder.error?.message} />
 
         <DialogFooter>
           <Button

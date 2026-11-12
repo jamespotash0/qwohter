@@ -86,10 +86,6 @@ export function useDeleteTaskBoardColumn(organizationId: string) {
     mutationFn: (columnId: string) => deleteTaskBoardColumn(columnId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, organizationId] });
-      toast({
-        title: 'Column deleted',
-        description: 'Column has been removed from the board.',
-      });
     },
     onError: (error) => {
       toast({

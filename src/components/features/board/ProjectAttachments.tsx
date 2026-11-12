@@ -33,6 +33,7 @@ import {
   type AttachmentDocumentType,
 } from '@/services/attachmentsService';
 import { useToast } from '@/hooks/use-toast';
+import { InlineError } from '@/components/common/InlineError';
 
 interface ProjectAttachmentsProps {
   projectId: string;
@@ -52,11 +53,13 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedDocumentType, setSelectedDocumentType] = useState<AttachmentDocumentType | ''>('');
   const [description, setDescription] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      setUploadError(null);
     }
   };
 
@@ -64,6 +67,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
     if (!selectedFile) return;
 
     setUploading(true);
+    setUploadError(null);
 
     try {
       await uploadAttachment({
@@ -74,21 +78,12 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
         documentType: selectedDocumentType || undefined,
       });
 
-      toast({
-        title: 'File Uploaded',
-        description: `${selectedFile.name} has been uploaded successfully.`,
-      });
       resetForm();
       setIsModalOpen(false);
       onAttachmentsChange();
     } catch (error) {
       console.error('Upload error:', error);
-      toast({
-        title: 'Upload Failed',
-        description:
-          error instanceof Error ? error.message : 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
+      setUploadError(error instanceof Error ? error.message : 'An unexpected error occurred.');
     } finally {
       setUploading(false);
     }
@@ -96,6 +91,7 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
 
   const resetForm = () => {
     setSelectedFile(null);
+    setUploadError(null);
     setSelectedDocumentType('');
     setDescription('');
     if (fileInputRef.current) {
@@ -115,10 +111,6 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
 
     try {
       await deleteAttachment(attachmentId);
-      toast({
-        title: 'File Deleted',
-        description: `${fileName} has been deleted.`,
-      });
       onAttachmentsChange();
     } catch (error) {
       toast({
@@ -278,6 +270,8 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
               />
             </div>
           </div>
+
+          <InlineError message={uploadError} />
 
           <DialogFooter>
             <Button

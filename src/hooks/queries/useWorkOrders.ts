@@ -15,12 +15,10 @@ import {
   updateCrew,
   planSchedulableLines,
   createWorkOrder,
-  updateWorkOrder,
   getWorkOrdersForProject,
   getWorkOrderLines,
   getSchedule,
   completeWorkOrder,
-  CrewDoubleBookedError,
   type Crew,
   type WorkOrder,
   type WorkOrderLine,
@@ -76,9 +74,8 @@ export function useCreateCrew() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Parameters<typeof createCrew>[0]) => createCrew(input),
-    onSuccess: crew => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workOrderKeys.all });
-      toast.success('Crew added', { description: crew.name });
     },
     onError: (error: unknown) =>
       toast.error('Could not add the crew', {
@@ -97,9 +94,8 @@ export function useUpdateCrew() {
       crewId: string;
       patch: Parameters<typeof updateCrew>[1];
     }) => updateCrew(crewId, patch),
-    onSuccess: crew => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workOrderKeys.all });
-      toast.success('Crew updated', { description: crew.name });
     },
     onError: (error: unknown) =>
       toast.error('Could not update the crew', {
@@ -187,43 +183,6 @@ export function useCreateWorkOrder() {
       queryClient.invalidateQueries({ queryKey: workOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: projectHubKeys.all });
-      toast.success('Work order created');
-    },
-    onError: (error: unknown) => {
-      if (error instanceof CrewDoubleBookedError) {
-        toast.error('That crew is already booked', { description: error.message });
-        return;
-      }
-      toast.error('Could not create the work order', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    },
-  });
-}
-
-export function useUpdateWorkOrder() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      workOrderId,
-      patch,
-    }: {
-      workOrderId: string;
-      patch: Parameters<typeof updateWorkOrder>[1];
-    }) => updateWorkOrder(workOrderId, patch),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workOrderKeys.all });
-      queryClient.invalidateQueries({ queryKey: projectHubKeys.all });
-      toast.success('Work order updated');
-    },
-    onError: (error: unknown) => {
-      if (error instanceof CrewDoubleBookedError) {
-        toast.error('That crew is already booked', { description: error.message });
-        return;
-      }
-      toast.error('Could not update the work order', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
     },
   });
 }
@@ -243,11 +202,6 @@ export function useCompleteWorkOrder() {
       queryClient.invalidateQueries({ queryKey: workOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: projectHubKeys.all });
-      toast.success('Work order completed');
     },
-    onError: (error: unknown) =>
-      toast.error('Could not complete the work order', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }

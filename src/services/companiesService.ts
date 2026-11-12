@@ -162,24 +162,6 @@ export async function updateCompany(
   return data;
 }
 
-/**
- * Deactivate rather than delete. A company is referenced by order history, so
- * removing the row is an Owner/Admin action taken deliberately; everyday
- * cleanup goes through here.
- */
-export async function deactivateCompany(companyId: string): Promise<Company> {
-  return updateCompany(companyId, { is_active: false });
-}
-
-export async function deleteCompany(companyId: string): Promise<void> {
-  const { error } = await supabase.from('companies').delete().eq('id', companyId);
-
-  if (error) {
-    console.error('[companiesService] deleteCompany failed:', error);
-    throw new Error(`Failed to delete company: ${error.message}`);
-  }
-}
-
 // ============================================================================
 // Helpers
 // ============================================================================

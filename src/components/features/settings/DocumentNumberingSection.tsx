@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import {
   getAllNumberingConfigs,
   setNumberingConfig,
@@ -51,6 +52,8 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
   const [editSeparator2, setEditSeparator2] = useState('');
   const [editStartNumber, setEditStartNumber] = useState('1');
   const [editPadding, setEditPadding] = useState('0');
+  const [formError, setFormError] = useState<{ field: 'docType' | 'startNumber' | 'save'; message: string } | null>(null);
+  const errorFor = (field: 'docType' | 'startNumber' | 'save') => (formError?.field === field ? formError.message : null);
 
   // Collision detection state
   const [highestExisting, setHighestExisting] = useState<number | null>(null);
@@ -149,6 +152,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
       setEditPadding(String(config.padding || 0));
       setReplacingType(docType);
       setAddingNew(false);
+      setFormError(null);
     }
   };
 
@@ -162,25 +166,28 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
     setEditPadding('0');
     setAddingNew(true);
     setReplacingType(null);
+    setFormError(null);
   };
 
   const cancelEdit = () => {
     setReplacingType(null);
     setAddingNew(false);
     setEditDocType('');
+    setFormError(null);
   };
 
   const handleSave = async (originalDocType: string) => {
     const newDocType = editDocType.trim();
+    setFormError(null);
 
     if (!newDocType) {
-      toast({ title: "Error", description: "Document type name is required", variant: "destructive" });
+      setFormError({ field: 'docType', message: 'Document type name is required' });
       return;
     }
 
     const num = parseInt(editStartNumber, 10);
     if (isNaN(num) || num < 1) {
-      toast({ title: "Error", description: "Invalid starting number", variant: "destructive" });
+      setFormError({ field: 'startNumber', message: 'Enter a starting number of 1 or more' });
       return;
     }
 
@@ -213,12 +220,10 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
           updated[newDocType] = config;
           return updated;
         });
-        const action = addingNew ? 'created' : (isRename ? 'renamed' : 'updated');
-        toast({ title: "Saved", description: `${newDocType} sequence ${action}.` });
         cancelEdit();
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save", variant: "destructive" });
+      setFormError({ field: 'save', message: 'Failed to save. Try again.' });
     } finally {
       setSaving(false);
     }
@@ -234,7 +239,6 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
           const { [docType]: _, ...rest } = prev;
           return rest;
         });
-        toast({ title: "Deleted", description: `${docType} sequence removed.` });
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
@@ -267,7 +271,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
   // Render the edit/replace form inputs
   const renderEditForm = (docType: string, isNew: boolean, typeInUse: boolean = false) => (
     <div className="flex flex-col gap-4 w-full">
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-start gap-3 flex-wrap" onChange={() => setFormError(null)}>
         {/* Document Type Name - always shown, disabled if in use */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Document Type</label>
@@ -278,6 +282,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
             disabled={typeInUse}
             className={`w-48 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 ${typeInUse ? 'opacity-50 cursor-not-allowed' : ''}`}
           />
+          <InlineError message={errorFor('docType')} className="w-48" />
         </div>
 
         {/* Prefix */}
@@ -316,6 +321,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
             className="w-28 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
             min={1}
           />
+          <InlineError message={errorFor('startNumber')} className="w-28" />
         </div>
 
         {/* Suffix - Optional trailing code (e.g., 014 in ES-1-014) */}
@@ -393,6 +399,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <InlineError message={errorFor('save')} />
           <Button
             size="sm"
             onClick={() => handleSave(docType)}

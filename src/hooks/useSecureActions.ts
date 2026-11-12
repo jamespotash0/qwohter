@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, validateSecurity, authRateLimiter } from '@/utils/security';
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries';
-import { toast } from '@/components/ui/sonner';
 
 /**
  * Custom hook for secure actions with built-in validation and rate limiting
@@ -173,43 +172,9 @@ export const useSecureActions = () => {
   }, [user, currentOrganization, currentUserRole]);
 
 
-  /**
-   * Secure file upload validation
-   */
-  const validateFileUpload = useCallback((file: File): boolean => {
-    // File size limit (10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error('File size too large (max 10MB)');
-      return false;
-    }
-
-    // Allowed file types
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('File type not allowed');
-      return false;
-    }
-
-    // Validate file name for malicious content
-    if (!validateSecurity.contentSafety(file.name)) {
-      toast.error('Invalid file name');
-      return false;
-    }
-
-    return true;
-  }, []);
-
   return {
     createProposalSecurely,
     updateProposalSecurely,
     performAdminAction,
-    validateFileUpload,
   };
 };

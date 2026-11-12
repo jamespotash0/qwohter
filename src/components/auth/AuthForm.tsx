@@ -14,6 +14,7 @@ import { validators } from "@/utils/validation";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { InlineError } from "@/components/common/InlineError";
 
 interface AuthFormProps {
   isSignUp: boolean;
@@ -31,6 +32,7 @@ interface AuthFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onToggleMode: () => void;
   isEmailLocked?: boolean;
+  error?: string | null;
 }
 
 export const AuthForm: React.FC<AuthFormProps> = ({
@@ -49,6 +51,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onSubmit,
   onToggleMode,
   isEmailLocked = false,
+  error,
 }) => {
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
@@ -206,8 +209,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </button>
           </div>
           {isSignUp && <PasswordStrengthMeter password={password} />}
-          {touched.password && passwordError && (
+          {touched.password && passwordError ? (
             <p className="text-sm text-red-500 mt-1.5">{passwordError}</p>
+          ) : (
+            <InlineError message={error} className="mt-1.5" />
           )}
         </div>
 

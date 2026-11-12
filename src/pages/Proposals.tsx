@@ -27,7 +27,7 @@ import CreateProposalDialog, { type ProposalInitialData } from '@/components/fea
 import { ImportProposalDialog } from '@/components/features/proposals/import';
 import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
 import { formatTimestamp } from '@/lib/utils';
-import { createProposal, sendProposalToProjectBoard, type CreateProposalData } from '@/services/proposalsService';
+import { createProposal, sendProposalToProjectBoard } from '@/services/proposalsService';
 import { checkApprovalRequired, requestApproval, approveProposal, getLatestApprovalRequest } from '@/services/proposalApprovalService';
 import { ApprovalRequestDialog } from '@/components/features/proposals/ApprovalRequestDialog';
 import { ManageRemindersDialog } from '@/components/features/signing/ManageRemindersDialog';
@@ -119,7 +119,6 @@ export default function Proposals() {
   const handleDeleteProposal = async (id: string) => {
     try {
       await deleteMutation.mutateAsync(id);
-      toast.success('Proposal deleted');
     } catch {
       toast.error('Failed to delete proposal');
     }
@@ -129,11 +128,10 @@ export default function Proposals() {
   const handleDeleteVersionGroup = async (baseNumber: string) => {
     if (!organization?.id) return;
     try {
-      const count = await deleteVersionGroupMutation.mutateAsync({
+      await deleteVersionGroupMutation.mutateAsync({
         baseProposalNumber: baseNumber,
         organizationId: organization.id,
       });
-      toast.success(`Deleted ${count} version${count > 1 ? 's' : ''} of ${baseNumber}`);
     } catch {
       toast.error('Failed to delete version group');
     }
@@ -142,12 +140,7 @@ export default function Proposals() {
   // Delete single version with main version promotion
   const handleDeleteVersion = async (id: string) => {
     try {
-      const result = await deleteVersionWithPromotionMutation.mutateAsync(id);
-      if (result.promotedId) {
-        toast.success('Version deleted. A new main version has been promoted.');
-      } else {
-        toast.success('Version deleted');
-      }
+      await deleteVersionWithPromotionMutation.mutateAsync(id);
     } catch {
       toast.error('Failed to delete version');
     }
@@ -218,10 +211,8 @@ export default function Proposals() {
       if (group && group.hasMultipleVersions && group.mainVersion.id === id) {
         // This is the main version - unarchive ALL versions in the group (cascade unarchive)
         await Promise.all(group.versions.map(v => unarchiveMutation.mutateAsync(v.id)));
-        toast.success(`Restored ${group.versions.length} version${group.versions.length > 1 ? 's' : ''}`);
       } else {
         await unarchiveMutation.mutateAsync(id);
-        toast.success('Proposal restored');
       }
     } catch {
       toast.error('Failed to restore proposal');
@@ -246,7 +237,6 @@ export default function Proposals() {
   const handleBulkDelete = async (ids: string[]) => {
     try {
       await Promise.all(ids.map(id => deleteMutation.mutateAsync(id)));
-      toast.success(`${ids.length} proposal(s) deleted`);
     } catch {
       toast.error('Failed to delete some proposals');
     }
@@ -299,7 +289,8 @@ export default function Proposals() {
     } else if (successCount > 0) {
       toast.warning(`Approval requested for ${successCount} of ${approvalDialog.proposalIds.length} proposals`);
     } else {
-      toast.error('Failed to request approval');
+      // ApprovalRequestDialog stays open and shows this inline.
+      throw new Error('Failed to request approval');
     }
   };
 
@@ -310,15 +301,11 @@ export default function Proposals() {
     try {
       // Get the latest approval request for this proposal
       const approvalRequest = await getLatestApprovalRequest(proposalId);
-      if (!approvalRequest) {
-        toast.error('No pending approval request found');
-        return;
-      }
+      // Falls through to the catch's generic approve-failed toast.
+      if (!approvalRequest) throw new Error('No pending approval request found');
 
       const result = await approveProposal(approvalRequest.id, user.id);
-      if (result.success) {
-        toast.success('Proposal approved and submitted');
-      } else {
+      if (!result.success) {
         toast.error(result.error || 'Failed to approve proposal');
       }
     } catch (error) {
@@ -435,29 +422,17 @@ export default function Proposals() {
     }
   };
 
-  // Handle creating a new proposal from dialog
+  // Errors propagate so CreateProposalDialog stays open and shows them.
   const handleCreateProposal = async (data: ProposalInitialData) => {
-    setCreateWizardOpen(false);
-    try {
-      // Create the proposal with the collected data
-      // document_type is inherited from the form automatically
-      const proposalData: CreateProposalData = {
-        form_id: data.formId,
-        project_name: data.projectName,
-        status: 'Draft',
-        // Add optional custom proposal number if provided
-        proposal_number: data.proposalNumber || undefined,
-        // Add optional custom date if provided
-        created_at: data.proposalDate || undefined,
-      };
-
-      const proposal = await createProposal(proposalData);
-      // Navigate to the form filler to complete the proposal
-      navigate(`/proposals/${proposal.id}/edit`);
-    } catch (error) {
-      console.error('Failed to create proposal:', error);
-      toast.error('Failed to create proposal');
-    }
+    // document_type is inherited from the form automatically
+    const proposal = await createProposal({
+      form_id: data.formId,
+      project_name: data.projectName,
+      status: 'Draft',
+      proposal_number: data.proposalNumber || undefined,
+      created_at: data.proposalDate || undefined,
+    });
+    navigate(`/proposals/${proposal.id}/edit`);
   };
 
   return (

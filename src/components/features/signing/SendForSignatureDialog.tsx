@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { sendForSignature } from '@/services/proposalSigningService';
 import { supabase } from '@/integrations/supabase/client';
 import { trackEvent } from '@/lib/analytics';
@@ -66,6 +66,10 @@ export const SendForSignatureDialog: React.FC<SendForSignatureDialogProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
   const [sentTo, setSentTo] = useState<string[]>([]);
+  // Per-recipient problems shown on the sent screen, keyed by email.
+  const [sendIssues, setSendIssues] = useState<Record<string, string>>({});
+  const [recipientError, setRecipientError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   // Org-level reminder defaults (fetched on open, drives footer label)
   const [reminderDefaults, setReminderDefaults] = useState<{ enabled: boolean; intervalDays: number; maxReminders: number }>({ enabled: true, intervalDays: 3, maxReminders: 3 });
@@ -96,6 +100,9 @@ Please review the proposal and sign electronically by clicking the button below.
       setExpiresInDays('7');
       setSentSuccess(false);
       setSentTo([]);
+      setSendIssues({});
+      setRecipientError(null);
+      setSendError(null);
       setSignatureFallback('auto');
 
       // Fetch org-level reminder defaults
@@ -125,22 +132,24 @@ Please review the proposal and sign electronically by clicking the button below.
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      toast.error('Invalid email address');
+      setRecipientError('Invalid email address');
       return;
     }
 
     if (recipients.includes(email)) {
-      toast.error('Email already added');
+      setRecipientError('Email already added');
       return;
     }
 
     setRecipients([...recipients, email]);
+    setSendError(null);
     setEmailInput('');
   };
 
   // Remove email from recipients
   const removeRecipient = (email: string) => {
     setRecipients(recipients.filter(r => r !== email));
+    setSendError(null);
   };
 
   // Handle enter key in email input
@@ -156,12 +165,11 @@ Please review the proposal and sign electronically by clicking the button below.
   };
 
   const handleSend = async () => {
-    if (recipients.length === 0) {
-      toast.error('Please add at least one recipient');
-      return;
-    }
+    // Send stays disabled until there is a recipient.
+    if (recipients.length === 0) return;
 
     setIsSending(true);
+    setSendError(null);
 
     try {
       const results = await Promise.all(
@@ -187,20 +195,18 @@ Please review the proposal and sign electronically by clicking the button below.
       const failed = results.filter(r => !r.success);
 
       if (failed.length > 0 && successful.length === 0) {
-        toast.error(failed[0]!.error || 'Failed to send');
+        setSendError(failed[0]!.error || 'Failed to send');
         return;
       }
 
-      if (failed.length > 0) {
-        toast.error(`Failed to send to ${failed.length} recipient${failed.length > 1 ? 's' : ''}`);
-      }
-
-      // Check if any emails failed to send (signing token created but email failed)
-      const emailFailed = successful.filter(r => r.emailSent === false);
-      if (emailFailed.length > 0) {
-        const errorMsg = emailFailed[0]!.emailError || 'Email delivery failed';
-        toast.error(`Warning: ${errorMsg}. Signing link was created but email may not have been delivered.`);
-      }
+      // results line up with recipients by index.
+      const issues: Record<string, string> = {};
+      results.forEach((r, i) => {
+        const email = recipients[i]!;
+        if (!r.success) issues[email] = `Not sent: ${r.error || 'failed to send'}`;
+        else if (r.emailSent === false) issues[email] = `Link created, but the email may not have arrived (${r.emailError || 'delivery failed'})`;
+      });
+      setSendIssues(issues);
 
       trackEvent('proposal_sent_for_signature', {
         has_expiration: expiresInDays !== 'never',
@@ -212,7 +218,7 @@ Please review the proposal and sign electronically by clicking the button below.
       setSentTo(recipients);
     } catch (error) {
       console.error('Send error:', error);
-      toast.error('Failed to send');
+      setSendError('Failed to send');
     } finally {
       setIsSending(false);
     }
@@ -241,6 +247,9 @@ Please review the proposal and sign electronically by clicking the button below.
             <p className="text-sm text-green-600 dark:text-green-400 mt-1">
               {sentTo.length === 1 ? sentTo[0] : `Sent to ${sentTo.length} recipients`}
             </p>
+            {Object.entries(sendIssues).map(([email, note]) => (
+              <InlineError key={email} message={`${email}: ${note}`} className="mt-2 text-left text-xs" />
+            ))}
             <Button onClick={handleClose} className="mt-6 w-full">Done</Button>
           </div>
         </DialogContent>
@@ -293,7 +302,7 @@ Please review the proposal and sign electronically by clicking the button below.
                     type="email"
                     placeholder={recipients.length ? 'Add another...' : 'client@company.com'}
                     value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
+                    onChange={(e) => { setEmailInput(e.target.value); setRecipientError(null); }}
                     onKeyDown={handleEmailKeyDown}
                     onBlur={() => emailInput && addRecipient()}
                     className="border-0 shadow-none focus-visible:ring-0 px-0 h-8 text-sm"
@@ -307,6 +316,7 @@ Please review the proposal and sign electronically by clicking the button below.
                     </button>
                   )}
                 </div>
+                <InlineError message={recipientError} className="text-xs" />
               </div>
             </div>
           </div>
@@ -352,6 +362,12 @@ Please review the proposal and sign electronically by clicking the button below.
             </p>
           </div>
         </div>
+
+        {sendError && (
+          <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+            <InlineError message={sendError} />
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">

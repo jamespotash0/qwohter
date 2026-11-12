@@ -17,7 +17,6 @@ import {
   getOrderFulfillment,
   previewOrderFromProposal,
   createOrderFromProposal,
-  updateSalesOrder,
   getProjectIdForProposal,
   getOrderProgress,
   getLinesForDiff,
@@ -215,34 +214,7 @@ export function useCreateOrderFromProposal() {
     }) => createOrderFromProposal(proposalId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
-      toast.success('Sales order created');
     },
-    onError: (error: unknown) =>
-      toast.error('Could not create the order', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
-  });
-}
-
-export function useUpdateSalesOrder() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      salesOrderId,
-      patch,
-    }: {
-      salesOrderId: string;
-      patch: Partial<CreateSalesOrderInput>;
-    }) => updateSalesOrder(salesOrderId, patch),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
-      toast.success('Order updated');
-    },
-    onError: (error: unknown) =>
-      toast.error('Could not update the order', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }
 
@@ -250,7 +222,7 @@ export function useUpdateSalesOrder() {
  * Record an order for every manufacturer group in a plan.
  *
  * Each manufacturer is independent, so a partial result is normal and is
- * reported rather than hidden — the toast names any that was not recorded.
+ * reported rather than hidden — a toast names any that was not recorded.
  */
 export function useFanOutPurchaseOrders() {
   const queryClient = useQueryClient();
@@ -269,12 +241,6 @@ export function useFanOutPurchaseOrders() {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: varianceQueryKeys.all });
 
-      if (result.created.length > 0) {
-        toast.success(
-          `${result.created.length} order${result.created.length === 1 ? '' : 's'} recorded`,
-          { description: result.created.map(c => c.manufacturerName).join(', ') }
-        );
-      }
       if (result.failed.length > 0) {
         toast.error(
           `${result.failed.length} order${result.failed.length === 1 ? '' : 's'} could not be recorded`,
@@ -328,16 +294,6 @@ export function useApplyRevision() {
       queryClient.invalidateQueries({ queryKey: salesOrderKeys.all });
       queryClient.invalidateQueries({ queryKey: varianceQueryKeys.all });
 
-      const parts = [
-        result.added > 0 && `${result.added} added`,
-        result.updated > 0 && `${result.updated} changed`,
-        result.removed > 0 && `${result.removed} cancelled`,
-      ].filter(Boolean);
-
-      toast.success('Revision applied', {
-        description: parts.length > 0 ? parts.join(', ') : 'Nothing to change',
-      });
-
       // Refusals are not an error — they are the guard doing its job — but the
       // person needs to know those lines still need a change order.
       if (result.refused > 0) {
@@ -347,9 +303,5 @@ export function useApplyRevision() {
         );
       }
     },
-    onError: (error: unknown) =>
-      toast.error('Could not apply the revision', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      }),
   });
 }

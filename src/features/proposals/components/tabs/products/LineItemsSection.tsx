@@ -283,15 +283,20 @@ function AddToPricingPopover({
             <span>Create Merchandise</span>
           </button>
         ) : (
-          pricingSections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => onAddToPricing(product, section.id)}
-              className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 truncate"
-            >
-              {section.name}
-            </button>
-          ))
+          pricingSections.map((section) => {
+            const alreadyIn = section.lineItems.some(item => item.sourceProductId === product.id);
+            return (
+              <button
+                key={section.id}
+                onClick={() => onAddToPricing(product, section.id)}
+                disabled={alreadyIn}
+                title={alreadyIn ? 'Already in this section' : undefined}
+                className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 truncate disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              >
+                {section.name}{alreadyIn && ' (added)'}
+              </button>
+            );
+          })
         )}
       </PopoverContent>
     </Popover>

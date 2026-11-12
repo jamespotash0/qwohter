@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle, Plus, Minus, X } from 'lucide-react';
 import { useMagneticHover } from '@/hooks/useAnimations';
 import { sendContactUsEmail } from '@/services/emailService';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { ContactNavigation } from '@/components/features/landing/ContactNavigation';
 import { Footer } from '@/components/features/landing/Footer';
 import { DebugGrid } from '@/components/common/DebugGrid';
@@ -29,6 +29,7 @@ const ContactUs = () => {
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState({
     firstName: '',
     lastName: '',
@@ -63,6 +64,7 @@ const ContactUs = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    setSubmitError(null);
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -126,6 +128,7 @@ const ContactUs = () => {
     }
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       console.log('Sending contact form...');
@@ -145,12 +148,12 @@ const ContactUs = () => {
         setIsSubmitting(false);
       } else {
         console.error('Email failed:', result.error);
-        toast.error(result.error || 'Failed to send message. Please try again.');
+        setSubmitError(result.error || 'Failed to send message. Please try again.');
         setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      setSubmitError('An unexpected error occurred. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -418,6 +421,8 @@ const ContactUs = () => {
                 <p className="text-red-400 text-xs mt-1">{errors.message}</p>
               )}
             </div>
+
+            <InlineError message={submitError} />
 
             <Button
               ref={submitButtonRef}

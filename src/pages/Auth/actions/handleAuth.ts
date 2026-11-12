@@ -57,6 +57,7 @@ export const handleAuth = async (params: HandleAuthParams) => {
   console.log('IsSignUp:', isSignUp);
 
   setLoading(true);
+  let lockoutWarning = '';
   try {
     let result;
 
@@ -90,13 +91,9 @@ export const handleAuth = async (params: HandleAuthParams) => {
         return;
       }
 
-      // Show warning if close to limit
+      // Shown alongside the failure message, not on its own.
       if (rateCheck.remaining_attempts && rateCheck.remaining_attempts <= 2) {
-        toast({
-          title: 'Warning',
-          description: `${rateCheck.remaining_attempts} login attempt${rateCheck.remaining_attempts !== 1 ? 's' : ''} remaining before temporary lockout.`,
-          variant: 'destructive',
-        });
+        lockoutWarning = ` ${rateCheck.remaining_attempts} attempt${rateCheck.remaining_attempts !== 1 ? 's' : ''} left before a temporary lockout.`;
       }
 
       console.log('Calling handleSignIn...');
@@ -147,7 +144,7 @@ export const handleAuth = async (params: HandleAuthParams) => {
     if (!result.success) {
       toast({
         title: 'Authentication Error',
-        description: result.error as any,
+        description: `${result.error}${lockoutWarning}`,
         variant: 'destructive',
       });
     }

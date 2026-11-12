@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Edit2, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { hasAdminPermissions } from "@/utils/permissions";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser, useProfile } from "@/auth";
@@ -92,6 +92,8 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 
   // Loading state
   const [isUpdating, setIsUpdating] = useState(false);
+  const [fieldError, setFieldError] = useState<{ field: keyof PaymentSettings; message: string } | null>(null);
+  const errorFor = (field: keyof PaymentSettings) => (fieldError?.field === field ? fieldError.message : null);
 
   // Password confirmation for sensitive fields
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -117,21 +119,12 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
     value: string,
     setIsEditing: (val: boolean) => void,
   ): Promise<boolean> => {
-    if (!hasEditPermission) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to edit payment settings.",
-        variant: "destructive",
-      });
-      return false;
-    }
+    // Unreachable for non-editors: the tab renders Access Restricted instead.
+    if (!hasEditPermission) return false;
 
+    setFieldError(null);
     if (!organization?.id) {
-      toast({
-        title: "Error",
-        description: "Organization ID not found. Please refresh the page.",
-        variant: "destructive",
-      });
+      setFieldError({ field: fieldKey, message: 'Organization ID not found. Please refresh the page.' });
       return false;
     }
 
@@ -149,21 +142,12 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Updated",
-        description: "Payment settings updated successfully.",
-      });
-
       setIsEditing(false);
       await onOrganizationUpdate(undefined, true);
       return true;
     } catch (error) {
       console.error('Error updating payment settings:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update payment settings",
-        variant: "destructive",
-      });
+      setFieldError({ field: fieldKey, message: error instanceof Error ? error.message : 'Failed to update payment settings' });
       return false;
     } finally {
       setIsUpdating(false);
@@ -264,7 +248,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingBankName(true)}
+                      onClick={() => { setFieldError(null); setIsEditingBankName(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -274,6 +258,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('bank_name')} className="px-6 -mt-4 justify-end" />
 
             {/* Routing Number */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -333,7 +318,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => { setEditedRoutingNumber(''); setIsEditingRoutingNumber(true); }}
+                      onClick={() => { setFieldError(null); setEditedRoutingNumber(''); setIsEditingRoutingNumber(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -343,6 +328,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('routing_number')} className="px-6 -mt-4 justify-end" />
 
             {/* Account Number */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -402,7 +388,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => { setEditedAccountNumber(''); setIsEditingAccountNumber(true); }}
+                      onClick={() => { setFieldError(null); setEditedAccountNumber(''); setIsEditingAccountNumber(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -412,6 +398,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('account_number')} className="px-6 -mt-4 justify-end" />
           </div>
         </div>
 
@@ -466,7 +453,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingPaymentUrl(true)}
+                      onClick={() => { setFieldError(null); setIsEditingPaymentUrl(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -476,6 +463,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('payment_url')} className="px-6 -mt-4 justify-end" />
 
             {/* Button Label */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -522,7 +510,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingButtonLabel(true)}
+                      onClick={() => { setFieldError(null); setIsEditingButtonLabel(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -532,6 +520,7 @@ export const PaymentsTab: React.FC<PaymentsTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('payment_button_label')} className="px-6 -mt-4 justify-end" />
           </div>
         </div>
       </div>

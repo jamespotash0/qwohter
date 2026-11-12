@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import { cn } from '@/lib/utils';
 import { useFormBuilder, type DocumentTemplate } from '../../context/FormBuilderContext';
 import { useConnectedIntegrations } from '@/hooks/useIntegrations';
@@ -95,6 +95,9 @@ export function PresentationBuilderConfig() {
   const [templateName, setTemplateName] = useState('');
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [isDefault, setIsDefault] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  useEffect(() => setAddError(null), [showAddDialog, templateName, selectedFile]);
 
   // Sync templates to presentation data when templates change
   useEffect(() => {
@@ -146,15 +149,8 @@ export function PresentationBuilderConfig() {
 
   // Handle add template
   const handleAddTemplate = useCallback(async () => {
-    if (!templateName.trim()) {
-      toast.error('Please enter a template name');
-      return;
-    }
-
-    if (!selectedFile) {
-      toast.error('Please select a Google Doc');
-      return;
-    }
+    // Add Template stays disabled until both are filled in.
+    if (!templateName.trim() || !selectedFile) return;
 
     setIsSaving(true);
     try {
@@ -187,10 +183,9 @@ export function PresentationBuilderConfig() {
       setTemplateName('');
       setSelectedFile(null);
       setIsDefault(false);
-      toast.success('Template added successfully');
     } catch (error) {
       console.error('Failed to add template:', error);
-      toast.error('Failed to add template');
+      setAddError('Failed to add template');
     } finally {
       setIsSaving(false);
     }
@@ -206,10 +201,9 @@ export function PresentationBuilderConfig() {
       setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
       setShowDeleteDialog(false);
       setTemplateToDelete(null);
-      toast.success('Template deleted');
     } catch (error) {
+      // Local state only, so this can't realistically fail; the dialog has already closed.
       console.error('Failed to delete template:', error);
-      toast.error('Failed to delete template');
     } finally {
       setIsSaving(false);
     }
@@ -221,7 +215,6 @@ export function PresentationBuilderConfig() {
     setTemplates(prev =>
       prev.map(t => ({ ...t, is_default: t.id === template.id }))
     );
-    toast.success(`${template.name} set as default template`);
   }, []);
 
   // Open template in Google Docs
@@ -631,6 +624,8 @@ export function PresentationBuilderConfig() {
               </Label>
             </div>
           </div>
+
+          <InlineError message={addError} />
 
           <DialogFooter>
             <Button

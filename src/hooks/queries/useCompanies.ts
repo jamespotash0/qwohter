@@ -8,15 +8,12 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/components/ui/sonner';
 import {
   getCompanies,
   getCompanyById,
   searchCompanies,
   createCompany,
   updateCompany,
-  deactivateCompany,
-  deleteCompany,
   type Company,
   type CreateCompanyInput,
   type UpdateCompanyInput,
@@ -86,14 +83,8 @@ export function useCreateCompany() {
 
   return useMutation({
     mutationFn: (input: CreateCompanyInput) => createCompany(input),
-    onSuccess: company => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companiesQueryKeys.all });
-      toast.success('Company created', { description: company.name });
-    },
-    onError: (error: unknown) => {
-      toast.error('Could not create company', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
     },
   });
 }
@@ -107,50 +98,6 @@ export function useUpdateCompany() {
     onSuccess: company => {
       queryClient.invalidateQueries({ queryKey: companiesQueryKeys.all });
       queryClient.setQueryData(companiesQueryKeys.detail(company.id), company);
-      toast.success('Company updated', { description: company.name });
-    },
-    onError: (error: unknown) => {
-      toast.error('Could not update company', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    },
-  });
-}
-
-/**
- * Deactivate rather than delete — the everyday way to retire an account that
- * order history still references.
- */
-export function useDeactivateCompany() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (companyId: string) => deactivateCompany(companyId),
-    onSuccess: company => {
-      queryClient.invalidateQueries({ queryKey: companiesQueryKeys.all });
-      toast.success('Company deactivated', { description: company.name });
-    },
-    onError: (error: unknown) => {
-      toast.error('Could not deactivate company', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    },
-  });
-}
-
-export function useDeleteCompany() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (companyId: string) => deleteCompany(companyId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: companiesQueryKeys.all });
-      toast.success('Company deleted');
-    },
-    onError: (error: unknown) => {
-      toast.error('Could not delete company', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
     },
   });
 }

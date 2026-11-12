@@ -293,11 +293,6 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
         errorMessage: `User already has membership (status: ${existingMembership.status})`,
       });
 
-      toast({
-        title: 'Already a Member',
-        description: `You are already a member of ${orgData.name}.`,
-      });
-
       // User is already a member, navigate to dashboard
       navigate('/dashboard');
       return;
@@ -389,11 +384,6 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
     console.log('✅ Cache invalidated - fresh data will be fetched');
 
     trackEvent('invite_accepted', { role: tokenData?.role || 'Member' });
-
-    toast({
-      title: 'Welcome to the team!',
-      description: `You've successfully joined ${orgData.name}.`,
-    });
 
     // Clear onboarding progress
     await onboardingStateHelpers.clearOnboardingProgress(userId);

@@ -284,33 +284,6 @@ export async function createWorkOrder(
   return data;
 }
 
-export async function updateWorkOrder(
-  workOrderId: string,
-  patch: Partial<CreateWorkOrderInput> & {
-    actual_start?: string | null;
-    actual_end?: string | null;
-  }
-): Promise<WorkOrder> {
-  const { data, error } = await supabase
-    .from('work_orders')
-    .update(patch)
-    .eq('id', workOrderId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[workOrdersService] updateWorkOrder failed:', error);
-    if (error.message.includes(DOUBLE_BOOKING_CONSTRAINT)) {
-      throw new CrewDoubleBookedError(
-        'That crew is already booked during this window. Pick another crew or another time.'
-      );
-    }
-    throw new Error(`Failed to update work order: ${error.message}`);
-  }
-
-  return data;
-}
-
 // ============================================================================
 // Queries
 // ============================================================================

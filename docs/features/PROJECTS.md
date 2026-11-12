@@ -155,7 +155,6 @@ Manages projects (board items) and workflow columns:
 | Function | Purpose |
 |----------|---------|
 | `fetchBoardItems(orgId)` | Get projects (filters to Won proposals) |
-| `createBoardItem(data)` | Create project from proposal |
 | `updateBoardItem(id, data)` | Update project |
 | `deleteBoardItem(id)` | Remove from board |
 | `moveBoardItem(id, columnId, position)` | Move between columns |
@@ -230,7 +229,6 @@ const reference = generateTaskReference(organizationName, existingCount);
 |------|---------|
 | `useProjects(orgId)` | Fetch board items with realtime |
 | `useWorkflowColumns(orgId)` | Fetch workflow columns |
-| `useCreateProject()` | Create with optimistic updates |
 | `useUpdateProject()` | Update with optimistic updates |
 | `useDeleteProject()` | Delete with rollback on error |
 | `useMoveBoardItem()` | Move between columns |
@@ -247,7 +245,6 @@ const reference = generateTaskReference(organizationName, existingCount);
 | `useProjectTasks(projectId)` | Fetch project-specific tasks |
 | `useOrganizationTasks(orgId)` | Fetch all org tasks |
 | `useCreateProjectTask()` | Create with auto-reference |
-| `useUpdateProjectTask()` | Generic update |
 | `useDeleteProjectTask()` | Delete |
 | `useAssignTask()` | Assign to user |
 | `useUpdateTaskStatus()` | Change column |

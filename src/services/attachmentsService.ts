@@ -296,24 +296,6 @@ export async function uploadAttachment(
   return data as unknown as Attachment;
 }
 
-export async function updateAttachment(
-  attachmentId: string,
-  patch: { description?: string | null; document_type?: AttachmentDocumentType }
-): Promise<Attachment> {
-  const { data, error } = await table()
-    .update(patch as never)
-    .eq('id', attachmentId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[attachmentsService] updateAttachment failed:', error);
-    throw new Error(`Failed to update attachment: ${error.message}`);
-  }
-
-  return data as unknown as Attachment;
-}
-
 /**
  * Delete an attachment and its stored file.
  *

@@ -17,7 +17,6 @@ import { useProposals } from "@/hooks/queries/useProposals";
 import { useUser, useProfile } from "@/auth";
 import { formatDistanceToNow } from "date-fns";
 import { useUpcomingReminders, type TaskReminder } from "@/hooks/useUpcomingReminders";
-import { toast } from '@/components/ui/sonner';
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
 import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
@@ -597,21 +596,14 @@ const Dashboard = () => {
         open={showNewProposalDialog}
         onOpenChange={setShowNewProposalDialog}
         onCreateProposal={async (data: ProposalInitialData) => {
-          setShowNewProposalDialog(false);
-          try {
-            // document_type is inherited from the form automatically
-            const { createProposal } = await import('@/services/proposalsService');
-            const proposal = await createProposal({
-              form_id: data.formId,
-              project_name: data.projectName,
-              status: 'Draft',
-            });
-            toast.success('Created successfully');
-            navigate(`/proposals/${proposal.id}/edit`);
-          } catch (error) {
-            console.error('Failed to create:', error);
-            toast.error('Failed to create');
-          }
+          // Errors propagate so the dialog stays open and shows them.
+          const { createProposal } = await import('@/services/proposalsService');
+          const proposal = await createProposal({
+            form_id: data.formId,
+            project_name: data.projectName,
+            status: 'Draft',
+          });
+          navigate(`/proposals/${proposal.id}/edit`);
         }}
       />
 

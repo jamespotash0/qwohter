@@ -560,8 +560,8 @@ only — explicitly revoked from `authenticated`. The moment a person can type
 is worthless in a freight claim. `shipment_tracking_events` has a SELECT policy
 and no others, for the same reason.
 
-`updateShipment()` in the service accepts only the left-hand column. The type is
-a `Pick`, not a `Partial<Shipment>`.
+The client has no shipment-edit path today. Any future one must accept only the
+left-hand column, typed as a `Pick`, not a `Partial<Shipment>`.
 
 ### Freight identity is two numbers
 

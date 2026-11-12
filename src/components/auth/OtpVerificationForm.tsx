@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Check, X, Loader2, RefreshCw, ArrowRight } from "lucide-react";
+import { InlineError } from "@/components/common/InlineError";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -18,6 +19,7 @@ interface OtpVerificationFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onResendCode: () => Promise<void>;
   onChangeEmail?: (newEmail: string) => Promise<void>;
+  error?: string | null;
 }
 
 export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
@@ -27,7 +29,8 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   onOtpCodeChange,
   onSubmit,
   onResendCode,
-  onChangeEmail
+  onChangeEmail,
+  error,
 }) => {
   const [showOverlay, setShowOverlay] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -204,7 +207,9 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
               w-40 h-12 text-center text-3xl font-bold tracking-[0.15em]
               bg-transparent border-0 border-b-2 rounded-none
               outline-none transition-all duration-200
-              ${otpCode.length > 0
+              ${error
+                ? 'border-red-400 text-[#171717]'
+                : otpCode.length > 0
                 ? 'border-[#ee6c4d] text-[#171717]'
                 : 'border-[#171717]/20 text-[#171717]'
               }
@@ -214,6 +219,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
             `}
           />
         </div>
+        <InlineError message={error} className="justify-center text-center" />
 
         {/* Verify Button */}
         <Button

@@ -46,6 +46,8 @@ import {
   type WorkType,
 } from '@/hooks/queries/useWorkOrders';
 import { cn } from '@/lib/utils';
+import { CrewDoubleBookedError } from '@/services/workOrdersService';
+import { InlineError } from '@/components/common/InlineError';
 
 /**
  * Typed as WorkType so the compiler holds this list against the database's
@@ -89,6 +91,7 @@ export function WorkOrderDialog({
   const { data: crews = [] } = useCrews(organizationId);
   const { data: schedulable = [] } = useSchedulableLines(salesOrderId ?? undefined);
   const createWorkOrder = useCreateWorkOrder();
+  const isDoubleBooked = createWorkOrder.error instanceof CrewDoubleBookedError;
 
   const [workType, setWorkType] = useState<WorkType>('Installation');
   const [performer, setPerformer] = useState<string>('');
@@ -110,6 +113,7 @@ export function WorkOrderDialog({
 
   useEffect(() => {
     if (!open) return;
+    createWorkOrder.reset();
     setWorkType('Installation');
     setPerformer('');
     setSubName('');
@@ -182,7 +186,7 @@ export function WorkOrderDialog({
       });
       onOpenChange(false);
     } catch {
-      // Surfaced as a toast, including the double-booking case.
+      // Shown inline: double-booking under the crew picker, anything else above the buttons.
     }
   };
 
@@ -238,7 +242,13 @@ export function WorkOrderDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Performed by</Label>
-              <Select value={performer} onValueChange={setPerformer}>
+              <Select
+                value={performer}
+                onValueChange={value => {
+                  setPerformer(value);
+                  createWorkOrder.reset();
+                }}
+              >
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Pick a crew" />
                 </SelectTrigger>
@@ -251,6 +261,7 @@ export function WorkOrderDialog({
                   <SelectItem value={SUBCONTRACT}>A subcontractor</SelectItem>
                 </SelectContent>
               </Select>
+              {isDoubleBooked && <InlineError message={createWorkOrder.error?.message} />}
             </div>
             {isSubcontract && (
               <div className="space-y-1.5">
@@ -391,6 +402,8 @@ export function WorkOrderDialog({
             </p>
           )}
         </div>
+
+        {!isDoubleBooked && <InlineError message={createWorkOrder.error?.message} />}
 
         <DialogFooter className={cn('gap-2')}>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

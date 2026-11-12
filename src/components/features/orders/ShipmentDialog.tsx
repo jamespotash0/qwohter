@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCreateShipment, useDetectCarrier } from '@/hooks/queries/useShipments';
+import { InlineError } from '@/components/common/InlineError';
 import { useOrderLines, useOrderFulfillment } from '@/hooks/queries/useSalesOrders';
 import { usePOLines } from '@/hooks/queries/useVarianceQueue';
 import {
@@ -101,6 +102,7 @@ export function ShipmentDialog({
     setShipDate(new Date().toISOString().slice(0, 10));
     setPieceCount('');
     setEntries({});
+    createShipment.reset();
   }, [open]);
 
   // Scoped to the manufacturer order when there is one — same reasoning as the
@@ -167,7 +169,7 @@ export function ShipmentDialog({
       });
       onOpenChange(false);
     } catch {
-      // Surfaced as a toast by the mutation hook; keep the dialog open.
+      // Shown inline from createShipment.error; keep the dialog open.
     }
   };
 
@@ -387,6 +389,8 @@ export function ShipmentDialog({
             </div>
           )}
         </div>
+
+        <InlineError message={createShipment.error?.message} />
 
         <DialogFooter className="items-center gap-3 sm:justify-between">
           <span className="text-sm text-gray-500">

@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { TAB_INPUT_CLASS } from './shared/tabStyles';
 import { toast } from '@/components/ui/sonner';
+import { InlineError } from '@/components/common/InlineError';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsWithSummary, type ExtractedProduct, type ExtractionResult } from '@/services/productExtraction';
 import { useFormBuilder, type Product, type PricingSection, type PricingLineItem } from '../../context/FormBuilderContext';
@@ -50,6 +51,7 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
 
   const [extracting, setExtracting] = useState(false);
   const [extractingFile, setExtractingFile] = useState<File | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [extractedProducts, setExtractedProducts] = useState<ExtractedProduct[]>([]);
   const [extractedFileName, setExtractedFileName] = useState<string>();
@@ -159,10 +161,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
         updatedSections = [targetSection, ...updatedSections];
       }
     }
-    if (targetSection.lineItems.some(item => item.sourceProductId === product.id)) {
-      toast.warning(`"${product.name || 'Product'}" is already in ${targetSection.name}`);
-      return;
-    }
+    // The section menu disables sections that already hold this product.
+    if (targetSection.lineItems.some(item => item.sourceProductId === product.id)) return;
     const newLineItem = {
       id: `${Date.now()}`, name: product.name || 'Unnamed Product',
       modelNumber: product.rawData?.model || undefined,
@@ -194,8 +194,9 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       'image/jpeg', 'image/jpg', 'image/png', 'text/plain',
     ];
     const isValidExtension = file.name.toLowerCase().endsWith('.docx');
+    setExtractError(null);
     if (!validTypes.includes(file.type) && !isValidExtension) {
-      toast.error('Invalid file type. Please upload PDF, DOCX, image, or text file.');
+      setExtractError('Invalid file type. Please upload PDF, DOCX, image, or text file.');
       return;
     }
     trackEvent('ai_extraction_used');
@@ -206,24 +207,17 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       setExtracting(false);
       setExtractingFile(null);
       if (result.products.length === 0) {
-        toast.warning(`No products found in ${file.name}`);
+        setExtractError(`No products found in ${file.name}`);
       } else {
         setExtractedProducts(result.products);
         setExtractedFileName(file.name);
         setExtractionSummary(result.summary);
         setPreviewOpen(true);
-        const { configurableCount, simpleCount, confidence } = result.summary;
-        const parts: string[] = [];
-        if (configurableCount > 0) parts.push(`${configurableCount} configurable`);
-        if (simpleCount > 0) parts.push(`${simpleCount} line items`);
-        toast.success(
-          `Found ${result.products.length} product${result.products.length === 1 ? '' : 's'} (${parts.join(', ')}) - ${Math.round(confidence * 100)}% confidence`
-        );
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
       console.error('AI extraction error:', error);
-      toast.error(`Failed to extract products: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setExtractError(`Failed to extract products: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setExtracting(false);
       setExtractingFile(null);
     }
@@ -258,7 +252,6 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
       });
       setProductsData({ items: [...products, ...productsWithAliases] });
       onDirtyChange?.(true);
-      toast.success(`Added ${selectedProducts.length} product${selectedProducts.length === 1 ? '' : 's'} with variable aliases`);
     }
     setExtractedProducts([]);
     setExtractedFileName(undefined);
@@ -366,6 +359,8 @@ export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
           </Button>
         </div>
       )}
+
+      <InlineError message={extractError} className={hasAnyProducts ? 'justify-end' : ''} />
 
       {/* Stacked Sections */}
       {hasManualProducts && (

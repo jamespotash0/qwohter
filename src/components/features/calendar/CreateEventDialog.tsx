@@ -33,6 +33,7 @@ import {
   CALENDAR_EVENT_TYPE_COLORS,
 } from '@/lib/types/calendarEvents';
 import { cn } from '@/lib/utils';
+import { InlineError } from '@/components/common/InlineError';
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -79,6 +80,8 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
   // Reset form when dialog opens/event changes
   useEffect(() => {
     if (!open) return;
+    createEvent.reset();
+    updateEvent.reset();
 
     if (event) {
       setTitle(event.title);
@@ -130,27 +133,31 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
         : `${endDate}T${endTime}:00`
       : undefined;
 
-    if (isEditing && event) {
-      await updateEvent.mutateAsync({
-        id: event.id,
-        input: {
+    try {
+      if (isEditing && event) {
+        await updateEvent.mutateAsync({
+          id: event.id,
+          input: {
+            title: title.trim(),
+            description: description.trim() || undefined,
+            start_date: startISO,
+            end_date: endISO || null,
+            all_day: allDay,
+            event_type: eventType,
+          },
+        });
+      } else {
+        await createEvent.mutateAsync({
           title: title.trim(),
           description: description.trim() || undefined,
           start_date: startISO,
-          end_date: endISO || null,
+          end_date: endISO,
           all_day: allDay,
           event_type: eventType,
-        },
-      });
-    } else {
-      await createEvent.mutateAsync({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        start_date: startISO,
-        end_date: endISO,
-        all_day: allDay,
-        event_type: eventType,
-      });
+        });
+      }
+    } catch {
+      return; // Shown inline from the mutation's error.
     }
     onOpenChange(false);
   };
@@ -385,6 +392,8 @@ export const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
               )}
             </div>
           </div>
+
+          <InlineError message={(isEditing ? updateEvent : createEvent).error?.message} />
 
           {/* ── Footer ── */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700/50">

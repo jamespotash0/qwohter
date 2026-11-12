@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Edit2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
+import { InlineError } from "@/components/common/InlineError";
 import { hasAdminPermissions } from "@/utils/permissions";
 import { supabase } from "@/integrations/supabase/client";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
@@ -52,6 +52,8 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   const currentUser = useUser();
 
   // Individual field editing states
+  const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
+  const errorFor = (field: string) => (fieldError?.field === field ? fieldError.message : null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingIndustry, setIsEditingIndustry] = useState(false);
   const [isEditingWebsite, setIsEditingWebsite] = useState(false);
@@ -108,11 +110,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
   // Handle logo upload success
   const handleLogoUploadSuccess = (result: LogoUploadResult) => {
-    toast({
-      title: "Logo Uploaded",
-      description: "Your company logo has been uploaded successfully.",
-    });
-
+    setFieldError(null);
     // Refresh organization data to show new logo
     if (typeof onOrganizationUpdate === 'function') {
       onOrganizationUpdate();
@@ -122,20 +120,11 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   // Handle logo upload error
   const handleLogoUploadError = (error: string) => {
     console.error('❌ Logo upload failed:', error);
-    toast({
-      title: "Upload Failed",
-      description: error,
-      variant: "destructive",
-    });
+    setFieldError({ field: 'logo', message: error });
   };
 
   // Handle logo removal
   const handleLogoRemove = () => {
-    toast({
-      title: "Logo Removed",
-      description: "Your company logo has been removed.",
-    });
-
     // Refresh organization data
     if (typeof onOrganizationUpdate === 'function') {
       onOrganizationUpdate();
@@ -149,21 +138,12 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
     setIsUpdating: (val: boolean) => void,
     setIsEditing: (val: boolean) => void
   ) => {
-    if (!hasEditPermission) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to edit organization details.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Unreachable for non-editors: the tab renders Access Restricted instead.
+    if (!hasEditPermission) return;
 
+    setFieldError(null);
     if (!organization?.id) {
-      toast({
-        title: "Error",
-        description: "Organization ID not found. Please refresh the page.",
-        variant: "destructive",
-      });
+      setFieldError({ field, message: 'Organization ID not found. Please refresh the page.' });
       return;
     }
 
@@ -178,11 +158,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Updated",
-        description: "Organization details have been updated successfully.",
-      });
-
       setIsEditing(false);
 
       // Force refetch with the updated data
@@ -191,11 +166,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
       }
     } catch (error) {
       console.error('Error updating organization:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update organization",
-        variant: "destructive",
-      });
+      setFieldError({ field, message: error instanceof Error ? error.message : 'Failed to update organization' });
     } finally {
       setIsUpdating(false);
     }
@@ -245,6 +216,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('logo')} className="px-6 -mt-4 justify-end" />
 
             {/* Organization Name */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -298,7 +270,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingName(true)}
+                      onClick={() => { setFieldError(null); setIsEditingName(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -308,6 +280,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('name')} className="px-6 -mt-4 justify-end" />
 
             {/* Industry */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -354,7 +327,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingIndustry(true)}
+                      onClick={() => { setFieldError(null); setIsEditingIndustry(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -364,6 +337,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('industry')} className="px-6 -mt-4 justify-end" />
 
             {/* Website */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -410,7 +384,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingWebsite(true)}
+                      onClick={() => { setFieldError(null); setIsEditingWebsite(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -420,6 +394,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('website')} className="px-6 -mt-4 justify-end" />
           </div>
         </div>
 
@@ -480,7 +455,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingPhone(true)}
+                      onClick={() => { setFieldError(null); setIsEditingPhone(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -490,6 +465,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('phone_number')} className="px-6 -mt-4 justify-end" />
 
             {/* Fax Number */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -542,7 +518,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingFax(true)}
+                      onClick={() => { setFieldError(null); setIsEditingFax(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -552,6 +528,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('fax_number')} className="px-6 -mt-4 justify-end" />
 
             {/* Company Address */}
             <div className="flex items-start justify-between py-6 px-6 rounded-lg">
@@ -601,7 +578,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingAddress(true)}
+                      onClick={() => { setFieldError(null); setIsEditingAddress(true); }}
                       className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -611,6 +588,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                 )}
               </div>
             </div>
+            <InlineError message={errorFor('company_address')} className="px-6 -mt-4 justify-end" />
           </div>
         </div>
 

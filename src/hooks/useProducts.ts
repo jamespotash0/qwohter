@@ -291,11 +291,6 @@ export const useBulkCreateProducts = (organizationId: string) => {
           description: `${result.created} products created. ${result.errors.length} failed.`,
           variant: 'destructive',
         });
-      } else {
-        toast({
-          title: 'Import Successful',
-          description: `${result.created} products have been imported.`,
-        });
       }
     },
     onError: (error: Error) => {
