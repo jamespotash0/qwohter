@@ -101,6 +101,7 @@ npm run docs:preview           # Preview built docs
 | [CLIENT_PORTAL_PLAN.md](docs/plans/CLIENT_PORTAL_PLAN.md) | Client portal feature plan |
 | [PERMISSIONS_BITMASK_PLAN.md](docs/plans/PERMISSIONS_BITMASK_PLAN.md) | JWT + bitmask permissions (replace per-request DB role checks) |
 | [COORDINATOR_AGENT_PLAN.md](docs/plans/COORDINATOR_AGENT_PLAN.md) | Email-based coordinator agent: inbox, thread→job resolution, connector, tiered writes |
+| [PORTAL_CONNECTOR_PLAN.md](docs/plans/PORTAL_CONNECTOR_PLAN.md) | Read portal quotes, orders and acks into proposals and jobs via existing AI extraction; no field maps |
 | [AI_TEMPLATE_AUTHORING_PLAN.md](docs/plans/AI_TEMPLATE_AUTHORING_PLAN.md) | Doc variables after the catalog: table/rollup tiers, AI-authored templates |
 
 ---
